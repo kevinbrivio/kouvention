@@ -8,7 +8,8 @@ GoRouter get router => _router;
 final RouteObserver<ModalRoute<void>> routeObserver =
     RouteObserver<ModalRoute<void>>();
 
-void setupRouter({required String initialRouter}) {
+// ignore: inference_failure_on_function_return_type
+setupRouter({required String initialRouter}) {
   _router = GoRouter(
     initialLocation: initialRouter,
     navigatorKey: navigatorKey,
