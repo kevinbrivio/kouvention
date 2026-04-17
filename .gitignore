@@ -32,9 +32,13 @@ firebase_options.dart
 
 # Environment & Secrets
 .env
+.env.*
 *.env
 *.pem
 *.p12
+
+# Envied generated files
+*.g.dart
 
 # OS
 .DS_Store

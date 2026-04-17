@@ -1,81 +1,114 @@
+import 'dart:async';
+
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:kouvention/cores/configs/env.dart';
+import 'package:kouvention/cores/configs/flavor_config.dart';
+import 'package:kouvention/cores/router/router.dart';
+import 'package:kouvention/cores/widgets/flavor_banner.dart';
+import 'package:kouvention/features/shared/services/prefs_service.dart';
+import 'package:oktoast/oktoast.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_options.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  runZonedGuarded(
+    () async {
+      WidgetsFlutterBinding.ensureInitialized();
+      SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
-  // Pass all uncuaught errors from Flutter to Crashlytics
-  FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+      await ScreenUtil.ensureScreenSize();
 
-  // Pass all uncaught async error to Crashlytics
-  PlatformDispatcher.instance.onError = (error, stack) {
-    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-    return true;
-  };
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
 
-  runApp(const MyApp());
+      // Pass all uncuaught errors from Flutter to Crashlytics
+      FlutterError.onError =
+          FirebaseCrashlytics.instance.recordFlutterFatalError;
+
+      // Pass all uncaught async error to Crashlytics
+      PlatformDispatcher.instance.onError = (error, stack) {
+        FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+        return true;
+      };
+
+      // SHARED PREFS
+      final prefs = await SharedPreferences.getInstance();
+      final prefsService = PrefsService(prefs);
+
+      const flavor = String.fromEnvironment('ENV');
+      setupConfig(flavor);
+
+      await setupRouter(initialRouter: '/home');
+
+      runApp(const KouventionApp());
+    },
+    (error, stack) {
+      print(error);
+      print(stack);
+    },
+  );
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+void setupConfig(String flavor) {
+  FlavorConfig(
+    flavor: convertToFlavorEnum(flavor),
+    values: flavor == 'staging'
+        ? FlavorValues(showBanner: EnvStaging.showBanner)
+        : FlavorValues(showBanner: EnvProd.showBanner),
+  );
+}
+
+class KouventionApp extends StatefulWidget {
+  const KouventionApp({super.key});
+
+  @override
+  State<KouventionApp> createState() => _KouventionAppState();
+}
+
+class _KouventionAppState extends State<KouventionApp>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+    ScreenUtil.init(
+      context,
+      designSize: const Size(375, 768),
+      minTextAdapt: true,
     );
-  }
-}
-
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      _counter++;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(widget.title),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: .center,
-          children: [
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
+    return ProviderScope(
+      child: OKToast(
+        child: MaterialApp.router(
+          builder: (_, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(boldText: false),
+            child: FlavorBanner(child: child!),
+          ),
+          title: 'Kouvention',
+          debugShowCheckedModeBanner: FlavorConfig.showBanner(),
+          theme: ThemeData(
+            primaryColor: FlavorConfig.instance!.color
+          ),
+          // theme: ,
+          routerConfig: router,
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
       ),
     );
   }
