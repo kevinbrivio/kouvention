@@ -8,7 +8,7 @@ class BaseView<T extends BaseNotifier> extends ConsumerWidget {
   final Widget Function(BuildContext, T) builder;
   final Widget Function(BuildContext, T)? showOverlay;
   final PreferredSizeWidget Function(T)? appBar;
-  final Color backgroundColor;
+  final Color? backgroundColor;
 
   BaseView({
     super.key,
@@ -16,7 +16,7 @@ class BaseView<T extends BaseNotifier> extends ConsumerWidget {
     required this.builder,
     this.showOverlay,
     this.appBar,
-    required this.backgroundColor,
+    this.backgroundColor,
   });
 
   @override
