@@ -32,6 +32,7 @@ firebase_options.dart
 
 # Environment & Secrets
 .env
+.env.*
 *.env
 *.pem
 *.p12
