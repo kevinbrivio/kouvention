@@ -51,5 +51,3 @@ flutter:
           weight: 500
         - asset: assets/fonts/Asap-SemiBold.ttf
           weight: 600
-        - asset: assets/fonts/Asap-Bold.ttf
-          weight: 700  
