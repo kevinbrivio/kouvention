@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
+import 'package:kouvention/cores/router/router_constants.dart';
 
 final onboardingVM = ChangeNotifierProvider.autoDispose(OnboardingVM.new);
 
@@ -33,4 +35,8 @@ class OnboardingVM extends BaseNotifier {
 
   Future<void> nextPage() => goToPage(currentPage + 1);
   Future<void> backPage() => goToPage(currentPage - 1);
+
+  Future<void> goToPrivacyPolicy() async {
+    ctx.go(RouterRoutes.privacyPolicy.path);
+  }
 }
