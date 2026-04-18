@@ -6,6 +6,7 @@ import 'package:kouvention/cores/constants/image_paths.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/cores/widgets/circular_icon_holder.dart';
 import 'package:kouvention/cores/widgets/floating_widget.dart';
+import 'package:kouvention/cores/widgets/icon_holder.dart';
 import 'package:kouvention/cores/widgets/transparent_box.dart';
 
 class OnboardingPage2 extends StatelessWidget {
@@ -63,7 +64,7 @@ class OnboardingPage2 extends StatelessWidget {
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       // TODO: Change hardcoded icons to params
-      CircularIconHolder(icon: Icon(Icons.access_alarm)),
+      IconHolder(icon: Icon(Icons.access_alarm)),
       Gap(12.w),
       Expanded(
         child: Column(
