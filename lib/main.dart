@@ -22,6 +22,14 @@ void main() async {
       WidgetsFlutterBinding.ensureInitialized();
       SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarDividerColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemNavigationBarIconBrightness: Brightness.light,
+      ));
 
       await ScreenUtil.ensureScreenSize();
 
