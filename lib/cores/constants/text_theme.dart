@@ -27,6 +27,22 @@ class _TextTheme {
     fontWeight: FontWeight.w400,
     height: 1.5,
   );
+
+  // Specific cases
+  final buttonText = TextStyle(
+    fontSize: 12.sp,
+    color: AppColors.primary,
+    fontWeight: FontWeight.w500,
+    height: 1.5,
+  );
+  
+  final subDescription = TextStyle(
+    fontSize: 16.sp,
+    color: AppColors.white.withValues(alpha: 0.7),
+    fontWeight: FontWeight.w500,
+    height: 1.5,
+  );
+  
 }
 
 final textTheme = _TextTheme();
