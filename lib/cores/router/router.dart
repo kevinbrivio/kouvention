@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/features/auth/views/login_view.dart';
 import 'package:kouvention/features/onboarding/views/onboarding_view.dart';
+import 'package:kouvention/features/privacy_policy/views/privacy_policy_view.dart';
 import 'package:kouvention/features/splash/views/splash_view.dart';
 
 late GoRouter _router;
@@ -21,7 +22,7 @@ setupRouter({required String initialRouter}) {
       GoRoute(
         path: RouterRoutes.splash.path,
         name: RouterRoutes.splash.name,
-        builder: (_, _) => SplashView(),
+        builder: (_, _) => const SplashView(),
       ),
       GoRoute(
         path: RouterRoutes.login.path,
@@ -31,13 +32,13 @@ setupRouter({required String initialRouter}) {
       GoRoute(
         path: RouterRoutes.onboarding.path,
         name: RouterRoutes.onboarding.name,
-        builder: (_, _) => OnboardingView(),
+        builder: (_, _) => const OnboardingView(),
       ),
-      // GoRoute(
-      //   path: RouterRoutes.privacyPolicy.path,
-      //   name: RouterRoutes.privacyPolicy.name,
-      //   builder: (_, _) => const PrivacyPolicyView(),
-      // ),
+      GoRoute(
+        path: RouterRoutes.privacyPolicy.path,
+        name: RouterRoutes.privacyPolicy.name,
+        builder: (_, _) => PrivacyPolicyView(),
+      ),
     ],
   );
 }
