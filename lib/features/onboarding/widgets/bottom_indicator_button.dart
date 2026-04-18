@@ -30,11 +30,13 @@ class BottomIndicatorButton extends ConsumerWidget {
           height: 56.h,
           child: Button(
             isWhiteBackground: true,
-            text: 'Next',
+            text: vm.currentPage == 2 ? 'Get Started' : 'Next',
             showArrow: true,
             width: 224.w,
             onPressed: vm.currentPage < OnboardingVM.totalPages
-                ? vm.nextPage
+                ? vm.currentPage == 2 
+                  ? vm.goToPrivacyPolicy
+                  : vm.nextPage
                 : null,
           ),
         ),
