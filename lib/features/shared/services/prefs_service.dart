@@ -1,4 +1,11 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+final prefsServiceProvider = Provider<PrefsService>((ref) {
+  throw UnimplementedError(
+    'PrefsService must be initialized in main.dart using ProviderScope.overrideWithValue',
+  );
+});
 
 class PrefsService {
   final SharedPreferences _prefs;

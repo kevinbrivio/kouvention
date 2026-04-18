@@ -8,9 +8,25 @@ class RouterRoute {
 }
 
 class RouterRoutes {
-  static const home = RouterRoute(
+  static const splash = RouterRoute(
     path: '/',
+    name: 'splash'
+  );
+  static const home = RouterRoute(
+    path: '/home',
     name: 'home'
+  );
+  static const onboarding = RouterRoute(
+    path: '/onboarding',
+    name: 'onboarding'
+  );
+  static const privacyPolicy = RouterRoute(
+    path: '/privacy-policy',
+    name: 'privacy-policy'
+  );
+  static const login = RouterRoute(
+    path: '/login',
+    name: 'login'
   );
 }
 

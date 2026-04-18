@@ -36,7 +36,7 @@ abstract class BaseNotifier extends ChangeNotifier {
 
   // Setters
   set isLoading(bool value) {
-    isLoading = value;
+    _isLoading = value;
     scheduleMicrotask(() {
       if (!_isDisposed) {
         notifyListeners();
@@ -45,7 +45,7 @@ abstract class BaseNotifier extends ChangeNotifier {
   }
 
   set showOverlay(bool value) {
-    showOverlay = value;
+    _showOverlay = value;
     scheduleMicrotask(() {
       if (!_isDisposed) {
         notifyListeners();

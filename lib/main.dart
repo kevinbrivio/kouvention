@@ -25,6 +25,8 @@ void main() async {
 
       await ScreenUtil.ensureScreenSize();
 
+      // TODO: SETUP FLAVOR CONFIG
+
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
@@ -46,9 +48,14 @@ void main() async {
       const flavor = String.fromEnvironment('ENV');
       setupConfig(flavor);
 
-      await setupRouter(initialRouter: '/home');
+      await setupRouter(initialRouter: '/');
 
-      runApp(const KouventionApp());
+      runApp(
+        ProviderScope(
+          overrides: [prefsServiceProvider.overrideWithValue(prefsService)],
+          child: const KouventionApp(),
+        ),
+      );
     },
     (error, stack) {
       print(error);
@@ -103,9 +110,7 @@ class _KouventionAppState extends State<KouventionApp>
           ),
           title: 'Kouvention',
           debugShowCheckedModeBanner: FlavorConfig.showBanner(),
-          theme: ThemeData(
-            primaryColor: FlavorConfig.instance!.color
-          ),
+          theme: ThemeData(primaryColor: FlavorConfig.instance!.color),
           // theme: ,
           routerConfig: router,
         ),
