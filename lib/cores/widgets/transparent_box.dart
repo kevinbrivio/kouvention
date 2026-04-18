@@ -23,7 +23,7 @@ class TransparentBox extends StatelessWidget {
         width: 1.sp,
       ),
     ),
-    padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
+    padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
     child: child,
   );
 }
