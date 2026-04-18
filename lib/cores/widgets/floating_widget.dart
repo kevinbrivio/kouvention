@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class FloatingWidget extends StatefulWidget {
   const FloatingWidget({super.key, required this.child});
@@ -18,7 +19,7 @@ class _FloatingWidgetState extends State<FloatingWidget>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 2),
+      duration: const Duration(seconds: 3),
     )..repeat(reverse: true); // goes up then down, forever
 
     _animation = Tween<double>(
@@ -48,7 +49,10 @@ class _FloatingWidgetState extends State<FloatingWidget>
           child: child,
         );
       },
-      child: widget.child,
+      child: Padding(
+        padding: EdgeInsetsGeometry.all(12.w),
+        child: widget.child
+      ),
     );
   }
 }
