@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/features/auth/views/login_view.dart';
+import 'package:kouvention/features/onboarding/views/onboarding_view.dart';
 import 'package:kouvention/features/splash/views/splash_view.dart';
 
 late GoRouter _router;
@@ -20,13 +21,23 @@ setupRouter({required String initialRouter}) {
       GoRoute(
         path: RouterRoutes.splash.path,
         name: RouterRoutes.splash.name,
-        builder: (_, __) => SplashView(),
+        builder: (_, _) => SplashView(),
       ),
       GoRoute(
         path: RouterRoutes.login.path,
         name: RouterRoutes.login.name,
-        builder: (_, __) => LoginView(),
+        builder: (_, _) => LoginView(),
       ),
+      GoRoute(
+        path: RouterRoutes.onboarding.path,
+        name: RouterRoutes.onboarding.name,
+        builder: (_, _) => OnboardingView(),
+      ),
+      // GoRoute(
+      //   path: RouterRoutes.privacyPolicy.path,
+      //   name: RouterRoutes.privacyPolicy.name,
+      //   builder: (_, _) => const PrivacyPolicyView(),
+      // ),
     ],
   );
 }
