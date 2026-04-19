@@ -109,19 +109,17 @@ class _KouventionAppState extends State<KouventionApp>
       designSize: const Size(375, 768),
       minTextAdapt: true,
     );
-    return ProviderScope(
-      child: OKToast(
-        child: MaterialApp.router(
-          builder: (_, child) => MediaQuery(
-            data: MediaQuery.of(context).copyWith(boldText: false),
-            child: FlavorBanner(child: child!),
-          ),
-          title: 'Kouvention',
-          debugShowCheckedModeBanner: FlavorConfig.showBanner(),
-          theme: ThemeData(primaryColor: FlavorConfig.instance!.color),
-          // theme: ,
-          routerConfig: router,
+    return OKToast(
+      child: MaterialApp.router(
+        builder: (_, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(boldText: false),
+          child: FlavorBanner(child: child!),
         ),
+        title: 'Kouvention',
+        debugShowCheckedModeBanner: FlavorConfig.showBanner(),
+        theme: ThemeData(primaryColor: FlavorConfig.instance!.color),
+        // theme: ,
+        routerConfig: router,
       ),
     );
   }
