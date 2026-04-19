@@ -11,13 +11,13 @@ import 'package:kouvention/cores/widgets/transparent_box.dart';
 import 'package:kouvention/features/privacy_policy/views/viewmodel/privacy_policy_viewmmodel.dart';
 
 class PrivacyPolicyView extends StatelessWidget {
-  PrivacyPolicyView({super.key});
+  const PrivacyPolicyView({super.key});
 
   @override
   Widget build(BuildContext context) => BaseView(
     provider: privacyPolicyVM,
     appBar: (_) => HiddenAppBar(),
-    builder: (context, vm) => _buildScreen(context, vm),
+    builder: _buildScreen,
   );
 
   Widget _buildScreen(BuildContext context, PrivacyPolicyVM vm) => Column(
@@ -188,7 +188,7 @@ class PrivacyPolicyView extends StatelessWidget {
         Gap(8.h),
         Button(
           text: 'Accept & Continue',
-          onPressed: () => vm.goToLogin(),
+          onPressed: vm.acceptAndContinue,
           isWhiteBackground: true,
           textStyle: textTheme.subheadline1.copyWith(
             color: AppColors.primary2,

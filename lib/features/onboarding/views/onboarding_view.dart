@@ -2,11 +2,9 @@ import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
-import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/bases/base_view.dart';
 import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
-import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/cores/widgets/hidden_app_bar.dart';
 import 'package:kouvention/features/onboarding/viewmodel/onboarding_viewmodel.dart';
 import 'package:kouvention/features/onboarding/widgets/bottom_indicator_button.dart';
@@ -21,7 +19,7 @@ class OnboardingView extends StatelessWidget {
   Widget build(BuildContext context) => BaseView(
     provider: onboardingVM,
     appBar: (_) => const HiddenAppBar(),
-    builder: (context, vm) => _buildScreen(context, vm),
+    builder: _buildScreen,
   );
 
   Widget _buildScreen(BuildContext context, OnboardingVM vm) => PopScope(
@@ -35,7 +33,7 @@ class OnboardingView extends StatelessWidget {
             child: Align(
               alignment: Alignment.centerRight,
               child: GestureDetector(
-                onTap: () => context.go(RouterRoutes.privacyPolicy.path),
+                onTap: vm.goToPrivacyPolicy,
                 child: Text('Skip', style: textTheme.subDescription),
               ),
             ),

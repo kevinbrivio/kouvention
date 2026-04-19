@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
+import 'package:kouvention/features/shared/services/prefs_service.dart';
 
 final onboardingVM = ChangeNotifierProvider.autoDispose(OnboardingVM.new);
 
@@ -12,6 +13,8 @@ class OnboardingVM extends BaseNotifier {
   OnboardingVM(super.ref);
 
   static const totalPages = 3;
+
+  late final PrefsService _prefsService = ref.read(prefsServiceProvider);
 
   late int currentPage;
   late CarouselSliderController controller;
@@ -37,6 +40,9 @@ class OnboardingVM extends BaseNotifier {
   Future<void> backPage() => goToPage(currentPage - 1);
 
   Future<void> goToPrivacyPolicy() async {
-    ctx.go(RouterRoutes.privacyPolicy.path);
+    final context = ctx;
+    await _prefsService.setHasSeenOnboarding(true);
+    if (!context.mounted) return;
+    context.go(RouterRoutes.privacyPolicy.path);
   }
 }

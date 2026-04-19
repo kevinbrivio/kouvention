@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
-import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/image_paths.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
-import 'package:kouvention/cores/widgets/circular_icon_holder.dart';
 import 'package:kouvention/cores/widgets/floating_widget.dart';
 import 'package:kouvention/cores/widgets/icon_holder.dart';
 import 'package:kouvention/cores/widgets/transparent_box.dart';

@@ -2,46 +2,54 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
+import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
-import 'package:kouvention/features/shared/viewmodel/prefs_viewmodel.dart';
+import 'package:kouvention/features/shared/services/prefs_service.dart';
 
 final splashVM = ChangeNotifierProvider.autoDispose<SplashVM>(SplashVM.new);
 
 class SplashVM extends BaseNotifier {
-  SplashVM(super.ref) {
-    ref.listen<PrefsVM>(prefsVM, (_, __) {
-      notifyListeners();
-    });
-  }
+  SplashVM(super.ref);
 
-  late final PrefsVM _prefsVM = ref.read(prefsVM);
-  late final AuthService _authService = AuthService();
+  late final PrefsService _prefsService = ref.read(prefsServiceProvider);
+  late final AuthService _authService = ref.read(authServiceProvider);
 
-  bool get hasSeenOnboarding => _prefsVM.hasSeenOnboarding;
-  bool get hasAcceptedPrivacyPolicy => _prefsVM.hasAcceptedPrivacyPolicy;
-  bool get shouldShowOnboarding => !_prefsVM.hasSeenOnboarding;
-  bool get shouldShowPrivacyPolicy => !_prefsVM.hasAcceptedPrivacyPolicy;
+  bool _hasSeenOnboarding = false;
+  bool get hasSeenOnboarding => _hasSeenOnboarding;
 
-  // Auth flag
+  bool _hasAcceptedPrivacyPolicy = false;
+  bool get hasAcceptedPrivacyPolicy => _hasAcceptedPrivacyPolicy;
+
   bool _isLoggedIn = false;
   bool get isLoggedIn => _isLoggedIn;
 
+  String? _nextRoute;
+  String? get nextRoute => _nextRoute;
+
   @override
   Future<void> init() async {
-    await _prefsVM.loadPrefs();
-
-    // Check whether user has token
+    _hasSeenOnboarding = await _prefsService.hasSeenOnboarding();
+    _hasAcceptedPrivacyPolicy =
+        await _prefsService.hasAcceptedPrivacyPolicy();
     _isLoggedIn = await _authService.isLoggedIn;
+
+    _nextRoute = _resolveInitialRoute();
     notifyListeners();
   }
 
-  Future<void> markOnboardingSeen() async {
-    await _prefsVM.markOnboardingSeen();
-    notifyListeners();
-  }
+  String _resolveInitialRoute() {
+    if (!_hasSeenOnboarding) {
+      return RouterRoutes.onboarding.path;
+    }
 
-  Future<void> acceptPrivacyPolicy() async {
-    await _prefsVM.acceptPrivacyPolicy();
-    notifyListeners();
+    if (_isLoggedIn) {
+      return RouterRoutes.home.path;
+    }
+
+    if (!_hasAcceptedPrivacyPolicy) {
+      return RouterRoutes.privacyPolicy.path;
+    }
+
+    return RouterRoutes.login.path;
   }
 }
