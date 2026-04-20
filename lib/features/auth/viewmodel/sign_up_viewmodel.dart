@@ -1,13 +1,16 @@
 import 'dart:async';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/cores/bases/base_form_notifier.dart';
 import 'package:kouvention/cores/mixins/form_validator_mixin.dart';
 import 'package:kouvention/cores/models/text_input_model.dart';
 import 'package:kouvention/features/auth/models/sign_up_form.dart';
+import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/shared/services/connectivity_service.dart';
 import 'package:kouvention/features/shared/viewmodel/connectivity_viewmodel.dart';
+import 'package:oktoast/oktoast.dart';
 
 final signUpProvider = ChangeNotifierProvider.autoDispose<SignUpVM>(
   (ref) => SignUpVM(ref),
@@ -15,9 +18,11 @@ final signUpProvider = ChangeNotifierProvider.autoDispose<SignUpVM>(
 
 class SignUpVM extends BaseFormNotifier<SignUpForm> with FormValidatorMixin {
   final ConnectivityService _connectivityService;
+  final AuthService _authService;
 
   SignUpVM(super.ref)
-    : _connectivityService = ref.read(connectivityServiceProvider);
+    : _connectivityService = ref.read(connectivityServiceProvider),
+      _authService = ref.read(authServiceProvider);
 
   // password visibility
   bool _obscurePassword = true;
@@ -70,17 +75,26 @@ class SignUpVM extends BaseFormNotifier<SignUpForm> with FormValidatorMixin {
 
     // validate
     final isValid = validate();
-    debugPrint('EMAIL : ${form.email.text.length}');
-    debugPrint('PASSWORD : ${form.password.text}');
-    debugPrint('2. Is Valid: $isValid');
     if (!isValid) return;
 
-    debugPrint('3. reach signup logic');
     isLoading = true;
     try {
-      // Simulate
-      await Future.delayed(const Duration(seconds: 2));
+      await _authService.signUpWithEmail(
+        email: form.email.text,
+        password: form.password.text,
+      );
+      debugPrint('SIGNUP: success, currentUser=${_authService.currentUser}');
+    } on FirebaseAuthException catch (e) {
+      final message = switch (e.code) {
+        'email-already-in-use' => 'This email is already registered',
+        'invalid-email' => 'Invalid email address',
+        'weak-password' => 'Password is too weak',
+        _ => 'Sign up failed. Please try again.',
+      };
+
+      showToast(message);
     } catch (e) {
+      showToast('Something went wrong. Please try again.');
     } finally {
       isLoading = false;
     }

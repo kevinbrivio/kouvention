@@ -33,8 +33,8 @@ class SplashVM extends BaseNotifier {
     _isLoggedIn = await _authService.isLoggedIn;
 
     // TODO: REMOVE LATER
-    _hasSeenOnboarding = false;
-    _hasAcceptedPrivacyPolicy = false;
+    // _hasSeenOnboarding = false;
+    // _hasAcceptedPrivacyPolicy = false;
 
     _nextRoute = _resolveInitialRoute();
     notifyListeners();

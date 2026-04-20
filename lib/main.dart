@@ -11,6 +11,7 @@ import 'package:kouvention/cores/configs/env.dart';
 import 'package:kouvention/cores/configs/flavor_config.dart';
 import 'package:kouvention/cores/router/router.dart';
 import 'package:kouvention/cores/widgets/flavor_banner.dart';
+import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/shared/services/prefs_service.dart';
 import 'package:oktoast/oktoast.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -22,14 +23,16 @@ void main() async {
       WidgetsFlutterBinding.ensureInitialized();
       SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-      SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        systemNavigationBarColor: Colors.transparent,
-        systemNavigationBarDividerColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
-        systemNavigationBarIconBrightness: Brightness.light,
-      ));
+      SystemChrome.setSystemUIOverlayStyle(
+        const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          systemNavigationBarColor: Colors.transparent,
+          systemNavigationBarDividerColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+          systemNavigationBarIconBrightness: Brightness.light,
+        ),
+      );
 
       await ScreenUtil.ensureScreenSize();
 
@@ -57,11 +60,20 @@ void main() async {
       const flavor = String.fromEnvironment('ENV');
       setupConfig(flavor);
 
-      await setupRouter(initialRouter: '/');
+      final authService = AuthService();
+      await authService.initialize(
+        clientId: '',
+        serverClientId: flavor == 'staging' ? EnvStaging.googleServerClientId : EnvProd.googleServerClientId,
+      );
+
+      await setupRouter(initialRouter: '/', authService: authService);
 
       runApp(
         ProviderScope(
-          overrides: [prefsServiceProvider.overrideWithValue(prefsService)],
+          overrides: [
+            prefsServiceProvider.overrideWithValue(prefsService),
+            authServiceProvider.overrideWithValue(authService),
+          ],
           child: const KouventionApp(),
         ),
       );

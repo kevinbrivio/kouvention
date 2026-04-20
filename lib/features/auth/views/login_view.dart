@@ -66,7 +66,7 @@ class LoginView extends ConsumerWidget {
         ),
         Gap(16.h),
 
-        _buildGoogleButton(context),
+        _buildGoogleButton(context, vm),
         Gap(24.h),
 
         _buildDivider(),
@@ -81,10 +81,10 @@ class LoginView extends ConsumerWidget {
     ),
   );
 
-  Widget _buildGoogleButton(BuildContext context) => SizedBox(
+  Widget _buildGoogleButton(BuildContext context, LoginVM vm) => SizedBox(
     height: 48.h,
     child: ElevatedButton.icon(
-      onPressed: () {},
+      onPressed: vm.isLoading ? null : () => vm.signInWithGoogle(),
       icon: Image.asset(icons.google, height: 24.h, width: 24.h),
       label: Text(
         'Continue with Google',
