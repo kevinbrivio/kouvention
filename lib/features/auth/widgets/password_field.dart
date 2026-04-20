@@ -3,23 +3,23 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
 
 class PasswordField extends StatelessWidget {
+  final TextEditingController controller;
   final bool obscure;
   final Function() onToggle;
-  final Function(String) onChanged;
   final String? Function(String?)? validator;
 
   const PasswordField({
     super.key,
+    required this.controller,
     required this.obscure,
     required this.onToggle,
-    required this.onChanged,
     this.validator,
   });
 
   @override
   Widget build(BuildContext context) => TextFormField(
     obscureText: obscure,
-    onChanged: onChanged,
+    controller: controller,
     validator: validator,
     style: textTheme.subDescription,
     decoration: InputDecoration(
@@ -42,6 +42,7 @@ class PasswordField extends StatelessWidget {
         borderSide: BorderSide.none,
       ),
       // Error text styling so it's visible on the gradient background
+      errorMaxLines: 2,
       errorStyle: TextStyle(color: Colors.orangeAccent, fontSize: 12.sp),
     ),
   );

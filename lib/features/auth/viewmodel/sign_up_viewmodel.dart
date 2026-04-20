@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/cores/bases/base_form_notifier.dart';
 import 'package:kouvention/cores/mixins/form_validator_mixin.dart';
@@ -38,7 +39,18 @@ class SignUpVM extends BaseFormNotifier<SignUpForm> with FormValidatorMixin {
           validationList: [Validator.emailFormat],
         ),
       ),
-      password: TextInputModel(validator: validatePassword),
+      password: TextInputModel(
+        validator: (val) => getValidation(
+          value: val,
+          label: 'Password',
+          validationList: [
+            Validator.length,
+            Validator.number,
+            Validator.uppercase,
+            Validator.lowercase,
+          ],
+        ),
+      ),
     );
   }
 
@@ -57,8 +69,13 @@ class SignUpVM extends BaseFormNotifier<SignUpForm> with FormValidatorMixin {
     _isOffline = false;
 
     // validate
-    if (formKey.currentState!.validate()) return;
+    final isValid = validate();
+    debugPrint('EMAIL : ${form.email.text.length}');
+    debugPrint('PASSWORD : ${form.password.text}');
+    debugPrint('2. Is Valid: $isValid');
+    if (!isValid) return;
 
+    debugPrint('3. reach signup logic');
     isLoading = true;
     try {
       // Simulate

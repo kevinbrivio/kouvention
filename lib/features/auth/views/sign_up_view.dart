@@ -78,7 +78,8 @@ class SignUpView extends StatelessWidget {
           PasswordField(
             obscure: vm.obscurePassword,
             onToggle: vm.togglePasswordVisibility,
-            onChanged: (val) => vm.form.password == val,
+            controller: vm.form.password.controller,
+            validator: (val) => vm.form.password.validator?.call(val ?? ''),
           ),
 
           Gap(8.h),
@@ -98,8 +99,9 @@ class SignUpView extends StatelessWidget {
 
   Widget _buildEmailField(SignUpVM vm) => TextFormField(
     keyboardType: TextInputType.emailAddress,
-    onChanged: (val) => vm.form.email == val,
+    controller: vm.form.email.controller,
     style: textTheme.subDescription2,
+    validator: (val) => vm.form.email.validator?.call(val ?? ''),
     decoration: InputDecoration(
       hintText: 'Email',
       hintStyle: TextStyle(color: Colors.white54),
