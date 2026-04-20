@@ -53,6 +53,7 @@ void main() async {
       final prefs = await SharedPreferences.getInstance();
       final prefsService = PrefsService(prefs);
 
+      // FLAVOR SETUP
       const flavor = String.fromEnvironment('ENV');
       setupConfig(flavor);
 
