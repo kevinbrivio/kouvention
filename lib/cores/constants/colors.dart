@@ -13,5 +13,8 @@ class AppColors {
   static const Color black = Colors.black;
   static const Color grey = Colors.grey;
 
+  // Cases
+  static const Color formField = Colors.white38;
+
   static const Color transparent = Colors.transparent;
 }
