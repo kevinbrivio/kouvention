@@ -11,14 +11,23 @@ final privacyPolicyVM = ChangeNotifierProvider.autoDispose(PrivacyPolicyVM.new);
 class PrivacyPolicyVM extends BaseNotifier {
   PrivacyPolicyVM(super.ref);
 
-  late final PrefsService _prefsService = ref.read(prefsServiceProvider);
+  bool _isChecked = false;
+
+  bool get isChecked => _isChecked;
 
   @override
   FutureOr<void> init() {}
 
-  Future<void> acceptAndContinue() async {
+  void toggleCheckbox() {
+    _isChecked = !_isChecked;
+    notifyListeners();
+  }
+
+  Future<void> acceptPolicy() async {
     final context = ctx;
-    await _prefsService.setHasAcceptedPrivacyPolicy(true);
+    final prefs = ref.read(prefsServiceProvider);
+    await prefs.setHasAcceptedPrivacyPolicy(true);
+    // navigate to login
     if (!context.mounted) return;
     context.go(RouterRoutes.login.path);
   }

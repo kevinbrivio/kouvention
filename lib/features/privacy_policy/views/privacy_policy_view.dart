@@ -188,7 +188,7 @@ class PrivacyPolicyView extends StatelessWidget {
         Gap(8.h),
         Button(
           text: 'Accept & Continue',
-          onPressed: vm.acceptAndContinue,
+          onPressed: () => vm.acceptPolicy(),
           isWhiteBackground: true,
           textStyle: textTheme.subheadline1.copyWith(
             color: AppColors.primary2,
