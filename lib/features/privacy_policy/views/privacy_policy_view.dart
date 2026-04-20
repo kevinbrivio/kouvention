@@ -8,7 +8,7 @@ import 'package:kouvention/cores/widgets/custom_button.dart';
 import 'package:kouvention/cores/widgets/hidden_app_bar.dart';
 import 'package:kouvention/cores/widgets/icon_holder.dart';
 import 'package:kouvention/cores/widgets/transparent_box.dart';
-import 'package:kouvention/features/privacy_policy/views/viewmodel/privacy_policy_viewmmodel.dart';
+import 'package:kouvention/features/privacy_policy/viewmodel/privacy_policy_viewmodel.dart';
 
 class PrivacyPolicyView extends StatelessWidget {
   const PrivacyPolicyView({super.key});
