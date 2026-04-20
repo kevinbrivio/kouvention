@@ -43,6 +43,13 @@ class _TextTheme {
     height: 1.5,
   );
   
+  final subDescription2 = TextStyle(
+    fontSize: 13.sp,
+    color: AppColors.white.withValues(alpha: 0.7),
+    fontWeight: FontWeight.w500,
+    height: 1.5,
+  );
+  
 }
 
 final textTheme = _TextTheme();
