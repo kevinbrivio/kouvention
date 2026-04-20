@@ -17,21 +17,13 @@ class PrefsService {
   static const String _privacyPolicyKey = 'has_accepted_privacy_policy';
 
   // --- ONBOARDING
-  Future<bool> hasSeenOnboarding() async {
-    return _prefs.getBool(_onboardingKey) ?? false;
-  }
+  Future<bool> hasSeenOnboarding() async => _prefs.getBool(_onboardingKey) ?? false;
 
-  Future<bool> setHasSeenOnboarding(bool value) async {
-    return _prefs.setBool(_onboardingKey, value);
-  }
+  Future<bool> setHasSeenOnboarding(bool value) async => _prefs.setBool(_onboardingKey, value);
 
   // --- PRIVACY POLICY
-  Future<bool> hasAcceptedPrivacyPolicy() async {
-    return _prefs.getBool(_privacyPolicyKey) ?? false;
-  }
+  Future<bool> hasAcceptedPrivacyPolicy() async => _prefs.getBool(_privacyPolicyKey) ?? false;
 
-  Future<bool> setHasAcceptedPrivacyPolicy(bool value) async {
-    return _prefs.setBool(_privacyPolicyKey, value);
-  }
+  Future<bool> setHasAcceptedPrivacyPolicy(bool value) async => _prefs.setBool(_privacyPolicyKey, value);
 
 }
