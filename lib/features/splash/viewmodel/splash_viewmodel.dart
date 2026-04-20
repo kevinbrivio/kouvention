@@ -29,9 +29,12 @@ class SplashVM extends BaseNotifier {
   @override
   Future<void> init() async {
     _hasSeenOnboarding = await _prefsService.hasSeenOnboarding();
-    _hasAcceptedPrivacyPolicy =
-        await _prefsService.hasAcceptedPrivacyPolicy();
+    _hasAcceptedPrivacyPolicy = await _prefsService.hasAcceptedPrivacyPolicy();
     _isLoggedIn = await _authService.isLoggedIn;
+
+    // TODO: REMOVE LATER
+    _hasSeenOnboarding = false;
+    _hasAcceptedPrivacyPolicy = false;
 
     _nextRoute = _resolveInitialRoute();
     notifyListeners();

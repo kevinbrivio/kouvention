@@ -24,33 +24,24 @@ class OnboardingPage2 extends StatelessWidget {
           ),
         ),
         Gap(16.h),
-        SizedBox(
-          height: 160.w,
-          child: TransparentBox(
-            child: _buildContent(
-              'Chat Rooms',
-              'Join public communities or create private groups for your team.',
-            ),
+        TransparentBox(
+          child: _buildContent(
+            'Chat Rooms',
+            'Join public communities or create private groups for your team.',
           ),
         ),
         Gap(16.h),
-        SizedBox(
-          height: 160.w,
-          child: TransparentBox(
-            child: _buildContent(
-              'Global Search',
-              'Find messages, files, and contacts instantly across all chats.',
-            ),
+        TransparentBox(
+          child: _buildContent(
+            'Global Search',
+            'Find messages, files, and contacts instantly across all chats.',
           ),
         ),
         Gap(16.h),
-        SizedBox(
-          height: 160.w,
-          child: TransparentBox(
-            child: _buildContent(
-              'User Profiles',
-              'Customize your presence and view detailed contact information',
-            ),
+        TransparentBox(
+          child: _buildContent(
+            'User Profiles',
+            'Customize your presence and view detailed contact information.',
           ),
         ),
         Gap(12.h),
@@ -78,7 +69,8 @@ class OnboardingPage2 extends StatelessWidget {
             Gap(4.h),
             Text(
               description,
-              style: textTheme.subDescription,
+              style: textTheme.subDescription.copyWith(fontSize: 13.sp),
+              textAlign: TextAlign.left,
               softWrap: true,
             ),
           ],

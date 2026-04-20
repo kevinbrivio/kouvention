@@ -68,7 +68,9 @@ class PrivacyPolicyView extends StatelessWidget {
             icon: const Icon(Icons.abc),
           ),
           Gap(12.w),
-          Text('Data Collected', style: textTheme.subheadline1),
+          Flexible(
+            child: Text('Data Collected', style: textTheme.subheadline1),
+          ),
         ],
       ),
       Gap(4.h),
@@ -113,9 +115,11 @@ class PrivacyPolicyView extends StatelessWidget {
       Gap(16.h),
       // Firebase Integration
       Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text('Firebase Integration', style: textTheme.subheadline1),
+          Flexible(
+            child: Text('Firebase Integration', style: textTheme.subheadline1),
+          ),
           Gap(12.w),
           IconHolder(
             radius: BorderRadius.circular(24.r),
@@ -143,7 +147,9 @@ class PrivacyPolicyView extends StatelessWidget {
             icon: const Icon(Icons.shield_outlined),
           ),
           Gap(12.w),
-          Text('Your Data Rights', style: textTheme.subheadline1),
+          Flexible(
+            child: Text('Your Data Rights', style: textTheme.subheadline1),
+          ),
         ],
       ),
       Gap(4.h),
@@ -158,111 +164,116 @@ class PrivacyPolicyView extends StatelessWidget {
     ],
   );
 
-  Widget _buildAcceptButton(BuildContext context, PrivacyPolicyVM vm) => Container(
-    padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 0),
-    decoration: BoxDecoration(
-      color: AppColors.white.withValues(alpha: 0.08),
-      border: Border(
-        top: BorderSide(
-          color: AppColors.white.withValues(alpha: 0.12),
-          width: 1.w,
-        ),
-      ),
-      boxShadow: [
-        BoxShadow(
-          color: AppColors.white.withValues(alpha: 0.12),
-          blurRadius: 8.r,
-          spreadRadius: -2.r,
-          offset: Offset(0, -2.h),
-        ),
-        BoxShadow(
-          color: AppColors.primary.withValues(alpha: 0.2),
-          blurRadius: 28.r,
-          spreadRadius: 0,
-          offset: Offset(0, -8.h),
-        ),
-      ],
-    ),
-    child: Column(
-      children: [
-        // --- CHECKBOX
-        GestureDetector(
-          onTap: () => vm.toggleCheckbox(),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 20.w,
-                height: 20.w,
-                decoration: BoxDecoration(
-                  color: vm.isChecked ? AppColors.primary : Colors.transparent,
-                  borderRadius: BorderRadius.circular(4.r),
-                  border: Border.all(
-                    color: AppColors.white.withValues(alpha: 0.8),
-                    width: 1.w,
-                  ),
-                ),
-                child: Checkbox(
-                  value: vm.isChecked,
-                  onChanged: (_) => vm.toggleCheckbox(),
-                  activeColor: AppColors.white,
-                  checkColor: AppColors.primary,
-                  side: BorderSide(
-                    color: AppColors.white.withValues(alpha: 0.5),
-                    width: 1.2.w,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(4.r),
-                  ),
-                ),
-              ),
-              Gap(8.w),
-              Text(
-                'I have read and agree to the Privacy Policy',
-                style: textTheme.subDescription,
-              ),
-            ],
-          ),
-        ),
-
-        Gap(12.h),
-        // --- DISCLAIMER TEXT
-        Padding(
-          padding: EdgeInsetsDirectional.symmetric(horizontal: 4.w),
-          child: Text(
-            'By clicking "Accept & Continue", you agree to our'
-            ' Privacy Policy and Terms of Service.',
-            style: textTheme.subDescription.copyWith(fontSize: 12.sp),
-            textAlign: TextAlign.center,
-          ),
-        ),
-        Gap(8.h),
-        Button(
-          text: 'Accept & Continue',
-          onPressed: vm.isChecked ? () => vm.acceptPolicy() : null,
-          isWhiteBackground: true,
-          textStyle: textTheme.subheadline1.copyWith(
-            color: AppColors.primary2,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        Gap(8.h),
-        TextButton(
-          onPressed: () => _showDeclineDialog(context, vm),
-          child: Text(
-            'Decline',
-            style: textTheme.subDescription.copyWith(
-              decoration: TextDecoration.underline,
-              decorationColor: AppColors.white.withValues(alpha: 0.6),
-              color: AppColors.white.withValues(alpha: 0.6),
-              fontSize: 14.sp,
+  Widget _buildAcceptButton(BuildContext context, PrivacyPolicyVM vm) =>
+      Container(
+        padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 0),
+        decoration: BoxDecoration(
+          color: AppColors.white.withValues(alpha: 0.08),
+          border: Border(
+            top: BorderSide(
+              color: AppColors.white.withValues(alpha: 0.12),
+              width: 1.w,
             ),
           ),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.white.withValues(alpha: 0.12),
+              blurRadius: 8.r,
+              spreadRadius: -2.r,
+              offset: Offset(0, -2.h),
+            ),
+            BoxShadow(
+              color: AppColors.primary.withValues(alpha: 0.2),
+              blurRadius: 28.r,
+              spreadRadius: 0,
+              offset: Offset(0, -8.h),
+            ),
+          ],
         ),
-        Gap(24.h),
-      ],
-    ),
-  );
+        child: Column(
+          children: [
+            // --- CHECKBOX
+            GestureDetector(
+              onTap: () => vm.toggleCheckbox(),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 20.w,
+                    height: 20.w,
+                    decoration: BoxDecoration(
+                      color: vm.isChecked
+                          ? AppColors.primary
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(4.r),
+                      border: Border.all(
+                        color: AppColors.white.withValues(alpha: 0.8),
+                        width: 1.w,
+                      ),
+                    ),
+                    child: Checkbox(
+                      value: vm.isChecked,
+                      onChanged: (_) => vm.toggleCheckbox(),
+                      activeColor: AppColors.white,
+                      checkColor: AppColors.primary,
+                      side: BorderSide(
+                        color: AppColors.white.withValues(alpha: 0.5),
+                        width: 1.2.w,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4.r),
+                      ),
+                    ),
+                  ),
+                  Gap(8.w),
+                  Flexible(child: Text(
+                    'I have read and agree to the Privacy Policy',
+                    style: textTheme.subDescription,
+                  )),
+                ],
+              ),
+            ),
+
+            Gap(12.h),
+            // --- DISCLAIMER TEXT
+            Padding(
+              padding: EdgeInsetsDirectional.symmetric(horizontal: 4.w),
+              child: Text(
+                'By clicking "Accept & Continue", you agree to our'
+                ' Privacy Policy and Terms of Service.',
+                style: textTheme.subDescription.copyWith(fontSize: 12.sp),
+                textAlign: TextAlign.center,
+                softWrap: true,
+              ),
+            ),
+            Gap(8.h),
+            Button(
+              text: 'Accept & Continue',
+              onPressed: vm.isChecked ? () => vm.acceptPolicy() : null,
+              isWhiteBackground: true,
+              textStyle: textTheme.subheadline1.copyWith(
+                color: AppColors.primary2,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            Gap(8.h),
+            TextButton(
+              onPressed: () => _showDeclineDialog(context, vm),
+              child: Text(
+                'Decline',
+                style: textTheme.subDescription.copyWith(
+                  decoration: TextDecoration.underline,
+                  decorationColor: AppColors.white.withValues(alpha: 0.6),
+                  color: AppColors.white.withValues(alpha: 0.6),
+                  fontSize: 14.sp,
+                ),
+              ),
+            ),
+            Gap(24.h),
+          ],
+        ),
+      );
 
   void _showDeclineDialog(BuildContext context, PrivacyPolicyVM vm) =>
       showDialog(
@@ -275,19 +286,20 @@ class PrivacyPolicyView extends StatelessWidget {
             style: textTheme.subDescription,
           ),
           actions: [
-            TextButton(
+            Button(
               onPressed: () => Navigator.pop(context),
-              child: Text('Cancel', style: textTheme.subDescription),
+              text: 'Cancel',
+              isCancel: true,
             ),
-            ElevatedButton(
+
+            Gap(4.h),
+            
+            Button(
               onPressed: () {
                 Navigator.pop(context);
                 vm.declinePolicy();
               },
-              child: Text(
-                'Decline',
-                style: textTheme.subheadline1.copyWith(color: AppColors.white),
-              ),
+              text:'Decline',
             ),
           ],
         ),
