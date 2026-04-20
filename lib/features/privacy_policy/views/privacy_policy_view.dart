@@ -47,7 +47,7 @@ class PrivacyPolicyView extends StatelessWidget {
 
               Gap(12.h),
 
-              _buildAcceptButton(vm),
+              _buildAcceptButton(context, vm),
             ],
           ),
         ),
@@ -84,19 +84,30 @@ class PrivacyPolicyView extends StatelessWidget {
           Gap(6.h),
           Row(
             children: [
-              Icon(Icons.check_box_rounded, size: 12.w, color: AppColors.white.withValues(alpha: 0.8),),
+              Icon(
+                Icons.check_box_rounded,
+                size: 12.w,
+                color: AppColors.white.withValues(alpha: 0.8),
+              ),
               Gap(8.w),
-              Text('Basic profile information', style: textTheme.subDescription,)
+              Text(
+                'Basic profile information',
+                style: textTheme.subDescription,
+              ),
             ],
           ),
           Gap(4.h),
           Row(
             children: [
-              Icon(Icons.check_box_rounded, size: 12.w, color: AppColors.white.withValues(alpha: 0.8),),
+              Icon(
+                Icons.check_box_rounded,
+                size: 12.w,
+                color: AppColors.white.withValues(alpha: 0.8),
+              ),
               Gap(8.w),
-              Text('App interaction metrics', style: textTheme.subDescription,)
+              Text('App interaction metrics', style: textTheme.subDescription),
             ],
-          )
+          ),
         ],
       ),
       Gap(16.h),
@@ -147,7 +158,7 @@ class PrivacyPolicyView extends StatelessWidget {
     ],
   );
 
-  Widget _buildAcceptButton(PrivacyPolicyVM vm) => Container(
+  Widget _buildAcceptButton(BuildContext context, PrivacyPolicyVM vm) => Container(
     padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 0),
     decoration: BoxDecoration(
       color: AppColors.white.withValues(alpha: 0.08),
@@ -174,29 +185,111 @@ class PrivacyPolicyView extends StatelessWidget {
     ),
     child: Column(
       children: [
+        // --- CHECKBOX
+        GestureDetector(
+          onTap: () => vm.toggleCheckbox(),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 20.w,
+                height: 20.w,
+                decoration: BoxDecoration(
+                  color: vm.isChecked ? AppColors.primary : Colors.transparent,
+                  borderRadius: BorderRadius.circular(4.r),
+                  border: Border.all(
+                    color: AppColors.white.withValues(alpha: 0.8),
+                    width: 1.w,
+                  ),
+                ),
+                child: Checkbox(
+                  value: vm.isChecked,
+                  onChanged: (_) => vm.toggleCheckbox(),
+                  activeColor: AppColors.white,
+                  checkColor: AppColors.primary,
+                  side: BorderSide(
+                    color: AppColors.white.withValues(alpha: 0.5),
+                    width: 1.2.w,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(4.r),
+                  ),
+                ),
+              ),
+              Gap(8.w),
+              Text(
+                'I have read and agree to the Privacy Policy',
+                style: textTheme.subDescription,
+              ),
+            ],
+          ),
+        ),
+
+        Gap(12.h),
+        // --- DISCLAIMER TEXT
         Padding(
           padding: EdgeInsetsDirectional.symmetric(horizontal: 4.w),
           child: Text(
             'By clicking "Accept & Continue", you agree to our'
             ' Privacy Policy and Terms of Service.',
-            style: textTheme.subDescription.copyWith(
-              fontSize: 12.sp
-            ),
+            style: textTheme.subDescription.copyWith(fontSize: 12.sp),
             textAlign: TextAlign.center,
           ),
         ),
         Gap(8.h),
         Button(
           text: 'Accept & Continue',
-          onPressed: () => vm.acceptPolicy(),
+          onPressed: vm.isChecked ? () => vm.acceptPolicy() : null,
           isWhiteBackground: true,
           textStyle: textTheme.subheadline1.copyWith(
             color: AppColors.primary2,
-            fontWeight: FontWeight.w600
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        Gap(8.h),
+        TextButton(
+          onPressed: () => _showDeclineDialog(context, vm),
+          child: Text(
+            'Decline',
+            style: textTheme.subDescription.copyWith(
+              decoration: TextDecoration.underline,
+              decorationColor: AppColors.white.withValues(alpha: 0.6),
+              color: AppColors.white.withValues(alpha: 0.6),
+              fontSize: 14.sp,
+            ),
           ),
         ),
         Gap(24.h),
       ],
     ),
   );
+
+  void _showDeclineDialog(BuildContext context, PrivacyPolicyVM vm) =>
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Decline Privacy Policy', style: textTheme.subheadline1),
+          content: Text(
+            'Are you sure you want to decline the privacy policy? '
+            'You will not be able to use the app without accepting it.',
+            style: textTheme.subDescription,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel', style: textTheme.subDescription),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                vm.declinePolicy();
+              },
+              child: Text(
+                'Decline',
+                style: textTheme.subheadline1.copyWith(color: AppColors.white),
+              ),
+            ),
+          ],
+        ),
+      );
 }
