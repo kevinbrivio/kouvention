@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/features/auth/views/login_view.dart';
+import 'package:kouvention/features/auth/views/sign_up_view.dart';
 import 'package:kouvention/features/onboarding/views/onboarding_view.dart';
 import 'package:kouvention/features/privacy_policy/views/privacy_policy_view.dart';
 import 'package:kouvention/features/splash/views/splash_view.dart';
@@ -28,6 +29,11 @@ setupRouter({required String initialRouter}) {
         path: RouterRoutes.login.path,
         name: RouterRoutes.login.name,
         builder: (_, _) => LoginView(),
+      ),
+      GoRoute(
+        path: RouterRoutes.signUp.path,
+        name: RouterRoutes.signUp.name,
+        builder: (_, _) => SignUpView(),
       ),
       GoRoute(
         path: RouterRoutes.onboarding.path,
