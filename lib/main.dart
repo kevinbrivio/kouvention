@@ -22,6 +22,14 @@ void main() async {
       WidgetsFlutterBinding.ensureInitialized();
       SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarDividerColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemNavigationBarIconBrightness: Brightness.light,
+      ));
 
       await ScreenUtil.ensureScreenSize();
 
@@ -45,6 +53,7 @@ void main() async {
       final prefs = await SharedPreferences.getInstance();
       final prefsService = PrefsService(prefs);
 
+      // FLAVOR SETUP
       const flavor = String.fromEnvironment('ENV');
       setupConfig(flavor);
 
@@ -101,19 +110,17 @@ class _KouventionAppState extends State<KouventionApp>
       designSize: const Size(375, 768),
       minTextAdapt: true,
     );
-    return ProviderScope(
-      child: OKToast(
-        child: MaterialApp.router(
-          builder: (_, child) => MediaQuery(
-            data: MediaQuery.of(context).copyWith(boldText: false),
-            child: FlavorBanner(child: child!),
-          ),
-          title: 'Kouvention',
-          debugShowCheckedModeBanner: FlavorConfig.showBanner(),
-          theme: ThemeData(primaryColor: FlavorConfig.instance!.color),
-          // theme: ,
-          routerConfig: router,
+    return OKToast(
+      child: MaterialApp.router(
+        builder: (_, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(boldText: false),
+          child: FlavorBanner(child: child!),
         ),
+        title: 'Kouvention',
+        debugShowCheckedModeBanner: FlavorConfig.showBanner(),
+        theme: ThemeData(primaryColor: FlavorConfig.instance!.color),
+        // theme: ,
+        routerConfig: router,
       ),
     );
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
+import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/widgets/loading_indicator.dart';
 
 class BaseView<T extends BaseNotifier> extends ConsumerWidget {
@@ -32,16 +33,27 @@ class BaseView<T extends BaseNotifier> extends ConsumerWidget {
           FocusScope.of(context).unfocus();
         },
         child: Scaffold(
+          extendBodyBehindAppBar: true,
           appBar: appBar != null ? appBar!(viewmodel) : null,
           backgroundColor: backgroundColor,
           body: (!viewmodel.isInitialized)
               ? const Center(child:LoadingIndicator())
-              : Stack(
-                  children: [
-                    builder(context, viewmodel),
-                    if (viewmodel.showOverlay && showOverlay != null)
-                      showOverlay!(context, viewmodel),
-                  ],
+              : Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [AppColors.primary, AppColors.primary2],
+                    stops: [0.6, 0.9],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                  child: Stack(
+                    children: [
+                      builder(context, viewmodel),
+                      if (viewmodel.showOverlay && showOverlay != null)
+                        showOverlay!(context, viewmodel),
+                    ],
+                  ),
                 ),
         ),
       ),

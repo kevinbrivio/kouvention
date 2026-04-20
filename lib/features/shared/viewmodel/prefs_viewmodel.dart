@@ -1,11 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
-import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/shared/services/prefs_service.dart';
 
-final prefsVM = ChangeNotifierProvider<PrefsVM>((ref) {
-  return PrefsVM(ref);
-});
+final prefsVM = ChangeNotifierProvider<PrefsVM>((ref) => PrefsVM(ref));
 
 class PrefsVM extends BaseNotifier {
   PrefsVM(super.ref) {
@@ -13,7 +10,6 @@ class PrefsVM extends BaseNotifier {
   }
 
   late final PrefsService _prefsService;
-  late final AuthService _authService = AuthService();
 
   bool hasSeenOnboarding = false;
   bool hasAcceptedPrivacyPolicy = false;
