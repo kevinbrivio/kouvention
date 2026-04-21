@@ -32,10 +32,6 @@ class SplashVM extends BaseNotifier {
     _hasAcceptedPrivacyPolicy = await _prefsService.hasAcceptedPrivacyPolicy();
     _isLoggedIn = await _authService.isLoggedIn;
 
-    // TODO: REMOVE LATER
-    // _hasSeenOnboarding = false;
-    // _hasAcceptedPrivacyPolicy = false;
-
     _nextRoute = _resolveInitialRoute();
     notifyListeners();
   }
@@ -46,7 +42,7 @@ class SplashVM extends BaseNotifier {
     }
 
     if (_isLoggedIn) {
-      return RouterRoutes.home.path;
+      return RouterRoutes.chatList.path;
     }
 
     if (!_hasAcceptedPrivacyPolicy) {
