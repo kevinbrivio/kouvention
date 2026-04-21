@@ -23,7 +23,7 @@ class MessageModel {
 
   bool get hasMedia => mediaUrl != null;
 
-  factory MessageModel.fromJson(String docId, Map<String, dynamic> data) =>
+  factory MessageModel.fromMap(String docId, Map<String, dynamic> data) =>
       MessageModel(
         id: docId,
         senderId: data['senderId'] as String,
