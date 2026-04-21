@@ -10,6 +10,7 @@ class BaseView<T extends BaseNotifier> extends ConsumerWidget {
   final Widget Function(BuildContext, T)? showOverlay;
   final PreferredSizeWidget Function(T)? appBar;
   final Color? backgroundColor;
+  final bool useGradient;
 
   BaseView({
     super.key,
@@ -18,6 +19,7 @@ class BaseView<T extends BaseNotifier> extends ConsumerWidget {
     this.showOverlay,
     this.appBar,
     this.backgroundColor,
+    this.useGradient = true,
   });
 
   @override
@@ -37,16 +39,21 @@ class BaseView<T extends BaseNotifier> extends ConsumerWidget {
           appBar: appBar != null ? appBar!(viewmodel) : null,
           backgroundColor: backgroundColor,
           body: (!viewmodel.isInitialized)
-              ? const Center(child:LoadingIndicator())
+              ? const Center(child: LoadingIndicator())
               : Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [AppColors.primary, AppColors.primary2],
-                    stops: [0.6, 0.9],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
+                  decoration: useGradient
+                      ? BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [AppColors.primary, AppColors.primary2],
+                            stops: [0.6, 0.9],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                        )
+                      : null,
+                  color: !useGradient
+                      ? (backgroundColor ?? Colors.white)
+                      : null,
                   child: Stack(
                     children: [
                       builder(context, viewmodel),
@@ -59,8 +66,9 @@ class BaseView<T extends BaseNotifier> extends ConsumerWidget {
       ),
 
       if (viewmodel.isLoading &&
-        !viewmodel.showOverlay &&
-        viewmodel.isInitialized) const LoadingIndicator(showBackdrop: true,),
+          !viewmodel.showOverlay &&
+          viewmodel.isInitialized)
+        const LoadingIndicator(showBackdrop: true),
     ],
   );
 }
