@@ -24,7 +24,9 @@ class AuthService {
       serverClientId: serverClientId,
     );
 
-    _googleSignIn.authenticationEvents.listen(_handleAuthEvent).onError((error) {
+    _googleSignIn.authenticationEvents.listen(_handleAuthEvent).onError((
+      error,
+    ) {
       debugPrint('Google auth stream error: $error');
       _signInCompleter?.completeError(AuthException('google-sign-in failed'));
     });
@@ -38,8 +40,12 @@ class AuthService {
         try {
           final googleUser = event.user;
           final googleAuth = googleUser.authentication;
+          final credential = GoogleAuthProvider.credential(
+            idToken: googleAuth.idToken,
+          );
 
-          GoogleAuthProvider.credential(idToken: googleAuth.idToken);
+          final userCredential = await _auth.signInWithCredential(credential);
+          _signInCompleter?.complete(userCredential);
         } catch (e) {
           debugPrint('Firebase credential error: $e');
           _signInCompleter?.completeError(e);
@@ -90,6 +96,16 @@ class AuthService {
 }
 
 final authServiceProvider = Provider<AuthService>((ref) => AuthService());
+
+final authStateProvider = StreamProvider<User?>((ref) {
+  final authService = ref.watch(authServiceProvider);
+  return authService.authStateChanges;
+});
+
+final currentUidProvider = Provider<String?>((ref) {
+  final authState = ref.watch(authStateProvider);
+  return authState.valueOrNull?.uid;
+});
 
 class AuthException implements Exception {
   final String message;
