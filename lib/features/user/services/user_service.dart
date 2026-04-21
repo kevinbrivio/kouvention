@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
 
 class UserService {
@@ -99,3 +100,5 @@ class UserService {
     await updateUser(uid, {'notificatonsEnabled': enabled});
   }
 }
+
+final userServiceProvider = Provider<UserService>((ref) => UserService());
