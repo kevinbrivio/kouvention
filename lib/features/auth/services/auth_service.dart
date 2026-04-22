@@ -69,6 +69,12 @@ class AuthService {
   }) async =>
       _auth.createUserWithEmailAndPassword(email: email, password: password);
 
+  Future<UserCredential> signInWithEmail({
+    required String email,
+    required String password,
+  }) async =>
+      await _auth.signInWithEmailAndPassword(email: email, password: password);
+
   Future<UserCredential> signInWithGoogle() async {
     _signInCompleter = Completer<UserCredential>();
 

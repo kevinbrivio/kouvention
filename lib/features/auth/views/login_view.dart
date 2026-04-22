@@ -72,6 +72,9 @@ class LoginView extends ConsumerWidget {
         _buildDivider(),
         Gap(24.h),
 
+        _buildEmailButton(context, vm),
+        Gap(32.h),
+
         _buildSignUpLink(context, vm),
         Gap(32.h),
 
@@ -83,6 +86,7 @@ class LoginView extends ConsumerWidget {
 
   Widget _buildGoogleButton(BuildContext context, LoginVM vm) => SizedBox(
     height: 48.h,
+    width: double.infinity,
     child: ElevatedButton.icon(
       onPressed: vm.isLoading ? null : () => vm.signInWithGoogle(),
       icon: Image.asset(icons.google, height: 24.h, width: 24.h),
@@ -99,6 +103,28 @@ class LoginView extends ConsumerWidget {
           borderRadius: BorderRadius.circular(12.r),
         ),
         elevation: 0,
+      ),
+    ),
+  );
+
+  Widget _buildEmailButton(BuildContext context, LoginVM vm) => SizedBox(
+    height: 48.h,
+    width: double.infinity,
+    child: OutlinedButton.icon(
+      onPressed: vm.isLoading ? null : () => vm.goToEmailSignIn(),
+      icon: Icon(Icons.email_outlined, color: Colors.white, size: 22.sp),
+      label: Text(
+        'Sign in with Email',
+        style: textTheme.body1.copyWith(
+          color: Colors.white,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      style: OutlinedButton.styleFrom(
+        side: BorderSide(color: Colors.white38),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.r),
+        ),
       ),
     ),
   );
