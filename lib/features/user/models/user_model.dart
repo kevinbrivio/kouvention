@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class UserModel {
   final String uid;
   final String displayName;
+  final String displayNameLower;
   final String email;
   final String? photoUrl;
   final String? bio;
@@ -24,6 +25,7 @@ class UserModel {
   const UserModel({
     required this.uid,
     required this.displayName,
+    required this.displayNameLower,
     required this.email,
     this.photoUrl,
     this.bio,
@@ -45,6 +47,9 @@ class UserModel {
     return UserModel(
       uid: data['uid'] as String,
       displayName: data['displayName'] as String,
+      displayNameLower:
+          data['displayNameLower'] as String? ??
+          data['displayName'].toLowerCase(),
       email: data['email'] as String,
       photoUrl: data['photoUrl'] as String?,
       bio: data['bio'] as String?,
@@ -69,6 +74,7 @@ class UserModel {
     return {
       'uid': uid,
       'displayName': displayName,
+      'displayNameLower': displayName.toLowerCase(),
       'email': email,
       'photoUrl': photoUrl,
       'bio': bio,
@@ -92,6 +98,7 @@ class UserModel {
     return {
       'uid': uid,
       'displayName': displayName,
+      'displayNameLower': displayName?.toLowerCase(),
       'email': email,
       'photoUrl': photoUrl,
       'bio': null,
@@ -118,6 +125,7 @@ class UserModel {
     return UserModel(
       uid: uid,
       displayName: displayName ?? this.displayName,
+      displayNameLower: (displayName ?? this.displayName).toLowerCase(),
       email: email, // immutable — comes from Auth
       photoUrl: photoUrl ?? this.photoUrl,
       bio: bio ?? this.bio,
