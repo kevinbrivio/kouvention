@@ -9,7 +9,6 @@ class RouterRoute {
 
 class RouterRoutes {
   static const splash = RouterRoute(path: '/', name: 'splash');
-  static const home = RouterRoute(path: '/home', name: 'home');
   static const onboarding = RouterRoute(
     path: '/onboarding',
     name: 'onboarding',
@@ -20,6 +19,9 @@ class RouterRoutes {
   );
   static const login = RouterRoute(path: '/login', name: 'login');
   static const signUp = RouterRoute(path: '/sign-up', name: 'signup');
+
+  static const chatList = RouterRoute(path: '/chats', name: 'chatList');
+  static const chatRoom = RouterRoute(path: '/chats/:chatId', name: 'chatRoom');
 }
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();

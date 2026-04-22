@@ -35,6 +35,9 @@ class LoginVM extends BaseNotifier {
     isLoading = true;
     try {
       await _authService.signInWithGoogle();
+      if (ctx.mounted) {
+        ctx.go(RouterRoutes.chatList.path);
+      }
     } on AuthException catch (e) {
       debugPrint('Google sign in cancelled: $e');
     } catch (e) {

@@ -4,6 +4,8 @@ import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/auth/views/login_view.dart';
 import 'package:kouvention/features/auth/views/sign_up_view.dart';
+import 'package:kouvention/features/chat/views/chat_list_view.dart';
+import 'package:kouvention/features/chat/views/chat_room_view.dart';
 import 'package:kouvention/features/onboarding/views/onboarding_view.dart';
 import 'package:kouvention/features/privacy_policy/views/privacy_policy_view.dart';
 import 'package:kouvention/features/splash/views/splash_view.dart';
@@ -35,11 +37,11 @@ setupRouter({required String initialRouter, required AuthService authService}) {
 
       final isOnPublicRoute = publicRoutes.contains(currentPath);
 
-      // Just signed in while on login/signup → go home
-      if (isLoggedIn && (
-          currentPath == RouterRoutes.login.path ||
-          currentPath == RouterRoutes.signUp.path)) {
-        return RouterRoutes.home.path;
+      // Just signed in while on login/signup → go chat list
+      if (isLoggedIn &&
+          (currentPath == RouterRoutes.login.path ||
+              currentPath == RouterRoutes.signUp.path)) {
+        return RouterRoutes.chatList.path;
       }
 
       // Not logged in and trying to access a protected route → login
@@ -74,6 +76,19 @@ setupRouter({required String initialRouter, required AuthService authService}) {
         path: RouterRoutes.privacyPolicy.path,
         name: RouterRoutes.privacyPolicy.name,
         builder: (_, _) => PrivacyPolicyView(),
+      ),
+      GoRoute(
+        path: RouterRoutes.chatList.path,
+        name: RouterRoutes.chatList.name,
+        builder: (_, _) => ChatListView(),
+      ),
+      GoRoute(
+        path: RouterRoutes.chatRoom.path,
+        name: RouterRoutes.chatRoom.name,
+        builder: (_, state) {
+          final chatId = state.pathParameters['chatId']!;
+          return ChatRoomView(chatId: chatId);
+        },
       ),
     ],
   );

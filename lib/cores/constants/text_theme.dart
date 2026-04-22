@@ -35,21 +35,34 @@ class _TextTheme {
     fontWeight: FontWeight.w500,
     height: 1.5,
   );
-  
+
   final subDescription = TextStyle(
     fontSize: 16.sp,
     color: AppColors.white.withValues(alpha: 0.7),
     fontWeight: FontWeight.w500,
     height: 1.5,
   );
-  
+
   final subDescription2 = TextStyle(
     fontSize: 13.sp,
     color: AppColors.white.withValues(alpha: 0.7),
     fontWeight: FontWeight.w500,
     height: 1.5,
   );
-  
+
+  final subDescription3 = TextStyle(
+    fontSize: 11.sp,
+    color: AppColors.grey,
+    fontWeight: FontWeight.w500,
+    height: 1.5,
+  );
+
+  final contactName = TextStyle(
+    fontSize: 13.sp,
+    color: AppColors.grey,
+    fontWeight: FontWeight.w600,
+    height: 1.5,
+  );
 }
 
 final textTheme = _TextTheme();
