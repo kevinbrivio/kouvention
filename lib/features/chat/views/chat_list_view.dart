@@ -5,110 +5,134 @@ import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/bases/base_view.dart';
 import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
+import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_list_viewmodel.dart';
 
 class ChatListView extends StatelessWidget {
   @override
-  Widget build(BuildContext context) =>
-      BaseView(provider: chatListVM, builder: _buildScreen, useGradient: false);
+  Widget build(BuildContext context) => BaseView(
+    provider: chatListVM,
+    useGradient: false,
+    builder: (context, vm) => Stack(
+      children: [
+        _buildScreen(context, vm),
+
+        Positioned(
+          right: 16.w,
+          bottom: 16.h,
+          child: FloatingActionButton(
+            backgroundColor: AppColors.primary2,
+            onPressed: () {
+              context.push(RouterRoutes.newChat.path);
+            },
+            child: const Icon(Icons.edit, color: Colors.white),
+          ),
+        ),
+      ],
+    ),
+  );
 
   Widget _buildScreen(BuildContext context, ChatListVM vm) {
     if (!vm.hasChats) return Center(child: Text('No conversations yet.'));
 
-    return ListView.builder(
-      itemCount: vm.chats.length,
-      itemBuilder: (context, index) {
-        final chat = vm.chats[index];
-        final unread = vm.chatUnreadCount(chat);
-        final lastMessage = chat.lastMessage;
+    return SafeArea(
+      child: ListView.builder(
+        itemCount: vm.chats.length,
+        itemBuilder: (context, index) {
+          final chat = vm.chats[index];
+          final unread = vm.chatUnreadCount(chat);
+          final lastMessage = chat.lastMessage;
 
-        return InkWell(
-          onTap: () => context.push('/chats/${chat.id}'),
-          splashColor: AppColors.grey.withValues(alpha: 0.1),
-          highlightColor: AppColors.grey.withValues(alpha: 0.05),
-          child: Padding(
-            padding: EdgeInsetsGeometry.symmetric(
-              horizontal: 16.w,
-              vertical: 12.h,
-            ),
-            child: Row(
-              children: [
-                // Avatar
-                CircleAvatar(
-                  radius: 24.r,
-                  backgroundColor: AppColors.primary.withValues(alpha: 0.2),
-                  backgroundImage: vm.chatPhotoURL(chat) != null
-                      ? NetworkImage(vm.chatPhotoURL(chat)!)
-                      : null,
-                  child: vm.chatPhotoURL(chat) == null
-                      ? Text(
-                          vm.chatDisplayName(chat).isNotEmpty
-                              ? vm.chatDisplayName(chat)[0].toUpperCase()
-                              : '?',
-                          style: TextStyle(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16.sp,
+          return InkWell(
+            onTap: () => context.push('/chats/${chat.id}'),
+            splashColor: AppColors.grey.withValues(alpha: 0.1),
+            highlightColor: AppColors.grey.withValues(alpha: 0.05),
+            child: Padding(
+              padding: EdgeInsetsGeometry.symmetric(
+                horizontal: 16.w,
+                vertical: 12.h,
+              ),
+              child: Row(
+                children: [
+                  // Avatar
+                  CircleAvatar(
+                    radius: 24.r,
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.2),
+                    backgroundImage: vm.chatPhotoURL(chat) != null
+                        ? NetworkImage(vm.chatPhotoURL(chat)!)
+                        : null,
+                    child: vm.chatPhotoURL(chat) == null
+                        ? Text(
+                            vm.chatDisplayName(chat).isNotEmpty
+                                ? vm.chatDisplayName(chat)[0].toUpperCase()
+                                : '?',
+                            style: TextStyle(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16.sp,
+                            ),
+                          )
+                        : null,
+                  ),
+                  Gap(12.w),
+
+                  // Name + Last message
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          vm.chatDisplayName(chat),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (lastMessage != null)
+                          Text(
+                            vm.typingText(chat) ?? lastMessage.text,
+                            style: textTheme.subDescription2.copyWith(
+                              color: Colors.grey,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            softWrap: true,
                           ),
-                        )
-                      : null,
-                ),
-                Gap(12.w),
+                      ],
+                    ),
+                  ),
 
-                // Name + Last message
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  // Time + unread badge
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text(
-                        vm.chatDisplayName(chat),
-                        overflow: TextOverflow.ellipsis,
-                      ),
                       if (lastMessage != null)
                         Text(
-                          vm.typingText(chat) ?? lastMessage.text,
-                          style: textTheme.subDescription2.copyWith(
-                            color: Colors.grey,
+                          _formatChatTime(lastMessage.sentAt),
+                          style: textTheme.subDescription3.copyWith(
+                            color: unread > 0
+                                ? AppColors.primary2
+                                : Colors.grey,
                           ),
-                          overflow: TextOverflow.ellipsis,
-                          softWrap: true,
                         ),
+
+                      if (unread > 0) ...[
+                        Gap(6.h),
+                        CircleAvatar(
+                          radius: 10.r,
+                          backgroundColor: AppColors.primary2,
+                          child: Text(
+                            '$unread',
+                            style: textTheme.subDescription3.copyWith(
+                              color: AppColors.white,
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
-                ),
-
-                // Time + unread badge
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    if (lastMessage != null)
-                      Text(
-                        _formatChatTime(lastMessage.sentAt),
-                        style: textTheme.subDescription3.copyWith(
-                          color: unread > 0 ? AppColors.primary2 : Colors.grey,
-                        ),
-                      ),
-
-                    if (unread > 0) ...[
-                      Gap(6.h),
-                      CircleAvatar(
-                        radius: 10.r,
-                        backgroundColor: AppColors.primary2,
-                        child: Text(
-                          '$unread',
-                          style: textTheme.subDescription3.copyWith(
-                            color: AppColors.white,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
