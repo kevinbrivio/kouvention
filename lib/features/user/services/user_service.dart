@@ -29,6 +29,28 @@ class UserService {
     return UserModel.fromMap(snapshot.data()!);
   }
 
+  /// Search user (case insensitive)
+  /// Excludes the current user from search
+  Future<List<UserModel>> searchUsers({
+    required String query,
+    required String currentUid,
+    int limit = 20,
+  }) async {
+    final lowerQuery = query.trim().toLowerCase();
+    if (lowerQuery.isEmpty) return [];
+
+    final snapshot = await _userRef
+        .where('displayNameLower', isGreaterThanOrEqualTo: lowerQuery)
+        .where('displayNameLower', isLessThanOrEqualTo: lowerQuery + '\uf8ff')
+        .limit(limit)
+        .get();
+
+    return snapshot.docs
+        .map((doc) => UserModel.fromMap(doc.data()))
+        .where((user) => user.uid != currentUid)
+        .toList();
+  }
+
   /// Check if users doc already exists in users/{uid}
   Future<bool> userDocExists(String uid) async {
     final doc = await _userRef.doc(uid).get();
@@ -74,8 +96,11 @@ class UserService {
     String? bio,
   }) async {
     final updates = <String, dynamic>{};
-    if (displayName != null) updates['displayName'] = displayName;
-    if (photoURL != null) updates['photoURL'] = photoURL;
+    if (displayName != null) {
+      updates['displayName'] = displayName;
+      updates['displayNameLower'] = displayName.toLowerCase();
+    }
+    if (photoURL != null) updates['photoUrl'] = photoURL;
     if (bio != null) updates['bio'] = bio;
 
     if (updates.isNotEmpty) {
