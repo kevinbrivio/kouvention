@@ -112,7 +112,7 @@ class ChatService {
 
     final chatRef = _chatsRef.doc(chatId);
     batch.update(chatRef, {
-      ...MessageModel.toNewMessageMap(senderId: senderId, text: text),
+      ...MessageModel.toLastMessageMap(senderId: senderId, text: text),
       'updatedAt': FieldValue.serverTimestamp(),
     });
 
