@@ -7,6 +7,7 @@ import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/bases/base_view.dart';
 import 'package:kouvention/cores/constants/colors.dart';
+import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
 
@@ -30,7 +31,7 @@ PreferredSizeWidget _buildAppBar(BuildContext context, ChatRoomVM vm) => AppBar(
   elevation: 0.5,
   leading: IconButton(
     icon: Icon(Icons.arrow_back, color: AppColors.primary),
-    onPressed: () => context.pop(),
+    onPressed: () => context.go(RouterRoutes.chatList.path),
   ),
   title: Row(
     children: [
