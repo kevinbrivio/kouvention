@@ -157,6 +157,7 @@ class ChatService {
     final hash = ChatModel.generateMemberHash(currentUid, otherUid);
     final existing = await _chatsRef
         .where('memberHash', isEqualTo: hash)
+        .where('members', arrayContains: currentUid)
         .limit(1)
         .get();
 
