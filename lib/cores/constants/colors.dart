@@ -15,6 +15,7 @@ class AppColors {
 
   // Cases
   static const Color formField = Colors.white38;
+  static const Color searchBar = Color(0xFFF5F5F0);
 
   static const Color transparent = Colors.transparent;
 }
