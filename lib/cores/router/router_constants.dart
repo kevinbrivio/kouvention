@@ -24,6 +24,11 @@ class RouterRoutes {
 
   static const chatList = RouterRoute(path: '/chats', name: 'chatList');
   static const chatRoom = RouterRoute(path: '/chats/:chatId', name: 'chatRoom');
+  static const newChat = RouterRoute(path: '/new-chat', name: 'newChat');
+  static const newGroupChat = RouterRoute(
+    path: '/new-chat/group',
+    name: 'newGroupChat',
+  );
 }
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
