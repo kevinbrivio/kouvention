@@ -29,6 +29,17 @@ class UserService {
     return UserModel.fromMap(snapshot.data()!);
   }
 
+  /// Check if users doc already exists in users/{uid}
+  Future<bool> userDocExists(String uid) async {
+    final doc = await _userRef.doc(uid).get();
+    return doc.exists;
+  }
+
+  Future<bool> userEmailExists(String email) async {
+    final doc = await _userRef.where('email', isEqualTo: email).limit(1).get();
+    return doc.docs.isNotEmpty;
+  }
+
   // --- WRITE ----------------------------
   /// Create a user after signup -> Right after FirebaseAuth creates an account (only once)
   Future<void> createUser({

@@ -59,14 +59,19 @@ void main() async {
       // FLAVOR SETUP
       const flavor = String.fromEnvironment('ENV');
       setupConfig(flavor);
-
       final authService = AuthService();
       await authService.initialize(
         clientId: '',
-        serverClientId: flavor == 'staging' ? EnvStaging.googleServerClientId : EnvProd.googleServerClientId,
+        serverClientId: flavor == 'staging'
+            ? EnvStaging.googleServerClientId
+            : EnvProd.googleServerClientId,
       );
 
-      await setupRouter(initialRouter: '/', authService: authService);
+      final container = ProviderContainer();
+      await setupRouter(
+        initialRouter: '/',
+        authService: container.read(authServiceProvider),
+      );
 
       runApp(
         ProviderScope(

@@ -27,7 +27,6 @@ class AuthService {
     _googleSignIn.authenticationEvents.listen(_handleAuthEvent).onError((
       error,
     ) {
-      debugPrint('Google auth stream error: $error');
       _signInCompleter?.completeError(AuthException('google-sign-in failed'));
     });
 
@@ -47,13 +46,11 @@ class AuthService {
           final userCredential = await _auth.signInWithCredential(credential);
           _signInCompleter?.complete(userCredential);
         } catch (e) {
-          debugPrint('Firebase credential error: $e');
           _signInCompleter?.completeError(e);
         }
         break;
 
       case GoogleSignInAuthenticationEventSignOut():
-        debugPrint('Google sign-out event received');
         break;
 
       // Future-proofing: Google may add new event types.
@@ -68,6 +65,12 @@ class AuthService {
     required String password,
   }) async =>
       _auth.createUserWithEmailAndPassword(email: email, password: password);
+
+  Future<UserCredential> signInWithEmail({
+    required String email,
+    required String password,
+  }) async =>
+      await _auth.signInWithEmailAndPassword(email: email, password: password);
 
   Future<UserCredential> signInWithGoogle() async {
     _signInCompleter = Completer<UserCredential>();

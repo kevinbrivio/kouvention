@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
+import 'package:kouvention/features/auth/views/add_name_view.dart';
+import 'package:kouvention/features/auth/views/email_sign_in_view.dart';
 import 'package:kouvention/features/auth/views/login_view.dart';
 import 'package:kouvention/features/auth/views/sign_up_view.dart';
 import 'package:kouvention/features/chat/views/chat_list_view.dart';
@@ -33,6 +35,7 @@ setupRouter({required String initialRouter, required AuthService authService}) {
         RouterRoutes.privacyPolicy.path,
         RouterRoutes.login.path,
         RouterRoutes.signUp.path,
+        RouterRoutes.emailSignIn.path,
       ];
 
       final isOnPublicRoute = publicRoutes.contains(currentPath);
@@ -40,8 +43,9 @@ setupRouter({required String initialRouter, required AuthService authService}) {
       // Just signed in while on login/signup → go chat list
       if (isLoggedIn &&
           (currentPath == RouterRoutes.login.path ||
-              currentPath == RouterRoutes.signUp.path)) {
-        return RouterRoutes.chatList.path;
+              currentPath == RouterRoutes.signUp.path ||
+              currentPath == RouterRoutes.emailSignIn.path)) {
+        return null;
       }
 
       // Not logged in and trying to access a protected route → login
@@ -61,6 +65,16 @@ setupRouter({required String initialRouter, required AuthService authService}) {
         path: RouterRoutes.login.path,
         name: RouterRoutes.login.name,
         builder: (_, _) => LoginView(),
+      ),
+      GoRoute(
+        path: RouterRoutes.emailSignIn.path,
+        name: RouterRoutes.emailSignIn.name,
+        builder: (_, _) => EmailSignInView(),
+      ),
+      GoRoute(
+        path: RouterRoutes.addName.path,
+        name: RouterRoutes.addName.name,
+        builder: (_, _) => AddNameView(),
       ),
       GoRoute(
         path: RouterRoutes.signUp.path,

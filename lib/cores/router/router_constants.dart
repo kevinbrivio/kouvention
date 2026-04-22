@@ -19,6 +19,8 @@ class RouterRoutes {
   );
   static const login = RouterRoute(path: '/login', name: 'login');
   static const signUp = RouterRoute(path: '/sign-up', name: 'signup');
+  static const emailSignIn = RouterRoute(path: '/email', name: 'emailSignIn');
+  static const addName = RouterRoute(path: '/add-name', name: 'addName');
 
   static const chatList = RouterRoute(path: '/chats', name: 'chatList');
   static const chatRoom = RouterRoute(path: '/chats/:chatId', name: 'chatRoom');
