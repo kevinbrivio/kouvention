@@ -65,7 +65,6 @@ class AddNameVM extends BaseFormNotifier<AddNameForm> with FormValidatorMixin {
         ctx.go(RouterRoutes.chatList.path);
       }
     } catch (e) {
-      debugPrint('Failed to create user doc: $e');
       showToast('Something went wrong. Please try again.');
     } finally {
       isLoading = false;
