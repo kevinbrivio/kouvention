@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class MessageModel {
   final String id;
   final String senderId;
@@ -10,7 +12,7 @@ class MessageModel {
   final String? fileName;
   final int? fileSizeBytes;
 
-  MessageModel({
+  const MessageModel({
     required this.id,
     required this.senderId,
     required this.text,
@@ -29,10 +31,10 @@ class MessageModel {
         senderId: data['senderId'] as String,
         text: data['text'] as String? ?? '',
         type: data['type'] as String? ?? 'text',
-        sentAt: DateTime.parse(data['sentAt'] as String),
+        sentAt: (data['sentAt'] as Timestamp).toDate(),
         mediaUrl: data['mediaUrl'] as String?,
         fileName: data['fileName'] as String?,
-        fileSizeBytes: data['fileSizeBytes'] as int?,
+        fileSizeBytes: (data['fileSizeBytes'] as num?)?.toInt(),
       );
 
   static Map<String, dynamic> toNewMessageMap({
@@ -43,7 +45,7 @@ class MessageModel {
       'senderId': senderId,
       'text': text,
       'type': 'text',
-      'sentAt': DateTime.now(),
+      'sentAt': FieldValue.serverTimestamp(),
     };
   }
 
@@ -55,7 +57,7 @@ class MessageModel {
       'lastMessage': {
         'text': text,
         'sentBy': senderId,
-        'sentAt': DateTime.now(),
+        'sentAt': FieldValue.serverTimestamp(),
         'type': 'text',
       },
     };
