@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
@@ -144,7 +145,7 @@ class ChatRoomVM extends BaseNotifier {
 
       await _chatService.sendMessage(
         chatId: chatId,
-        senderId: _currentUid!,
+        senderId: _currentUid,
         text: trimmed,
         memberUids: _chat!.members,
       );
@@ -192,7 +193,7 @@ class ChatRoomVM extends BaseNotifier {
 
     if (text.isNotEmpty || !_isTyping) {
       _isTyping = true;
-      _chatService.setTyping(chatId, _currentUid!);
+      _chatService.setTyping(chatId, _currentUid);
     }
 
     // Reset debounce timer
