@@ -51,6 +51,8 @@ class ChatModel {
   String displayName(String currentUid) {
     if (isDirect) {
       final otherUid = otherMemberUid(currentUid);
+      print('SENDER MEMBER ID ----> $currentUid');
+      print('OTHER MEMBER ID ----> $otherUid');
       return memberInfo[otherUid]?.displayName ?? 'Unknown';
     }
     return groupName ?? 'Unnamed Group';
