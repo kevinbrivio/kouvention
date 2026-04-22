@@ -21,6 +21,7 @@ class RouterRoutes {
   static const signUp = RouterRoute(path: '/sign-up', name: 'signup');
 
   static const chatList = RouterRoute(path: '/chats', name: 'chatList');
+  static const chatRoom = RouterRoute(path: '/chats/:chatId', name: 'chatRoom');
 }
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
