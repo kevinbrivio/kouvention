@@ -8,6 +8,7 @@ import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/shared/services/connectivity_service.dart';
 import 'package:kouvention/features/shared/viewmodel/connectivity_viewmodel.dart';
+import 'package:kouvention/features/user/services/user_service.dart';
 import 'package:oktoast/oktoast.dart';
 
 final loginProvider = ChangeNotifierProvider.autoDispose<LoginVM>(
@@ -34,7 +35,23 @@ class LoginVM extends BaseNotifier {
 
     isLoading = true;
     try {
-      await _authService.signInWithGoogle();
+      final credential = await _authService.signInWithGoogle();
+      final user = credential.user;
+
+      if (user != null) {
+        final userService = ref.read(userServiceProvider);
+        final exists = await userService.userDocExists(user.uid);
+
+        if (!exists) {
+          await userService.createUser(
+            uid: user.uid,
+            displayName: user.displayName ?? 'User',
+            email: user.email ?? '',
+            photoURL: user.photoURL,
+          );
+        }
+      }
+      
       if (ctx.mounted) {
         ctx.go(RouterRoutes.chatList.path);
       }
