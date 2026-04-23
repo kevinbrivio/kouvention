@@ -63,6 +63,13 @@ class _TextTheme {
     fontWeight: FontWeight.w600,
     height: 1.5,
   );
+
+  final senderName = TextStyle(
+    fontSize: 14.sp,
+    color: AppColors.primary2,
+    fontWeight: FontWeight.w600,
+    height: 1.5,
+  );
 }
 
 final textTheme = _TextTheme();
