@@ -9,6 +9,7 @@ import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/cores/widgets/loading_indicator.dart';
 import 'package:kouvention/cores/widgets/transparent_box.dart';
 import 'package:kouvention/features/chat/viewmodel/new_chat_viewmodel.dart';
+import 'package:kouvention/features/chat/widgets/recent_users_list.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
 
 class NewChatView extends StatelessWidget {
@@ -72,10 +73,10 @@ class _NewChatBodyState extends State<_NewChatBody> {
       // Results / empty state / loading
       Flexible(
         child: vm.isSearching
-            ? const Center(
+            ? Center(
                 child: SizedBox(
-                  width: 20,
-                  height: 20,
+                  width: 24.w,
+                  height: 24.w,
                   child: LoadingIndicator(strokeWidth: 2),
                 ),
               )
@@ -84,51 +85,18 @@ class _NewChatBodyState extends State<_NewChatBody> {
                 child: Text('No users found', style: textTheme.subDescription3),
               )
             : _searchController.text.isEmpty
-            ? _buildRecentUsers()
+            ? RecentUsersList(
+                onUserTap: (user) async {
+                  final chatId = await vm.createDirectChat(user);
+                  if (chatId != null && mounted) {
+                    context.go('/chats/$chatId');
+                  }
+                },
+              )
             : _buildResultsList(),
       ),
     ],
   );
-
-  // ── Recent Users ──────────────────────────────────────
-  Widget _buildRecentUsers() {
-    if (vm.recentUsers.isEmpty)
-      return Center(
-        child: Text('Search users by name', style: textTheme.subDescription),
-      );
-
-    return Padding(
-      padding: EdgeInsets.all(16.w),
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.searchBar,
-          borderRadius: BorderRadius.circular(12.r),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-              child: Text(
-                'Sorted by latest message',
-                style: textTheme.subDescription3.copyWith(
-                  color: AppColors.primary2,
-                ),
-              ),
-            ),
-            Flexible(
-              child: ListView.builder(
-                itemCount: vm.recentUsers.length,
-                itemBuilder: (context, index) =>
-                    _buildUserTile(vm.recentUsers[index]),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   // ── Search Bar ──────────────────────────────────────
   Widget _buildSearchBar() => Padding(
@@ -216,10 +184,9 @@ class _NewChatBodyState extends State<_NewChatBody> {
                     user.displayName.isNotEmpty
                         ? user.displayName[0].toUpperCase()
                         : '?',
-                    style: TextStyle(
+                    style: textTheme.body2.copyWith(
                       color: AppColors.primary,
                       fontWeight: FontWeight.w600,
-                      fontSize: 16.sp,
                     ),
                   )
                 : null,
@@ -234,16 +201,10 @@ class _NewChatBodyState extends State<_NewChatBody> {
               children: [
                 Text(
                   user.displayName,
-                  style: TextStyle(
-                    fontSize: 15.sp,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: textTheme.body2.copyWith(color: AppColors.black),
                 ),
-                SizedBox(height: 2.h),
-                Text(
-                  user.email,
-                  style: TextStyle(fontSize: 12.sp, color: Colors.grey[500]),
-                ),
+                Gap(2.h),
+                Text(user.email, style: textTheme.subDescription3),
               ],
             ),
           ),

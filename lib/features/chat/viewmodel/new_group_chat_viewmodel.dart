@@ -6,6 +6,7 @@ import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/services/chat_service.dart';
+import 'package:kouvention/features/chat/viewmodel/recent_users_provider.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
 import 'package:kouvention/features/user/services/user_service.dart';
 
@@ -23,6 +24,9 @@ class NewGroupChatVM extends BaseNotifier {
   Timer? _debounceTimer;
   bool _isSearching = false;
 
+  // Recent Users
+  List<UserModel> _recentUsers = [];
+
   // Group chat selection
   final List<UserModel> _selectedUsers = [];
   bool _isGroupMode = false;
@@ -37,6 +41,8 @@ class NewGroupChatVM extends BaseNotifier {
 
   // ── Getters ─────────────────────────────────────────
   List<UserModel> get searchResults => _searchResults;
+  List<UserModel> get recentUsers =>
+      ref.watch(recentUsersProvider).valueOrNull ?? [];
   List<UserModel> get selectedUsers => _selectedUsers;
   bool get isSearching => _isSearching;
   String? get error => _error;

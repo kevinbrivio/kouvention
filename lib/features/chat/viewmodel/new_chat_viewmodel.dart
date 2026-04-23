@@ -6,6 +6,7 @@ import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/services/chat_service.dart';
+import 'package:kouvention/features/chat/viewmodel/recent_users_provider.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
 import 'package:kouvention/features/user/services/user_service.dart';
 
@@ -41,7 +42,8 @@ class NewChatVM extends BaseNotifier {
   // ── Getters ─────────────────────────────────────────
 
   List<UserModel> get searchResults => _searchResults;
-  List<UserModel> get recentUsers => _recentUsers;
+  List<UserModel> get recentUsers =>
+      ref.watch(recentUsersProvider).valueOrNull ?? [];
   List<UserModel> get selectedUsers => _selectedUsers;
   bool get isSearching => _isSearching;
   bool get isGroupMode => _isGroupMode;
@@ -50,11 +52,7 @@ class NewChatVM extends BaseNotifier {
   bool get hasSelection => _selectedUsers.isNotEmpty;
 
   @override
-  FutureOr<void> init() async {
-    if (_currentUid != null) {
-      await _loadRecentUsers();
-    }
-  }
+  FutureOr<void> init() async {}
 
   // ── Search ─────────────────────────────────────────
   /// Called on every keystroke in the search field.
@@ -99,36 +97,6 @@ class NewChatVM extends BaseNotifier {
     notifyListeners();
   }
 
-  // ── Recent Users ──────────────────────────────────────
-  /// Get the recent users from latest chats
-  Future<void> _loadRecentUsers() async {
-    if (_currentUid == null) return;
-
-    try {
-      final chats = await _chatService.streamChatList(_currentUid).first;
-      _error = null;
-
-      // Get other users with 'direct' type of chat
-      final otherUids = chats
-          .where((chat) => chat.type == 'direct')
-          .map((chat) => chat.otherMemberUid(_currentUid))
-          .toList();
-
-      final users = <UserModel>[];
-      for (final uid in otherUids) {
-        final user = await _userService.getUser(uid);
-        if (user != null) users.add(user);
-      }
-
-      _recentUsers = users;
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Failed to fetch latest users');
-    }
-
-    notifyListeners();
-  }
-
   // ── Group Mode ──────────────────────────────────────
   void toggleGroupMode() {
     _isGroupMode = !_isGroupMode;
@@ -163,7 +131,7 @@ class NewChatVM extends BaseNotifier {
     if (_currentUid == null) return null;
 
     try {
-      final currentUser = await _userService.getUser(_currentUid!);
+      final currentUser = await _userService.getUser(_currentUid);
       if (currentUser == null) return null;
 
       final memberInfo = {
