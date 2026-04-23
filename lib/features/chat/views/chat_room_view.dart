@@ -7,6 +7,7 @@ import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/bases/base_view.dart';
 import 'package:kouvention/cores/constants/colors.dart';
+import 'package:kouvention/cores/constants/image_paths.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
@@ -24,6 +25,13 @@ class ChatRoomView extends StatelessWidget {
     backgroundColor: Colors.white,
     appBar: (vm) => _buildAppBar(context, vm),
     builder: (context, vm) => _ChatRoomBody(chatId: chatId, viewmodel: vm),
+    backgroundImage: DecorationImage(
+      image: AssetImage(images.chatWallpaper),
+      fit: BoxFit.cover,
+      onError: (error, stackTrace) {
+        debugPrint('Background image error: $error');
+      },
+    ),
   );
 }
 
@@ -142,7 +150,7 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
     children: [
       Expanded(
         child: viewmodel.error != null
-            ? Center(child: Text(viewmodel.error!))
+            ? Center(child: Text(viewmodel.error ?? ''))
             : _buildMessageList(),
       ),
       if (viewmodel.typingText != null) _buildTypingIndicator(),
@@ -183,10 +191,16 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
         final isMe = viewmodel.isMyMessage(message);
         final showDate = _shouldShowDate(viewmodel.messages, index);
 
+        /// Check if the NEXT message is from the same sender (in reverse)
+        final isFirstSequence =
+            index == viewmodel.messages.length - 1 ||
+            showDate ||
+            viewmodel.messages[index + 1].senderId != message.senderId;
+
         return Column(
           children: [
             if (showDate) _buildDateSeparator(message.sentAt),
-            _buildMessageBubble(message, isMe),
+            _buildMessageBubble(message, isMe, isFirstSequence),
           ],
         );
       },
@@ -220,8 +234,14 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
     );
   }
 
-  Widget _buildMessageBubble(MessageModel message, bool isMe) {
+  Widget _buildMessageBubble(
+    MessageModel message,
+    bool isMe,
+    bool isFirstSequence,
+  ) {
     final time = _formatTime(message.sentAt);
+    final senderName = viewmodel.senderDisplayName(message.senderId);
+    final senderPhotoUrl = viewmodel.senderPhotoUrl(message.senderId);
 
     return Padding(
       padding: EdgeInsets.only(bottom: 8.h),
@@ -232,16 +252,32 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isMe) ...[
-            CircleAvatar(
-              radius: 14.r,
-              backgroundColor: Colors.grey[300],
-              child: Text(
-                viewmodel.chatDisplayName.isNotEmpty
-                    ? viewmodel.chatDisplayName[0].toUpperCase()
-                    : '?',
-                style: TextStyle(fontSize: 10.sp, color: Colors.grey[700]),
-              ),
-            ),
+            if (isFirstSequence)
+              CircleAvatar(
+                radius: 14.r,
+                backgroundColor: Colors.grey[300],
+                backgroundImage:
+                    senderPhotoUrl != null && senderPhotoUrl.isNotEmpty
+                    ? NetworkImage(senderPhotoUrl)
+                    : null,
+                onBackgroundImageError:
+                    senderPhotoUrl != null && senderPhotoUrl.isNotEmpty
+                    ? (_, __) {} // silently fall back to child
+                    : null,
+                child: senderPhotoUrl == null || senderPhotoUrl.isEmpty
+                    ? Text(
+                        senderName.isNotEmpty
+                            ? senderName[0].toUpperCase()
+                            : '?',
+                        style: TextStyle(
+                          fontSize: 10.sp,
+                          color: Colors.grey[700],
+                        ),
+                      )
+                    : null,
+              )
+            else
+              SizedBox(width: 28.r), // same width as avatar to keep alignment
             Gap(8.w),
           ],
           Flexible(
@@ -262,6 +298,10 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
                     ? CrossAxisAlignment.end
                     : CrossAxisAlignment.start,
                 children: [
+                  if (!isMe && viewmodel.isGroup && isFirstSequence) ...[
+                    Text(senderName, style: textTheme.senderName),
+                    Gap(4.h),
+                  ],
                   Text(
                     message.text,
                     style: TextStyle(
@@ -342,7 +382,7 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
       bottom: MediaQuery.of(context).padding.bottom + 8.h,
     ),
     decoration: BoxDecoration(
-      color: Colors.white,
+      color: Colors.transparent,
       boxShadow: [
         BoxShadow(
           color: Colors.black.withValues(alpha: 0.05),

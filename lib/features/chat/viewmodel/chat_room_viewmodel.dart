@@ -50,6 +50,7 @@ class ChatRoomVM extends BaseNotifier {
   bool get hasMoreMessages => _hasMoreMessages;
   bool get isLoadingMore => _isLoadingMore;
   bool get isTyping => _isTyping;
+  bool get isGroup => _chat?.type == 'group';
   String? get error => _error;
 
   /// Display name for the chat header
@@ -57,6 +58,14 @@ class ChatRoomVM extends BaseNotifier {
     if (_chat == null || _currentUid == null) return '';
     return _chat!.displayName(_currentUid);
   }
+
+  /// Display sender name
+  String senderDisplayName(String senderId) =>
+      _chat?.memberInfo[senderId]?.displayName ?? '';
+
+  /// Display sender name
+  String? senderPhotoUrl(String senderId) =>
+      _chat?.memberInfo[senderId]?.photoUrl ?? '';
 
   /// Photo URL
   String? get chatPhotoUrl {
