@@ -1,16 +1,19 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/rendering.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
 import 'package:kouvention/features/chat/services/chat_service.dart';
+import 'package:kouvention/features/user/models/user_model.dart';
+import 'package:kouvention/features/user/services/user_service.dart';
 
 class ChatRoomVM extends BaseNotifier {
   final ChatService _chatService;
+  final UserService _userService;
   final String? _currentUid;
   final String chatId;
 
@@ -21,6 +24,8 @@ class ChatRoomVM extends BaseNotifier {
   // Chat metadata
   ChatModel? _chat;
   StreamSubscription? _chatSubscription;
+  StreamSubscription? _otherUserSubscription;
+  UserModel? _otherUser;
 
   // Pagination
   DocumentSnapshot? _lastDocument;
@@ -35,7 +40,8 @@ class ChatRoomVM extends BaseNotifier {
 
   ChatRoomVM(super.ref, {required this.chatId})
     : _chatService = ref.read(chatServiceProvider),
-      _currentUid = ref.read(authServiceProvider).currentUser?.uid;
+      _currentUid = ref.read(authServiceProvider).currentUser?.uid,
+      _userService = ref.read(userServiceProvider);
 
   // --- GETTERS ------------------------------
   List<MessageModel> get messages => _messages;
@@ -76,6 +82,32 @@ class ChatRoomVM extends BaseNotifier {
     return '${names.join(', ')} are typing...';
   }
 
+  /// Get other user status
+  String? get onlineStatusText {
+    if (_chat == null) return null;
+
+    if (_chat!.type != 'direct') return null;
+    if (_otherUser == null) return null;
+
+    if (!_otherUser!.privacy.showOnlineStatus) return null;
+
+    if (_otherUser!.isOnline) return 'Online';
+    if (_otherUser!.privacy.showLastSeen && _otherUser!.lastSeen != null) {
+      return _formatLastSeen(_otherUser!.lastSeen!);
+    }
+    return null;
+  }
+
+  String _formatLastSeen(DateTime lastSeen) {
+    final now = DateTime.now();
+    final diff = now.difference(lastSeen);
+
+    if (diff.inMinutes < 60) return 'Last seen ${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return 'Last seen ${diff.inHours}h ago';
+    if (diff.inDays == 1) return 'Last seen yesterday';
+    return 'Last seen ${lastSeen.day}/${lastSeen.month}/${lastSeen.year}';
+  }
+
   bool isMyMessage(MessageModel message) => message.senderId == _currentUid;
 
   @override
@@ -96,6 +128,14 @@ class ChatRoomVM extends BaseNotifier {
         .listen(
           (chat) {
             _chat = chat;
+
+            if (chat != null &&
+                chat.type == 'direct' &&
+                _otherUserSubscription == null &&
+                _currentUid != null) {
+              final otherUid = chat.otherMemberUid(_currentUid!);
+              _subscribeToOtherUser(otherUid);
+            }
             notifyListeners();
           },
           onError: (error) {
@@ -118,6 +158,22 @@ class ChatRoomVM extends BaseNotifier {
             if (_lastDocument == null && messages.isNotEmpty)
               _fetchPaginationCursor();
 
+            notifyListeners();
+          },
+          onError: (error) {
+            _error = error.toString();
+            notifyListeners();
+          },
+        );
+  }
+
+  /// Subscribe to the latest messages from the other user
+  void _subscribeToOtherUser(String otherUserId) {
+    _otherUserSubscription = _userService
+        .streamUser(otherUserId)
+        .listen(
+          (user) {
+            _otherUser = user;
             notifyListeners();
           },
           onError: (error) {
@@ -225,6 +281,7 @@ class ChatRoomVM extends BaseNotifier {
   void dispose() {
     _messageSubscription?.cancel();
     _chatSubscription?.cancel();
+    _otherUserSubscription?.cancel();
     clearTyping();
     _typingTImer?.cancel();
     super.dispose();

@@ -7,6 +7,7 @@ import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/bases/base_view.dart';
 import 'package:kouvention/cores/constants/colors.dart';
+import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
@@ -69,10 +70,15 @@ PreferredSizeWidget _buildAppBar(BuildContext context, ChatRoomVM vm) => AppBar(
                 fontWeight: FontWeight.w600,
               ),
             ),
-            if (vm.chat != null)
+            if (vm.onlineStatusText != null)
               Text(
-                'Online',
-                style: TextStyle(color: Colors.green, fontSize: 12.sp),
+                vm.onlineStatusText!,
+                style: textTheme.subDescription3.copyWith(
+                  color: vm.onlineStatusText == 'Online'
+                      ? Colors.green
+                      : Colors.grey[500],
+                  fontSize: 12.sp,
+                ),
               ),
           ],
         ),
