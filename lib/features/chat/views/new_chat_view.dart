@@ -195,9 +195,7 @@ class _NewChatBodyState extends State<_NewChatBody> {
 
   Widget _buildUserTile(UserModel user) => InkWell(
     onTap: () async {
-      debugPrint('user: $user');
       final chatId = await vm.createDirectChat(user);
-      debugPrint('chatId: $chatId');
       if (chatId != null && mounted) {
         context.go('/chats/$chatId');
       }

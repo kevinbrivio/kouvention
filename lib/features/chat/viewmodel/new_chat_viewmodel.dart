@@ -164,7 +164,6 @@ class NewChatVM extends BaseNotifier {
 
     try {
       final currentUser = await _userService.getUser(_currentUid!);
-      debugPrint('currentUser: ${currentUser?.displayName ?? 'null'}');
       if (currentUser == null) return null;
 
       final memberInfo = {
