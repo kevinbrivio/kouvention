@@ -12,6 +12,7 @@ import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
+import 'package:kouvention/features/chat/widgets/typing_dots.dart';
 
 class ChatRoomView extends StatelessWidget {
   final String chatId;
@@ -361,14 +362,7 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
             color: Colors.grey[100],
             borderRadius: BorderRadius.circular(16.r),
           ),
-          child: Text(
-            '•••',
-            style: TextStyle(
-              fontSize: 18.sp,
-              color: Colors.grey[500],
-              letterSpacing: 2,
-            ),
-          ),
+          child: TypingDots(),
         ),
       ],
     ),
