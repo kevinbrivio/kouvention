@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/material.dart';
 
 class ChatModel {
   final String id; // the Firestore document ID
@@ -56,6 +55,17 @@ class ChatModel {
     return groupName ?? 'Unnamed Group';
   }
 
+  /// Returns each members name
+  String memberNameText(String currentUid) {
+    final others = memberInfo.entries
+        .where((e) => e.key != currentUid)
+        .map((e) => e.value.displayName)
+        .toList();
+    if (others.isEmpty) return '';
+    
+    return others.join(', ');
+  }
+
   /// Returns the photo URL for this chat.
   String? displayPhotoUrl(String currentUid) {
     if (isDirect) {
@@ -102,7 +112,7 @@ class ChatModel {
           : null,
       unreadCount: parsedUnread,
       typingUsers: List<String>.from(data['typingUsers'] ?? []),
-      createdAt: (data['createdAt'] as Timestamp).toDate(),
+      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
     );
   }
@@ -190,7 +200,7 @@ class LastMessage {
     return LastMessage(
       text: data['text'] as String? ?? '',
       sentBy: data['sentBy'] as String? ?? '',
-      sentAt: (data['sentAt'] as Timestamp).toDate(),
+      sentAt: (data['sentAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       type: data['type'] as String? ?? 'text',
     );
   }
