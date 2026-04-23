@@ -13,6 +13,7 @@ import 'package:kouvention/cores/router/router.dart';
 import 'package:kouvention/cores/widgets/flavor_banner.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/shared/services/prefs_service.dart';
+import 'package:kouvention/features/user/viewmodel/presence_notifier.dart';
 import 'package:oktoast/oktoast.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_options.dart';
@@ -99,19 +100,22 @@ void setupConfig(String flavor) {
   );
 }
 
-class KouventionApp extends StatefulWidget {
+class KouventionApp extends ConsumerStatefulWidget {
   const KouventionApp({super.key});
 
   @override
-  State<KouventionApp> createState() => _KouventionAppState();
+  ConsumerState<KouventionApp> createState() => _KouventionAppState();
 }
 
-class _KouventionAppState extends State<KouventionApp>
+class _KouventionAppState extends ConsumerState<KouventionApp>
     with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    ref.read(
+      presenceNotifierProvider,
+    ); // listen to presence notifier to check user presence throughout the use
   }
 
   @override
