@@ -27,12 +27,29 @@ class PresenceNotifier extends ChangeNotifier {
 
   void _start(String userId) {
     _uid = userId;
-    _userService.setOnline(userId);
-
+  
     _lifecycleListener = AppLifecycleListener(
-      onResume: () => _userService.setOnline(userId),
-      onHide: () => _userService.setOffline(userId),
-      onPause: () => _userService.setOffline(userId),
+      onResume: () async {
+        try {
+          await _userService.setOnline(userId);
+        } catch (e) {
+          debugPrint('setOnline failed (likely mid-auth): $e');
+        }
+      },
+      onHide: () async {
+        try {
+          await _userService.setOffline(userId);
+        } catch (e) {
+          debugPrint('setOffline failed: $e');
+        }
+      },
+      onPause: () async {
+        try {
+          await _userService.setOffline(userId);
+        } catch (e) {
+          debugPrint('setOffline failed: $e');
+        }
+      },
     );
   }
 
