@@ -134,7 +134,7 @@ class _KouventionAppState extends ConsumerState<KouventionApp>
     return OKToast(
       child: MaterialApp.router(
         builder: (_, child) => MediaQuery(
-          data: MediaQuery.of(context).copyWith(boldText: false),
+          data: MediaQuery.of(context).copyWith(boldText: true),
           child: FlavorBanner(child: child!),
         ),
         title: 'Kouvention',
