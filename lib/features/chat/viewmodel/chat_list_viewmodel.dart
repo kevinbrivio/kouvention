@@ -26,6 +26,8 @@ class ChatListVM extends BaseNotifier {
   String? get currentId => _currentUid;
   bool get hasChats => _chats.isNotEmpty;
 
+  bool isGroupType(ChatModel chat) => !chat.isDirect;
+  
   @override
   FutureOr<void> init() {
     if (_currentUid == null) {

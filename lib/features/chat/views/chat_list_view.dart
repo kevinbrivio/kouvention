@@ -62,16 +62,23 @@ class ChatListView extends StatelessWidget {
                         ? NetworkImage(vm.chatPhotoURL(chat)!)
                         : null,
                     child: vm.chatPhotoURL(chat) == null
-                        ? Text(
-                            vm.chatDisplayName(chat).isNotEmpty
-                                ? vm.chatDisplayName(chat)[0].toUpperCase()
-                                : '?',
-                            style: TextStyle(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 16.sp,
-                            ),
-                          )
+                        ? vm.isGroupType(chat)
+                              ? Icon(
+                                  Icons.people_alt_rounded,
+                                  color: AppColors.primary,
+                                )
+                              : Text(
+                                  vm.chatDisplayName(chat).isNotEmpty
+                                      ? vm
+                                            .chatDisplayName(chat)[0]
+                                            .toUpperCase()
+                                      : '?',
+                                  style: TextStyle(
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16.sp,
+                                  ),
+                                )
                         : null,
                   ),
                   Gap(12.w),
