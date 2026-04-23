@@ -59,6 +59,7 @@ class _NewGroupChatBodyState extends State<_NewGroupChatBody> {
 
   @override
   Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.end,
     children: [
       _buildSearchBar(),
 

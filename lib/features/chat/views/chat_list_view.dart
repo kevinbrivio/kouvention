@@ -19,7 +19,7 @@ class ChatListView extends StatelessWidget {
 
         Positioned(
           right: 16.w,
-          bottom: 16.h,
+          bottom: MediaQuery.of(context).padding.bottom + 12.h,
           child: FloatingActionButton(
             backgroundColor: AppColors.primary2,
             onPressed: () {
@@ -35,8 +35,7 @@ class ChatListView extends StatelessWidget {
   Widget _buildScreen(BuildContext context, ChatListVM vm) {
     if (!vm.hasChats) return Center(child: Text('No conversations yet.'));
 
-    return SafeArea(
-      child: ListView.builder(
+    return ListView.builder(
         itemCount: vm.chats.length,
         itemBuilder: (context, index) {
           final chat = vm.chats[index];
@@ -139,7 +138,6 @@ class ChatListView extends StatelessWidget {
             ),
           );
         },
-      ),
     );
   }
 
