@@ -6,6 +6,8 @@ import 'package:kouvention/cores/bases/base_view.dart';
 import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
+import 'package:kouvention/cores/widgets/loading_indicator.dart';
+import 'package:kouvention/cores/widgets/transparent_box.dart';
 import 'package:kouvention/features/chat/viewmodel/new_chat_viewmodel.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
 
@@ -68,28 +70,65 @@ class _NewChatBodyState extends State<_NewChatBody> {
       _buildGroupButton(),
 
       // Results / empty state / loading
-      Expanded(
+      Flexible(
         child: vm.isSearching
             ? const Center(
                 child: SizedBox(
                   width: 20,
                   height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                  child: LoadingIndicator(strokeWidth: 2),
                 ),
               )
-            : vm.searchResults.isEmpty
+            : _searchController.text.isNotEmpty && vm.searchResults.isEmpty
             ? Center(
-                child: Text(
-                  _searchController.text.isEmpty
-                      ? 'Search for users by name'
-                      : 'No users found',
-                  style: textTheme.subDescription3,
-                ),
+                child: Text('No users found', style: textTheme.subDescription3),
               )
+            : _searchController.text.isEmpty
+            ? _buildRecentUsers()
             : _buildResultsList(),
       ),
     ],
   );
+
+  // ── Recent Users ──────────────────────────────────────
+  Widget _buildRecentUsers() {
+    if (vm.recentUsers.isEmpty)
+      return Center(
+        child: Text('Search users by name', style: textTheme.subDescription),
+      );
+
+    return Padding(
+      padding: EdgeInsets.all(16.w),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.searchBar,
+          borderRadius: BorderRadius.circular(12.r),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+              child: Text(
+                'Sorted by latest message',
+                style: textTheme.subDescription3.copyWith(
+                  color: AppColors.primary2,
+                ),
+              ),
+            ),
+            Flexible(
+              child: ListView.builder(
+                itemCount: vm.recentUsers.length,
+                itemBuilder: (context, index) =>
+                    _buildUserTile(vm.recentUsers[index]),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   // ── Search Bar ──────────────────────────────────────
   Widget _buildSearchBar() => Padding(

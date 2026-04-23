@@ -23,6 +23,9 @@ class NewChatVM extends BaseNotifier {
   Timer? _debounceTimer;
   bool _isSearching = false;
 
+  // Recent List
+  List<UserModel> _recentUsers = [];
+
   // Group chat selection
   final List<UserModel> _selectedUsers = [];
   bool _isGroupMode = false;
@@ -38,6 +41,7 @@ class NewChatVM extends BaseNotifier {
   // ── Getters ─────────────────────────────────────────
 
   List<UserModel> get searchResults => _searchResults;
+  List<UserModel> get recentUsers => _recentUsers;
   List<UserModel> get selectedUsers => _selectedUsers;
   bool get isSearching => _isSearching;
   bool get isGroupMode => _isGroupMode;
@@ -46,10 +50,13 @@ class NewChatVM extends BaseNotifier {
   bool get hasSelection => _selectedUsers.isNotEmpty;
 
   @override
-  FutureOr<void> init() {}
+  FutureOr<void> init() async {
+    if (_currentUid != null) {
+      await _loadRecentUsers();
+    }
+  }
 
-  // ── Search ──────────────────────────────────────────
-
+  // ── Search ─────────────────────────────────────────
   /// Called on every keystroke in the search field.
   /// Debounces 400ms to avoid hammering Firestore on fast typing.
   ///
@@ -69,7 +76,7 @@ class NewChatVM extends BaseNotifier {
     _isSearching = true;
     notifyListeners();
 
-    _debounceTimer = Timer(const Duration(milliseconds: 400), () {
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
       _performSearch(query);
     });
   }
@@ -92,8 +99,37 @@ class NewChatVM extends BaseNotifier {
     notifyListeners();
   }
 
-  // ── Group Mode ──────────────────────────────────────
+  // ── Recent Users ──────────────────────────────────────
+  /// Get the recent users from latest chats
+  Future<void> _loadRecentUsers() async {
+    if (_currentUid == null) return;
 
+    try {
+      final chats = await _chatService.streamChatList(_currentUid).first;
+      _error = null;
+
+      // Get other users with 'direct' type of chat
+      final otherUids = chats
+          .where((chat) => chat.type == 'direct')
+          .map((chat) => chat.otherMemberUid(_currentUid))
+          .toList();
+
+      final users = <UserModel>[];
+      for (final uid in otherUids) {
+        final user = await _userService.getUser(uid);
+        if (user != null) users.add(user);
+      }
+
+      _recentUsers = users;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Failed to fetch latest users');
+    }
+
+    notifyListeners();
+  }
+
+  // ── Group Mode ──────────────────────────────────────
   void toggleGroupMode() {
     _isGroupMode = !_isGroupMode;
     if (!_isGroupMode) {
@@ -117,7 +153,6 @@ class NewChatVM extends BaseNotifier {
   }
 
   // ── Create Chat ─────────────────────────────────────
-
   /// Creates a direct chat with the tapped user.
   /// Returns the chat ID to navigate to.
   ///
@@ -148,8 +183,6 @@ class NewChatVM extends BaseNotifier {
         otherUid: otherUser.uid,
         memberInfo: memberInfo,
       );
-
-      debugPrint('chatID --> $chatId');
 
       return chatId;
     } catch (e) {
