@@ -29,6 +29,10 @@ class RouterRoutes {
     path: '/new-chat/group',
     name: 'newGroupChat',
   );
+  static const groupSetup = RouterRoute(
+    path: '/new-chat/group/setup',
+    name: 'groupSetup',
+  );
 }
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();

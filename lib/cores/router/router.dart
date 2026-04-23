@@ -8,11 +8,13 @@ import 'package:kouvention/features/auth/views/login_view.dart';
 import 'package:kouvention/features/auth/views/sign_up_view.dart';
 import 'package:kouvention/features/chat/views/chat_list_view.dart';
 import 'package:kouvention/features/chat/views/chat_room_view.dart';
+import 'package:kouvention/features/chat/views/group_setup_view.dart';
 import 'package:kouvention/features/chat/views/new_chat_view.dart';
 import 'package:kouvention/features/chat/views/new_group_chat_view.dart';
 import 'package:kouvention/features/onboarding/views/onboarding_view.dart';
 import 'package:kouvention/features/privacy_policy/views/privacy_policy_view.dart';
 import 'package:kouvention/features/splash/views/splash_view.dart';
+import 'package:kouvention/features/user/models/user_model.dart';
 
 late GoRouter _router;
 GoRouter get router => _router;
@@ -115,6 +117,13 @@ setupRouter({required String initialRouter, required AuthService authService}) {
         path: RouterRoutes.newGroupChat.path,
         name: RouterRoutes.newGroupChat.name,
         builder: (_, _) => NewGroupChatView(),
+      ),
+      GoRoute(
+        path: RouterRoutes.groupSetup.path,
+        name: RouterRoutes.groupSetup.name,
+        builder: (_, state) => GroupSetupView(
+          selectedUsers: state.extra as List<UserModel>,
+        ),
       ),
     ],
   );
