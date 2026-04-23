@@ -5,7 +5,9 @@ import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/bases/base_view.dart';
 import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
+import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/features/chat/viewmodel/new_group_chat_viewmodel.dart';
+import 'package:kouvention/features/chat/widgets/recent_users_list.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
 
 class NewGroupChatView extends StatelessWidget {
@@ -58,8 +60,9 @@ class _NewGroupChatBodyState extends State<_NewGroupChatBody> {
   @override
   Widget build(BuildContext context) => Column(
     children: [
-      _buildSelectedChips(),
       _buildSearchBar(),
+
+      _buildSelectedChips(),
 
       Expanded(
         child: vm.isSearching
@@ -70,14 +73,15 @@ class _NewGroupChatBodyState extends State<_NewGroupChatBody> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
               )
-            : vm.searchResults.isEmpty
+            : _searchController.text.isNotEmpty && vm.searchResults.isEmpty
             ? Center(
-                child: Text(
-                  _searchController.text.isEmpty
-                      ? 'Search for users by name'
-                      : 'No users found',
-                  style: textTheme.subDescription3,
-                ),
+                child: Text('No users found', style: textTheme.subDescription3),
+              )
+            : _searchController.text.isEmpty
+            ? RecentUsersList(
+                onUserTap: (user) => vm.toggleUserSelection(user),
+                isSelected: (user) => vm.isUserSelected(user),
+                showSelection: true,
               )
             : _buildResultsList(),
       ),
@@ -86,25 +90,75 @@ class _NewGroupChatBodyState extends State<_NewGroupChatBody> {
     ],
   );
 
-  // ── Selected Chips (group mode) ─────────────────────
+  // ── Selected Chips ─────────────────────
+  Widget _buildSelectedChips() {
+    if (vm.selectedUsers.isEmpty) return const SizedBox.shrink();
 
-  Widget _buildSelectedChips() => Container(
-    width: double.infinity,
-    padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-    child: Wrap(
-      spacing: 8.w,
-      runSpacing: 8.h,
-      children: vm.selectedUsers.map((user) {
-        return Chip(
-          label: Text(user.displayName, style: textTheme.subDescription2),
-          deleteIcon: Icon(Icons.close, size: 16.sp),
-          onDeleted: () => vm.toggleUserSelection(user),
-          backgroundColor: AppColors.primary2.withValues(alpha: 0.4),
-          side: BorderSide.none,
-        );
-      }).toList(),
-    ),
-  );
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+      child: Wrap(
+        spacing: 12.w,
+        runSpacing: 8.h,
+        children: vm.selectedUsers.map((user) {
+          return GestureDetector(
+            onTap: () => vm.toggleUserSelection(user),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Stack(
+                  children: [
+                    CircleAvatar(
+                      radius: 22.r,
+                      backgroundColor: AppColors.primary.withValues(alpha: 0.2),
+                      backgroundImage: user.photoUrl != null
+                          ? NetworkImage(user.photoUrl!)
+                          : null,
+                      child: user.photoUrl == null
+                          ? Text(
+                              user.displayName.isNotEmpty
+                                  ? user.displayName[0].toUpperCase()
+                                  : '?',
+                              style: TextStyle(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16.sp,
+                              ),
+                            )
+                          : null,
+                    ),
+                    Positioned(
+                      right: 0,
+                      bottom: 0,
+                      child: CircleAvatar(
+                        radius: 8.r,
+                        backgroundColor: Colors.grey[400],
+                        child: Icon(
+                          Icons.close,
+                          size: 10.sp,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                Gap(4.h),
+                SizedBox(
+                  width: 50.w,
+                  child: Text(
+                    user.displayName,
+                    style: TextStyle(fontSize: 11.sp),
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
 
   Widget _buildSearchBar() => Padding(
     padding: EdgeInsets.all(16.w),
@@ -158,10 +212,9 @@ class _NewGroupChatBodyState extends State<_NewGroupChatBody> {
                       user.displayName.isNotEmpty
                           ? user.displayName[0].toUpperCase()
                           : '?',
-                      style: TextStyle(
+                      style: textTheme.body2.copyWith(
                         color: AppColors.primary,
                         fontWeight: FontWeight.w600,
-                        fontSize: 16.sp,
                       ),
                     )
                   : null,
@@ -176,16 +229,10 @@ class _NewGroupChatBodyState extends State<_NewGroupChatBody> {
                 children: [
                   Text(
                     user.displayName,
-                    style: TextStyle(
-                      fontSize: 15.sp,
-                      fontWeight: FontWeight.w500,
-                    ),
+                    style: textTheme.body2.copyWith(color: AppColors.black),
                   ),
-                  SizedBox(height: 2.h),
-                  Text(
-                    user.email,
-                    style: TextStyle(fontSize: 12.sp, color: Colors.grey[500]),
-                  ),
+                  Gap(2.h),
+                  Text(user.email, style: textTheme.subDescription3),
                 ],
               ),
             ),
@@ -202,73 +249,39 @@ class _NewGroupChatBodyState extends State<_NewGroupChatBody> {
     );
   }
 
-  // ── Create Group Button ─────────────────────────────
+  // ── Create Group Button ───────────────────────────────
   Widget _buildCreateGroupButton() => Container(
     padding: EdgeInsets.only(
-      left: 16.w,
       right: 16.w,
+      left: 16.w,
       top: 12.h,
       bottom: MediaQuery.of(context).padding.bottom + 12.h,
     ),
     decoration: BoxDecoration(
-      color: Colors.white,
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withValues(alpha: 0.05),
-          offset: const Offset(0, -1),
-          blurRadius: 4,
+          color: AppColors.black.withValues(alpha: 0.05),
+          offset: Offset(0, -1),
+          blurRadius: 8,
         ),
       ],
     ),
     child: ElevatedButton(
-      onPressed: () => _showGroupNameDialog(),
       style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        padding: EdgeInsets.symmetric(vertical: 14.h),
+        backgroundColor: AppColors.primary2,
+        foregroundColor: AppColors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12.r),
         ),
       ),
-      child: Text(
-        'Create Group (${vm.selectedUsers.length} members)',
-        style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w600),
+      onPressed: () {
+        context.push(RouterRoutes.groupSetup.path, extra: vm.selectedUsers);
+      },
+      child: Icon(
+        Icons.navigate_next_rounded,
+        size: 24.sp,
+        color: AppColors.white,
       ),
     ),
   );
-
-  // ── Group Name Dialog ───────────────────────────────
-  void _showGroupNameDialog() {
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Group Name'),
-        content: TextField(
-          controller: _groupNameController,
-          autofocus: true,
-          decoration: const InputDecoration(hintText: 'Enter group name...'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              final name = _groupNameController.text.trim();
-              if (name.isEmpty) return;
-
-              Navigator.pop(dialogContext);
-              _groupNameController.clear();
-              final chatId = await vm.createGroupChat(name);
-              if (chatId != null && mounted) {
-                context.go('/chats/$chatId');
-              }
-            },
-            child: const Text('Create'),
-          ),
-        ],
-      ),
-    );
-  }
 }
