@@ -9,7 +9,7 @@ workflows:
       groups:
         - env_vars
       android_signing:
-        - keystore_reference 
+        - debug.keystore.android
 
     triggering:
       events:
