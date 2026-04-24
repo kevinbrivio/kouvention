@@ -6,6 +6,8 @@ import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/services/chat_service.dart';
 
+enum ChatFilter { all, direct, group }
+
 class ChatListVM extends BaseNotifier {
   final ChatService _chatService;
   final String? _currentUid;
@@ -13,6 +15,9 @@ class ChatListVM extends BaseNotifier {
   // Live chat list - updated everytime Firestore emits
   List<ChatModel> _chats = [];
   StreamSubscription? _chatSubscription;
+
+  // Filter chats
+  ChatFilter _filter = ChatFilter.all;
 
   String? _error;
 
@@ -25,9 +30,10 @@ class ChatListVM extends BaseNotifier {
   String? get error => _error;
   String? get currentId => _currentUid;
   bool get hasChats => _chats.isNotEmpty;
+  ChatFilter get filter => _filter;
 
   bool isGroupType(ChatModel chat) => !chat.isDirect;
-  
+
   @override
   FutureOr<void> init() {
     if (_currentUid == null) {
@@ -51,6 +57,22 @@ class ChatListVM extends BaseNotifier {
             notifyListeners();
           },
         );
+  }
+
+  void setFilter(ChatFilter value) {
+    _filter = value;
+    notifyListeners();
+  }
+
+  List<ChatModel> get filteredChats {
+    switch (_filter) {
+      case ChatFilter.all:
+        return chats;
+      case ChatFilter.direct:
+        return chats.where((chat) => chat.type == 'direct').toList();
+      case ChatFilter.group:
+        return chats.where((chat) => chat.type == 'group').toList();
+    }
   }
 
   String chatDisplayName(ChatModel chat) => chat.displayName(_currentUid!);
