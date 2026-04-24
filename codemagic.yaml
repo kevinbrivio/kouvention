@@ -8,6 +8,8 @@ workflows:
       flutter: stable
       groups:
         - env_vars
+      android_signing:
+        - keystore_reference 
 
     triggering:
       events:
