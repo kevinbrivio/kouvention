@@ -1,0 +1,50 @@
+workflows:
+  android-staging:
+    name: Android Staging APK
+    instance_type: linux_x2
+    max_build_duration: 30
+
+    environment:
+      flutter: stable
+      groups:
+        - env_vars
+
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: 'main'
+          include: true
+
+    cache:
+      cache_paths:
+        - $HOME/.pub-cache
+
+    scripts:
+      - name: Decode google-services.json
+        script: |
+          echo $GOOGLE_SERVICES_JSON | base64 --decode > $CM_BUILD_DIR/android/app/google-services.json
+
+      - name: Create .env.staging
+        script: |
+          echo $ENV_STAGING | base64 --decode > $CM_BUILD_DIR/.env.staging
+
+      - name: Get packages
+        script: flutter pub get
+
+      - name: Generate envied files
+        script: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Build staging APK
+        script: flutter build apk --debug
+
+    artifacts:
+      - build/**/outputs/apk/**/*.apk
+
+    publishing:
+      email:
+        recipients:
+          - your-email@example.com
+        notify:
+          success: true
+          failure: true
