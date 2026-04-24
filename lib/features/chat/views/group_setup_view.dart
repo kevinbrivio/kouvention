@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/bases/base_view.dart';
 import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
+import 'package:kouvention/cores/models/text_input_model.dart';
+import 'package:kouvention/cores/widgets/custom_text_field.dart';
 import 'package:kouvention/cores/widgets/loading_indicator.dart';
 import 'package:kouvention/features/chat/viewmodel/new_group_chat_viewmodel.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
@@ -20,20 +22,22 @@ class GroupSetupView extends ConsumerStatefulWidget {
 }
 
 class _GroupSetupViewState extends ConsumerState<GroupSetupView> {
-  final _groupNameController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  late final TextInputModel _groupNameInput = TextInputModel(
+    validator: (value) {
+      if (value.trim().isEmpty) return 'Group name is required';
+
+      return null;
+    },
+  );
   bool _isCreating = false;
 
   List<UserModel> get members => widget.selectedUsers;
 
   @override
   void dispose() {
-    _groupNameController?.dispose();
+    _groupNameInput.controller.dispose();
     super.dispose();
-  }
-
-  @override
-  void initState() {
-    super.initState();
   }
 
   @override
@@ -56,30 +60,45 @@ class _GroupSetupViewState extends ConsumerState<GroupSetupView> {
         ),
       ),
     ),
-    builder: (context, vm) =>
-        SafeArea(child: Stack(children: [_buildScreen(context, vm),
-          Positioned(bottom: 12.h, right: 16.w, child: FloatingActionButton(
-            backgroundColor: AppColors.primary2,
-            onPressed: () async {
-              final name = _groupNameController.text.trim();
-              if (name.isEmpty) return;
-              
-              setState(() => _isCreating = true);
-              final chatId = await vm.createGroupChat(name);
-              if (chatId != null && mounted) {
-                context.go('/chats/$chatId');
-              } else {
-                setState(() => _isCreating = false);
-              }
-            },
-            child: _isCreating
-              ? SizedBox(
-                  width: 20.w,
-                  height: 20.w,
-                  child: LoadingIndicator(strokeWidth: 2,)
-                )
-              : Icon(Icons.check_rounded, color: AppColors.white, size: 24.sp,)
-          )),])),
+    builder: (context, vm) => SafeArea(
+      child: Stack(
+        children: [
+          _buildScreen(context, vm),
+          Positioned(
+            bottom: 12.h,
+            right: 16.w,
+            child: FloatingActionButton(
+              backgroundColor: AppColors.primary2,
+              onPressed: () async {
+                if (!_formKey.currentState!.validate()) return;
+
+                final name = _groupNameInput.text;
+                if (name.isEmpty) return;
+
+                setState(() => _isCreating = true);
+                final chatId = await vm.createGroupChat(name);
+                if (chatId != null && mounted) {
+                  context.go('/chats/$chatId');
+                } else {
+                  setState(() => _isCreating = false);
+                }
+              },
+              child: _isCreating
+                  ? SizedBox(
+                      width: 20.w,
+                      height: 20.w,
+                      child: LoadingIndicator(strokeWidth: 2),
+                    )
+                  : Icon(
+                      Icons.check_rounded,
+                      color: AppColors.white,
+                      size: 24.sp,
+                    ),
+            ),
+          ),
+        ],
+      ),
+    ),
   );
 
   Widget _buildScreen(BuildContext context, NewGroupChatVM vm) => Padding(
@@ -87,6 +106,7 @@ class _GroupSetupViewState extends ConsumerState<GroupSetupView> {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Gap(8.h),
         // Group Name Textfield
         _buildGroupNameTextField(),
 
@@ -100,21 +120,19 @@ class _GroupSetupViewState extends ConsumerState<GroupSetupView> {
 
   Widget _buildGroupNameTextField() => Container(
     width: double.infinity,
-    padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+    padding: EdgeInsets.symmetric(vertical: 12.h),
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(12.r),
       color: AppColors.formField,
     ),
-    child: TextField(
-      controller: _groupNameController,
-      decoration: InputDecoration(
-        hintText: 'Group name',
-        hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14.sp),
-        border: InputBorder.none,
-        contentPadding: EdgeInsets.symmetric(vertical: 10.h),
+    child: Form(
+      key: _formKey,
+      child: CustomTextField(
+        inputModel: _groupNameInput,
+        hint: 'Group name',
+        shakeOnError: true,
+        onSubmit: (val) {},
       ),
-      style: TextStyle(fontSize: 14.sp),
-      textCapitalization: TextCapitalization.sentences,
     ),
   );
 

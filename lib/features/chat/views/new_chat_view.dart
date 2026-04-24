@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
@@ -7,7 +8,6 @@ import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/cores/widgets/loading_indicator.dart';
-import 'package:kouvention/cores/widgets/transparent_box.dart';
 import 'package:kouvention/features/chat/viewmodel/new_chat_viewmodel.dart';
 import 'package:kouvention/features/chat/widgets/recent_users_list.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
@@ -125,6 +125,7 @@ class _NewChatBodyState extends State<_NewChatBody> {
   // ── Group Toggle ──────────────────────────────────────
   Widget _buildGroupButton() => InkWell(
     onTap: () {
+      HapticFeedback.lightImpact();
       if (context.mounted) context.push(RouterRoutes.newGroupChat.path);
     },
     child: Padding(
@@ -138,7 +139,7 @@ class _NewChatBodyState extends State<_NewChatBody> {
         child: Row(
           children: [
             CircleAvatar(
-              backgroundColor: AppColors.primary2,
+              backgroundColor: AppColors.primary,
               child: Icon(Icons.group_add_rounded, color: AppColors.white),
             ),
             Gap(12.w),

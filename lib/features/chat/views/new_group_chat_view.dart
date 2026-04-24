@@ -111,7 +111,9 @@ class _NewGroupChatBodyState extends State<_NewGroupChatBody> {
                   children: [
                     CircleAvatar(
                       radius: 22.r,
-                      backgroundColor: AppColors.primary.withValues(alpha: 0.2),
+                      backgroundColor: AppColors.primary2.withValues(
+                        alpha: 0.7,
+                      ),
                       backgroundImage: user.photoUrl != null
                           ? NetworkImage(user.photoUrl!)
                           : null,
@@ -120,11 +122,7 @@ class _NewGroupChatBodyState extends State<_NewGroupChatBody> {
                               user.displayName.isNotEmpty
                                   ? user.displayName[0].toUpperCase()
                                   : '?',
-                              style: TextStyle(
-                                color: AppColors.primary,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 16.sp,
-                              ),
+                              style: textTheme.subDescription2,
                             )
                           : null,
                     ),
@@ -133,7 +131,7 @@ class _NewGroupChatBodyState extends State<_NewGroupChatBody> {
                       bottom: 0,
                       child: CircleAvatar(
                         radius: 8.r,
-                        backgroundColor: Colors.grey[400],
+                        backgroundColor: AppColors.grey,
                         child: Icon(
                           Icons.close,
                           size: 10.sp,
@@ -148,7 +146,9 @@ class _NewGroupChatBodyState extends State<_NewGroupChatBody> {
                   width: 50.w,
                   child: Text(
                     user.displayName,
-                    style: TextStyle(fontSize: 11.sp),
+                    style: textTheme.subDescription3.copyWith(
+                      color: AppColors.black,
+                    ),
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.center,
                   ),
@@ -164,7 +164,7 @@ class _NewGroupChatBodyState extends State<_NewGroupChatBody> {
   Widget _buildSearchBar() => Padding(
     padding: EdgeInsets.all(16.w),
     child: Container(
-      padding: EdgeInsets.symmetric(horizontal: 14.w),
+      padding: EdgeInsets.symmetric(horizontal: 16.w),
       decoration: BoxDecoration(
         color: AppColors.searchBar,
         borderRadius: BorderRadius.circular(24.r),
@@ -176,10 +176,10 @@ class _NewGroupChatBodyState extends State<_NewGroupChatBody> {
           hintText: 'Search people by name',
           hintStyle: textTheme.subDescription3,
           border: InputBorder.none,
-          icon: Icon(Icons.search, color: Colors.grey[400], size: 20.sp),
+          icon: Icon(Icons.search, color: AppColors.primary, size: 22.sp),
           contentPadding: EdgeInsets.symmetric(vertical: 12.h),
         ),
-        style: textTheme.subDescription3,
+        style: textTheme.subDescription3.copyWith(color: AppColors.black),
       ),
     ),
   );
@@ -259,9 +259,10 @@ class _NewGroupChatBodyState extends State<_NewGroupChatBody> {
       bottom: MediaQuery.of(context).padding.bottom + 12.h,
     ),
     decoration: BoxDecoration(
+      color: Colors.transparent,
       boxShadow: [
         BoxShadow(
-          color: AppColors.black.withValues(alpha: 0.05),
+          color: AppColors.black.withValues(alpha: 0.02),
           offset: Offset(0, -1),
           blurRadius: 8,
         ),
@@ -269,7 +270,7 @@ class _NewGroupChatBodyState extends State<_NewGroupChatBody> {
     ),
     child: ElevatedButton(
       style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.primary2,
+        backgroundColor: AppColors.primary,
         foregroundColor: AppColors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12.r),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
@@ -87,7 +88,10 @@ class RecentUsersList extends ConsumerWidget {
     final selected = isSelected?.call(user) ?? false;
 
     return InkWell(
-      onTap: () => onUserTap(user),
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onUserTap(user);
+      },
       child: Padding(
         padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
         child: Row(
