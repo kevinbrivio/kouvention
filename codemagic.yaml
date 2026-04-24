@@ -13,7 +13,7 @@ workflows:
       events:
         - push
       branch_patterns:
-        - pattern: 'main'
+        - pattern: 'staging'
           include: true
 
     cache:
@@ -44,7 +44,7 @@ workflows:
     publishing:
       email:
         recipients:
-          - your-email@example.com
+          - kenkenku6@gmail.com
         notify:
           success: true
           failure: true
