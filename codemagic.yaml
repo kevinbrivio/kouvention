@@ -29,6 +29,10 @@ workflows:
         script: |
           echo $ENV_STAGING | base64 --decode > $CM_BUILD_DIR/.env.staging
 
+      - name: Create dummy .env.production
+        script: |
+          cp $CM_BUILD_DIR/.env.staging $CM_BUILD_DIR/.env.production
+
       - name: Get packages
         script: flutter pub get
 
