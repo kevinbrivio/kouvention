@@ -20,7 +20,14 @@ class ChatRoomView extends StatelessWidget {
   const ChatRoomView({super.key, required this.chatId});
 
   @override
-  Widget build(BuildContext context) => BaseView<ChatRoomVM>(
+  Widget build(BuildContext context) => PopScope(
+    canPop: false,
+    onPopInvokedWithResult: (didPop, _) {
+      if (!didPop) { // Navigate to chat list
+        context.go(RouterRoutes.chatList.path);
+      }
+    },
+    child: BaseView<ChatRoomVM>(
     provider: chatRoomVM(chatId),
     useGradient: false,
     backgroundColor: Colors.white,
@@ -32,6 +39,7 @@ class ChatRoomView extends StatelessWidget {
       onError: (error, stackTrace) {
         debugPrint('Background image error: $error');
       },
+    ),
     ),
   );
 }
