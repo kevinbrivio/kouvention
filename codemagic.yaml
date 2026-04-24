@@ -42,7 +42,7 @@ workflows:
         script: dart run build_runner build --delete-conflicting-outputs
 
       - name: Build staging APK
-        script: flutter build apk --debug --flavor staging
+        script: flutter build apk --release --flavor staging
 
     artifacts:
       - build/**/outputs/apk/**/*.apk
