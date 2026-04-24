@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
+import 'package:kouvention/cores/widgets/main_shell.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/auth/views/add_name_view.dart';
 import 'package:kouvention/features/auth/views/email_sign_in_view.dart';
@@ -8,9 +9,14 @@ import 'package:kouvention/features/auth/views/login_view.dart';
 import 'package:kouvention/features/auth/views/sign_up_view.dart';
 import 'package:kouvention/features/chat/views/chat_list_view.dart';
 import 'package:kouvention/features/chat/views/chat_room_view.dart';
+import 'package:kouvention/features/chat/views/group_setup_view.dart';
+import 'package:kouvention/features/chat/views/new_chat_view.dart';
+import 'package:kouvention/features/chat/views/new_group_chat_view.dart';
 import 'package:kouvention/features/onboarding/views/onboarding_view.dart';
 import 'package:kouvention/features/privacy_policy/views/privacy_policy_view.dart';
+import 'package:kouvention/features/profile/views/profile_view.dart';
 import 'package:kouvention/features/splash/views/splash_view.dart';
+import 'package:kouvention/features/user/models/user_model.dart';
 
 late GoRouter _router;
 GoRouter get router => _router;
@@ -18,7 +24,6 @@ GoRouter get router => _router;
 final RouteObserver<ModalRoute<void>> routeObserver =
     RouteObserver<ModalRoute<void>>();
 
-// ignore: inference_failure_on_function_return_type
 setupRouter({required String initialRouter, required AuthService authService}) {
   _router = GoRouter(
     initialLocation: initialRouter,
@@ -40,7 +45,6 @@ setupRouter({required String initialRouter, required AuthService authService}) {
 
       final isOnPublicRoute = publicRoutes.contains(currentPath);
 
-      // Just signed in while on login/signup → go chat list
       if (isLoggedIn &&
           (currentPath == RouterRoutes.login.path ||
               currentPath == RouterRoutes.signUp.path ||
@@ -48,7 +52,6 @@ setupRouter({required String initialRouter, required AuthService authService}) {
         return null;
       }
 
-      // Not logged in and trying to access a protected route → login
       if (!isLoggedIn && !isOnPublicRoute) {
         return RouterRoutes.login.path;
       }
@@ -56,6 +59,7 @@ setupRouter({required String initialRouter, required AuthService authService}) {
       return null;
     },
     routes: [
+      // ── Public routes (no navbar) ─────────────────
       GoRoute(
         path: RouterRoutes.splash.path,
         name: RouterRoutes.splash.name,
@@ -91,11 +95,36 @@ setupRouter({required String initialRouter, required AuthService authService}) {
         name: RouterRoutes.privacyPolicy.name,
         builder: (_, _) => PrivacyPolicyView(),
       ),
-      GoRoute(
-        path: RouterRoutes.chatList.path,
-        name: RouterRoutes.chatList.name,
-        builder: (_, _) => ChatListView(),
+
+      // ── Shell (navbar visible) ────────────────────
+      StatefulShellRoute.indexedStack(
+        builder: (_, __, navigationShell) =>
+            MainShell(navigationShell: navigationShell),
+        branches: [
+          // Tab 0: Chats
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: RouterRoutes.chatList.path,
+                name: RouterRoutes.chatList.name,
+                builder: (_, _) => ChatListView(),
+              ),
+            ],
+          ),
+          // Tab 1: Profile
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: RouterRoutes.profile.path,
+                name: RouterRoutes.profile.name,
+                builder: (_, _) => ProfileView(),
+              ),
+            ],
+          ),
+        ],
       ),
+
+      // ── Protected routes (no navbar) ──────────────
       GoRoute(
         path: RouterRoutes.chatRoom.path,
         name: RouterRoutes.chatRoom.name,
@@ -103,6 +132,23 @@ setupRouter({required String initialRouter, required AuthService authService}) {
           final chatId = state.pathParameters['chatId']!;
           return ChatRoomView(chatId: chatId);
         },
+      ),
+      GoRoute(
+        path: RouterRoutes.newChat.path,
+        name: RouterRoutes.newChat.name,
+        builder: (_, _) => NewChatView(),
+      ),
+      GoRoute(
+        path: RouterRoutes.newGroupChat.path,
+        name: RouterRoutes.newGroupChat.name,
+        builder: (_, _) => NewGroupChatView(),
+      ),
+      GoRoute(
+        path: RouterRoutes.groupSetup.path,
+        name: RouterRoutes.groupSetup.name,
+        builder: (_, state) => GroupSetupView(
+          selectedUsers: state.extra as List<UserModel>,
+        ),
       ),
     ],
   );

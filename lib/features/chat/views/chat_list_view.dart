@@ -1,16 +1,37 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/bases/base_view.dart';
 import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
+import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_list_viewmodel.dart';
 
 class ChatListView extends StatelessWidget {
   @override
-  Widget build(BuildContext context) =>
-      BaseView(provider: chatListVM, builder: _buildScreen, useGradient: false);
+  Widget build(BuildContext context) => BaseView(
+    provider: chatListVM,
+    useGradient: false,
+    builder: (context, vm) => Stack(
+      children: [
+        _buildScreen(context, vm),
+
+        Positioned(
+          right: 16.w,
+          bottom: MediaQuery.of(context).padding.bottom + 12.h,
+          child: FloatingActionButton(
+            backgroundColor: AppColors.primary,
+            onPressed: () {
+              context.push(RouterRoutes.newChat.path);
+            },
+            child: Icon(Icons.edit, color: Colors.white, size: 20.sp,),
+          ),
+        ),
+      ],
+    ),
+  );
 
   Widget _buildScreen(BuildContext context, ChatListVM vm) {
     if (!vm.hasChats) return Center(child: Text('No conversations yet.'));
@@ -23,7 +44,10 @@ class ChatListView extends StatelessWidget {
         final lastMessage = chat.lastMessage;
 
         return InkWell(
-          onTap: () => context.push('/chats/${chat.id}'),
+          onTap: () {
+            HapticFeedback.selectionClick();
+            context.push('/chats/${chat.id}');
+          },
           splashColor: AppColors.grey.withValues(alpha: 0.1),
           highlightColor: AppColors.grey.withValues(alpha: 0.05),
           child: Padding(
@@ -41,16 +65,21 @@ class ChatListView extends StatelessWidget {
                       ? NetworkImage(vm.chatPhotoURL(chat)!)
                       : null,
                   child: vm.chatPhotoURL(chat) == null
-                      ? Text(
-                          vm.chatDisplayName(chat).isNotEmpty
-                              ? vm.chatDisplayName(chat)[0].toUpperCase()
-                              : '?',
-                          style: TextStyle(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16.sp,
-                          ),
-                        )
+                      ? vm.isGroupType(chat)
+                            ? Icon(
+                                Icons.people_alt_rounded,
+                                color: AppColors.primary,
+                              )
+                            : Text(
+                                vm.chatDisplayName(chat).isNotEmpty
+                                    ? vm.chatDisplayName(chat)[0].toUpperCase()
+                                    : '?',
+                                style: TextStyle(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 16.sp,
+                                ),
+                              )
                       : null,
                 ),
                 Gap(12.w),

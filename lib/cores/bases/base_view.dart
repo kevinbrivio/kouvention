@@ -11,6 +11,7 @@ class BaseView<T extends BaseNotifier> extends ConsumerWidget {
   final PreferredSizeWidget Function(T)? appBar;
   final Color? backgroundColor;
   final bool useGradient;
+  final DecorationImage? backgroundImage;
 
   BaseView({
     super.key,
@@ -20,6 +21,7 @@ class BaseView<T extends BaseNotifier> extends ConsumerWidget {
     this.appBar,
     this.backgroundColor,
     this.useGradient = true,
+    this.backgroundImage,
   });
 
   @override
@@ -50,10 +52,7 @@ class BaseView<T extends BaseNotifier> extends ConsumerWidget {
                             end: Alignment.bottomRight,
                           ),
                         )
-                      : null,
-                  color: !useGradient
-                      ? (backgroundColor ?? Colors.white)
-                      : null,
+                      : BoxDecoration(image: backgroundImage, color: backgroundColor ?? AppColors.white),
                   child: Stack(
                     children: [
                       builder(context, viewmodel),

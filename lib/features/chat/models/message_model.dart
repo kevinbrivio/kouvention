@@ -31,7 +31,7 @@ class MessageModel {
         senderId: data['senderId'] as String,
         text: data['text'] as String? ?? '',
         type: data['type'] as String? ?? 'text',
-        sentAt: (data['sentAt'] as Timestamp).toDate(),
+        sentAt: (data['sentAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
         mediaUrl: data['mediaUrl'] as String?,
         fileName: data['fileName'] as String?,
         fileSizeBytes: (data['fileSizeBytes'] as num?)?.toInt(),

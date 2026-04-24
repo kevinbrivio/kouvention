@@ -17,6 +17,7 @@ class RouterRoutes {
     path: '/privacy-policy',
     name: 'privacy-policy',
   );
+  static const profile = RouterRoute(path: '/profile', name: 'profile');
   static const login = RouterRoute(path: '/login', name: 'login');
   static const signUp = RouterRoute(path: '/sign-up', name: 'signup');
   static const emailSignIn = RouterRoute(path: '/email', name: 'emailSignIn');
@@ -24,6 +25,15 @@ class RouterRoutes {
 
   static const chatList = RouterRoute(path: '/chats', name: 'chatList');
   static const chatRoom = RouterRoute(path: '/chats/:chatId', name: 'chatRoom');
+  static const newChat = RouterRoute(path: '/new-chat', name: 'newChat');
+  static const newGroupChat = RouterRoute(
+    path: '/new-chat/group',
+    name: 'newGroupChat',
+  );
+  static const groupSetup = RouterRoute(
+    path: '/new-chat/group/setup',
+    name: 'groupSetup',
+  );
 }
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
