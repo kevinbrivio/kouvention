@@ -52,7 +52,7 @@ class FcmService {
       defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android';
 
   void listenToTokenRefresh() {
-    // FCM aren't permanent, user could clear app data or reinstall app. 
+    // FCM aren't permanent, user could clear app data or reinstall app.
     // Hence we listen to new token from Firebase instead of using stale token.
     _tokenRefreshSub = _messaging.onTokenRefresh.listen((newToken) async {
       final uid = FirebaseAuth.instance.currentUser?.uid;
@@ -60,5 +60,22 @@ class FcmService {
 
       return _saveTokenToFirestore(uid, newToken);
     });
+  }
+
+  Future<void> removeToken() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    final token = await _messaging.getToken();
+    if (token == null) return;
+
+    await _firestore.doc('users/$uid').update({
+      'fcmTokens.$token':
+          FieldValue.delete(), // Remove device-uid only token. 
+          // Since fcmTokens are map, we delete specific token.
+    });
+
+    _tokenRefreshSub?.cancel();
+    _tokenRefreshSub = null;
   }
 }
