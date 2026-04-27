@@ -73,6 +73,7 @@ class _ProfileBody extends StatelessWidget {
                 photoUrl: user.photoUrl,
                 authProviderLabel: viewmodel.authProviderLabel,
                 isGoogleLinked: viewmodel.isGoogleLinked,
+                onChangePhoto: () => viewmodel.changeProfilePhoto(context),
               ),
 
               Gap(32.h),

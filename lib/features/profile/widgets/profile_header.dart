@@ -12,6 +12,7 @@ class ProfileHeader extends StatelessWidget {
   final String? photoUrl;
   final String authProviderLabel;
   final bool isGoogleLinked;
+  final Function() onChangePhoto;
 
   const ProfileHeader({
     super.key,
@@ -20,6 +21,7 @@ class ProfileHeader extends StatelessWidget {
     this.photoUrl,
     required this.authProviderLabel,
     required this.isGoogleLinked,
+    required this.onChangePhoto,
   });
 
   @override
@@ -42,14 +44,17 @@ class ProfileHeader extends StatelessWidget {
             Positioned(
               bottom: 0,
               right: 0,
-              child: Container(
-                padding: EdgeInsets.all(6.r),
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 2),
+              child: GestureDetector(
+                onTap: onChangePhoto,
+                child: Container(
+                  padding: EdgeInsets.all(6.r),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                  ),
+                  child: Icon(Icons.camera_alt, size: 16.r, color: Colors.white),
                 ),
-                child: Icon(Icons.camera_alt, size: 16.r, color: Colors.white),
               ),
             ),
           ],
