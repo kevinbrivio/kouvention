@@ -4,6 +4,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+final fcmServiceProvider = Provider<FcmService>((ref) {
+  final service = FcmService();
+  ref.onDispose(service.dispose);
+  return service;
+});
 
 class FcmService {
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
