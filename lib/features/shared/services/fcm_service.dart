@@ -35,16 +35,30 @@ class FcmService {
   }
 
   Future<void> _saveTokenToFirestore(String uid, token) async {
-    await _firestore.doc('users/$uid').set({
-      'fcmTokens': {
-        'token': {
-          'device': _getDevicePlatform(),
-          'updatedAt': FieldValue.serverTimestamp(),
+    await _firestore.doc('users/$uid').set(
+      {
+        'fcmTokens': {
+          'token': {
+            'device': _getDevicePlatform(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          },
         },
       },
-    }, SetOptions(merge: true)); // => Create if doc is missing, replace if exist
+      SetOptions(merge: true),
+    ); // => Create if doc is missing, replace if exist
   }
 
   String _getDevicePlatform() =>
       defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android';
+
+  void listenToTokenRefresh() {
+    // FCM aren't permanent, user could clear app data or reinstall app. 
+    // Hence we listen to new token from Firebase instead of using stale token.
+    _tokenRefreshSub = _messaging.onTokenRefresh.listen((newToken) async {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) return;
+
+      return _saveTokenToFirestore(uid, newToken);
+    });
+  }
 }
