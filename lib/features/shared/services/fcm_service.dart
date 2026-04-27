@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 
 class FcmService {
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
@@ -12,6 +11,19 @@ class FcmService {
 
   // Listen to token (device)every time notification came
   StreamSubscription<String>? _tokenRefreshSub;
+
+  Future<void> initialize() async {
+    final granted = await requestPermission();
+    if (!granted) return;
+
+    await saveToken();
+    listenToTokenRefresh();
+  }
+
+  void dispose() {
+    _tokenRefreshSub?.cancel();
+    _tokenRefreshSub = null;
+  }
 
   Future<bool> requestPermission() async {
     final settings = await _messaging.requestPermission(
@@ -70,9 +82,8 @@ class FcmService {
     if (token == null) return;
 
     await _firestore.doc('users/$uid').update({
-      'fcmTokens.$token':
-          FieldValue.delete(), // Remove device-uid only token. 
-          // Since fcmTokens are map, we delete specific token.
+      'fcmTokens.$token': FieldValue.delete(), // Remove device-uid only token.
+      // Since fcmTokens are map, we delete specific token.
     });
 
     _tokenRefreshSub?.cancel();
