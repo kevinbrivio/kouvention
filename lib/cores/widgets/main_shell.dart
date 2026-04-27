@@ -18,19 +18,7 @@ class _MainShellState extends State<MainShell> {
   @override
   Widget build(BuildContext context) => Scaffold(
     extendBody: true,
-    body: AnimatedSwitcher(
-      duration: const Duration(milliseconds: 300),
-      switchInCurve: Curves.easeOut,
-      switchOutCurve: Curves.easeIn,
-      transitionBuilder: (child, animation) => FadeTransition(
-        opacity: animation,
-        child: child,
-      ),
-      child: SizedBox(
-        key: ValueKey(widget.navigationShell.currentIndex),
-        child: widget.navigationShell,
-      ),
-    ),
+    body:  widget.navigationShell,
     bottomNavigationBar: _buildFloatingNav(context),
   );
 

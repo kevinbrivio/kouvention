@@ -43,6 +43,10 @@
 					<string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
 					<key>UISceneStoryboardFile</key>
 					<string>Main</string>
+					<key>NSCameraUsageDescription</key>
+                    <string>To take a profile photo</string>
+                    <key>NSPhotoLibraryUsageDescription</key>
+                    <string>To choose a profile photo</string>
 				</dict>
 			</array>
 		</dict>
