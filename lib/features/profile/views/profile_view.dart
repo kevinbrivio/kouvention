@@ -53,7 +53,7 @@ class _ProfileBody extends StatelessWidget {
 
     // While user data hasn't arrived from the stream yet
     if (user == null) {
-      return const Center(child: LoadingIndicator());
+      return Container(color: AppColors.backdrop, child: const Center(child: LoadingIndicator()));
     }
 
     return Container(

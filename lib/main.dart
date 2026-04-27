@@ -68,10 +68,9 @@ void main() async {
             : EnvProd.googleServerClientId,
       );
 
-      final container = ProviderContainer();
       await setupRouter(
         initialRouter: '/',
-        authService: container.read(authServiceProvider),
+        authService: authService,
       );
 
       runApp(
