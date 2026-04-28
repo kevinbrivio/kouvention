@@ -39,7 +39,6 @@ class FcmService {
       sound: true,
       provisional: false, // Show the original dialog
     );
-
     return settings.authorizationStatus == AuthorizationStatus.authorized;
   }
 
@@ -47,17 +46,20 @@ class FcmService {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
 
-    final token = await _messaging.getToken();
-    if (token == null) return;
-
-    return _saveTokenToFirestore(uid, token);
+    try {
+      final token = await _messaging.getToken();
+      if (token == null) return;
+      await _saveTokenToFirestore(uid, token);
+    } catch (e) {
+      debugPrint('FCM getToken failed: $e'); 
+    }
   }
 
   Future<void> _saveTokenToFirestore(String uid, token) async {
     await _firestore.doc('users/$uid').set(
       {
         'fcmTokens': {
-          'token': {
+          token: {
             'device': _getDevicePlatform(),
             'updatedAt': FieldValue.serverTimestamp(),
           },
