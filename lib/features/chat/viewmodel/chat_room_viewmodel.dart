@@ -8,6 +8,7 @@ import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
 import 'package:kouvention/features/chat/services/chat_service.dart';
+import 'package:kouvention/features/shared/services/notification_service.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
 import 'package:kouvention/features/user/services/user_service.dart';
 
@@ -33,7 +34,7 @@ class ChatRoomVM extends BaseNotifier {
   bool _isLoadingMore = false;
 
   // Typing indicator debounce
-  Timer? _typingTImer;
+  Timer? _typingTimer;
   bool _isTyping = false;
 
   String? _error;
@@ -214,9 +215,29 @@ class ChatRoomVM extends BaseNotifier {
         text: trimmed,
         memberUids: _chat!.members,
       );
+
+      _sendNotification(trimmed);
     } catch (e) {
       _error = e.toString();
       notifyListeners();
+    }
+  }
+
+  void _sendNotification(String messageText) {
+    if (_chat?.type != 'direct') return;
+
+    final fcmTokens = _otherUser?.fcmTokens;
+    if (fcmTokens == null) return;
+
+    final notificationService = ref.read(notificationServiceProvider);
+    for (final tokenString in fcmTokens.keys) {
+      
+      notificationService.sendChatNotification(
+        targetToken: tokenString,
+        senderName: senderDisplayName(_currentUid!),
+        messageText: messageText,
+        chatId: chatId,
+      );
     }
   }
 
@@ -262,8 +283,8 @@ class ChatRoomVM extends BaseNotifier {
     }
 
     // Reset debounce timer
-    _typingTImer?.cancel();
-    _typingTImer = Timer(const Duration(seconds: 2), () {
+    _typingTimer?.cancel();
+    _typingTimer = Timer(const Duration(seconds: 2), () {
       clearTyping();
     });
 
@@ -273,7 +294,7 @@ class ChatRoomVM extends BaseNotifier {
   Future<void> clearTyping() async {
     if (_currentUid != null && _isTyping) {
       _isTyping = false;
-      _typingTImer?.cancel();
+      _typingTimer?.cancel();
       await _chatService.clearTyping(chatId, _currentUid);
     }
   }
@@ -292,7 +313,7 @@ class ChatRoomVM extends BaseNotifier {
     _chatSubscription?.cancel();
     _otherUserSubscription?.cancel();
     clearTyping();
-    _typingTImer?.cancel();
+    _typingTimer?.cancel();
     super.dispose();
   }
 }
