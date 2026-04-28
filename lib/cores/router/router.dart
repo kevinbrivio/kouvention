@@ -18,13 +18,23 @@ import 'package:kouvention/features/profile/views/profile_view.dart';
 import 'package:kouvention/features/splash/views/splash_view.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
 
-late GoRouter _router;
-GoRouter get router => _router;
+GoRouter? _router;
+GoRouter get router => _router!;
 
 final RouteObserver<ModalRoute<void>> routeObserver =
     RouteObserver<ModalRoute<void>>();
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+final GlobalKey<NavigatorState> _chatBranchKey = GlobalKey<NavigatorState>(
+  debugLabel: 'chatBranch',
+);
+final GlobalKey<NavigatorState> _profileBranchKey = GlobalKey<NavigatorState>(
+  debugLabel: 'profileBranch',
+);
+
 setupRouter({required String initialRouter, required AuthService authService}) {
+  if (_router != null) return;
+  
   _router = GoRouter(
     initialLocation: initialRouter,
     navigatorKey: navigatorKey,
@@ -103,6 +113,7 @@ setupRouter({required String initialRouter, required AuthService authService}) {
         branches: [
           // Tab 0: Chats
           StatefulShellBranch(
+            navigatorKey: _chatBranchKey,
             routes: [
               GoRoute(
                 path: RouterRoutes.chatList.path,
@@ -113,6 +124,7 @@ setupRouter({required String initialRouter, required AuthService authService}) {
           ),
           // Tab 1: Profile
           StatefulShellBranch(
+            navigatorKey: _profileBranchKey,
             routes: [
               GoRoute(
                 path: RouterRoutes.profile.path,
@@ -146,9 +158,8 @@ setupRouter({required String initialRouter, required AuthService authService}) {
       GoRoute(
         path: RouterRoutes.groupSetup.path,
         name: RouterRoutes.groupSetup.name,
-        builder: (_, state) => GroupSetupView(
-          selectedUsers: state.extra as List<UserModel>,
-        ),
+        builder: (_, state) =>
+            GroupSetupView(selectedUsers: state.extra as List<UserModel>),
       ),
     ],
   );
