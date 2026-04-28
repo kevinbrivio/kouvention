@@ -13,7 +13,7 @@ class UserModel {
   final DateTime? lastSeen;
 
   // Push notifications
-  final String? fcmToken;
+  final Map<String, dynamic>? fcmTokens;
   final bool notificationsEnabled;
 
   // Privacy
@@ -31,7 +31,7 @@ class UserModel {
     this.bio,
     this.isOnline = false,
     this.lastSeen,
-    this.fcmToken,
+    this.fcmTokens,
     this.notificationsEnabled = true,
     this.privacy = const PrivacySettings(),
     required this.createdAt,
@@ -55,7 +55,7 @@ class UserModel {
       bio: data['bio'] as String?,
       isOnline: data['isOnline'] as bool? ?? false,
       lastSeen: (data['lastSeen'] as Timestamp?)?.toDate(),
-      fcmToken: data['fcmToken'] as String?,
+      fcmTokens: data['fcmTokens'] as Map<String, dynamic>?,
       notificationsEnabled: data['notificationsEnabled'] as bool? ?? true,
       privacy: data['privacy'] != null
           ? PrivacySettings.fromMap(data['privacy'] as Map<String, dynamic>)
@@ -80,7 +80,7 @@ class UserModel {
       'bio': bio,
       'isOnline': isOnline,
       'lastSeen': lastSeen != null ? Timestamp.fromDate(lastSeen!) : null,
-      'fcmToken': fcmToken,
+      'fcmTokens': fcmTokens,
       'notificationsEnabled': notificationsEnabled,
       'privacy': privacy.toMap(),
       'createdAt': Timestamp.fromDate(createdAt),
@@ -98,13 +98,13 @@ class UserModel {
     return {
       'uid': uid,
       'displayName': displayName,
-      'displayNameLower': displayName?.toLowerCase(),
+      'displayNameLower': displayName.toLowerCase(),
       'email': email,
       'photoUrl': photoUrl,
       'bio': null,
       'isOnline': true,
       'lastSeen': null,
-      'fcmToken': null,
+      'fcmTokens': null,
       'notificationsEnabled': true,
       'privacy': const PrivacySettings().toMap(),
       'createdAt': FieldValue.serverTimestamp(),
@@ -118,7 +118,7 @@ class UserModel {
     String? bio,
     bool? isOnline,
     DateTime? lastSeen,
-    String? fcmToken,
+    Map<String, dynamic>? fcmTokens,
     bool? notificationsEnabled,
     PrivacySettings? privacy,
   }) {
@@ -131,7 +131,7 @@ class UserModel {
       bio: bio ?? this.bio,
       isOnline: isOnline ?? this.isOnline,
       lastSeen: lastSeen ?? this.lastSeen,
-      fcmToken: fcmToken ?? this.fcmToken,
+      fcmTokens: fcmTokens ?? this.fcmTokens,
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
       privacy: privacy ?? this.privacy,
       createdAt: createdAt, // immutable

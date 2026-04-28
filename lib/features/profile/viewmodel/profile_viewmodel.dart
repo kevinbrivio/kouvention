@@ -52,6 +52,10 @@ class ProfileVM extends BaseNotifier {
   }
 
   @override
+  // TODO: Logout -> Remove user token (delete in FCM)
+  // final fcmService = ref.read(fcmServiceProvider);
+  // await fcmService.removeToken();
+  // await FirebaseAuth.instance.signOut();
   FutureOr<void> init() async {
     final uid = _authService.currentUser?.uid;
     if (uid == null) return;

@@ -24,6 +24,7 @@ ios/Runner/GeneratedPluginRegistrant.*
 google-services.json
 GoogleService-Info.plist
 firebase_options.dart
+service-account.json
 
 # IDE
 .idea/
