@@ -156,7 +156,11 @@ class ChatModel {
       'groupName': groupName,
       'groupPhotoUrl': groupPhotoUrl,
       'createdBy': createdBy,
-      'lastMessage': null,
+      'lastMessage': {
+        'text': '',
+        'sentAt': FieldValue.serverTimestamp(),
+        'senderId': createdBy,
+      },
       'unreadCount': {for (final uid in members) uid: 0},
       'typingUsers': [],
       'createdAt': FieldValue.serverTimestamp(),
