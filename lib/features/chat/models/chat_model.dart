@@ -18,9 +18,11 @@ class ChatModel {
   final Map<String, int> unreadCount;
 
   final List<String> typingUsers;
+  final List<String> pinnedBy;
 
   final DateTime createdAt;
   final DateTime? updatedAt;
+  final Map<String, dynamic>? deletedBy;
 
   const ChatModel({
     required this.id,
@@ -36,9 +38,21 @@ class ChatModel {
     this.typingUsers = const [],
     required this.createdAt,
     this.updatedAt,
+    required this.pinnedBy,
+    this.deletedBy,
   });
 
   bool get isDirect => type == 'direct';
+  bool isPinnedBy(String uid) => pinnedBy.contains(uid);
+  
+  bool isDeletedBy(String uid) {
+    if (deletedBy== null || !deletedBy!.containsKey(uid)) return false;
+    final deletedAt = (deletedBy![uid] as Timestamp).toDate();
+    final lastSentAt = lastMessage?.sentAt;
+    if (lastSentAt != null && lastSentAt.isBefore(deletedAt)) return false;
+    
+    return true;
+  }
 
   /// Returns the other user's UID in a direct chat.
   String otherMemberUid(String currentUid) {
@@ -62,7 +76,7 @@ class ChatModel {
         .map((e) => e.value.displayName)
         .toList();
     if (others.isEmpty) return '';
-    
+
     return others.join(', ');
   }
 
@@ -112,8 +126,10 @@ class ChatModel {
           : null,
       unreadCount: parsedUnread,
       typingUsers: List<String>.from(data['typingUsers'] ?? []),
+      pinnedBy: List<String>.from(data['pinnedBy'] ?? []),
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
+      deletedBy: data['deletedBy'] as Map<String, dynamic>?,
     );
   }
 

@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
@@ -194,6 +195,27 @@ class ChatService {
     );
 
     return docRef.id;
+  }
+
+  // ------ PIN CHAT ----------
+  Future<void> pinChat(String uid, chatId) async {
+    debugPrint('Pinning chat: $chatId for user: $uid');
+     debugPrint('Path: ${_chatsRef.doc(chatId).path}');
+    await _chatsRef.doc(chatId).update({
+      'pinnedBy': FieldValue.arrayUnion([uid]),
+    });
+  }
+
+  Future<void> unpinChat(String uid, chatId) async {
+    await _chatsRef.doc(chatId).update({
+      'pinnedBy': FieldValue.arrayRemove([uid]),
+    });
+  }
+
+  Future<void> deleteChat(String uid, chatId) async {
+    await _chatsRef.doc('chats').update({
+      'deletedBy.$uid': FieldValue.serverTimestamp(),
+    });
   }
 }
 

@@ -15,7 +15,9 @@ class ChatListView extends StatelessWidget {
   Widget build(BuildContext context) => BaseView(
     provider: chatListVM,
     useGradient: false,
-    appBar: (_) => HiddenAppBar(),
+    appBar: (vm) => vm.isSelectionMode
+        ? _buildSelectionAppBar(context, vm)
+        : HiddenAppBar(),
     builder: (context, vm) => Stack(
       children: [
         _buildScreen(context, vm),
@@ -41,10 +43,21 @@ class ChatListView extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Gap(16.h),
-        _buildHeader(context),
+        if (!vm.isSelectionMode) ...[
+          Padding(
+            padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
+          ),
+          _buildHeader(context),
+        ] else ...[
+          Padding(
+            padding: EdgeInsets.only(
+              top: MediaQuery.of(context).padding.top + kToolbarHeight,
+            ),
+          ),
+        ],
 
         _buildFilterChips(vm),
+        Gap(4.h),
 
         Expanded(
           child: vm.filteredChats.isEmpty
@@ -55,132 +68,184 @@ class ChatListView extends StatelessWidget {
                   ),
                 )
               : ListView.builder(
+                  padding: EdgeInsets.zero,
                   itemCount: vm.filteredChats.length,
                   itemBuilder: (context, index) {
                     final chat = vm.filteredChats[index];
                     final unread = vm.chatUnreadCount(chat);
                     final lastMessage = chat.lastMessage;
+                    final isPinned = chat.isPinnedBy(vm.currentId!);
 
                     return Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         InkWell(
+                          onLongPress: () => vm.selectChat(chat.id),
                           onTap: () {
                             HapticFeedback.selectionClick();
-                            context.push('/chats/${chat.id}');
+                            if (vm.isSelectionMode) {
+                              vm.selectChat(chat.id);
+                            } else {
+                              context.push('/chats/${chat.id}');
+                            }
                           },
-                          splashColor: AppColors.grey.withValues(alpha: 0.1),
-                          highlightColor: AppColors.grey.withValues(
-                            alpha: 0.05,
-                          ),
-                          child: Padding(
-                            padding: EdgeInsetsGeometry.symmetric(
-                              horizontal: 16.w,
-                              vertical: 12.h,
-                            ),
-                            child: Row(
-                              children: [
-                                // Avatar
-                                CircleAvatar(
-                                  radius: 24.r,
-                                  backgroundColor: AppColors.senderNameColor(
-                                    chat.id,
-                                  ).withValues(alpha: 0.25),
-                                  backgroundImage: vm.chatPhotoURL(chat) != null
-                                      ? NetworkImage(vm.chatPhotoURL(chat)!)
-                                      : null,
-                                  child: vm.chatPhotoURL(chat) == null
-                                      ? vm.isGroupType(chat)
-                                            ? Icon(
-                                                Icons.people_alt_rounded,
-                                                color:
-                                                    AppColors.senderNameColor(
-                                                      chat.id,
-                                                    ).withValues(alpha: 0.7),
+                          splashColor: AppColors.grey.withValues(alpha: 0.2),
+                          highlightColor: AppColors.grey.withValues(alpha: 0.1),
+                          child: Container(
+                            color: (vm.selectedChatIds.contains(chat.id))
+                                ? AppColors.primary.withValues(alpha: 0.2)
+                                : Colors.transparent,
+                            child: Padding(
+                              padding: EdgeInsetsGeometry.symmetric(
+                                horizontal: 16.w,
+                                vertical: 12.h,
+                              ),
+                              child: Row(
+                                children: [
+                                  Stack(
+                                    children: [
+                                      // Avatar
+                                      CircleAvatar(
+                                        radius: 24.r,
+                                        backgroundColor:
+                                            AppColors.senderNameColor(
+                                              chat.id,
+                                            ).withValues(alpha: 0.25),
+                                        backgroundImage:
+                                            vm.chatPhotoURL(chat) != null
+                                            ? NetworkImage(
+                                                vm.chatPhotoURL(chat)!,
                                               )
-                                            : Text(
-                                                vm
-                                                        .chatDisplayName(chat)
-                                                        .isNotEmpty
-                                                    ? vm
-                                                          .chatDisplayName(
-                                                            chat,
-                                                          )[0]
-                                                          .toUpperCase()
-                                                    : '?',
-                                                style: textTheme.senderName
-                                                    .copyWith(
-                                                      fontSize: 18.sp,
+                                            : null,
+                                        child: vm.chatPhotoURL(chat) == null
+                                            ? vm.isGroupType(chat)
+                                                  ? Icon(
+                                                      Icons.people_alt_rounded,
                                                       color:
                                                           AppColors.senderNameColor(
                                                             chat.id,
                                                           ).withValues(
                                                             alpha: 0.7,
                                                           ),
-                                                    ),
-                                              )
-                                      : null,
-                                ),
-                                Gap(12.w),
-
-                                // Name + Last message
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        vm.chatDisplayName(chat),
-                                        style: textTheme.senderName.copyWith(
-                                          color: AppColors.black,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
+                                                    )
+                                                  : Text(
+                                                      vm
+                                                              .chatDisplayName(
+                                                                chat,
+                                                              )
+                                                              .isNotEmpty
+                                                          ? vm
+                                                                .chatDisplayName(
+                                                                  chat,
+                                                                )[0]
+                                                                .toUpperCase()
+                                                          : '?',
+                                                      style: textTheme
+                                                          .senderName
+                                                          .copyWith(
+                                                            fontSize: 18.sp,
+                                                            color:
+                                                                AppColors.senderNameColor(
+                                                                  chat.id,
+                                                                ).withValues(
+                                                                  alpha: 0.7,
+                                                                ),
+                                                          ),
+                                                    )
+                                            : null,
                                       ),
-                                      if (lastMessage != null)
-                                        Text(
-                                          vm.typingText(chat) ??
-                                              lastMessage.text,
-                                          style: textTheme.subDescription2
-                                              .copyWith(color: Colors.grey),
-                                          overflow: TextOverflow.ellipsis,
-                                          softWrap: true,
+
+                                      if (vm.selectedChatIds.contains(chat.id))
+                                        Positioned(
+                                          right: 0,
+                                          bottom: 0,
+                                          child: CircleAvatar(
+                                            radius: 8.r,
+                                            backgroundColor: AppColors.primary,
+                                            child: Icon(
+                                              Icons.check,
+                                              size: 16.sp,
+                                              color: AppColors.white,
+                                            ),
+                                          ),
                                         ),
                                     ],
                                   ),
-                                ),
+                                  Gap(12.w),
 
-                                Gap(4.w),
-
-                                // Time + unread badge
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    if (lastMessage != null)
-                                      Text(
-                                        _formatChatTime(lastMessage.sentAt),
-                                        style: textTheme.subDescription3
-                                            .copyWith(
-                                              color: unread > 0
-                                                  ? AppColors.primary
-                                                  : Colors.grey,
-                                            ),
-                                      ),
-
-                                    if (unread > 0) ...[
-                                      Gap(6.h),
-                                      CircleAvatar(
-                                        radius: 10.r,
-                                        backgroundColor: AppColors.primary,
-                                        child: Text(
-                                          '$unread',
-                                          style: textTheme.subDescription3
-                                              .copyWith(color: AppColors.white),
+                                  // Name + Last message
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          vm.chatDisplayName(chat),
+                                          style: textTheme.senderName.copyWith(
+                                            color: AppColors.black,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
                                         ),
+                                        if (lastMessage != null)
+                                          Text(
+                                            vm.typingText(chat) ??
+                                                lastMessage.text,
+                                            style: textTheme.subDescription2
+                                                .copyWith(color: Colors.grey),
+                                            overflow: TextOverflow.ellipsis,
+                                            softWrap: true,
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+
+                                  Gap(4.w),
+
+                                  // Time + unread badge
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      if (lastMessage != null)
+                                        Text(
+                                          _formatChatTime(lastMessage.sentAt),
+                                          style: textTheme.subDescription3
+                                              .copyWith(
+                                                color: unread > 0
+                                                    ? AppColors.primary
+                                                    : Colors.grey,
+                                              ),
+                                        ),
+                                      Gap(4.h),
+                                      Row(
+                                        children: [
+                                          if (isPinned)
+                                            Icon(
+                                              Icons.push_pin_rounded,
+                                              color: AppColors.primary,
+                                              size: 16.sp,
+                                            ),
+
+                                          if (unread > 0) ...[
+                                            Gap(6.h),
+                                            CircleAvatar(
+                                              radius: 10.r,
+                                              backgroundColor:
+                                                  AppColors.primary,
+                                              child: Text(
+                                                '$unread',
+                                                style: textTheme.subDescription3
+                                                    .copyWith(
+                                                      color: AppColors.white,
+                                                    ),
+                                              ),
+                                            ),
+                                          ],
+                                        ],
                                       ),
                                     ],
-                                  ],
-                                ),
-                              ],
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -259,6 +324,65 @@ class ChatListView extends StatelessWidget {
       }).toList(),
     ),
   );
+
+  PreferredSizeWidget _buildSelectionAppBar(
+    BuildContext context,
+    ChatListVM vm,
+  ) {
+    final allPinned = vm.selectedChats.every(
+      (c) => c.isPinnedBy(vm.currentId!),
+    );
+    
+    return AppBar(
+      backgroundColor: AppColors.backdrop,
+      leading: IconButton(
+        icon: const Icon(Icons.close, color: AppColors.primary),
+        onPressed: () => vm.clearSection(),
+      ),
+      title: Text(
+        '${vm.selectedChats.length}',
+        style: TextStyle(color: AppColors.primary, fontSize: 18.sp),
+      ),
+      actions: [
+        IconButton(
+          icon: Icon(
+            allPinned ? Icons.push_pin_outlined : Icons.push_pin,
+            color: AppColors.primary,
+          ),
+          onPressed: () => vm.pinSelectedChats(),
+        ),
+        IconButton(
+          icon: const Icon(Icons.delete_outline, color: AppColors.primary),
+          onPressed: () => _confirmDelete(context, vm),
+        ),
+      ],
+    );
+  }
+
+  void _confirmDelete(BuildContext context, ChatListVM vm) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete chat?'),
+        content: const Text(
+          'This chat will be removed from your list. It will reappear if someone sends a new message.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              vm.deleteSelectedChat();
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
 
   String _formatChatTime(DateTime dateTime) {
     final now = DateTime.now();

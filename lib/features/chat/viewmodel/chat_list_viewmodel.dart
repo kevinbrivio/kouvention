@@ -5,6 +5,7 @@ import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/services/chat_service.dart';
+import 'package:oktoast/oktoast.dart';
 
 enum ChatFilter { all, direct, group }
 
@@ -18,6 +19,10 @@ class ChatListVM extends BaseNotifier {
 
   // Filter chats
   ChatFilter _filter = ChatFilter.all;
+
+  // Pin chat
+  static const maxPinnedChat = 3;
+  final Set<String> _selectedChatIds = {};
 
   String? _error;
 
@@ -34,6 +39,26 @@ class ChatListVM extends BaseNotifier {
 
   bool isGroupType(ChatModel chat) => !chat.isDirect;
 
+  Set<String> get selectedChatIds => _selectedChatIds;
+  bool get isSelectionMode => _selectedChatIds.isNotEmpty;
+
+  List<ChatModel> get selectedChats =>
+      _chats.where((c) => _selectedChatIds.contains(c.id)).toList();
+
+  void selectChat(String chatId) {
+    if (_selectedChatIds.contains(chatId)) {
+      _selectedChatIds.remove(chatId);
+    } else {
+      _selectedChatIds.add(chatId);
+    }
+    notifyListeners();
+  }
+
+  void clearSection() {
+    _selectedChatIds.clear();
+    notifyListeners();
+  }
+
   @override
   FutureOr<void> init() {
     if (_currentUid == null) {
@@ -48,7 +73,18 @@ class ChatListVM extends BaseNotifier {
         .streamChatList(_currentUid!)
         .listen(
           (chats) {
-            _chats = chats;
+            _chats =
+                chats.where((chat) => !chat.isDeletedBy(_currentUid)).toList()
+                  ..sort((a, b) {
+                    // Pinned first
+                    final aPinned = a.isPinnedBy(_currentUid) ? 0 : 1;
+                    final bPinned = b.isPinnedBy(_currentUid) ? 0 : 1;
+                    if (aPinned != bPinned) return aPinned.compareTo(bPinned);
+                    // Then by last message
+                    final aTime = a.lastMessage?.sentAt ?? a.createdAt;
+                    final bTime = b.lastMessage?.sentAt ?? b.createdAt;
+                    return bTime.compareTo(aTime);
+                  });
             _error = null;
             notifyListeners();
           },
@@ -61,6 +97,7 @@ class ChatListVM extends BaseNotifier {
 
   void setFilter(ChatFilter value) {
     _filter = value;
+    clearSection();
     notifyListeners();
   }
 
@@ -95,6 +132,54 @@ class ChatListVM extends BaseNotifier {
     } else {
       return '${names.join(', ')} others are typing...';
     }
+  }
+
+  // ---- PIN ---------------
+  Future<void> pinSelectedChats() async {
+    final unpinned = selectedChats
+        .where((c) => !c.isPinnedBy(_currentUid!))
+        .toList();
+
+    if (unpinned.isEmpty) {
+      // This mean all selected are pinned
+      for (final chat in selectedChats) {
+        await _chatService.unpinChat(_currentUid!, chat.id);
+      }
+      clearSection();
+      return;
+    }
+    
+    final currentPinnedCount = _chats.where((c) => c.isPinnedBy(_currentUid!)).length;
+    if (currentPinnedCount + unpinned.length > maxPinnedChat) {
+      showToast('You can only pin up to $maxPinnedChat chats', position: ToastPosition.bottom);
+      clearSection();
+      return;
+    }
+  
+    for (final chat in unpinned) {
+      await _chatService.pinChat(_currentUid!, chat.id);
+    }
+    
+    clearSection();
+  }
+
+  Future<void> deleteSelectedChat() async {
+    for (final chat in selectedChats) {
+      await _chatService.deleteChat(_currentUid!, chat.id);
+    }
+    clearSection();
+  }
+
+  Future<void> pinChat(String chatId) async {
+    await _chatService.pinChat(_currentUid!, chatId);
+  }
+
+  Future<void> unpinChat(String chatId) async {
+    await _chatService.unpinChat(_currentUid!, chatId);
+  }
+
+  Future<void> deleteChat(String chatId) async {
+    await _chatService.deleteChat(_currentUid!, chatId);
   }
 
   @override
