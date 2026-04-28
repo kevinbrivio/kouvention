@@ -43,7 +43,7 @@ class ChatListView extends StatelessWidget {
       children: [
         Gap(16.h),
         _buildHeader(context),
-        
+
         _buildFilterChips(vm),
 
         Expanded(
@@ -83,9 +83,9 @@ class ChatListView extends StatelessWidget {
                                 // Avatar
                                 CircleAvatar(
                                   radius: 24.r,
-                                  backgroundColor: AppColors.primary.withValues(
-                                    alpha: 0.2,
-                                  ),
+                                  backgroundColor: AppColors.senderNameColor(
+                                    chat.id,
+                                  ).withValues(alpha: 0.25),
                                   backgroundImage: vm.chatPhotoURL(chat) != null
                                       ? NetworkImage(vm.chatPhotoURL(chat)!)
                                       : null,
@@ -93,7 +93,10 @@ class ChatListView extends StatelessWidget {
                                       ? vm.isGroupType(chat)
                                             ? Icon(
                                                 Icons.people_alt_rounded,
-                                                color: AppColors.primary,
+                                                color:
+                                                    AppColors.senderNameColor(
+                                                      chat.id,
+                                                    ).withValues(alpha: 0.7),
                                               )
                                             : Text(
                                                 vm
@@ -105,11 +108,16 @@ class ChatListView extends StatelessWidget {
                                                           )[0]
                                                           .toUpperCase()
                                                     : '?',
-                                                style: TextStyle(
-                                                  color: AppColors.primary,
-                                                  fontWeight: FontWeight.w600,
-                                                  fontSize: 16.sp,
-                                                ),
+                                                style: textTheme.senderName
+                                                    .copyWith(
+                                                      fontSize: 18.sp,
+                                                      color:
+                                                          AppColors.senderNameColor(
+                                                            chat.id,
+                                                          ).withValues(
+                                                            alpha: 0.7,
+                                                          ),
+                                                    ),
                                               )
                                       : null,
                                 ),
@@ -123,6 +131,9 @@ class ChatListView extends StatelessWidget {
                                     children: [
                                       Text(
                                         vm.chatDisplayName(chat),
+                                        style: textTheme.senderName.copyWith(
+                                          color: AppColors.black,
+                                        ),
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                       if (lastMessage != null)
@@ -137,6 +148,8 @@ class ChatListView extends StatelessWidget {
                                     ],
                                   ),
                                 ),
+
+                                Gap(4.w),
 
                                 // Time + unread badge
                                 Column(

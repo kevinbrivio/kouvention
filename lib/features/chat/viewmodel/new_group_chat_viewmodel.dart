@@ -143,7 +143,7 @@ class NewGroupChatVM extends BaseNotifier {
       };
 
       final chatId = await _chatService.createGroupChat(
-        createdBy: _currentUid!,
+        createdBy: _currentUid,
         members: allMembers,
         memberInfo: memberInfo,
         groupName: groupName,

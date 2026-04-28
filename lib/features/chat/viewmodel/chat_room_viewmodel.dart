@@ -1,9 +1,11 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/animation.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
+import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
@@ -231,7 +233,6 @@ class ChatRoomVM extends BaseNotifier {
 
     final notificationService = ref.read(notificationServiceProvider);
     for (final tokenString in fcmTokens.keys) {
-      
       notificationService.sendChatNotification(
         targetToken: tokenString,
         senderName: senderDisplayName(_currentUid!),

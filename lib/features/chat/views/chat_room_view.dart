@@ -12,6 +12,7 @@ import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
+import 'package:kouvention/features/chat/widgets/bubble_tail_painter.dart';
 import 'package:kouvention/features/chat/widgets/typing_dots.dart';
 
 class ChatRoomView extends StatelessWidget {
@@ -23,23 +24,24 @@ class ChatRoomView extends StatelessWidget {
   Widget build(BuildContext context) => PopScope(
     canPop: false,
     onPopInvokedWithResult: (didPop, _) {
-      if (!didPop) { // Navigate to chat list
+      if (!didPop) {
+        // Navigate to chat list
         context.go(RouterRoutes.chatList.path);
       }
     },
     child: BaseView<ChatRoomVM>(
-    provider: chatRoomVM(chatId),
-    useGradient: false,
-    backgroundColor: Colors.white,
-    appBar: (vm) => _buildAppBar(context, vm),
-    builder: (context, vm) => _ChatRoomBody(chatId: chatId, viewmodel: vm),
-    backgroundImage: DecorationImage(
-      image: AssetImage(images.chatWallpaper),
-      fit: BoxFit.cover,
-      onError: (error, stackTrace) {
-        debugPrint('Background image error: $error');
-      },
-    ),
+      provider: chatRoomVM(chatId),
+      useGradient: false,
+      backgroundColor: Colors.white,
+      appBar: (vm) => _buildAppBar(context, vm),
+      builder: (context, vm) => _ChatRoomBody(chatId: chatId, viewmodel: vm),
+      backgroundImage: DecorationImage(
+        image: AssetImage(images.chatWallpaper),
+        fit: BoxFit.cover,
+        onError: (error, stackTrace) {
+          debugPrint('Background image error: $error');
+        },
+      ),
     ),
   );
 }
@@ -47,6 +49,7 @@ class ChatRoomView extends StatelessWidget {
 PreferredSizeWidget _buildAppBar(BuildContext context, ChatRoomVM vm) => AppBar(
   backgroundColor: Colors.white,
   elevation: 0.5,
+  scrolledUnderElevation: 0,
   leading: IconButton(
     icon: Icon(Icons.arrow_back, color: AppColors.primary),
     onPressed: () => context.go(RouterRoutes.chatList.path),
@@ -180,7 +183,12 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
     return ListView.builder(
       controller: _scrollController,
       reverse: true,
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+      padding: EdgeInsets.only(
+        left: 16.w,
+        right: 16.w,
+        bottom: 12.h,
+        top: MediaQuery.of(context).padding.top + kToolbarHeight,
+      ),
       itemCount: viewmodel.messages.length + (viewmodel.isLoadingMore ? 1 : 0),
       itemBuilder: (context, index) {
         if (index == viewmodel.messages.length) {
@@ -258,10 +266,11 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
         mainAxisAlignment: isMe
             ? MainAxisAlignment.end
             : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!isMe) ...[
-            if (isFirstSequence)
+            if (viewmodel.isGroup)
+              if (isFirstSequence) 
               CircleAvatar(
                 radius: 14.r,
                 backgroundColor: Colors.grey[300],
@@ -285,21 +294,24 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
                       )
                     : null,
               )
-            else
-              SizedBox(width: 28.r), // same width as avatar to keep alignment
+              else
+                SizedBox(width: 28.r), // same width as avatar to keep alignment
             Gap(8.w),
           ],
           Flexible(
-            child: Container(
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
               constraints: BoxConstraints(maxWidth: 260.w),
               padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
               decoration: BoxDecoration(
-                color: isMe ? AppColors.primary : Colors.grey[100],
+                color: isMe ? AppColors.primary : AppColors.otherUserBubble,
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(16.r),
-                  topRight: Radius.circular(16.r),
+                  topRight: Radius.circular(isMe ? 4.r : 16.r),
+                  bottomRight: Radius.circular(16.r),
                   bottomLeft: Radius.circular(isMe ? 16.r : 4.r),
-                  bottomRight: Radius.circular(isMe ? 4.r : 16.r),
                 ),
               ),
               child: Column(
@@ -308,7 +320,9 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
                     : CrossAxisAlignment.start,
                 children: [
                   if (!isMe && viewmodel.isGroup && isFirstSequence) ...[
-                    Text(senderName, style: textTheme.senderName),
+                    Text(senderName, style: textTheme.senderName.copyWith(
+                      color: AppColors.senderNameColor(message.senderId),
+                    )),
                     Gap(4.h),
                   ],
                   Text(
@@ -341,6 +355,22 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
                   ),
                 ],
               ),
+            ),
+            
+            if (isFirstSequence)
+                  Positioned(
+                    top: 0,
+                    left: isMe ? null : -4.w,
+                    right: isMe ? -4.w : null,
+                    child: CustomPaint(
+                      size: Size(8.w, 12.h),
+                      painter: BubbleTailPainter(
+                        color: isMe ? AppColors.primary : AppColors.otherUserBubble,
+                        isMe: isMe,
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
         ],

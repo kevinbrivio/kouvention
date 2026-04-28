@@ -68,7 +68,7 @@ class _GroupSetupViewState extends ConsumerState<GroupSetupView> {
             bottom: 12.h,
             right: 16.w,
             child: FloatingActionButton(
-              backgroundColor: AppColors.primary2,
+              backgroundColor: AppColors.primary,
               onPressed: () async {
                 if (!_formKey.currentState!.validate()) return;
 
@@ -132,12 +132,13 @@ class _GroupSetupViewState extends ConsumerState<GroupSetupView> {
         hint: 'Group name',
         shakeOnError: true,
         onSubmit: (val) {},
+        borderColor: AppColors.primary,
       ),
     ),
   );
 
   Widget _buildMemberList(NewGroupChatVM vm) => Row(
-    spacing: 24.w,
+    spacing: 32.w,
     children: members
         .map(
           (user) => Column(
@@ -145,7 +146,7 @@ class _GroupSetupViewState extends ConsumerState<GroupSetupView> {
             children: [
               CircleAvatar(
                 radius: 28.r,
-                backgroundColor: AppColors.primary.withValues(alpha: 0.2),
+                backgroundColor: AppColors.senderNameColor(user.uid).withValues(alpha: 0.2),
                 backgroundImage: user.photoUrl != null
                     ? NetworkImage(user.photoUrl!)
                     : null,
@@ -154,10 +155,8 @@ class _GroupSetupViewState extends ConsumerState<GroupSetupView> {
                         user.displayName.isNotEmpty
                             ? user.displayName[0].toUpperCase()
                             : '?',
-                        style: TextStyle(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16.sp,
+                        style: textTheme.subDescription.copyWith(
+                          color: AppColors.senderNameColor(user.uid),
                         ),
                       )
                     : null,
@@ -176,26 +175,5 @@ class _GroupSetupViewState extends ConsumerState<GroupSetupView> {
           ),
         )
         .toList(),
-  );
-
-  // ── Create Group Button ───────────────────────────────
-  Widget _buildCreateGroupButton() => Container(
-    padding: EdgeInsets.only(
-      right: 16.w,
-      left: 16.w,
-      top: 12.h,
-      bottom: MediaQuery.of(context).padding.bottom + 12.h,
-    ),
-    child: ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.primary2,
-        foregroundColor: AppColors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24.r),
-        ),
-      ),
-      onPressed: () {},
-      child: Icon(Icons.check_rounded, size: 24.sp, color: AppColors.white),
-    ),
   );
 }
