@@ -7,6 +7,7 @@ import 'package:kouvention/cores/bases/base_view.dart';
 import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
+import 'package:kouvention/cores/widgets/custom_button.dart';
 import 'package:kouvention/cores/widgets/hidden_app_bar.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_list_viewmodel.dart';
 
@@ -332,7 +333,7 @@ class ChatListView extends StatelessWidget {
     final allPinned = vm.selectedChats.every(
       (c) => c.isPinnedBy(vm.currentId!),
     );
-    
+
     return AppBar(
       backgroundColor: AppColors.backdrop,
       leading: IconButton(
@@ -363,21 +364,42 @@ class ChatListView extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete chat?'),
-        content: const Text(
-          'This chat will be removed from your list. It will reappear if someone sends a new message.',
+        title: Text(
+          'Delete this chat?',
+          style: textTheme.subheadline1.copyWith(color: AppColors.black),
         ),
+        content: Text(
+          'This chat will be removed from your list. It will reappear if someone sends a new message.',
+          style: textTheme.subDescription3,
+        ),
+        actionsPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              vm.deleteSelectedChat();
-            },
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  'Cancel',
+                  style: textTheme.subDescription3.copyWith(
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+              Gap(12.w),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  vm.deleteSelectedChat();
+                },
+                child: Text(
+                  'Delete chat',
+                  style: textTheme.subDescription3.copyWith(
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),

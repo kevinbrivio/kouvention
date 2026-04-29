@@ -32,6 +32,7 @@ class ChatService {
         .map(
           (snapshot) => snapshot.docs
               .map((doc) => ChatModel.fromMap(doc.id, doc.data()))
+              .where((chat) => !chat.isDeletedBy(currentUid))
               .toList(),
         );
   }
@@ -234,12 +235,12 @@ class ChatService {
     });
   }
 
-  Future<void> deleteChat(String uid, chatId) async {
-    await _chatsRef.doc('chats').update({
+  Future<void> deleteChat(String uid, String chatId) async {
+    await _chatsRef.doc(chatId).update({
       'deletedBy.$uid': FieldValue.serverTimestamp(),
     });
   }
-
+  
   // ---- CHECK MESSAGE STATUS ------------------
   Future<void> markChatAsRead(String chatId, uid) async {
     await _chatsRef.doc(chatId).update({

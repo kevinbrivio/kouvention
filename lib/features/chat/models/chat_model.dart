@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/rendering.dart';
 
 class ChatModel {
   final String id; // the Firestore document ID
@@ -51,7 +52,9 @@ class ChatModel {
 
   bool isDeletedBy(String uid) {
     if (deletedBy == null || !deletedBy!.containsKey(uid)) return false;
-    final deletedAt = (deletedBy![uid] as Timestamp).toDate();
+    final rawVal = deletedBy![uid];
+    if (rawVal == null) return true;
+    final deletedAt = (rawVal as Timestamp).toDate();
     final lastSentAt = lastMessage?.sentAt;
     if (lastSentAt != null && lastSentAt.isBefore(deletedAt)) return false;
 
