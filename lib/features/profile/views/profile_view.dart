@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/bases/base_view.dart';
 import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
+import 'package:kouvention/cores/widgets/custom_button.dart';
 import 'package:kouvention/cores/widgets/loading_indicator.dart';
 import 'package:kouvention/features/profile/viewmodel/profile_viewmodel.dart';
 import 'package:kouvention/features/profile/widgets/profile_header.dart';
@@ -18,28 +19,28 @@ class ProfileView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => BaseView(
-        provider: profileVM,
-        backgroundColor: AppColors.backdrop,
-        appBar: (_) => AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          leading: IconButton(
-            icon: Icon(Icons.arrow_back, color: Colors.black87),
-            onPressed: () => context.go(RouterRoutes.chatList.path),
-          ),
-          title: Text(
-            'Profile',
-            style: TextStyle(
-              color: Colors.black87,
-              fontSize: 18.sp,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          centerTitle: false,
+    provider: profileVM,
+    backgroundColor: AppColors.backdrop,
+    appBar: (_) => AppBar(
+      backgroundColor: Colors.white,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      leading: IconButton(
+        icon: Icon(Icons.arrow_back, color: Colors.black87),
+        onPressed: () => context.go(RouterRoutes.chatList.path),
+      ),
+      title: Text(
+        'Profile',
+        style: TextStyle(
+          color: Colors.black87,
+          fontSize: 18.sp,
+          fontWeight: FontWeight.w600,
         ),
-        builder: (context, vm) => _ProfileBody(viewmodel: vm),
-      );
+      ),
+      centerTitle: false,
+    ),
+    builder: (context, vm) => _ProfileBody(viewmodel: vm),
+  );
 }
 
 class _ProfileBody extends StatelessWidget {
@@ -53,7 +54,10 @@ class _ProfileBody extends StatelessWidget {
 
     // While user data hasn't arrived from the stream yet
     if (user == null) {
-      return Container(color: AppColors.backdrop, child: const Center(child: LoadingIndicator()));
+      return Container(
+        color: AppColors.backdrop,
+        child: const Center(child: LoadingIndicator()),
+      );
     }
 
     return Container(
@@ -132,11 +136,21 @@ class _ProfileBody extends StatelessWidget {
                 },
               ),
 
-              Gap(40.h),
+              Gap(32.h),
+
+              _buildLogoutButton(),
+              Gap(32.h),
             ],
           ),
         ),
       ),
     );
   }
+
+  Widget _buildLogoutButton() => Container(
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(24.r),
+    ),
+    child: Button(text: 'Sign out', onPressed: () {}, isCancel: true,),
+  );
 }

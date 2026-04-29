@@ -7,7 +7,9 @@ import 'package:kouvention/features/auth/views/add_name_view.dart';
 import 'package:kouvention/features/auth/views/email_sign_in_view.dart';
 import 'package:kouvention/features/auth/views/login_view.dart';
 import 'package:kouvention/features/auth/views/sign_up_view.dart';
+import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/views/chat_list_view.dart';
+import 'package:kouvention/features/chat/views/chat_profile_view.dart';
 import 'package:kouvention/features/chat/views/chat_room_view.dart';
 import 'package:kouvention/features/chat/views/group_setup_view.dart';
 import 'package:kouvention/features/chat/views/new_chat_view.dart';
@@ -34,7 +36,7 @@ final GlobalKey<NavigatorState> _profileBranchKey = GlobalKey<NavigatorState>(
 
 setupRouter({required String initialRouter, required AuthService authService}) {
   if (_router != null) return;
-  
+
   _router = GoRouter(
     initialLocation: initialRouter,
     navigatorKey: navigatorKey,
@@ -160,6 +162,14 @@ setupRouter({required String initialRouter, required AuthService authService}) {
         name: RouterRoutes.groupSetup.name,
         builder: (_, state) =>
             GroupSetupView(selectedUsers: state.extra as List<UserModel>),
+      ),
+      GoRoute(
+        path: RouterRoutes.chatDetail.path,
+        name: RouterRoutes.chatDetail.name,
+        builder: (_, state) {
+          final chatId = state.pathParameters['chatId'] as String;
+          return ChatProfileView(chatId: chatId);
+        },
       ),
     ],
   );

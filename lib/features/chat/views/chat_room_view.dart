@@ -54,56 +54,62 @@ PreferredSizeWidget _buildAppBar(BuildContext context, ChatRoomVM vm) => AppBar(
     icon: Icon(Icons.arrow_back, color: AppColors.primary),
     onPressed: () => context.go(RouterRoutes.chatList.path),
   ),
-  title: Row(
-    children: [
-      CircleAvatar(
-        radius: 18.r,
-        backgroundColor: AppColors.primary.withValues(alpha: 0.2),
-        backgroundImage: vm.chatPhotoUrl != null
-            ? NetworkImage(vm.chatPhotoUrl!)
-            : null,
-        child: vm.chatPhotoUrl == null
-            ? Text(
-                vm.chatDisplayName.isNotEmpty
-                    ? vm.chatDisplayName[0].toUpperCase()
-                    : '?',
-                style: TextStyle(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14.sp,
-                ),
-              )
-            : null,
-      ),
-      Gap(10.w),
-      Flexible(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              vm.chatDisplayName,
-              overflow: TextOverflow.ellipsis,
-              softWrap: true,
-              style: TextStyle(
-                color: Colors.black87,
-                fontSize: 16.sp,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            if (vm.onlineStatusText != null)
-              Text(
-                vm.onlineStatusText!,
-                style: textTheme.subDescription3.copyWith(
-                  color: vm.onlineStatusText == 'Online'
-                      ? Colors.green
-                      : Colors.grey[500],
-                  fontSize: 12.sp,
-                ),
-              ),
-          ],
+  title: InkWell(
+    onTap: () {
+      if (context.mounted) context.push('/chats/${vm.chat!.id}/detail');
+    },
+    borderRadius: BorderRadius.circular(8.r),
+    child: Row(
+      children: [
+        CircleAvatar(
+          radius: 18.r,
+          backgroundColor: AppColors.primary.withValues(alpha: 0.2),
+          backgroundImage: vm.chatPhotoUrl != null
+              ? NetworkImage(vm.chatPhotoUrl!)
+              : null,
+          child: vm.chatPhotoUrl == null
+              ? Text(
+                  vm.chatDisplayName.isNotEmpty
+                      ? vm.chatDisplayName[0].toUpperCase()
+                      : '?',
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14.sp,
+                  ),
+                )
+              : null,
         ),
-      ),
-    ],
+        Gap(10.w),
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                vm.chatDisplayName,
+                overflow: TextOverflow.ellipsis,
+                softWrap: true,
+                style: TextStyle(
+                  color: Colors.black87,
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (vm.onlineStatusText != null)
+                Text(
+                  vm.onlineStatusText!,
+                  style: textTheme.subDescription3.copyWith(
+                    color: vm.onlineStatusText == 'Online'
+                        ? Colors.green
+                        : Colors.grey[500],
+                    fontSize: 12.sp,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    ),
   ),
   actions: [
     IconButton(

@@ -128,6 +128,26 @@ class ChatService {
     await batch.commit();
   }
 
+  // --- GET CHATS --------------------------------
+  /// Get chat detail
+  Future<ChatModel?> getChat(String chatId) async {
+    final doc = await _chatsRef.doc(chatId).get();
+    return doc.exists ? ChatModel.fromMap(doc.id, doc.data()!) : null;
+  }
+
+  /// Get other user group in common
+  Future<List<ChatModel>> getGroupInCommon(String currentUid, otherUid) async {
+    final doc = await _chatsRef
+        .where('type', isEqualTo: 'group')
+        .where('members', arrayContains: currentUid)
+        .get();
+
+    return doc.docs
+        .map((d) => ChatModel.fromMap(d.id, d.data()))
+        .where((chat) => chat.members.contains(otherUid))
+        .toList();
+  }
+
   // --- UNREAD COUNT --------------------------------
   Future<void> resetUnreadCount(String chatId, String uid) async {
     await _chatsRef.doc(chatId).update({'unreadCount.$uid': 0});
@@ -178,7 +198,8 @@ class ChatService {
   }
 
   Future<String> createGroupChat({
-    required String createdBy,
+    required String createdByUid,
+    required String createdByName,
     required List<String> members,
     required Map<String, MemberInfo> memberInfo,
     required String groupName,
@@ -186,7 +207,8 @@ class ChatService {
   }) async {
     final docRef = await _chatsRef.add(
       ChatModel.toNewGroupChatMap(
-        createdBy: createdBy,
+        createdByUid: createdByUid,
+        createdByName: createdByName,
         members: members,
         memberInfo: memberInfo,
         groupName: groupName,
@@ -200,7 +222,7 @@ class ChatService {
   // ------ PIN CHAT ----------
   Future<void> pinChat(String uid, chatId) async {
     debugPrint('Pinning chat: $chatId for user: $uid');
-     debugPrint('Path: ${_chatsRef.doc(chatId).path}');
+    debugPrint('Path: ${_chatsRef.doc(chatId).path}');
     await _chatsRef.doc(chatId).update({
       'pinnedBy': FieldValue.arrayUnion([uid]),
     });

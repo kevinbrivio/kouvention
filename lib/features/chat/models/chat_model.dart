@@ -10,7 +10,7 @@ class ChatModel {
   // Group-specific fields
   final String? groupName;
   final String? groupPhotoUrl;
-  final String? createdBy;
+  final Map<String, String>? createdBy;
 
   // Denormalized message preview
   final LastMessage? lastMessage;
@@ -44,13 +44,13 @@ class ChatModel {
 
   bool get isDirect => type == 'direct';
   bool isPinnedBy(String uid) => pinnedBy.contains(uid);
-  
+
   bool isDeletedBy(String uid) {
-    if (deletedBy== null || !deletedBy!.containsKey(uid)) return false;
+    if (deletedBy == null || !deletedBy!.containsKey(uid)) return false;
     final deletedAt = (deletedBy![uid] as Timestamp).toDate();
     final lastSentAt = lastMessage?.sentAt;
     if (lastSentAt != null && lastSentAt.isBefore(deletedAt)) return false;
-    
+
     return true;
   }
 
@@ -120,7 +120,9 @@ class ChatModel {
       memberHash: data['memberHash'] as String?,
       groupName: data['groupName'] as String?,
       groupPhotoUrl: data['groupPhotoUrl'] as String?,
-      createdBy: data['createdBy'] as String?,
+      createdBy: (data['createdBy'] as Map<String, dynamic>?)?.map(
+        (key, value) => MapEntry(key, value as String),
+      ),
       lastMessage: data['lastMessage'] != null
           ? LastMessage.fromMap(data['lastMessage'] as Map<String, dynamic>)
           : null,
@@ -158,7 +160,8 @@ class ChatModel {
 
   /// For creating a new group chat.
   static Map<String, dynamic> toNewGroupChatMap({
-    required String createdBy,
+    required String createdByUid,
+    required String createdByName,
     required List<String> members,
     required Map<String, MemberInfo> memberInfo,
     required String groupName,
@@ -171,11 +174,14 @@ class ChatModel {
       'memberHash': null,
       'groupName': groupName,
       'groupPhotoUrl': groupPhotoUrl,
-      'createdBy': createdBy,
+      'createdBy': {
+        'uid': createdByUid,
+        'name': createdByName,
+      },
       'lastMessage': {
         'text': '',
         'sentAt': FieldValue.serverTimestamp(),
-        'senderId': createdBy,
+        'senderId': createdByUid,
       },
       'unreadCount': {for (final uid in members) uid: 0},
       'typingUsers': [],
