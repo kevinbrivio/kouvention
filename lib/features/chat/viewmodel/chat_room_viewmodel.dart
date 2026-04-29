@@ -39,6 +39,9 @@ class ChatRoomVM extends BaseNotifier {
   Timer? _typingTimer;
   bool _isTyping = false;
 
+  // Sending message
+  bool _isSending = false;
+
   String? _error;
 
   ChatRoomVM(super.ref, {required this.chatId})
@@ -54,6 +57,7 @@ class ChatRoomVM extends BaseNotifier {
   bool get isLoadingMore => _isLoadingMore;
   bool get isTyping => _isTyping;
   bool get isGroup => _chat?.type == 'group';
+  bool get isSending => _isSending;
   String? get error => _error;
 
   /// Display name for the chat header
@@ -208,6 +212,8 @@ class ChatRoomVM extends BaseNotifier {
     if (trimmed.isEmpty || _currentUid == null || _chat == null) return;
 
     try {
+      _isSending = true;
+      notifyListeners();
       // clear typing indicator before sending
       await clearTyping();
 
@@ -221,6 +227,9 @@ class ChatRoomVM extends BaseNotifier {
       _sendNotification(trimmed);
     } catch (e) {
       _error = e.toString();
+      notifyListeners();
+    } finally {
+      _isSending = false;
       notifyListeners();
     }
   }
