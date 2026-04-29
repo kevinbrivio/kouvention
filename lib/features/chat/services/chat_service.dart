@@ -239,6 +239,14 @@ class ChatService {
       'deletedBy.$uid': FieldValue.serverTimestamp(),
     });
   }
+
+  // ---- CHECK MESSAGE STATUS ------------------
+  Future<void> markChatAsRead(String chatId, uid) async {
+    await _chatsRef.doc(chatId).update({
+      'lastReadAt.$uid': FieldValue.serverTimestamp(),
+      'unreadCount.$uid': 0,
+    });
+  }
 }
 
 final chatServiceProvider = Provider<ChatService>((ref) => ChatService());

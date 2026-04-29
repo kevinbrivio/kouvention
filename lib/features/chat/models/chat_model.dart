@@ -20,6 +20,9 @@ class ChatModel {
   final List<String> typingUsers;
   final List<String> pinnedBy;
 
+  // Check message sent status
+  final Map<String, DateTime> lastReadAt;
+
   final DateTime createdAt;
   final DateTime? updatedAt;
   final Map<String, dynamic>? deletedBy;
@@ -40,6 +43,7 @@ class ChatModel {
     this.updatedAt,
     required this.pinnedBy,
     this.deletedBy,
+    this.lastReadAt = const {},
   });
 
   bool get isDirect => type == 'direct';
@@ -132,6 +136,9 @@ class ChatModel {
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
       deletedBy: data['deletedBy'] as Map<String, dynamic>?,
+      lastReadAt: (data['lastReadAt'] as Map<String, dynamic>? ?? {}).map(
+        (uid, ts) => MapEntry(uid, (ts as Timestamp).toDate()),
+      ),
     );
   }
 
@@ -174,10 +181,7 @@ class ChatModel {
       'memberHash': null,
       'groupName': groupName,
       'groupPhotoUrl': groupPhotoUrl,
-      'createdBy': {
-        'uid': createdByUid,
-        'name': createdByName,
-      },
+      'createdBy': {'uid': createdByUid, 'name': createdByName},
       'lastMessage': {
         'text': '',
         'sentAt': FieldValue.serverTimestamp(),

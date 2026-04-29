@@ -223,7 +223,7 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
 
         return Column(
           children: [
-            if (showDate) _buildDateSeparator(message.sentAt),
+            if (showDate) _buildDateSeparator(message.sentAt!),
             _buildMessageBubble(message, isMe, isFirstSequence),
           ],
         );
@@ -232,9 +232,10 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
   }
 
   bool _shouldShowDate(List<MessageModel> messages, int index) {
+    if (messages[index].sentAt == null) return false;
     if (index == messages.length - 1) return true;
-    final current = messages[index].sentAt;
-    final previous = messages[index + 1].sentAt;
+    final current = messages[index].sentAt!;
+    final previous = messages[index + 1].sentAt!;
     return current.day != previous.day ||
         current.month != previous.month ||
         current.year != previous.year;
@@ -263,7 +264,7 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
     bool isMe,
     bool isFirstSequence,
   ) {
-    final time = _formatTime(message.sentAt);
+    final time = _formatTime(message.sentAt!);
     final senderName = viewmodel.senderDisplayName(message.senderId);
     final senderPhotoUrl = viewmodel.senderPhotoUrl(message.senderId);
 
@@ -319,7 +320,7 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
                     vertical: 10.h,
                   ),
                   decoration: BoxDecoration(
-                    color: isMe ? AppColors.primary : AppColors.otherUserBubble,
+                    color: isMe ? AppColors.primary2 : AppColors.otherUserBubble,
                     borderRadius: BorderRadius.only(
                       topLeft: Radius.circular(16.r),
                       topRight: Radius.circular(isMe ? 4.r : 16.r),
@@ -361,11 +362,7 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
                           ),
                           if (isMe) ...[
                             Gap(4.w),
-                            Icon(
-                              Icons.done_all,
-                              size: 14.sp,
-                              color: Colors.white70,
-                            ),
+                            buildMessageStatus(viewmodel.getMessageStatus(message)),
                           ],
                         ],
                       ),
@@ -382,7 +379,7 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
                       size: Size(8.w, 12.h),
                       painter: BubbleTailPainter(
                         color: isMe
-                            ? AppColors.primary
+                            ? AppColors.primary2
                             : AppColors.otherUserBubble,
                         isMe: isMe,
                       ),
@@ -394,6 +391,17 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
         ],
       ),
     );
+  }
+  
+  Widget buildMessageStatus(MessageStatus status) {
+    switch (status) {
+      case MessageStatus.sending:
+        return Icon(Icons.check, size: 14.sp, color: Colors.grey);
+      case MessageStatus.sent:
+        return Icon(Icons.done_all, size: 14.sp, color: Colors.grey);
+      case MessageStatus.read:
+        return Icon(Icons.done_all, size: 14.sp, color: AppColors.primary);
+    }
   }
 
   Widget _buildTypingIndicator() => Container(
