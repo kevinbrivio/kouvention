@@ -5,11 +5,13 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
+import 'package:kouvention/features/profile/widgets/bubble_container.dart';
 
 class ProfileHeader extends StatelessWidget {
   final String displayName;
   final String email;
   final String? photoUrl;
+  final String? bio;
   final String authProviderLabel;
   final bool isGoogleLinked;
   final Function() onChangePhoto;
@@ -19,6 +21,7 @@ class ProfileHeader extends StatelessWidget {
     required this.displayName,
     required this.email,
     this.photoUrl,
+    this.bio,
     required this.authProviderLabel,
     required this.isGoogleLinked,
     required this.onChangePhoto,
@@ -30,6 +33,7 @@ class ProfileHeader extends StatelessWidget {
       children: [
         // Avatar with camera overlay
         Stack(
+          clipBehavior: Clip.none,
           children: [
             CircleAvatar(
               radius: 56.r,
@@ -53,10 +57,27 @@ class ProfileHeader extends StatelessWidget {
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.white, width: 2),
                   ),
-                  child: Icon(Icons.camera_alt, size: 16.r, color: Colors.white),
+                  child: Icon(
+                    Icons.camera_alt,
+                    size: 16.r,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ),
+            if (bio != null && bio!.isNotEmpty)
+              Positioned(
+                top: -12.r,
+                left: 90.w,
+                child: BubbleContainer(
+                  child: Text(
+                    bio!,
+                    style: textTheme.body2.copyWith(
+                      color: AppColors.black
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
 

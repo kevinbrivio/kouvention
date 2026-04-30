@@ -18,9 +18,6 @@ mixin FormValidatorMixin on BaseNotifier {
   }) {
     // Empty validation
     if (value.isEmpty && isRequired) {
-      if (setPhoneBorderError != null) {
-        setPhoneBorderError();
-      }
       return '$label cannot be empty';
     }
 
@@ -99,11 +96,4 @@ mixin FormValidatorMixin on BaseNotifier {
   }
 }
 
-enum Validator {
-  length,
-  uppercase,
-  lowercase,
-  number,
-  emailFormat,
-  password
-}
+enum Validator { length, uppercase, lowercase, number, emailFormat, password }

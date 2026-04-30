@@ -5,10 +5,12 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/cores/constants/colors.dart';
+import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/shared/services/storage_service.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
@@ -166,6 +168,18 @@ class ProfileVM extends BaseNotifier {
       showToast('Failed to update photo. Please try again.');
     } finally {
       isLoading = false;
+    }
+  }
+
+  void navigateToEditName(BuildContext context) {
+    if (context.mounted) {
+      context.push(RouterRoutes.editName.path, extra: _user?.displayName);
+    }
+  }
+
+  void navigateToEditStatus(BuildContext context) {
+    if (context.mounted) {
+      context.push(RouterRoutes.editStatus.path, extra: _user?.bio);
     }
   }
 }
