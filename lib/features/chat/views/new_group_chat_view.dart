@@ -111,8 +111,8 @@ class _NewGroupChatBodyState extends State<_NewGroupChatBody> {
                   children: [
                     CircleAvatar(
                       radius: 22.r,
-                      backgroundColor: AppColors.primary2.withValues(
-                        alpha: 0.7,
+                      backgroundColor: AppColors.senderNameColor(user.uid).withValues(
+                        alpha: 0.2,
                       ),
                       backgroundImage: user.photoUrl != null
                           ? NetworkImage(user.photoUrl!)
@@ -122,7 +122,9 @@ class _NewGroupChatBodyState extends State<_NewGroupChatBody> {
                               user.displayName.isNotEmpty
                                   ? user.displayName[0].toUpperCase()
                                   : '?',
-                              style: textTheme.subDescription2,
+                              style: textTheme.subDescription2.copyWith(
+                                color: AppColors.senderNameColor(user.uid).withValues(alpha: 0.7)
+                              ),
                             )
                           : null,
                     ),

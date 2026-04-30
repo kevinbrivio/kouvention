@@ -1,0 +1,39 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:kouvention/cores/constants/colors.dart';
+import 'package:kouvention/cores/constants/text_theme.dart';
+
+class CustomDivider extends StatelessWidget {
+  final String? text;
+  final Color? color;
+  CustomDivider({super.key, this.text, this.color});
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Expanded(
+        child: Divider(
+          color: color ?? AppColors.grey.withValues(alpha: 0.3),
+          thickness: 1,
+        ),
+      ),
+      if (text != null && text!.isNotEmpty) ...[
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16.w),
+          child: Text(
+            text!,
+            style: textTheme.subDescription2.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Divider(
+            color: color ?? AppColors.grey.withValues(alpha: 0.3),
+            thickness: 1,
+          ),
+        ),
+      ],
+    ],
+  );
+}

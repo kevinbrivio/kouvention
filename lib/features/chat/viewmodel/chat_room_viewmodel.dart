@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
@@ -37,6 +36,9 @@ class ChatRoomVM extends BaseNotifier {
   Timer? _typingTimer;
   bool _isTyping = false;
 
+  // Sending message
+  bool _isSending = false;
+
   String? _error;
 
   ChatRoomVM(super.ref, {required this.chatId})
@@ -47,11 +49,12 @@ class ChatRoomVM extends BaseNotifier {
   // --- GETTERS ------------------------------
   List<MessageModel> get messages => _messages;
   ChatModel? get chat => _chat;
-  String? get urrentUid => _currentUid;
+  String? get currentUid => _currentUid;
   bool get hasMoreMessages => _hasMoreMessages;
   bool get isLoadingMore => _isLoadingMore;
   bool get isTyping => _isTyping;
   bool get isGroup => _chat?.type == 'group';
+  bool get isSending => _isSending;
   String? get error => _error;
 
   /// Display name for the chat header
@@ -128,6 +131,9 @@ class ChatRoomVM extends BaseNotifier {
       _subscribeToChat();
       _subscribeToMessages();
       _resetUnreadCount();
+
+      // Mark read when opening the chat
+      await _chatService.markChatAsRead(chatId, _currentUid);
     }
   }
 
@@ -206,6 +212,8 @@ class ChatRoomVM extends BaseNotifier {
     if (trimmed.isEmpty || _currentUid == null || _chat == null) return;
 
     try {
+      _isSending = true;
+      notifyListeners();
       // clear typing indicator before sending
       await clearTyping();
 
@@ -220,6 +228,9 @@ class ChatRoomVM extends BaseNotifier {
     } catch (e) {
       _error = e.toString();
       notifyListeners();
+    } finally {
+      _isSending = false;
+      notifyListeners();
     }
   }
 
@@ -231,7 +242,6 @@ class ChatRoomVM extends BaseNotifier {
 
     final notificationService = ref.read(notificationServiceProvider);
     for (final tokenString in fcmTokens.keys) {
-      
       notificationService.sendChatNotification(
         targetToken: tokenString,
         senderName: senderDisplayName(_currentUid!),
@@ -306,6 +316,33 @@ class ChatRoomVM extends BaseNotifier {
     }
   }
 
+  // ---- Message Status ----------------------
+  MessageStatus getMessageStatus(MessageModel message) {
+    if (message.senderId != _currentUid) return MessageStatus.sent;
+
+    // Use the flag you already have
+    if (_isSending) return MessageStatus.sending;
+
+    if (_chat?.type == 'direct') {
+      final otherUid = _chat!.otherMemberUid(_currentUid!);
+      final otherLastRead = _chat!.lastReadAt[otherUid];
+
+      if (otherLastRead != null && !message.sentAt.isAfter(otherLastRead)) {
+        return MessageStatus.read;
+      }
+    } else if (_chat != null) {
+      final anyRead = _chat!.members.where((uid) => uid != _currentUid).any((
+        uid,
+      ) {
+        final lastRead = _chat!.lastReadAt[uid];
+        return lastRead != null && !message.sentAt.isAfter(lastRead);
+      });
+      if (anyRead) return MessageStatus.read;
+    }
+
+    return MessageStatus.sent;
+  }
+
   // --- CleanUp ----------------------------------
   @override
   void dispose() {
@@ -323,3 +360,5 @@ final chatRoomVM = ChangeNotifierProvider.autoDispose
     .family<ChatRoomVM, String>(
       (ref, chatId) => ChatRoomVM(ref, chatId: chatId),
     );
+
+enum MessageStatus { sending, sent, read }

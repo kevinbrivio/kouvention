@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/rendering.dart';
 
 class ChatModel {
   final String id; // the Firestore document ID
@@ -10,7 +11,7 @@ class ChatModel {
   // Group-specific fields
   final String? groupName;
   final String? groupPhotoUrl;
-  final String? createdBy;
+  final Map<String, String>? createdBy;
 
   // Denormalized message preview
   final LastMessage? lastMessage;
@@ -18,9 +19,14 @@ class ChatModel {
   final Map<String, int> unreadCount;
 
   final List<String> typingUsers;
+  final List<String> pinnedBy;
+
+  // Check message sent status
+  final Map<String, DateTime> lastReadAt;
 
   final DateTime createdAt;
   final DateTime? updatedAt;
+  final Map<String, dynamic>? deletedBy;
 
   const ChatModel({
     required this.id,
@@ -36,9 +42,24 @@ class ChatModel {
     this.typingUsers = const [],
     required this.createdAt,
     this.updatedAt,
+    required this.pinnedBy,
+    this.deletedBy,
+    this.lastReadAt = const {},
   });
 
   bool get isDirect => type == 'direct';
+  bool isPinnedBy(String uid) => pinnedBy.contains(uid);
+
+  bool isDeletedBy(String uid) {
+    if (deletedBy == null || !deletedBy!.containsKey(uid)) return false;
+    final rawVal = deletedBy![uid];
+    if (rawVal == null) return true;
+    final deletedAt = (rawVal as Timestamp).toDate();
+    final lastSentAt = lastMessage?.sentAt;
+    if (lastSentAt != null && lastSentAt.isBefore(deletedAt)) return false;
+
+    return true;
+  }
 
   /// Returns the other user's UID in a direct chat.
   String otherMemberUid(String currentUid) {
@@ -62,7 +83,7 @@ class ChatModel {
         .map((e) => e.value.displayName)
         .toList();
     if (others.isEmpty) return '';
-    
+
     return others.join(', ');
   }
 
@@ -106,14 +127,21 @@ class ChatModel {
       memberHash: data['memberHash'] as String?,
       groupName: data['groupName'] as String?,
       groupPhotoUrl: data['groupPhotoUrl'] as String?,
-      createdBy: data['createdBy'] as String?,
+      createdBy: (data['createdBy'] as Map<String, dynamic>?)?.map(
+        (key, value) => MapEntry(key, value as String),
+      ),
       lastMessage: data['lastMessage'] != null
           ? LastMessage.fromMap(data['lastMessage'] as Map<String, dynamic>)
           : null,
       unreadCount: parsedUnread,
       typingUsers: List<String>.from(data['typingUsers'] ?? []),
+      pinnedBy: List<String>.from(data['pinnedBy'] ?? []),
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
+      deletedBy: data['deletedBy'] as Map<String, dynamic>?,
+      lastReadAt: (data['lastReadAt'] as Map<String, dynamic>? ?? {}).map(
+        (uid, ts) => MapEntry(uid, (ts as Timestamp).toDate()),
+      ),
     );
   }
 
@@ -142,7 +170,8 @@ class ChatModel {
 
   /// For creating a new group chat.
   static Map<String, dynamic> toNewGroupChatMap({
-    required String createdBy,
+    required String createdByUid,
+    required String createdByName,
     required List<String> members,
     required Map<String, MemberInfo> memberInfo,
     required String groupName,
@@ -155,8 +184,12 @@ class ChatModel {
       'memberHash': null,
       'groupName': groupName,
       'groupPhotoUrl': groupPhotoUrl,
-      'createdBy': createdBy,
-      'lastMessage': null,
+      'createdBy': {'uid': createdByUid, 'name': createdByName},
+      'lastMessage': {
+        'text': '',
+        'sentAt': FieldValue.serverTimestamp(),
+        'senderId': createdByUid,
+      },
       'unreadCount': {for (final uid in members) uid: 0},
       'typingUsers': [],
       'createdAt': FieldValue.serverTimestamp(),
