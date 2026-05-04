@@ -16,15 +16,15 @@ class OnboardingPage1 extends StatelessWidget {
         Gap(48.h),
         FloatingWidget(
           child: SizedBox(
-            width: 50.w,
-            height: 50.w,
-            child: Image.asset(images.logo),
+            width: 320.w,
+            height: 320.w,
+            child: Image.asset(images.onboarding1, fit: BoxFit.cover,),
           ),
         ),
         Gap(12.h),
         Padding(
           padding: EdgeInsetsGeometry.symmetric(horizontal: 4.w),
-          child: Text('Fast & Secure', style: textTheme.headline1),
+          child: Text('Fast & Secure', style: textTheme.subheadline1),
         ),
         Gap(12.h),
 

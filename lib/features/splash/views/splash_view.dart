@@ -34,21 +34,21 @@ class _SplashViewState extends ConsumerState<SplashView> {
       }
 
       _hasNavigated = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          context.go(nextRoute);
-        }
-      });
+      Future.delayed(const Duration(seconds: 4), () {
+          if (mounted) {
+            context.go(nextRoute);
+          }
+        });
     });
 
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [AppColors.primary, AppColors.backdrop],
-            stops: [0.6, 0.9],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+            colors: [AppColors.primary2, AppColors.primary],
+            stops: [0.5, 0.9],
+            begin: Alignment.topRight,
+            end: Alignment.bottomLeft,
           ),
         ),
         child: const Center(child: FloatingWidget(child: SplashLogo())),

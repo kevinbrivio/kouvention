@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:kouvention/cores/widgets/loading_indicator.dart';
 import 'package:kouvention/features/shared/viewmodel/connectivity_viewmodel.dart';
 
@@ -17,8 +18,11 @@ class ConnectivityBanner extends ConsumerWidget {
         // No Connection -> Show banner
         return Container(
           width: double.infinity,
-          color: Colors.red,
-          padding: const EdgeInsets.all(8.0),
+          decoration: BoxDecoration(
+            color: Colors.red,
+            borderRadius: BorderRadius.circular(16.r),
+          ),
+          padding: EdgeInsets.all(8.w),
           child: const Text(
             'No internet connection',
             style: TextStyle(color: Colors.white),
