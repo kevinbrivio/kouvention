@@ -91,7 +91,7 @@ class SignUpVM extends BaseFormNotifier<SignUpForm> with FormValidatorMixin {
     } on FirebaseAuthException catch (e) {
       if (e.code == 'email-already-in-use') {
         showToast('Account already exists. Redirecting to sign in...');
-        if (ctx.mounted) ctx.go(RouterRoutes.emailSignIn.path);
+        context.go(RouterRoutes.emailSignIn.path);
       }
       final message = switch (e.code) {
         'invalid-email' => 'Invalid email address',
