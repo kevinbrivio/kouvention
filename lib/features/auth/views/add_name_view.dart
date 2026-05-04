@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:kouvention/cores/bases/base_view.dart';
+import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/image_paths.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/cores/widgets/custom_button.dart';
@@ -47,6 +48,8 @@ class AddNameView extends StatelessWidget {
   );
 
   Widget _buildCard(AddNameVM vm) => TransparentBox(
+    color: AppColors.primary.withValues(alpha: 0.4),
+    borderColor: AppColors.white.withValues(alpha: 0.7),
     child: Form(
       key: vm.formKey,
       child: Column(
@@ -100,6 +103,7 @@ class AddNameView extends StatelessWidget {
     child: Button(
       onPressed: vm.isLoading ? null : () => vm.submit(),
       text: 'Continue',
+      isWhiteBackground: true,
     ),
   );
 }
