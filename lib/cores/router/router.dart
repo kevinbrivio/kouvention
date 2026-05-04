@@ -7,7 +7,6 @@ import 'package:kouvention/features/auth/views/add_name_view.dart';
 import 'package:kouvention/features/auth/views/email_sign_in_view.dart';
 import 'package:kouvention/features/auth/views/login_view.dart';
 import 'package:kouvention/features/auth/views/sign_up_view.dart';
-import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/views/chat_list_view.dart';
 import 'package:kouvention/features/chat/views/chat_profile_view.dart';
 import 'package:kouvention/features/chat/views/chat_room_view.dart';
@@ -16,6 +15,8 @@ import 'package:kouvention/features/chat/views/new_chat_view.dart';
 import 'package:kouvention/features/chat/views/new_group_chat_view.dart';
 import 'package:kouvention/features/onboarding/views/onboarding_view.dart';
 import 'package:kouvention/features/privacy_policy/views/privacy_policy_view.dart';
+import 'package:kouvention/features/profile/views/edit_name_view.dart';
+import 'package:kouvention/features/profile/views/edit_status_view..dart';
 import 'package:kouvention/features/profile/views/profile_view.dart';
 import 'package:kouvention/features/splash/views/splash_view.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
@@ -26,7 +27,6 @@ GoRouter get router => _router!;
 final RouteObserver<ModalRoute<void>> routeObserver =
     RouteObserver<ModalRoute<void>>();
 
-final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 final GlobalKey<NavigatorState> _chatBranchKey = GlobalKey<NavigatorState>(
   debugLabel: 'chatBranch',
 );
@@ -170,6 +170,17 @@ setupRouter({required String initialRouter, required AuthService authService}) {
           final chatId = state.pathParameters['chatId'] as String;
           return ChatProfileView(chatId: chatId);
         },
+      ),
+      GoRoute(
+        path: RouterRoutes.editName.path,
+        name: RouterRoutes.editName.name,
+        builder: (_, state) => EditNameView(currentName: state.extra as String),
+      ),
+      GoRoute(
+        path: RouterRoutes.editStatus.path,
+        name: RouterRoutes.editStatus.name,
+        builder: (_, state) =>
+            EditStatusView(currentStatus: state.extra as String?),
       ),
     ],
   );

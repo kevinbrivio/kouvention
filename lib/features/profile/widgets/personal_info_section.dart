@@ -34,7 +34,10 @@ class PersonalInfoSection extends StatelessWidget {
     child: Column(
       children: [
         // Display Name
-        Column(
+        InkWell(
+          onTap: onEditName,
+          splashColor: AppColors.grey,
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Display Name', style: textTheme.subDescription3),
@@ -54,11 +57,16 @@ class PersonalInfoSection extends StatelessWidget {
             ),
           ],
         ),
+        ),
         Gap(12.h),
         Divider(color: AppColors.grey.withValues(alpha: 0.15),),
         Gap(6.h),
         // Status/Bio
-        Column(
+        
+        InkWell(
+          onTap: onEditStatus,
+          splashColor: AppColors.grey,
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Status', style: textTheme.subDescription3),
@@ -78,6 +86,7 @@ class PersonalInfoSection extends StatelessWidget {
             ),
           ],
         ),
+        )
       ],
     ),
   );

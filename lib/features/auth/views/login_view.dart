@@ -52,6 +52,8 @@ class LoginView extends ConsumerWidget {
   );
 
   Widget _buildCard(BuildContext context, LoginVM vm) => TransparentBox(
+    color: AppColors.primary.withValues(alpha: 0.4),
+    borderColor: AppColors.white.withValues(alpha: 0.7),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -98,7 +100,6 @@ class LoginView extends ConsumerWidget {
         ),
       ),
       style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12.r),
         ),
@@ -111,7 +112,7 @@ class LoginView extends ConsumerWidget {
     height: 48.h,
     width: double.infinity,
     child: OutlinedButton.icon(
-      onPressed: vm.isLoading ? null : () => vm.goToEmailSignIn(),
+      onPressed: vm.isLoading ? null : () => vm.goToEmailSignIn(context),
       icon: Icon(Icons.email_outlined, color: Colors.white, size: 22.sp),
       label: Text(
         'Sign in with Email',

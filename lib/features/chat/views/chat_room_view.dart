@@ -201,10 +201,10 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
         if (index == viewmodel.messages.length) {
           return Padding(
             padding: EdgeInsets.symmetric(vertical: 16.h),
-            child: const Center(
+            child: Center(
               child: SizedBox(
-                width: 20,
-                height: 20,
+                width: 20.w,
+                height: 20.w,
                 child: CircularProgressIndicator(strokeWidth: 2),
               ),
             ),
@@ -232,10 +232,9 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
   }
 
   bool _shouldShowDate(List<MessageModel> messages, int index) {
-    if (messages[index].sentAt == null) return false;
     if (index == messages.length - 1) return true;
-    final current = messages[index].sentAt!;
-    final previous = messages[index + 1].sentAt!;
+    final current = messages[index].sentAt;
+    final previous = messages[index + 1].sentAt;
     return current.day != previous.day ||
         current.month != previous.month ||
         current.year != previous.year;
@@ -264,7 +263,7 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
     bool isMe,
     bool isFirstSequence,
   ) {
-    final time = _formatTime(message.sentAt!);
+    final time = _formatTime(message.sentAt);
     final senderName = viewmodel.senderDisplayName(message.senderId);
     final senderPhotoUrl = viewmodel.senderPhotoUrl(message.senderId);
 
@@ -409,6 +408,7 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
     alignment: Alignment.centerLeft,
     child: Row(
       children: [
+        if (viewmodel.isGroup)
         CircleAvatar(
           radius: 14.r,
           backgroundColor: Colors.grey[300],

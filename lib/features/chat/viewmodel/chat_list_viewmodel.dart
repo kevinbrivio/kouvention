@@ -148,18 +148,23 @@ class ChatListVM extends BaseNotifier {
       clearSection();
       return;
     }
-    
-    final currentPinnedCount = _chats.where((c) => c.isPinnedBy(_currentUid!)).length;
+
+    final currentPinnedCount = _chats
+        .where((c) => c.isPinnedBy(_currentUid!))
+        .length;
     if (currentPinnedCount + unpinned.length > maxPinnedChat) {
-      showToast('You can only pin up to $maxPinnedChat chats', position: ToastPosition.bottom);
+      showToast(
+        'You can only pin up to $maxPinnedChat chats',
+        position: ToastPosition.bottom,
+      );
       clearSection();
       return;
     }
-  
+
     for (final chat in unpinned) {
       await _chatService.pinChat(_currentUid!, chat.id);
     }
-    
+
     clearSection();
   }
 

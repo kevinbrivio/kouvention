@@ -7,7 +7,6 @@ import 'package:kouvention/cores/bases/base_view.dart';
 import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
-import 'package:kouvention/cores/widgets/custom_button.dart';
 import 'package:kouvention/cores/widgets/hidden_app_bar.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_list_viewmodel.dart';
 
@@ -76,6 +75,7 @@ class ChatListView extends StatelessWidget {
                     final unread = vm.chatUnreadCount(chat);
                     final lastMessage = chat.lastMessage;
                     final isPinned = chat.isPinnedBy(vm.currentId!);
+                    final typing = vm.typingText(chat);
 
                     return Column(
                       mainAxisSize: MainAxisSize.min,
@@ -189,10 +189,14 @@ class ChatListView extends StatelessWidget {
                                         ),
                                         if (lastMessage != null)
                                           Text(
-                                            vm.typingText(chat) ??
+                                            typing ??
                                                 lastMessage.text,
                                             style: textTheme.subDescription2
-                                                .copyWith(color: Colors.grey),
+                                                .copyWith(
+                                                  color: typing != null
+                                                      ? AppColors.primary
+                                                      : AppColors.grey,
+                                                ),
                                             overflow: TextOverflow.ellipsis,
                                             softWrap: true,
                                           ),

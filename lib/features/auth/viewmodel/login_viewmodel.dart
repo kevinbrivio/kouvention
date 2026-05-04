@@ -75,8 +75,7 @@ class LoginVM extends BaseNotifier {
     context.push(RouterRoutes.signUp.path);
   }
 
-  void goToEmailSignIn() {
-    final context = ctx;
+  void goToEmailSignIn(BuildContext context) {
     if (context.mounted) {
       context.push(RouterRoutes.emailSignIn.path);
     }

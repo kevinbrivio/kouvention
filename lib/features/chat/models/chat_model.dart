@@ -56,7 +56,7 @@ class ChatModel {
     if (rawVal == null) return true;
     final deletedAt = (rawVal as Timestamp).toDate();
     final lastSentAt = lastMessage?.sentAt;
-    if (lastSentAt != null && lastSentAt.isBefore(deletedAt)) return false;
+    if (lastSentAt != null && lastSentAt.isAfter(deletedAt)) return false;
 
     return true;
   }

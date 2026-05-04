@@ -75,6 +75,7 @@ class _ProfileBody extends StatelessWidget {
                 displayName: user.displayName,
                 email: user.email,
                 photoUrl: user.photoUrl,
+                bio: user.bio,
                 authProviderLabel: viewmodel.authProviderLabel,
                 isGoogleLinked: viewmodel.isGoogleLinked,
                 onChangePhoto: () => viewmodel.changeProfilePhoto(context),
@@ -96,12 +97,8 @@ class _ProfileBody extends StatelessWidget {
               PersonalInfoSection(
                 displayName: user.displayName,
                 status: user.bio ?? 'No status set',
-                onEditName: () {
-                  // TODO: Navigate to edit name screen
-                },
-                onEditStatus: () {
-                  // TODO: Navigate to edit status screen
-                },
+                onEditName: () => viewmodel.navigateToEditName(context),
+                onEditStatus: () => viewmodel.navigateToEditStatus(context),
               ),
 
               Gap(24.h),
@@ -148,9 +145,11 @@ class _ProfileBody extends StatelessWidget {
   }
 
   Widget _buildLogoutButton() => Container(
-    decoration: BoxDecoration(
-      borderRadius: BorderRadius.circular(24.r),
+    decoration: BoxDecoration(borderRadius: BorderRadius.circular(24.r)),
+    child: Button(
+      text: 'Sign out',
+      onPressed: viewmodel.isButtonLoading ? () {} : viewmodel.signOut,
+      isCancel: true,
     ),
-    child: Button(text: 'Sign out', onPressed: () {}, isCancel: true,),
   );
 }

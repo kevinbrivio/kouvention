@@ -1,15 +1,20 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/cores/constants/colors.dart';
+import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
+import 'package:kouvention/features/chat/viewmodel/chat_list_viewmodel.dart';
+import 'package:kouvention/features/shared/services/fcm_service.dart';
 import 'package:kouvention/features/shared/services/storage_service.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
 import 'package:kouvention/features/user/services/user_service.dart';
@@ -32,8 +37,11 @@ class ProfileVM extends BaseNotifier {
       _authService = ref.read(authServiceProvider),
       _storageService = ref.read(storageServiceProvider);
 
+  bool _isButtonLoading = false;
+
   // Getters
   UserModel? get user => _user;
+  bool get isButtonLoading => _isButtonLoading;
 
   String get authProviderLabel {
     final providerData = _authService.currentUser?.providerData ?? [];
@@ -71,12 +79,37 @@ class ProfileVM extends BaseNotifier {
             debugPrint("Profile stream error: $e");
           },
         );
+
+    print(_user);
   }
 
   @override
   void dispose() {
     _userSubscription?.cancel();
     super.dispose();
+  }
+
+  Future<void> signOut() async {
+    try {
+      isLoading = true;
+      _isButtonLoading = true;
+
+      final fcmService = ref.read(fcmServiceProvider);
+      await fcmService.removeToken();
+
+      ref.invalidate(chatListVM);
+      if (ctx.mounted) {
+        ctx.go(RouterRoutes.login.path);
+      }
+      await FirebaseAuth.instance.signOut();
+    } catch (e, s) {
+      print('error when signin out: $e');
+      showToast('Failed to sign out. Please try again');
+      print(s);
+    } finally {
+      isLoading = false;
+      _isButtonLoading = false;
+    }
   }
 
   Future<void> changeProfilePhoto(BuildContext context) async {
@@ -166,6 +199,18 @@ class ProfileVM extends BaseNotifier {
       showToast('Failed to update photo. Please try again.');
     } finally {
       isLoading = false;
+    }
+  }
+
+  void navigateToEditName(BuildContext context) {
+    if (context.mounted) {
+      context.push(RouterRoutes.editName.path, extra: _user?.displayName);
+    }
+  }
+
+  void navigateToEditStatus(BuildContext context) {
+    if (context.mounted) {
+      context.push(RouterRoutes.editStatus.path, extra: _user?.bio);
     }
   }
 }

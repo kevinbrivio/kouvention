@@ -294,9 +294,7 @@ class ChatRoomVM extends BaseNotifier {
 
     // Reset debounce timer
     _typingTimer?.cancel();
-    _typingTimer = Timer(const Duration(seconds: 2), () {
-      clearTyping();
-    });
+    _typingTimer = Timer(const Duration(seconds: 10), () => clearTyping());
 
     if (text.isEmpty) clearTyping();
   }
