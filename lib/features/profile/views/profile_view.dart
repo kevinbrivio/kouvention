@@ -145,9 +145,11 @@ class _ProfileBody extends StatelessWidget {
   }
 
   Widget _buildLogoutButton() => Container(
-    decoration: BoxDecoration(
-      borderRadius: BorderRadius.circular(24.r),
+    decoration: BoxDecoration(borderRadius: BorderRadius.circular(24.r)),
+    child: Button(
+      text: 'Sign out',
+      onPressed: viewmodel.isButtonLoading ? () {} : viewmodel.signOut,
+      isCancel: true,
     ),
-    child: Button(text: 'Sign out', onPressed: () {}, isCancel: true,),
   );
 }
