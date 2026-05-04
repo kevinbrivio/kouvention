@@ -7,7 +7,8 @@ import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
 import 'package:kouvention/features/chat/services/chat_service.dart';
-import 'package:kouvention/features/shared/services/notification_service.dart';
+import 'package:kouvention/features/notification/services/notification_service.dart';
+import 'package:kouvention/features/notification/viewmodel/active_chat_id_provider.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
 import 'package:kouvention/features/user/services/user_service.dart';
 
@@ -128,6 +129,10 @@ class ChatRoomVM extends BaseNotifier {
     if (_currentUid == null) {
       _error = 'Not authenticated';
     } else {
+      scheduleMicrotask(() {
+        ref.read(activeChatIdProvider.notifier).state = chatId;
+      });
+
       _subscribeToChat();
       _subscribeToMessages();
       _resetUnreadCount();
@@ -344,6 +349,8 @@ class ChatRoomVM extends BaseNotifier {
   // --- CleanUp ----------------------------------
   @override
   void dispose() {
+    ref.read(activeChatIdProvider.notifier).state = null;
+
     _messageSubscription?.cancel();
     _chatSubscription?.cancel();
     _otherUserSubscription?.cancel();

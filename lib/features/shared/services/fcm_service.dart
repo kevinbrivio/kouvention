@@ -5,9 +5,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:kouvention/features/shared/services/prefs_service.dart';
 
 final fcmServiceProvider = Provider<FcmService>((ref) {
-  final service = FcmService();
+  final prefsService = ref.read(prefsServiceProvider);
+  final service = FcmService(prefsService);
   ref.onDispose(service.dispose);
   return service;
 });
@@ -15,10 +17,12 @@ final fcmServiceProvider = Provider<FcmService>((ref) {
 class FcmService {
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final PrefsService _prefs;
 
   // Listen to token (device)every time notification came
   StreamSubscription<String>? _tokenRefreshSub;
 
+  FcmService(this._prefs);
   Future<void> initialize() async {
     final granted = await requestPermission();
     if (!granted) return;
@@ -47,15 +51,23 @@ class FcmService {
     if (uid == null) return;
 
     try {
-      final token = await _messaging.getToken();
-      if (token == null) return;
-      await _saveTokenToFirestore(uid, token);
+      final newToken = await _messaging.getToken();
+      if (newToken == null) return;
+
+      final oldToken = _prefs.getFcmToken();
+      if (oldToken != null && oldToken != newToken) {
+        await _firestore.doc('users/$uid').update({
+          'fcmTokens.$oldToken': FieldValue.delete(),
+        });
+      }
+      await _saveTokenToFirestore(uid, newToken);
+      _prefs.setFcmToken(newToken);
     } catch (e) {
-      debugPrint('FCM getToken failed: $e'); 
+      debugPrint('FCM getToken failed: $e');
     }
   }
 
-  Future<void> _saveTokenToFirestore(String uid, token) async {
+  Future<void> _saveTokenToFirestore(String uid, String token) async {
     await _firestore.doc('users/$uid').set(
       {
         'fcmTokens': {
@@ -79,7 +91,15 @@ class FcmService {
       final uid = FirebaseAuth.instance.currentUser?.uid;
       if (uid == null) return;
 
-      return _saveTokenToFirestore(uid, newToken);
+      final oldToken = _prefs.getFcmToken();
+      if (oldToken != null && oldToken != newToken) {
+        await _firestore.doc('users/$uid').update({
+          'fcmTokens.$oldToken': FieldValue.delete(),
+        });
+      }
+
+      await _saveTokenToFirestore(uid, newToken);
+      _prefs.setFcmToken(newToken);
     });
   }
 
@@ -94,6 +114,8 @@ class FcmService {
       'fcmTokens.$token': FieldValue.delete(), // Remove device-uid only token.
       // Since fcmTokens are map, we delete specific token.
     });
+
+    _prefs.removeFcmToken();
 
     _tokenRefreshSub?.cancel();
     _tokenRefreshSub = null;
