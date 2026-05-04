@@ -27,7 +27,6 @@ GoRouter get router => _router!;
 final RouteObserver<ModalRoute<void>> routeObserver =
     RouteObserver<ModalRoute<void>>();
 
-final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 final GlobalKey<NavigatorState> _chatBranchKey = GlobalKey<NavigatorState>(
   debugLabel: 'chatBranch',
 );
