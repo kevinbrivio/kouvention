@@ -11,7 +11,7 @@ class IconHolder extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     decoration: BoxDecoration(
-      color: AppColors.primary2.withValues(alpha: 0.4),
+      color: AppColors.primary.withValues(alpha: 0.8),
       borderRadius: radius ?? BorderRadius.circular(50.r),
       border: Border.all(
         color: AppColors.primary2.withValues(alpha: 0.2),

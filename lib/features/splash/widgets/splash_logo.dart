@@ -8,37 +8,35 @@ class SplashLogo extends StatelessWidget {
   const SplashLogo({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        SizedBox(height: 120.h,),
-        Container(
-          width: 92.w,
-          height: 92.w,
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(12.r), color: AppColors.white.withAlpha(48)),
-          child: Center(
-            child: Image.asset(images.logo, width: 50.w, height: 50.w),
-          ),
+  Widget build(BuildContext context) => Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Center(
+        child: Image.asset(
+          images.splash,
+          width: 320.h,
+          height: 320.h,
+          fit: BoxFit.cover,
         ),
+      ),
 
-        Text.rich(
-          TextSpan(
-            text: 'Kouvent',
-            style: textTheme.headline1,
-            children: [
-              TextSpan(
-                text: 'ion',
-                style: textTheme.headline1.copyWith(fontWeight: FontWeight.w300, color: AppColors.white.withAlpha(200)),
+      Text.rich(
+        TextSpan(
+          text: 'Kouvent',
+          style: textTheme.headline1,
+          children: [
+            TextSpan(
+              text: 'ion',
+              style: textTheme.headline1.copyWith(
+                fontWeight: FontWeight.w300,
+                color: AppColors.white.withAlpha(200),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
+      ),
 
-        Text(
-          'Connect instantly, anywhere.',
-          style: textTheme.body2,
-        ),
-      ],
-    );
-  }
+      Text('Connect instantly, anywhere.', style: textTheme.body2),
+    ],
+  );
 }
