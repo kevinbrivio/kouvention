@@ -94,6 +94,7 @@ class NotificationService {
     required String chatId,
     required String senderId,
     required String senderName,
+    required String? senderImageUrl,
   }) async {
     await sendNotification(
       targetToken: targetToken,
@@ -104,6 +105,7 @@ class NotificationService {
         'chatId': chatId,
         'senderId': senderId,
         'senderName': senderName,
+        'senderImageUrl': senderImageUrl ?? '',
         'title': senderName,
         'body': messageText,
       },

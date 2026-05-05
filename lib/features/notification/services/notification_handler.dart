@@ -1,15 +1,13 @@
 import 'dart:async';
+import 'package:http/http.dart' as http;
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/router/router.dart';
-import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/features/chat/services/chat_service.dart';
 import 'package:kouvention/features/notification/viewmodel/active_chat_id_provider.dart';
 import 'package:kouvention/firebase_options.dart';
@@ -41,7 +39,6 @@ void onBackgroundNotificationResponse(NotificationResponse response) async {
     text: replyText,
     memberUids: chat.members,
   );
-  await _sendReplyFromNotification(chatId, replyText);
 }
 
 @pragma('vm:entry-point')
@@ -75,6 +72,7 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
     chatId: data['chatId'] ?? '',
     senderId: data['senderId'] ?? '',
     senderName: data['senderName'] ?? 'Someone',
+    senderImageUrl: data['senderImageUrl'] ?? '',
     title: data['title'] ?? '',
     body: data['body'] ?? '',
   );
@@ -87,17 +85,25 @@ Future<void> _showChatNotification({
   required String senderName,
   required String title,
   required String body,
+  String? senderImageUrl,
 }) async {
   // Get the user creds
   final currentUserUid = FirebaseAuth.instance.currentUser?.uid ?? 'Unknown_id';
+
+  // Download sender's profile image
+  final senderIcon = await _downloadIcon(senderImageUrl);
+
   final MessagingStyleInformation messageStyle = MessagingStyleInformation(
     Person(
       key: currentUserUid,
       name: 'You',
-      // icon: TODO: Add sender icon
     ),
     messages: [
-      Message(body, DateTime.now(), Person(key: senderId, name: senderName)),
+      Message(
+        body,
+        DateTime.now(),
+        Person(key: senderId, name: senderName, icon: senderIcon),
+      ),
     ],
   );
 
@@ -126,24 +132,19 @@ Future<void> _showChatNotification({
   );
 }
 
-Future<void> _sendReplyFromNotification(String chatId, String text) async {
-  final currentUser = FirebaseAuth.instance.currentUser;
-  if (currentUser == null) return;
+// ----- HELPER ---------------------
+Future<ByteArrayAndroidIcon?> _downloadIcon(String? imageUrl) async {
+  if (imageUrl == null || imageUrl.isEmpty) return null;
 
   try {
-    await FirebaseFirestore.instance
-        .collection('chats')
-        .doc(chatId)
-        .collection('messages')
-        .add({
-          'text': text,
-          'senderId': currentUser.uid,
-          'sentAt': FieldValue.serverTimestamp(),
-          'type': text, // Reply only can send text-type
-        });
+    final response = await http.get(Uri.parse(imageUrl));
+    if (response.statusCode == 200) {
+      return ByteArrayAndroidIcon(response.bodyBytes);
+    }
   } catch (e) {
-    debugPrint('Sending reply text error: $e');
+    debugPrint('Failed to download icon: $e');
   }
+  return null;
 }
 
 class NotificationHandler {
@@ -217,12 +218,14 @@ class NotificationHandler {
     final senderId = data['senderId'] ?? '';
     final body = data['body'] ?? '';
     final title = data['title'] ?? 'New message';
+    final senderImageUrl = data['senderImageUrl'];
 
     _showChatNotification(
       plugin: _localNotifications,
       chatId: chatId,
       senderId: senderId,
       senderName: senderName,
+      senderImageUrl: senderImageUrl,
       title: title,
       body: body,
     );

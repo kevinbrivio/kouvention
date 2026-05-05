@@ -253,6 +253,7 @@ class ChatRoomVM extends BaseNotifier {
         chatId: chatId,
         senderId: _currentUid!,
         senderName: senderDisplayName(_currentUid),
+        senderImageUrl: senderPhotoUrl(_currentUid),
       );
     }
   }
