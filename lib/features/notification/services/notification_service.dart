@@ -74,10 +74,8 @@ class NotificationService {
     final message = {
       'message': {
         'token': targetToken,
-        'notification': {'title': title, 'body': body},
         'android': {
           'priority': 'high',
-          'notification': {'channel_id': 'chat_messages', 'sound': 'default'},
         },
         if (data != null) 'data': data,
       },
@@ -92,15 +90,23 @@ class NotificationService {
 
   Future<void> sendChatNotification({
     required String targetToken,
-    required String senderName,
     required String messageText,
     required String chatId,
+    required String senderId,
+    required String senderName,
   }) async {
     await sendNotification(
       targetToken: targetToken,
       title: senderName,
       body: messageText,
-      data: {'type': 'chat_message', 'chatId': chatId},
+      data: {
+        'type': 'chat_message',
+        'chatId': chatId,
+        'senderId': senderId,
+        'senderName': senderName,
+        'title': senderName,
+        'body': messageText,
+      },
     );
   }
 }
