@@ -5,7 +5,6 @@ import 'package:gap/gap.dart';
 import 'package:kouvention/cores/bases/base_view.dart';
 import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
-import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/cores/widgets/custom_button.dart';
 import 'package:kouvention/cores/widgets/icon_holder.dart';
 import 'package:kouvention/cores/widgets/transparent_box.dart';
@@ -54,52 +53,54 @@ class PrivacyPolicyView extends StatelessWidget {
           child: Text(
             'LAST UPDATED: MAY 2026',
             style: textTheme.subDescription3.copyWith(
-              color: AppColors.white.withValues(alpha: 0.6)
+              color: AppColors.white.withValues(alpha: 0.6),
             ),
-          )
+          ),
         ),
       ],
     ),
     builder: _buildScreen,
   );
 
-  Widget _buildScreen(BuildContext context, PrivacyPolicyVM vm) => Column(
-    children: [
-      Gap(MediaQuery.of(context).padding.top + kToolbarHeight),
-      Expanded(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: EdgeInsetsGeometry.symmetric(horizontal: 16.w),
-                child: Text('Privacy Policy', style: textTheme.subheadline1),
-              ),
-              Gap(4.h),
-              Padding(
-                padding: EdgeInsetsGeometry.symmetric(horizontal: 16.w),
-                child: Text(
-                  'Please review how we handle your data before continuing.',
-                  style: textTheme.subDescription2,
+  Widget _buildScreen(BuildContext context, PrivacyPolicyVM vm) => SafeArea(
+    child: Column(
+      children: [
+        Gap(MediaQuery.of(context).padding.top),
+        Expanded(
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: EdgeInsetsGeometry.symmetric(horizontal: 16.w),
+                  child: Text('Privacy Policy', style: textTheme.subheadline1),
                 ),
-              ),
-              Gap(24.h),
-              Padding(
-                padding: EdgeInsetsGeometry.symmetric(horizontal: 16.w),
-                child: TransparentBox(
-                  color: AppColors.white.withValues(alpha: 0.3),
-                  child: _buildPolicy(),
+                Gap(4.h),
+                Padding(
+                  padding: EdgeInsetsGeometry.symmetric(horizontal: 16.w),
+                  child: Text(
+                    'Please review how we handle your data before continuing.',
+                    style: textTheme.subDescription2,
+                  ),
                 ),
-              ),
+                Gap(24.h),
+                Padding(
+                  padding: EdgeInsetsGeometry.symmetric(horizontal: 16.w),
+                  child: TransparentBox(
+                    color: AppColors.white.withValues(alpha: 0.3),
+                    child: _buildPolicy(),
+                  ),
+                ),
 
-              Gap(12.h),
+                Gap(16.h),
 
-              _buildAcceptButton(context, vm),
-            ],
+                _buildAcceptButton(context, vm),
+              ],
+            ),
           ),
         ),
-      ),
-    ],
+      ],
+    ),
   );
 
   Widget _buildPolicy() => Column(

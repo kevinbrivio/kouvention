@@ -24,7 +24,8 @@ class OnboardingView extends StatelessWidget {
 
   Widget _buildScreen(BuildContext context, OnboardingVM vm) => PopScope(
     canPop: false,
-    child: Padding(
+    child: SafeArea(
+      child: Padding(
       padding: EdgeInsets.symmetric(vertical: 16.h),
       child: Column(
         children: [
@@ -64,6 +65,7 @@ class OnboardingView extends StatelessWidget {
           BottomIndicatorButton(),
           Gap(12.h),
         ],
+      ),
       ),
     ),
   );

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
+import 'package:kouvention/features/notification/services/notification_handler.dart';
 import 'package:kouvention/features/shared/services/fcm_service.dart';
 import 'package:kouvention/features/shared/services/prefs_service.dart';
 
@@ -14,6 +15,8 @@ class SplashVM extends BaseNotifier {
 
   late final PrefsService _prefsService = ref.read(prefsServiceProvider);
   late final AuthService _authService = ref.read(authServiceProvider);
+
+  NotificationHandler? _notificationHandler;
 
   bool _hasSeenOnboarding = false;
   bool get hasSeenOnboarding => _hasSeenOnboarding;
@@ -29,8 +32,6 @@ class SplashVM extends BaseNotifier {
 
   @override
   Future<void> init() async {
-    await _prefsService.setHasAcceptedPrivacyPolicy(false);
-    await _prefsService.setHasSeenOnboarding(false);
     _hasSeenOnboarding = await _prefsService.hasSeenOnboarding();
     _hasAcceptedPrivacyPolicy = await _prefsService.hasAcceptedPrivacyPolicy();
     _isLoggedIn = await _authService.isLoggedIn;
@@ -38,7 +39,13 @@ class SplashVM extends BaseNotifier {
     if (_isLoggedIn) {
       final fcmService = ref.read(fcmServiceProvider);
       await fcmService.initialize();
+      
+      // Listen to notification
+      final _notificationHandler = NotificationHandler(ref);
+      await _notificationHandler.initialize();
     }
+
+
     _nextRoute = _resolveInitialRoute();
     notifyListeners();
   }
@@ -57,5 +64,11 @@ class SplashVM extends BaseNotifier {
     }
 
     return RouterRoutes.login.path;
+  }
+
+  @override
+  void dispose() {
+    _notificationHandler?.dispose();
+    super.dispose();
   }
 }

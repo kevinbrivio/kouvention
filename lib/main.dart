@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -12,6 +13,7 @@ import 'package:kouvention/cores/configs/flavor_config.dart';
 import 'package:kouvention/cores/router/router.dart';
 import 'package:kouvention/cores/widgets/flavor_banner.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
+import 'package:kouvention/features/notification/services/notification_handler.dart';
 import 'package:kouvention/features/shared/services/prefs_service.dart';
 import 'package:kouvention/features/user/viewmodel/presence_notifier.dart';
 import 'package:oktoast/oktoast.dart';
@@ -43,6 +45,9 @@ void main() async {
         options: DefaultFirebaseOptions.currentPlatform,
       );
 
+      // Background handler for notification
+      FirebaseMessaging.onBackgroundMessage(firebaseBackgroundHandler);
+
       // Pass all uncuaught errors from Flutter to Crashlytics
       FlutterError.onError =
           FirebaseCrashlytics.instance.recordFlutterFatalError;
@@ -68,10 +73,7 @@ void main() async {
             : EnvProd.googleServerClientId,
       );
 
-      await setupRouter(
-        initialRouter: '/',
-        authService: authService,
-      );
+      await setupRouter(initialRouter: '/', authService: authService);
 
       runApp(
         ProviderScope(
