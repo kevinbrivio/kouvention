@@ -249,9 +249,10 @@ class ChatRoomVM extends BaseNotifier {
     for (final tokenString in fcmTokens.keys) {
       notificationService.sendChatNotification(
         targetToken: tokenString,
-        senderName: senderDisplayName(_currentUid!),
         messageText: messageText,
         chatId: chatId,
+        senderId: _currentUid!,
+        senderName: senderDisplayName(_currentUid),
       );
     }
   }
