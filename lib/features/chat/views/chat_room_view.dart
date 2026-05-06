@@ -152,14 +152,21 @@ class _ChatRoomBody extends StatefulWidget {
 class _ChatRoomBodyState extends State<_ChatRoomBody> {
   final _textController = TextEditingController();
   final ItemScrollController _itemScrollController = ItemScrollController();
+  final ScrollOffsetController _scrollOffsetController =
+      ScrollOffsetController();
+  final ItemPositionsListener _itemPositionsListener =
+      ItemPositionsListener.create();
   final _focusNode = FocusNode();
+
+  bool _showScrollBottom = false;
 
   ChatRoomVM get viewmodel => widget.viewmodel;
 
-  // @override
-  // void initState() {
-  //   super.initState();
-  // }
+  @override
+  void initState() {
+    super.initState();
+    _itemPositionsListener.itemPositions.addListener(_onPositionChanged);
+  }
 
   // void _onScroll() {
   //   if (_itemScrollController.position.pixels >=
@@ -171,20 +178,53 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
   @override
   void dispose() {
     _textController.dispose();
-    // _scrollController.dispose();
+    _itemPositionsListener.itemPositions.removeListener(_onPositionChanged);
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) => Column(
+  Widget build(BuildContext context) => Stack(
     children: [
-      Expanded(
-        child: viewmodel.error != null
-            ? Center(child: Text(viewmodel.error ?? ''))
-            : _buildMessageList(),
+      Column(
+        children: [
+          Expanded(
+            child: viewmodel.error != null
+                ? Center(child: Text(viewmodel.error ?? ''))
+                : _buildMessageList(),
+          ),
+          if (viewmodel.typingText != null) _buildTypingIndicator(),
+          _buildInputBar(),
+        ],
       ),
-      if (viewmodel.typingText != null) _buildTypingIndicator(),
-      _buildInputBar(),
+
+      if (_showScrollBottom)
+        Positioned(
+          right: 12.w,
+          bottom: 84.h,
+          child: GestureDetector(
+            onTap: _scrollToBottom,
+            child: Container(
+              width: 32.w,
+              height: 32.w,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.15),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Icon(
+                Icons.keyboard_arrow_down,
+                color: AppColors.primary,
+                size: 16.sp,
+              ),
+            ),
+          ),
+        ),
     ],
   );
 
@@ -200,6 +240,7 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
 
     return ScrollablePositionedList.builder(
       itemScrollController: _itemScrollController,
+      itemPositionsListener: _itemPositionsListener,
       reverse: true,
       padding: EdgeInsets.only(
         bottom: 12.h,
@@ -494,5 +535,30 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
     }
 
     viewmodel.highlightMessage(messageId);
+  }
+
+  void _onPositionChanged() {
+    final position = _itemPositionsListener.itemPositions.value;
+
+    if (position.isEmpty) return;
+
+    // Check if latest message (index 0) is still visible
+    final isAtBottom = position.any((pos) => pos.index == 0);
+
+    if (_showScrollBottom != !isAtBottom) {
+      setState(() {
+        _showScrollBottom = !isAtBottom;
+      });
+    }
+  }
+
+  void _scrollToBottom() {
+    if (_itemScrollController.isAttached) {
+      _itemScrollController.scrollTo(
+        index: 0,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeOut,
+      );
+    }
   }
 }
