@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -18,6 +17,7 @@ import 'package:kouvention/features/shared/services/fcm_service.dart';
 import 'package:kouvention/features/shared/services/storage_service.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
 import 'package:kouvention/features/user/services/user_service.dart';
+import 'package:kouvention/features/user/viewmodel/presence_notifier.dart';
 import 'package:oktoast/oktoast.dart';
 
 final profileVM = ChangeNotifierProvider.autoDispose<ProfileVM>(
@@ -60,10 +60,6 @@ class ProfileVM extends BaseNotifier {
   }
 
   @override
-  // TODO: Logout -> Remove user token (delete in FCM)
-  // final fcmService = ref.read(fcmServiceProvider);
-  // await fcmService.removeToken();
-  // await FirebaseAuth.instance.signOut();
   FutureOr<void> init() async {
     final uid = _authService.currentUser?.uid;
     if (uid == null) return;
@@ -94,14 +90,18 @@ class ProfileVM extends BaseNotifier {
       isLoading = true;
       _isButtonLoading = true;
 
+      // Remove FCM Token
       final fcmService = ref.read(fcmServiceProvider);
       await fcmService.removeToken();
+
+      // Update user offline status
+      final presence = ref.read(presenceNotifierProvider);
+      await presence.signOutWithPresence(_authService);
 
       ref.invalidate(chatListVM);
       if (ctx.mounted) {
         ctx.go(RouterRoutes.login.path);
       }
-      await FirebaseAuth.instance.signOut();
     } catch (e, s) {
       print('error when signin out: $e');
       showToast('Failed to sign out. Please try again');

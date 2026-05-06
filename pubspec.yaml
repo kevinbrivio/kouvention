@@ -36,6 +36,8 @@ dependencies:
   image_picker: ^1.2.1
   image_cropper: ^12.2.1
   intl: ^0.20.2
+  swipe_to: ^1.0.6
+  scrollable_positioned_list: ^0.3.8
 
 dev_dependencies:
   flutter_test:

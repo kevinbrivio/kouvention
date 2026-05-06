@@ -37,4 +37,7 @@ class DateTimeHelper {
   };
   static String formatDateMonthYear(DateTime date) =>
       DateFormat('dd/MM/yyyy').format(date);
+
+  static String formatDateMonthClock(DateTime date) =>
+      DateFormat('d/M, HH.mm').format(date);
 }

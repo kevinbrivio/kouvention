@@ -17,6 +17,7 @@ void onBackgroundNotificationResponse(NotificationResponse response) async {
   // User typed reply
   final String? replyText = response.input;
   final String? chatId = response.payload;
+  final senderName = response.data['senderName'];
 
   if (replyText == null || chatId == null) return;
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
@@ -36,6 +37,7 @@ void onBackgroundNotificationResponse(NotificationResponse response) async {
   await chatService.sendMessage(
     chatId: chatId,
     senderId: currentUser.uid,
+    senderName: senderName ?? '',
     text: replyText,
     memberUids: chat.members,
   );
@@ -94,10 +96,7 @@ Future<void> _showChatNotification({
   final senderIcon = await _downloadIcon(senderImageUrl);
 
   final MessagingStyleInformation messageStyle = MessagingStyleInformation(
-    Person(
-      key: currentUserUid,
-      name: 'You',
-    ),
+    Person(key: currentUserUid, name: 'You'),
     messages: [
       Message(
         body,

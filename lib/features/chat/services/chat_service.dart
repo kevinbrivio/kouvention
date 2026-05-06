@@ -3,6 +3,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
+import 'package:kouvention/features/chat/models/reply_to_model.dart';
 
 class ChatService {
   final FirebaseFirestore _firestore;
@@ -101,20 +102,31 @@ class ChatService {
   Future<void> sendMessage({
     required String chatId,
     required String senderId,
+    required String senderName,
     required String text,
     required List<String> memberUids,
+    ReplyToModel? replyTo,
   }) async {
     final batch = _firestore.batch();
 
     final msgRef = _messagesRef(chatId).doc();
     batch.set(
       msgRef,
-      MessageModel.toNewMessageMap(senderId: senderId, text: text),
+      MessageModel.toNewMessageMap(
+        senderId: senderId,
+        senderName: senderName,
+        text: text,
+        replyTo: replyTo,
+      ),
     );
-
     final chatRef = _chatsRef.doc(chatId);
     batch.update(chatRef, {
-      ...MessageModel.toLastMessageMap(senderId: senderId, text: text),
+      ...MessageModel.toLastMessageMap(
+        senderId: senderId,
+        senderName: senderName,
+        text: text,
+        replyTo: replyTo,
+      ),
       'updatedAt': FieldValue.serverTimestamp(),
     });
 
@@ -240,7 +252,40 @@ class ChatService {
       'deletedBy.$uid': FieldValue.serverTimestamp(),
     });
   }
-  
+
+  Future<void> deleteMessageForMe({
+    required String uid,
+    required String chatId,
+    required List<String> messageIds,
+  }) async {
+    final batch = _firestore.batch();
+    for (final msgId in messageIds) {
+      batch.update(_messagesRef(chatId).doc(msgId), {
+        'deletedFor': FieldValue.arrayUnion([uid]),
+      });
+    }
+
+    await batch.commit();
+  }
+
+  Future<void> deleteMessageForEveryone(
+    String chatId,
+    List<String> messageIds,
+  ) async {
+    // final batch = _messagesRef(chatId).firestore.batch();
+    final batch = _firestore.batch();
+
+    for (final msgId in messageIds) {
+      batch.update(_messagesRef(chatId).doc(msgId), {
+        'isDeleted': true,
+        'text': '',
+        'replyTo': null,
+      });
+    }
+
+    await batch.commit();
+  }
+
   // ---- CHECK MESSAGE STATUS ------------------
   Future<void> markChatAsRead(String chatId, uid) async {
     await _chatsRef.doc(chatId).update({

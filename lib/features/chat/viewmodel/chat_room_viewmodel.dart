@@ -6,6 +6,7 @@ import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
+import 'package:kouvention/features/chat/models/reply_to_model.dart';
 import 'package:kouvention/features/chat/services/chat_service.dart';
 import 'package:kouvention/features/notification/services/notification_service.dart';
 import 'package:kouvention/features/notification/viewmodel/active_chat_id_provider.dart';
@@ -32,6 +33,7 @@ class ChatRoomVM extends BaseNotifier {
   DocumentSnapshot? _lastDocument;
   bool _hasMoreMessages = true;
   bool _isLoadingMore = false;
+  String? _highlightedMessageId;
 
   // Typing indicator debounce
   Timer? _typingTimer;
@@ -39,6 +41,9 @@ class ChatRoomVM extends BaseNotifier {
 
   // Sending message
   bool _isSending = false;
+
+  // Reply Message
+  MessageModel? _replyMessage;
 
   String? _error;
 
@@ -56,7 +61,9 @@ class ChatRoomVM extends BaseNotifier {
   bool get isTyping => _isTyping;
   bool get isGroup => _chat?.type == 'group';
   bool get isSending => _isSending;
+  MessageModel? get replyMessage => _replyMessage;
   String? get error => _error;
+  String? get highlightedMessageId => _highlightedMessageId;
 
   /// Display name for the chat header
   String get chatDisplayName {
@@ -123,6 +130,7 @@ class ChatRoomVM extends BaseNotifier {
   }
 
   bool isMyMessage(MessageModel message) => message.senderId == _currentUid;
+  bool isRepliedMessageMine(String senderId) => _currentUid == senderId;
 
   @override
   FutureOr<void> init() async {
@@ -173,7 +181,9 @@ class ChatRoomVM extends BaseNotifier {
         .streamMessages(chatId)
         .listen(
           (msg) {
-            _messages = msg;
+            _messages = msg
+                .where((m) => !m.deletedFor.contains(_currentUid!))
+                .toList();
             _error = null;
 
             if (_lastDocument == null && messages.isNotEmpty)
@@ -221,12 +231,24 @@ class ChatRoomVM extends BaseNotifier {
       notifyListeners();
       // clear typing indicator before sending
       await clearTyping();
+      final ReplyToModel? replyTo = _replyMessage != null
+          ? ReplyToModel(
+              messageId: _replyMessage!.id,
+              senderId: _replyMessage!.senderId,
+              senderName: senderDisplayName(_replyMessage!.senderId),
+              text: _replyMessage!.text,
+            )
+          : null;
+
+      onCancelReply();
 
       await _chatService.sendMessage(
         chatId: chatId,
         senderId: _currentUid,
+        senderName: senderDisplayName(_currentUid),
         text: trimmed,
         memberUids: _chat!.members,
+        replyTo: replyTo,
       );
 
       _sendNotification(trimmed);
@@ -260,32 +282,75 @@ class ChatRoomVM extends BaseNotifier {
 
   /// Load more messages when the user scrolls to the top.
   Future<void> loadMoreMessages() async {
-    if (!_isLoadingMore || !_hasMoreMessages || _lastDocument == null) return;
+    if (_isLoadingMore) return;
 
     _isLoadingMore = true;
     notifyListeners();
 
+    await _loadOlderBatch();
+
+    _isLoadingMore = false;
+    notifyListeners();
+  }
+
+  void highlightMessage(String messageId) {
+    _highlightedMessageId = messageId;
+    notifyListeners();
+
+    Future.delayed(Duration(milliseconds: 1500), () {
+      if (_highlightedMessageId == messageId) {
+        _highlightedMessageId = null;
+        notifyListeners();
+      }
+    });
+  }
+
+  Future<int?> findMessageIndex(String messageId) async {
+    const maxAttempts = 10;
+
+    for (int attempt = 0; attempt < maxAttempts; attempt++) {
+      // 1. Search from what we have
+      final index = _messages.indexWhere((m) => m.id == messageId);
+      if (index != -1) return index;
+
+      // 2. Callback if there is no more to load
+      if (!_hasMoreMessages || _lastDocument == null) return null;
+
+      // 3. Load one more page and try again
+      final loaded = await _loadOlderBatch();
+      if (!loaded) return null;
+    }
+
+    return null;
+  }
+
+  /// Helper to load one more page to check messages can be loaded or not.
+  Future<bool> _loadOlderBatch() async {
+    if (!_hasMoreMessages || _lastDocument == null) return false;
+
     try {
       final snapshot = await _chatService.fetchRawMesages(
         chatId,
-        lastDocument: _lastDocument!,
+        lastDocument: _lastDocument,
       );
 
       if (snapshot.docs.isEmpty) {
         _hasMoreMessages = false;
-      } else {
-        final olderMessages = snapshot.docs
-            .map((doc) => MessageModel.fromMap(doc.id, doc.data()))
-            .toList();
-        _messages = [...messages, ...olderMessages];
-        _lastDocument = snapshot.docs.last;
+        return false;
       }
+
+      final olderMessages = snapshot.docs
+          .map((doc) => MessageModel.fromMap(doc.id, doc.data()))
+          .where((m) => !m.deletedFor.contains(_currentUid!))
+          .toList();
+
+      _messages = [..._messages, ...olderMessages];
+      _lastDocument = snapshot.docs.last;
+      return true;
     } catch (e) {
       _error = e.toString();
+      return false;
     }
-
-    _isLoadingMore = false;
-    notifyListeners();
   }
 
   // --- Typing Indicator --------------------
@@ -312,6 +377,17 @@ class ChatRoomVM extends BaseNotifier {
       _typingTimer?.cancel();
       await _chatService.clearTyping(chatId, _currentUid);
     }
+  }
+
+  // ---- Reply Message -----------------------
+  void onSwipedMessage(MessageModel message) {
+    _replyMessage = message;
+    notifyListeners();
+  }
+
+  void onCancelReply() {
+    _replyMessage = null;
+    notifyListeners();
   }
 
   // --- Unread Count --------------------------
