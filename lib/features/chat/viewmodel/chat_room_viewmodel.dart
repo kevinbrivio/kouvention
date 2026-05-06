@@ -128,7 +128,7 @@ class ChatRoomVM extends BaseNotifier {
   }
 
   bool isMyMessage(MessageModel message) => message.senderId == _currentUid;
-  bool isRepliedMessageMine(String senderId) =>  _currentUid == senderId;
+  bool isRepliedMessageMine(String senderId) => _currentUid == senderId;
 
   @override
   FutureOr<void> init() async {
@@ -243,6 +243,7 @@ class ChatRoomVM extends BaseNotifier {
       await _chatService.sendMessage(
         chatId: chatId,
         senderId: _currentUid,
+        senderName: senderDisplayName(_currentUid),
         text: trimmed,
         memberUids: _chat!.members,
         replyTo: replyTo,

@@ -102,28 +102,28 @@ class ChatService {
   Future<void> sendMessage({
     required String chatId,
     required String senderId,
+    required String senderName,
     required String text,
     required List<String> memberUids,
     ReplyToModel? replyTo,
   }) async {
     final batch = _firestore.batch();
 
-    debugPrint('---- SENDING MESSAGE ----');
-    debugPrint(' -- - - -- - - replied msg: ${replyTo?.toMap()}');
     final msgRef = _messagesRef(chatId).doc();
     batch.set(
       msgRef,
       MessageModel.toNewMessageMap(
         senderId: senderId,
+        senderName: senderName,
         text: text,
         replyTo: replyTo,
       ),
     );
-    debugPrint('---- ----- REPLYING TO: ${replyTo?.toMap()} ----- ----');
     final chatRef = _chatsRef.doc(chatId);
     batch.update(chatRef, {
       ...MessageModel.toLastMessageMap(
         senderId: senderId,
+        senderName: senderName,
         text: text,
         replyTo: replyTo,
       ),
