@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:kouvention/features/chat/models/reply_to_model.dart';
 
 class MessageModel {
   final String id;
@@ -6,6 +7,7 @@ class MessageModel {
   final String text;
   final String type; // "text" for now, "image" | "file" | "video" later
   final DateTime sentAt;
+  final ReplyToModel? replyTo;
 
   // FUTURE CASES
   final String? mediaUrl;
@@ -18,6 +20,7 @@ class MessageModel {
     required this.text,
     this.type = 'text',
     required this.sentAt,
+    this.replyTo,
     this.mediaUrl,
     this.fileName,
     this.fileSizeBytes,
@@ -32,6 +35,9 @@ class MessageModel {
         text: data['text'] as String? ?? '',
         type: data['type'] as String? ?? 'text',
         sentAt: (data['sentAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+        replyTo: (data['replyTo'] != null)
+            ? ReplyToModel.fromMap(data['replyTo'])
+            : null,
         mediaUrl: data['mediaUrl'] as String?,
         fileName: data['fileName'] as String?,
         fileSizeBytes: (data['fileSizeBytes'] as num?)?.toInt(),
@@ -40,11 +46,13 @@ class MessageModel {
   static Map<String, dynamic> toNewMessageMap({
     required String senderId,
     required String text,
+    ReplyToModel? replyTo,
   }) {
     return {
       'senderId': senderId,
       'text': text,
       'type': 'text',
+      if (replyTo != null) 'replyTo': replyTo.toMap(),
       'sentAt': FieldValue.serverTimestamp(),
     };
   }
@@ -52,11 +60,13 @@ class MessageModel {
   static Map<String, dynamic> toLastMessageMap({
     required String senderId,
     required String text,
+    ReplyToModel? replyTo,
   }) {
     return {
       'lastMessage': {
         'text': text,
         'sentBy': senderId,
+        if (replyTo != null) 'replyTo': replyTo.toMap(),
         'sentAt': FieldValue.serverTimestamp(),
         'type': 'text',
       },
