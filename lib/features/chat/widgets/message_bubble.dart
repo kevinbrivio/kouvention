@@ -52,9 +52,16 @@ class MessageBubble extends ConsumerWidget {
           ? Colors.amber.withValues(alpha: 0.2)
           : Colors.transparent,
       child: SwipeTo(
-        onRightSwipe: !isMe ? (_) => onReplyMessage() : null,
-        onLeftSwipe: isMe ? (_) => onReplyMessage() : null,
-        // GestureDetector goes HERE — inside SwipeTo, on the content
+        onRightSwipe: !message.isDeleted
+            ? !isMe
+                  ? (_) => onReplyMessage()
+                  : null
+            : null,
+        onLeftSwipe: !message.isDeleted
+            ? isMe
+                  ? (_) => onReplyMessage()
+                  : null
+            : null,
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onLongPress: () {
@@ -192,9 +199,9 @@ class MessageBubble extends ConsumerWidget {
                                 ? message.isDeleted
                                       ? AppColors.grey
                                       : Colors.white
-                                : message.isDeleted 
-                                  ? AppColors.grey
-                                  : Colors.black87,
+                                : message.isDeleted
+                                ? AppColors.grey
+                                : Colors.black87,
                             fontStyle: message.isDeleted
                                 ? FontStyle.italic
                                 : FontStyle.normal,

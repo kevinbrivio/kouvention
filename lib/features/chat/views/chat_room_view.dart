@@ -168,13 +168,6 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
     _itemPositionsListener.itemPositions.addListener(_onPositionChanged);
   }
 
-  // void _onScroll() {
-  //   if (_itemScrollController.position.pixels >=
-  //       _itemScrollController.position.maxScrollExtent - 100) {
-  //     viewmodel.loadMoreMessages();
-  //   }
-  // }
-
   @override
   void dispose() {
     _textController.dispose();
@@ -183,48 +176,48 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
   }
 
   @override
-  Widget build(BuildContext context) => Stack(
+  Widget build(BuildContext context) => Column(
     children: [
-      Column(
-        children: [
-          Expanded(
-            child: viewmodel.error != null
+      Expanded(
+        child: Stack(
+          children: [
+            viewmodel.error != null
                 ? Center(child: Text(viewmodel.error ?? ''))
                 : _buildMessageList(),
-          ),
-          if (viewmodel.typingText != null) _buildTypingIndicator(),
-          _buildInputBar(),
-        ],
-      ),
 
-      if (_showScrollBottom)
-        Positioned(
-          right: 12.w,
-          bottom: 84.h,
-          child: GestureDetector(
-            onTap: _scrollToBottom,
-            child: Container(
-              width: 32.w,
-              height: 32.w,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.15),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
+            if (_showScrollBottom)
+              Positioned(
+                right: 16.w,
+                bottom: 16.h,
+                child: GestureDetector(
+                  onTap: _scrollToBottom,
+                  child: Container(
+                    width: 40.w,
+                    height: 40.w,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.15),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      Icons.keyboard_arrow_down,
+                      color: AppColors.primary,
+                      size: 24.sp,
+                    ),
                   ),
-                ],
+                ),
               ),
-              child: Icon(
-                Icons.keyboard_arrow_down,
-                color: AppColors.primary,
-                size: 16.sp,
-              ),
-            ),
-          ),
+          ],
         ),
+      ),
+      if (viewmodel.typingText != null) _buildTypingIndicator(),
+      _buildInputBar(),
     ],
   );
 
@@ -438,6 +431,7 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
           if (_textController.text.trim().isNotEmpty) {
             viewmodel.sendMessage(_textController.text);
             _textController.clear();
+            _scrollToBottom();
           }
         },
         child: CircleAvatar(
