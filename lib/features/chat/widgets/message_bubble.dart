@@ -192,7 +192,9 @@ class MessageBubble extends ConsumerWidget {
                                 ? message.isDeleted
                                       ? AppColors.grey
                                       : Colors.white
-                                : Colors.black87,
+                                : message.isDeleted 
+                                  ? AppColors.grey
+                                  : Colors.black87,
                             fontStyle: message.isDeleted
                                 ? FontStyle.italic
                                 : FontStyle.normal,
