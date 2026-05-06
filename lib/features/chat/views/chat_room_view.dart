@@ -16,6 +16,7 @@ import 'package:kouvention/features/chat/viewmodel/chat_selection_viewmodel.dart
 import 'package:kouvention/features/chat/widgets/message_bubble.dart';
 import 'package:kouvention/features/chat/widgets/selection_app_bar.dart';
 import 'package:kouvention/features/chat/widgets/typing_dots.dart';
+import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
 class ChatRoomView extends ConsumerWidget {
   final String chatId;
@@ -41,9 +42,9 @@ class ChatRoomView extends ConsumerWidget {
         provider: chatRoomVM(chatId),
         useGradient: false,
         backgroundColor: Colors.white,
-        appBar: (vm) => selectionVM.isSelecting 
-          ? SelectionAppBar(chatVM: vm,)
-          : _buildAppBar(context, vm),
+        appBar: (vm) => selectionVM.isSelecting
+            ? SelectionAppBar(chatVM: vm)
+            : _buildAppBar(context, vm),
         builder: (context, vm) => _ChatRoomBody(chatId: chatId, viewmodel: vm),
         backgroundImage: DecorationImage(
           image: AssetImage(images.chatWallpaper),
@@ -150,28 +151,27 @@ class _ChatRoomBody extends StatefulWidget {
 
 class _ChatRoomBodyState extends State<_ChatRoomBody> {
   final _textController = TextEditingController();
-  final _scrollController = ScrollController();
+  final ItemScrollController _itemScrollController = ItemScrollController();
   final _focusNode = FocusNode();
 
   ChatRoomVM get viewmodel => widget.viewmodel;
 
-  @override
-  void initState() {
-    super.initState();
-    _scrollController.addListener(_onScroll);
-  }
+  // @override
+  // void initState() {
+  //   super.initState();
+  // }
 
-  void _onScroll() {
-    if (_scrollController.position.pixels >=
-        _scrollController.position.maxScrollExtent - 100) {
-      viewmodel.loadMoreMessages();
-    }
-  }
+  // void _onScroll() {
+  //   if (_itemScrollController.position.pixels >=
+  //       _itemScrollController.position.maxScrollExtent - 100) {
+  //     viewmodel.loadMoreMessages();
+  //   }
+  // }
 
   @override
   void dispose() {
     _textController.dispose();
-    _scrollController.dispose();
+    // _scrollController.dispose();
     super.dispose();
   }
 
@@ -198,8 +198,8 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
       );
     }
 
-    return ListView.builder(
-      controller: _scrollController,
+    return ScrollablePositionedList.builder(
+      itemScrollController: _itemScrollController,
       reverse: true,
       padding: EdgeInsets.only(
         bottom: 12.h,
@@ -239,6 +239,7 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
               message: message,
               isMe: isMe,
               onReplyMessage: () => viewmodel.onSwipedMessage(message),
+              onTapReply: _scrollToMessage,
             ),
           ],
         );
@@ -465,5 +466,33 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
         ],
       ),
     );
+  }
+
+  Future<void> _scrollToMessage(String messageId) async {
+    final index = await viewmodel.findMessageIndex(messageId);
+
+    if (index == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Message not found')));
+      }
+      return;
+    }
+
+    // Rebuild page after we load older mesages
+    viewmodel.notifyListeners();
+
+    await Future.delayed(Duration(milliseconds: 100));
+
+    if (_itemScrollController.isAttached) {
+      _itemScrollController.scrollTo(
+        index: index,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
+
+    viewmodel.highlightMessage(messageId);
   }
 }

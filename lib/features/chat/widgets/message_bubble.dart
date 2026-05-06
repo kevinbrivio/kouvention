@@ -17,6 +17,7 @@ class MessageBubble extends ConsumerWidget {
   final bool isMe;
   final bool isFirstSequence;
   final VoidCallback onReplyMessage;
+  final void Function(String messageId)? onTapReply;
   final ChatRoomVM viewmodel;
 
   const MessageBubble({
@@ -25,6 +26,7 @@ class MessageBubble extends ConsumerWidget {
     required this.isMe,
     required this.isFirstSequence,
     required this.onReplyMessage,
+    this.onTapReply,
     required this.viewmodel,
   });
 
@@ -39,10 +41,15 @@ class MessageBubble extends ConsumerWidget {
     final senderName = viewmodel.senderDisplayName(message.senderId);
     final senderPhotoUrl = viewmodel.senderPhotoUrl(message.senderId);
     final replyMsg = message.replyTo;
+
+    final isHighlighted = viewmodel.highlightedMessageId == message.id;
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       color: isSelected
           ? AppColors.primary.withValues(alpha: 0.22)
+          : isHighlighted
+          ? Colors.amber.withValues(alpha: 0.2)
           : Colors.transparent,
       child: SwipeTo(
         onRightSwipe: !isMe ? (_) => onReplyMessage() : null,
@@ -152,7 +159,15 @@ class MessageBubble extends ConsumerWidget {
                           : CrossAxisAlignment.start,
                       children: [
                         if (replyMsg != null) ...[
-                          _buildInBubbleReplyPreview(replyMsg),
+                          InkWell(
+                            onTap: onTapReply != null
+                                ? () {
+                                    HapticFeedback.selectionClick();
+                                    onTapReply!(replyMsg.messageId);
+                                  }
+                                : null,
+                            child: _buildInBubbleReplyPreview(replyMsg),
+                          ),
                           Gap(6.h),
                         ],
                         if (!isMe && viewmodel.isGroup && isFirstSequence) ...[
@@ -168,10 +183,10 @@ class MessageBubble extends ConsumerWidget {
                         ],
                         Text(
                           (message.text == '' && message.isDeleted)
-                            ? isMe
-                              ? 'You deleted this message'
-                              : 'This message was deleted'
-                            : message.text,
+                              ? isMe
+                                    ? 'You deleted this message'
+                                    : 'This message was deleted'
+                              : message.text,
                           style: textTheme.senderName.copyWith(
                             color: isMe
                                 ? message.isDeleted

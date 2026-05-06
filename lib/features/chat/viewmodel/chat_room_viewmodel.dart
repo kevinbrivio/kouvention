@@ -33,6 +33,7 @@ class ChatRoomVM extends BaseNotifier {
   DocumentSnapshot? _lastDocument;
   bool _hasMoreMessages = true;
   bool _isLoadingMore = false;
+  String? _highlightedMessageId;
 
   // Typing indicator debounce
   Timer? _typingTimer;
@@ -62,6 +63,7 @@ class ChatRoomVM extends BaseNotifier {
   bool get isSending => _isSending;
   MessageModel? get replyMessage => _replyMessage;
   String? get error => _error;
+  String? get highlightedMessageId => _highlightedMessageId;
 
   /// Display name for the chat header
   String get chatDisplayName {
@@ -280,32 +282,75 @@ class ChatRoomVM extends BaseNotifier {
 
   /// Load more messages when the user scrolls to the top.
   Future<void> loadMoreMessages() async {
-    if (!_isLoadingMore || !_hasMoreMessages || _lastDocument == null) return;
+    if (_isLoadingMore) return;
 
     _isLoadingMore = true;
     notifyListeners();
 
+    await _loadOlderBatch();
+
+    _isLoadingMore = false;
+    notifyListeners();
+  }
+
+  void highlightMessage(String messageId) {
+    _highlightedMessageId = messageId;
+    notifyListeners();
+
+    Future.delayed(Duration(milliseconds: 1500), () {
+      if (_highlightedMessageId == messageId) {
+        _highlightedMessageId = null;
+        notifyListeners();
+      }
+    });
+  }
+
+  Future<int?> findMessageIndex(String messageId) async {
+    const maxAttempts = 10;
+
+    for (int attempt = 0; attempt < maxAttempts; attempt++) {
+      // 1. Search from what we have
+      final index = _messages.indexWhere((m) => m.id == messageId);
+      if (index != -1) return index;
+
+      // 2. Callback if there is no more to load
+      if (!_hasMoreMessages || _lastDocument == null) return null;
+
+      // 3. Load one more page and try again
+      final loaded = await _loadOlderBatch();
+      if (!loaded) return null;
+    }
+
+    return null;
+  }
+
+  /// Helper to load one more page to check messages can be loaded or not.
+  Future<bool> _loadOlderBatch() async {
+    if (!_hasMoreMessages || _lastDocument == null) return false;
+
     try {
       final snapshot = await _chatService.fetchRawMesages(
         chatId,
-        lastDocument: _lastDocument!,
+        lastDocument: _lastDocument,
       );
 
       if (snapshot.docs.isEmpty) {
         _hasMoreMessages = false;
-      } else {
-        final olderMessages = snapshot.docs
-            .map((doc) => MessageModel.fromMap(doc.id, doc.data()))
-            .toList();
-        _messages = [...messages, ...olderMessages];
-        _lastDocument = snapshot.docs.last;
+        return false;
       }
+
+      final olderMessages = snapshot.docs
+          .map((doc) => MessageModel.fromMap(doc.id, doc.data()))
+          .where((m) => !m.deletedFor.contains(_currentUid!))
+          .toList();
+
+      _messages = [..._messages, ...olderMessages];
+      _lastDocument = snapshot.docs.last;
+      return true;
     } catch (e) {
       _error = e.toString();
+      return false;
     }
-
-    _isLoadingMore = false;
-    notifyListeners();
   }
 
   // --- Typing Indicator --------------------
