@@ -6,6 +6,7 @@ import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
+import 'package:kouvention/features/chat/models/reply_to_model.dart';
 import 'package:kouvention/features/chat/services/chat_service.dart';
 import 'package:kouvention/features/notification/services/notification_service.dart';
 import 'package:kouvention/features/notification/viewmodel/active_chat_id_provider.dart';
@@ -40,6 +41,9 @@ class ChatRoomVM extends BaseNotifier {
   // Sending message
   bool _isSending = false;
 
+  // Reply Message
+  MessageModel? _replyMessage;
+
   String? _error;
 
   ChatRoomVM(super.ref, {required this.chatId})
@@ -56,6 +60,7 @@ class ChatRoomVM extends BaseNotifier {
   bool get isTyping => _isTyping;
   bool get isGroup => _chat?.type == 'group';
   bool get isSending => _isSending;
+  MessageModel? get replyMessage => _replyMessage;
   String? get error => _error;
 
   /// Display name for the chat header
@@ -123,6 +128,7 @@ class ChatRoomVM extends BaseNotifier {
   }
 
   bool isMyMessage(MessageModel message) => message.senderId == _currentUid;
+  bool isRepliedMessageMine(String senderId) =>  _currentUid == senderId;
 
   @override
   FutureOr<void> init() async {
@@ -221,12 +227,25 @@ class ChatRoomVM extends BaseNotifier {
       notifyListeners();
       // clear typing indicator before sending
       await clearTyping();
+      final ReplyToModel? replyTo = _replyMessage != null
+          ? ReplyToModel(
+              messageId: _replyMessage!.id,
+              senderId: _replyMessage!.senderId,
+              senderName: senderDisplayName(_replyMessage!.senderId),
+              text: _replyMessage!.text,
+            )
+          : null;
+
+      print('----- REPLY TO: $replyTo');
+
+      onCancelReply();
 
       await _chatService.sendMessage(
         chatId: chatId,
         senderId: _currentUid,
         text: trimmed,
         memberUids: _chat!.members,
+        replyTo: replyTo,
       );
 
       _sendNotification(trimmed);
@@ -312,6 +331,17 @@ class ChatRoomVM extends BaseNotifier {
       _typingTimer?.cancel();
       await _chatService.clearTyping(chatId, _currentUid);
     }
+  }
+
+  // ---- Reply Message -----------------------
+  void onSwipedMessage(MessageModel message) {
+    _replyMessage = message;
+    notifyListeners();
+  }
+
+  void onCancelReply() {
+    _replyMessage = null;
+    notifyListeners();
   }
 
   // --- Unread Count --------------------------

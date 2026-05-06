@@ -1,6 +1,7 @@
 // lib/features/chat/views/chat_room_view.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
@@ -10,11 +11,12 @@ import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/image_paths.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
-import 'package:kouvention/cores/widgets/loading_indicator.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
+import 'package:kouvention/features/chat/models/reply_to_model.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
 import 'package:kouvention/features/chat/widgets/bubble_tail_painter.dart';
 import 'package:kouvention/features/chat/widgets/typing_dots.dart';
+import 'package:swipe_to/swipe_to.dart';
 
 class ChatRoomView extends StatelessWidget {
   final String chatId;
@@ -141,6 +143,7 @@ class _ChatRoomBody extends StatefulWidget {
 class _ChatRoomBodyState extends State<_ChatRoomBody> {
   final _textController = TextEditingController();
   final _scrollController = ScrollController();
+  final _focusNode = FocusNode();
 
   ChatRoomVM get viewmodel => widget.viewmodel;
 
@@ -223,8 +226,13 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
 
         return Column(
           children: [
-            if (showDate) _buildDateSeparator(message.sentAt!),
-            _buildMessageBubble(message, isMe, isFirstSequence),
+            if (showDate) _buildDateSeparator(message.sentAt),
+            _buildMessageBubble(
+              message,
+              isMe,
+              isFirstSequence,
+              () => viewmodel.onSwipedMessage(message),
+            ),
           ],
         );
       },
@@ -262,136 +270,184 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
     MessageModel message,
     bool isMe,
     bool isFirstSequence,
+    Function() onReplyMessage,
   ) {
     final time = _formatTime(message.sentAt);
     final senderName = viewmodel.senderDisplayName(message.senderId);
     final senderPhotoUrl = viewmodel.senderPhotoUrl(message.senderId);
 
-    return Padding(
-      padding: EdgeInsets.only(bottom: 8.h),
-      child: Row(
-        mainAxisAlignment: isMe
-            ? MainAxisAlignment.end
-            : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (!isMe) ...[
-            if (viewmodel.isGroup)
-              if (isFirstSequence)
-                CircleAvatar(
-                  radius: 14.r,
-                  backgroundColor: AppColors.senderNameColor(
-                    message.senderId,
-                  ).withValues(alpha: 0.25),
-                  backgroundImage:
-                      senderPhotoUrl != null && senderPhotoUrl.isNotEmpty
-                      ? NetworkImage(senderPhotoUrl)
-                      : null,
-                  onBackgroundImageError:
-                      senderPhotoUrl != null && senderPhotoUrl.isNotEmpty
-                      ? (_, __) {} // silently fall back to child
-                      : null,
-                  child: senderPhotoUrl == null || senderPhotoUrl.isEmpty
-                      ? Text(
-                          senderName.isNotEmpty
-                              ? senderName[0].toUpperCase()
-                              : '?',
-                          style: textTheme.senderName.copyWith(
-                            color: AppColors.senderNameColor(
-                              message.senderId,
-                            ).withValues(alpha: 0.7),
-                          ),
+    final replyMsg = message.replyTo;
+
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 600),
+      curve: Curves.easeOut,
+      alignment: Alignment.bottomCenter,
+      child: SwipeTo(
+        onRightSwipe: !isMe
+            ? (_) {
+                onReplyMessage();
+                _focusNode.requestFocus();
+              }
+            : null,
+        onLeftSwipe: isMe
+            ? (_) {
+                onReplyMessage();
+                _focusNode.requestFocus();
+              }
+            : null,
+        child: Column(
+          crossAxisAlignment: isMe
+              ? CrossAxisAlignment.end
+              : CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: EdgeInsets.only(bottom: 8.h),
+              child: Row(
+                mainAxisAlignment: isMe
+                    ? MainAxisAlignment.end
+                    : MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (!isMe) ...[
+                    if (viewmodel.isGroup)
+                      if (isFirstSequence)
+                        CircleAvatar(
+                          radius: 14.r,
+                          backgroundColor: AppColors.senderNameColor(
+                            message.senderId,
+                          ).withValues(alpha: 0.25),
+                          backgroundImage:
+                              senderPhotoUrl != null &&
+                                  senderPhotoUrl.isNotEmpty
+                              ? NetworkImage(senderPhotoUrl)
+                              : null,
+                          onBackgroundImageError:
+                              senderPhotoUrl != null &&
+                                  senderPhotoUrl.isNotEmpty
+                              ? (_, __) {} // silently fall back to child
+                              : null,
+                          child:
+                              senderPhotoUrl == null || senderPhotoUrl.isEmpty
+                              ? Text(
+                                  senderName.isNotEmpty
+                                      ? senderName[0].toUpperCase()
+                                      : '?',
+                                  style: textTheme.senderName.copyWith(
+                                    color: AppColors.senderNameColor(
+                                      message.senderId,
+                                    ).withValues(alpha: 0.7),
+                                  ),
+                                )
+                              : null,
                         )
-                      : null,
-                )
-              else
-                SizedBox(width: 28.r), // same width as avatar to keep alignment
-            Gap(8.w),
-          ],
-          Flexible(
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Container(
-                  constraints: BoxConstraints(maxWidth: 260.w),
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 14.w,
-                    vertical: 10.h,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isMe ? AppColors.primary2 : AppColors.otherUserBubble,
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(16.r),
-                      topRight: Radius.circular(isMe ? 4.r : 16.r),
-                      bottomRight: Radius.circular(16.r),
-                      bottomLeft: Radius.circular(isMe ? 16.r : 4.r),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: isMe
-                        ? CrossAxisAlignment.end
-                        : CrossAxisAlignment.start,
-                    children: [
-                      if (!isMe && viewmodel.isGroup && isFirstSequence) ...[
-                        Text(
-                          senderName,
-                          style: textTheme.senderName.copyWith(
-                            color: AppColors.senderNameColor(message.senderId),
+                      else
+                        SizedBox(
+                          width: 28.r,
+                        ), // same width as avatar to keep alignment
+                    Gap(8.w),
+                  ],
+                  Flexible(
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          constraints: BoxConstraints(maxWidth: 260.w),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 14.w,
+                            vertical: 10.h,
                           ),
-                        ),
-                        Gap(4.h),
-                      ],
-                      Text(
-                        message.text,
-                        style: TextStyle(
-                          color: isMe ? Colors.white : Colors.black87,
-                          fontSize: 14.sp,
-                        ),
-                      ),
-                      Gap(4.h),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            time,
-                            style: TextStyle(
-                              color: isMe ? Colors.white70 : Colors.grey[500],
-                              fontSize: 11.sp,
+                          decoration: BoxDecoration(
+                            color: isMe
+                                ? AppColors.primary2
+                                : AppColors.otherUserBubble,
+                            borderRadius: BorderRadius.only(
+                              topLeft: Radius.circular(16.r),
+                              topRight: Radius.circular(isMe ? 4.r : 16.r),
+                              bottomRight: Radius.circular(16.r),
+                              bottomLeft: Radius.circular(isMe ? 16.r : 4.r),
                             ),
                           ),
-                          if (isMe) ...[
-                            Gap(4.w),
-                            buildMessageStatus(viewmodel.getMessageStatus(message)),
-                          ],
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
+                          child: Column(
+                            crossAxisAlignment: isMe
+                                ? CrossAxisAlignment.end
+                                : CrossAxisAlignment.start,
+                            children: [
+                              if (replyMsg != null) ...[
+                                _buildInBubbleReplyPreview(replyMsg, isMe),
+                                Gap(6.h),
+                              ],
+                              if (!isMe &&
+                                  viewmodel.isGroup &&
+                                  isFirstSequence) ...[
+                                Text(
+                                  senderName,
+                                  style: textTheme.senderName.copyWith(
+                                    color: AppColors.senderNameColor(
+                                      message.senderId,
+                                    ),
+                                  ),
+                                ),
+                                Gap(4.h),
+                              ],
+                              Text(
+                                message.text,
+                                style: TextStyle(
+                                  color: isMe ? Colors.white : Colors.black87,
+                                  fontSize: 14.sp,
+                                ),
+                              ),
+                              Gap(4.h),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    time,
+                                    style: TextStyle(
+                                      color: isMe
+                                          ? Colors.white70
+                                          : Colors.grey[500],
+                                      fontSize: 11.sp,
+                                    ),
+                                  ),
+                                  if (isMe) ...[
+                                    Gap(4.w),
+                                    buildMessageStatus(
+                                      viewmodel.getMessageStatus(message),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
 
-                if (isFirstSequence)
-                  Positioned(
-                    top: 0,
-                    left: isMe ? null : -4.w,
-                    right: isMe ? -4.w : null,
-                    child: CustomPaint(
-                      size: Size(8.w, 12.h),
-                      painter: BubbleTailPainter(
-                        color: isMe
-                            ? AppColors.primary2
-                            : AppColors.otherUserBubble,
-                        isMe: isMe,
-                      ),
+                        if (isFirstSequence)
+                          Positioned(
+                            top: 0,
+                            left: isMe ? null : -4.w,
+                            right: isMe ? -4.w : null,
+                            child: CustomPaint(
+                              size: Size(8.w, 12.h),
+                              painter: BubbleTailPainter(
+                                color: isMe
+                                    ? AppColors.primary2
+                                    : AppColors.otherUserBubble,
+                                isMe: isMe,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
-  
+
   Widget buildMessageStatus(MessageStatus status) {
     switch (status) {
       case MessageStatus.sending:
@@ -409,16 +465,16 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
     child: Row(
       children: [
         if (viewmodel.isGroup)
-        CircleAvatar(
-          radius: 14.r,
-          backgroundColor: Colors.grey[300],
-          child: Text(
-            viewmodel.chatDisplayName.isNotEmpty
-                ? viewmodel.chatDisplayName[0].toUpperCase()
-                : '?',
-            style: TextStyle(fontSize: 10.sp, color: Colors.grey[700]),
+          CircleAvatar(
+            radius: 14.r,
+            backgroundColor: Colors.grey[300],
+            child: Text(
+              viewmodel.chatDisplayName.isNotEmpty
+                  ? viewmodel.chatDisplayName[0].toUpperCase()
+                  : '?',
+              style: TextStyle(fontSize: 10.sp, color: Colors.grey[700]),
+            ),
           ),
-        ),
         Gap(8.w),
         Container(
           padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
@@ -449,61 +505,192 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
         ),
       ],
     ),
-    child: Row(
-      children: [
-        IconButton(
-          icon: Icon(Icons.add, color: AppColors.primary),
-          onPressed: () {},
-        ),
-        Expanded(
-          child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 14.w),
-            decoration: BoxDecoration(
-              color: Colors.grey[100],
-              borderRadius: BorderRadius.circular(24.r),
-            ),
-            child: TextField(
-              controller: _textController,
-              onChanged: viewmodel.onTextChanged,
-              decoration: InputDecoration(
-                hintText: 'Type a message...',
-                hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14.sp),
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(vertical: 10.h),
-              ),
-              style: TextStyle(fontSize: 14.sp),
-              textCapitalization: TextCapitalization.sentences,
-            ),
-          ),
-        ),
-        Gap(8.w),
-        GestureDetector(
-          onTap: () {
-            if (_textController.text.trim().isNotEmpty) {
-              viewmodel.sendMessage(_textController.text);
-              _textController.clear();
-            }
-          },
-          child: CircleAvatar(
-            radius: 20.r,
-            backgroundColor: viewmodel.isSending
-                ? AppColors.grey
-                : AppColors.primary,
-            child: viewmodel.isSending
-                ? SizedBox(
-                    width: 18.sp,
-                    height: 18.sp,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : Icon(Icons.send, color: Colors.white, size: 18.sp),
-          ),
-        ),
-      ],
-    ),
+    child: _buildTextField(),
   );
+
+  Widget _buildTextField() => Row(
+    children: [
+      IconButton(
+        icon: Icon(Icons.add, color: AppColors.primary),
+        onPressed: () {},
+      ),
+
+      Flexible(
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: viewmodel.replyMessage != null ? 6.w : 12.w,
+            vertical: 4.h,
+          ),
+          decoration: BoxDecoration(
+            color: AppColors.white.withValues(alpha: 0.85),
+            borderRadius: BorderRadius.circular(
+              viewmodel.replyMessage != null ? 12.r : 24.r,
+            ),
+          ),
+          child: AnimatedSize(
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeOut,
+            alignment: Alignment.bottomCenter,
+            child: Column(
+              children: [
+                if (viewmodel.replyMessage != null)
+                  _buildReplyPreview(viewmodel.replyMessage!),
+
+                TextField(
+                  focusNode: _focusNode,
+                  controller: _textController,
+                  minLines: 1,
+                  maxLines: 5,
+                  onChanged: viewmodel.onTextChanged,
+                  decoration: InputDecoration(
+                    hintText: 'Type a message...',
+                    hintStyle: textTheme.typeMessage.copyWith(
+                      color: AppColors.grey,
+                    ),
+                    isDense: true,
+                    filled: false,
+                    border: OutlineInputBorder(borderSide: BorderSide.none),
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 4.w,
+                      vertical: 10.h,
+                    ),
+                  ),
+                  style: textTheme.typeMessage,
+                  textCapitalization: TextCapitalization.sentences,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      Gap(8.w),
+      GestureDetector(
+        onTap: () {
+          if (_textController.text.trim().isNotEmpty) {
+            viewmodel.sendMessage(_textController.text);
+            _textController.clear();
+          }
+        },
+        child: CircleAvatar(
+          radius: 20.r,
+          backgroundColor: viewmodel.isSending
+              ? AppColors.grey
+              : AppColors.primary,
+          child: viewmodel.isSending
+              ? SizedBox(
+                  width: 18.sp,
+                  height: 18.sp,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : Icon(Icons.send, color: Colors.white, size: 18.sp),
+        ),
+      ),
+    ],
+  );
+
+  Widget _buildReplyPreview(MessageModel message) {
+    final isMe = viewmodel.isMyMessage(message);
+    print('-- msg: ${message.text} --- isME: ${isMe}');
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.grey.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border(
+          left: BorderSide(color: AppColors.primary, width: 3.w),
+        ),
+      ),
+      padding: EdgeInsets.only(left: 12.w, right: 12.w, top: 4.h, bottom: 8.h),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Sender name
+                Text(
+                  isMe ? 'You' : viewmodel.senderDisplayName(message.senderId),
+                  style: textTheme.senderName,
+                ),
+
+                Gap(4.h),
+
+                Text(
+                  message.text,
+                  style: textTheme.body2.copyWith(
+                    color: AppColors.grey.withValues(alpha: 0.9),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          InkWell(
+            onTap: () {
+              HapticFeedback.selectionClick();
+              viewmodel.onCancelReply();
+            },
+            child: Icon(Icons.close, size: 18.r, color: Colors.grey),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInBubbleReplyPreview(ReplyToModel replyTo, bool isMe) {
+    final isRepliedMessageMine = viewmodel.isRepliedMessageMine(
+      replyTo.senderId,
+    );
+    
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+      decoration: BoxDecoration(
+        color: isMe
+            ? AppColors.white.withValues(alpha: 0.2)
+            : Colors.black.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(8.r),
+        border: Border(
+          left: BorderSide(
+            color: isMe
+                ? AppColors.white
+                : AppColors.senderNameColor(replyTo.senderId),
+            width: 3.w,
+          ),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            isRepliedMessageMine ? 'You' : replyTo.senderName,
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 12.sp,
+              color: isMe
+                  ? AppColors.primary
+                  : AppColors.senderNameColor(replyTo.senderId),
+            ),
+          ),
+          Gap(2.h),
+          Text(
+            replyTo.text,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 12.sp,
+              color: isMe ? Colors.white70 : Colors.grey[600],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   String _formatTime(DateTime dateTime) {
     final hour = dateTime.hour;

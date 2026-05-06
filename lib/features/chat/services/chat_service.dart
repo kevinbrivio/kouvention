@@ -3,6 +3,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
+import 'package:kouvention/features/chat/models/reply_to_model.dart';
 
 class ChatService {
   final FirebaseFirestore _firestore;
@@ -103,18 +104,29 @@ class ChatService {
     required String senderId,
     required String text,
     required List<String> memberUids,
+    ReplyToModel? replyTo,
   }) async {
     final batch = _firestore.batch();
 
+    debugPrint('---- SENDING MESSAGE ----');
+    debugPrint(' -- - - -- - - replied msg: ${replyTo?.toMap()}');
     final msgRef = _messagesRef(chatId).doc();
     batch.set(
       msgRef,
-      MessageModel.toNewMessageMap(senderId: senderId, text: text),
+      MessageModel.toNewMessageMap(
+        senderId: senderId,
+        text: text,
+        replyTo: replyTo,
+      ),
     );
-
+    debugPrint('---- ----- REPLYING TO: ${replyTo?.toMap()} ----- ----');
     final chatRef = _chatsRef.doc(chatId);
     batch.update(chatRef, {
-      ...MessageModel.toLastMessageMap(senderId: senderId, text: text),
+      ...MessageModel.toLastMessageMap(
+        senderId: senderId,
+        text: text,
+        replyTo: replyTo,
+      ),
       'updatedAt': FieldValue.serverTimestamp(),
     });
 
@@ -240,7 +252,7 @@ class ChatService {
       'deletedBy.$uid': FieldValue.serverTimestamp(),
     });
   }
-  
+
   // ---- CHECK MESSAGE STATUS ------------------
   Future<void> markChatAsRead(String chatId, uid) async {
     await _chatsRef.doc(chatId).update({
