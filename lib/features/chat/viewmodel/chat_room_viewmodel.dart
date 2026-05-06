@@ -179,7 +179,9 @@ class ChatRoomVM extends BaseNotifier {
         .streamMessages(chatId)
         .listen(
           (msg) {
-            _messages = msg;
+            _messages = msg
+                .where((m) => !m.deletedFor.contains(_currentUid!))
+                .toList();
             _error = null;
 
             if (_lastDocument == null && messages.isNotEmpty)
@@ -235,8 +237,6 @@ class ChatRoomVM extends BaseNotifier {
               text: _replyMessage!.text,
             )
           : null;
-
-      print('----- REPLY TO: $replyTo');
 
       onCancelReply();
 
@@ -344,6 +344,12 @@ class ChatRoomVM extends BaseNotifier {
     _replyMessage = null;
     notifyListeners();
   }
+
+  // // ------ Delete Message -----------------
+  // Future<void> deleteMessage({required List<String> messageIds}) async {
+  //   // for (final msgId in messageIds) {
+  //   await _chatService.deleteMessage(chatId, messageIds);
+  // }
 
   // --- Unread Count --------------------------
   void _resetUnreadCount() {

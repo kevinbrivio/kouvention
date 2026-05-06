@@ -253,6 +253,39 @@ class ChatService {
     });
   }
 
+  Future<void> deleteMessageForMe({
+    required String uid,
+    required String chatId,
+    required List<String> messageIds,
+  }) async {
+    final batch = _firestore.batch();
+    for (final msgId in messageIds) {
+      batch.update(_messagesRef(chatId).doc(msgId), {
+        'deletedFor': FieldValue.arrayUnion([uid]),
+      });
+    }
+
+    await batch.commit();
+  }
+
+  Future<void> deleteMessageForEveryone(
+    String chatId,
+    List<String> messageIds,
+  ) async {
+    // final batch = _messagesRef(chatId).firestore.batch();
+    final batch = _firestore.batch();
+
+    for (final msgId in messageIds) {
+      batch.update(_messagesRef(chatId).doc(msgId), {
+        'isDeleted': true,
+        'text': '',
+        'replyTo': null,
+      });
+    }
+
+    await batch.commit();
+  }
+
   // ---- CHECK MESSAGE STATUS ------------------
   Future<void> markChatAsRead(String chatId, uid) async {
     await _chatsRef.doc(chatId).update({

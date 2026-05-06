@@ -9,6 +9,8 @@ class MessageModel {
   final String type; // "text" for now, "image" | "file" | "video" later
   final DateTime sentAt;
   final ReplyToModel? replyTo;
+  final bool isDeleted;
+  final List<String> deletedFor;
 
   // FUTURE CASES
   final String? mediaUrl;
@@ -26,6 +28,8 @@ class MessageModel {
     this.mediaUrl,
     this.fileName,
     this.fileSizeBytes,
+    this.isDeleted = false,
+    this.deletedFor = const [],
   });
 
   bool get hasMedia => mediaUrl != null;
@@ -44,6 +48,8 @@ class MessageModel {
         mediaUrl: data['mediaUrl'] as String?,
         fileName: data['fileName'] as String?,
         fileSizeBytes: (data['fileSizeBytes'] as num?)?.toInt(),
+        isDeleted: data['isDeleted'] ?? false,
+        deletedFor: List<String>.from(data['deletedFor'] ?? [])
       );
 
   static Map<String, dynamic> toNewMessageMap({

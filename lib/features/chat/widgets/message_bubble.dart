@@ -167,10 +167,20 @@ class MessageBubble extends ConsumerWidget {
                           Gap(4.h),
                         ],
                         Text(
-                          message.text,
-                          style: TextStyle(
-                            color: isMe ? Colors.white : Colors.black87,
-                            fontSize: 14.sp,
+                          (message.text == '' && message.isDeleted)
+                            ? isMe
+                              ? 'You deleted this message'
+                              : 'This message was deleted'
+                            : message.text,
+                          style: textTheme.senderName.copyWith(
+                            color: isMe
+                                ? message.isDeleted
+                                      ? AppColors.grey
+                                      : Colors.white
+                                : Colors.black87,
+                            fontStyle: message.isDeleted
+                                ? FontStyle.italic
+                                : FontStyle.normal,
                           ),
                         ),
                         Gap(4.h),
