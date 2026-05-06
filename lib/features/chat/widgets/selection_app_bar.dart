@@ -42,8 +42,6 @@ class SelectionAppBar extends ConsumerWidget implements PreferredSizeWidget {
             );
             final anyAlreadyDeleted = selectedMessages.any((m) => m.isDeleted);
 
-            debugPrint('--- mine message: ${allMine} - - - - -');
-
             showDialog(
               context: context,
               builder: (dialogCtx) => AlertDialog(

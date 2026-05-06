@@ -390,12 +390,6 @@ class ChatRoomVM extends BaseNotifier {
     notifyListeners();
   }
 
-  // // ------ Delete Message -----------------
-  // Future<void> deleteMessage({required List<String> messageIds}) async {
-  //   // for (final msgId in messageIds) {
-  //   await _chatService.deleteMessage(chatId, messageIds);
-  // }
-
   // --- Unread Count --------------------------
   void _resetUnreadCount() {
     if (_currentUid != null) {
