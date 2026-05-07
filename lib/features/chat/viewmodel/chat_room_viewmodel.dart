@@ -162,7 +162,7 @@ class ChatRoomVM extends BaseNotifier {
                 chat.type == 'direct' &&
                 _otherUserSubscription == null &&
                 _currentUid != null) {
-              final otherUid = chat.otherMemberUid(_currentUid!);
+              final otherUid = chat.otherMemberUid(_currentUid);
               _subscribeToOtherUser(otherUid);
             }
             notifyListeners();

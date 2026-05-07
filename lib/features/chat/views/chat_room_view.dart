@@ -152,8 +152,6 @@ class _ChatRoomBody extends StatefulWidget {
 class _ChatRoomBodyState extends State<_ChatRoomBody> {
   final _textController = TextEditingController();
   final ItemScrollController _itemScrollController = ItemScrollController();
-  final ScrollOffsetController _scrollOffsetController =
-      ScrollOffsetController();
   final ItemPositionsListener _itemPositionsListener =
       ItemPositionsListener.create();
   final _focusNode = FocusNode();
