@@ -76,7 +76,7 @@ class _SearchOverlayState extends State<SearchOverlay> {
     child: Row(
       children: [
         IconButton(
-          icon: Icon(Icons.arrow_back, size: 20.sp, color: AppColors.grey),
+          icon: Icon(Icons.arrow_back, size: 20.sp, color: AppColors.primary),
           onPressed: () => Navigator.of(context).pop(),
         ),
         Expanded(

@@ -8,7 +8,7 @@ import 'package:kouvention/features/search/widgets/search_result_group_tile.dart
 void _navigateToMessage(BuildContext context, SearchResultModel result) {
   // Close search, navigate to chat room with target message
   context.push(
-    '/chat/${result.chatRoomId}',
+    '/chats/${result.chatRoomId}',
     // extra: {'targetMessageId': result.messageId},
   );
 }

@@ -7,18 +7,17 @@ import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/search/models/search_result_group.dart';
 import 'package:kouvention/features/search/models/search_result_model.dart';
 import 'package:kouvention/features/search/services/firestore_search_service.dart';
-import 'package:kouvention/features/search/services/search_service.dart';
 
 enum SearchState { idle, searching, results, empty, error }
 
 final searchVM = ChangeNotifierProvider.autoDispose<SearchVM>((ref) {
-  final searchService = ref.read(searchServiceProvider);
+  final searchService = ref.read(firestoreSearchServiceProvider);
   final currentUid = ref.read(authServiceProvider).currentUser?.uid;
   return SearchVM(searchService, currentUid!);
 });
 
 class SearchVM extends ChangeNotifier {
-  final SearchService _searchService;
+  final FirestoreSearchService _searchService; // Firestore
   final String _currentUid;
 
   SearchVM(this._searchService, this._currentUid);
@@ -69,12 +68,19 @@ class SearchVM extends ChangeNotifier {
     _state = SearchState.searching;
     notifyListeners();
 
+    final sw = Stopwatch()..start();
+
     try {
+      debugPrint('------ FIRESTORE SEARCHING WORKING -------');
       final results = await _searchService.searchMessages(
         query: query,
         currentUid: _currentUid,
         chatRooms: chatRooms,
       );
+
+      sw.stop();
+      debugPrint('🔥 Firestore search took: ${sw.elapsedMilliseconds}ms');
+      debugPrint('🔥 Results found: ${results.length}');
 
       if (_query != query) return;
 
