@@ -80,7 +80,7 @@ class NewGroupChatVM extends BaseNotifier {
     try {
       _searchResults = await _userService.searchUsers(
         query: query,
-        currentUid: _currentUid!,
+        currentUid: _currentUid,
       );
       _error = null;
     } catch (e) {
@@ -125,13 +125,13 @@ class NewGroupChatVM extends BaseNotifier {
     if (_currentUid == null || _selectedUsers.isEmpty) return null;
 
     try {
-      final currentUser = await _userService.getUser(_currentUid!);
+      final currentUser = await _userService.getUser(_currentUid);
       if (currentUser == null) return null;
 
-      final allMembers = [_currentUid!, ..._selectedUsers.map((u) => u.uid)];
+      final allMembers = [_currentUid, ..._selectedUsers.map((u) => u.uid)];
 
       final memberInfo = <String, MemberInfo>{
-        _currentUid!: MemberInfo(
+        _currentUid: MemberInfo(
           displayName: currentUser.displayName,
           photoUrl: currentUser.photoUrl,
         ),

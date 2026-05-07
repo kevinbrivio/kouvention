@@ -40,4 +40,32 @@ class DateTimeHelper {
 
   static String formatDateMonthClock(DateTime date) =>
       DateFormat('d/M, HH.mm').format(date);
+
+  static String formatChatTime(DateTime dateTime) {
+    final now = DateTime.now();
+    final diff = now.difference(dateTime);
+
+    // Today — show time
+    if (diff.inDays == 0 && now.day == dateTime.day) {
+      final hour = dateTime.hour;
+      final minute = dateTime.minute.toString().padLeft(2, '0');
+      final period = hour >= 12 ? 'PM' : 'AM';
+      final displayHour = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
+      return '$displayHour:$minute $period';
+    }
+
+    // Yesterday
+    if (diff.inDays == 1 || (diff.inDays == 0 && now.day != dateTime.day)) {
+      return 'Yesterday';
+    }
+
+    // Within this week — show day name
+    if (diff.inDays < 7) {
+      const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      return days[dateTime.weekday - 1];
+    }
+
+    // Older — show date
+    return '${dateTime.day.toString().padLeft(2, '0')}/${dateTime.month.toString().padLeft(2, '0')}';
+  }
 }

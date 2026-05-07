@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
@@ -7,37 +8,53 @@ import 'package:kouvention/cores/bases/base_view.dart';
 import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
+import 'package:kouvention/cores/utils/date_time_helper.dart';
 import 'package:kouvention/cores/widgets/hidden_app_bar.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_list_viewmodel.dart';
+import 'package:kouvention/features/search/viewmodel/search_viewmodel.dart';
+import 'package:kouvention/features/search/widgets/search_body.dart';
+import 'package:kouvention/features/search/widgets/search_overlay.dart';
 
-class ChatListView extends StatelessWidget {
+class ChatListView extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) => BaseView(
-    provider: chatListVM,
-    useGradient: false,
-    appBar: (vm) => vm.isSelectionMode
-        ? _buildSelectionAppBar(context, vm)
-        : HiddenAppBar(),
-    builder: (context, vm) => Stack(
-      children: [
-        _buildScreen(context, vm),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final searchVm = ref.watch(searchVM);
 
-        Positioned(
-          right: 16.w,
-          bottom: MediaQuery.of(context).padding.bottom + 12.h,
-          child: FloatingActionButton(
-            backgroundColor: AppColors.primary,
-            onPressed: () {
-              context.push(RouterRoutes.newChat.path);
-            },
-            child: Icon(Icons.edit, color: Colors.white, size: 20.sp),
-          ),
-        ),
-      ],
-    ),
-  );
+    return BaseView(
+      provider: chatListVM,
+      useGradient: false,
+      appBar: (vm) {
+        if (searchVm.isActive) {
+        } else if (vm.isSelectionMode) {
+          return _buildSelectionAppBar(context, vm);
+        }
+        return HiddenAppBar();
+      },
+      builder: (context, vm) => Stack(
+        children: [
+          if (searchVm.isActive)
+            searchBody(context, searchVm)
+          else
+            _buildScreen(context, vm, searchVm),
 
-  Widget _buildScreen(BuildContext context, ChatListVM vm) {
+          if (!searchVm.isActive)
+            Positioned(
+              right: 16.w,
+              bottom: MediaQuery.of(context).padding.bottom + 12.h,
+              child: FloatingActionButton(
+                backgroundColor: AppColors.primary,
+                onPressed: () {
+                  context.push(RouterRoutes.newChat.path);
+                },
+                child: Icon(Icons.edit, color: Colors.white, size: 20.sp),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildScreen(BuildContext context, ChatListVM vm, SearchVM searchVM) {
     if (!vm.hasChats) return Center(child: Text('No conversations yet.'));
 
     return Column(
@@ -47,7 +64,7 @@ class ChatListView extends StatelessWidget {
           Padding(
             padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
           ),
-          _buildHeader(context),
+          _buildHeader(context, vm, searchVM),
         ] else ...[
           Padding(
             padding: EdgeInsets.only(
@@ -189,8 +206,7 @@ class ChatListView extends StatelessWidget {
                                         ),
                                         if (lastMessage != null)
                                           Text(
-                                            typing ??
-                                                lastMessage.text,
+                                            typing ?? lastMessage.text,
                                             style: textTheme.subDescription2
                                                 .copyWith(
                                                   color: typing != null
@@ -212,7 +228,9 @@ class ChatListView extends StatelessWidget {
                                     children: [
                                       if (lastMessage != null)
                                         Text(
-                                          _formatChatTime(lastMessage.sentAt),
+                                          DateTimeHelper.formatChatTime(
+                                            lastMessage.sentAt,
+                                          ),
                                           style: textTheme.subDescription3
                                               .copyWith(
                                                 color: unread > 0
@@ -276,16 +294,67 @@ class ChatListView extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context) => Padding(
-    padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-    child: Row(
-      children: [
-        Text(
-          'Kouvention',
-          style: textTheme.subheadline1.copyWith(color: AppColors.primary),
+  Widget _buildHeader(BuildContext context, ChatListVM vm, SearchVM searchVM) =>
+      Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Kouvention',
+              style: textTheme.subheadline1.copyWith(color: AppColors.primary),
+            ),
+
+            Gap(6.h),
+
+            _buildSearchField(context, vm, searchVM),
+          ],
         ),
-      ],
+      );
+
+  Widget _buildSearchField(
+    BuildContext context,
+    ChatListVM vm,
+    SearchVM searchVM,
+  ) => InkWell(
+    onTap: () {
+      HapticFeedback.selectionClick();
+      _openSearchSheet(context, vm, searchVM);
+    },
+    child: Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20.r),
+        border: BoxBorder.all(color: AppColors.primary, width: 2.w),
+      ),
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+      child: Row(
+        children: [
+          Icon(Icons.search, color: AppColors.grey, size: 16.sp),
+          Gap(8.w),
+          Text('Search something...', style: textTheme.subDescription3),
+        ],
+      ),
     ),
+  );
+
+  void _openSearchSheet(
+    BuildContext context,
+    ChatListVM chatVM,
+    SearchVM searchVM,
+  ) => showModalBottomSheet(
+    context: context,
+    showDragHandle: false,
+    enableDrag: false,
+    isScrollControlled: true,
+    useRootNavigator: true,
+    backgroundColor: AppColors.white,
+    // Smooth curve for the slide-up animation
+    transitionAnimationController: AnimationController(
+      vsync: Navigator.of(context),
+      duration: const Duration(milliseconds: 400),
+    ),
+    builder: (sheetContext) =>
+        SearchOverlay(chatVm: chatVM, searchVm: searchVM),
   );
 
   Widget _buildFilterChips(ChatListVM vm) => Padding(
@@ -408,33 +477,5 @@ class ChatListView extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  String _formatChatTime(DateTime dateTime) {
-    final now = DateTime.now();
-    final diff = now.difference(dateTime);
-
-    // Today — show time
-    if (diff.inDays == 0 && now.day == dateTime.day) {
-      final hour = dateTime.hour;
-      final minute = dateTime.minute.toString().padLeft(2, '0');
-      final period = hour >= 12 ? 'PM' : 'AM';
-      final displayHour = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
-      return '$displayHour:$minute $period';
-    }
-
-    // Yesterday
-    if (diff.inDays == 1 || (diff.inDays == 0 && now.day != dateTime.day)) {
-      return 'Yesterday';
-    }
-
-    // Within this week — show day name
-    if (diff.inDays < 7) {
-      const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-      return days[dateTime.weekday - 1];
-    }
-
-    // Older — show date
-    return '${dateTime.day.toString().padLeft(2, '0')}/${dateTime.month.toString().padLeft(2, '0')}';
   }
 }
