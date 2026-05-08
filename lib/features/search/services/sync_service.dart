@@ -78,25 +78,25 @@ class SyncService {
 
   // Real-time sync from sending message in Firestore
   // Convert and write batch messages in SQLite
-  Future<void> syncMessages({
-    required List<MessageModel> messages,
-    required String chatRoomId,
-    required String currentUid,
-  }) async {
-    if (messages.isEmpty) return;
-    final sw = Stopwatch()..start();
+  // Future<void> syncMessages({
+  //   required List<MessageModel> messages,
+  //   required String chatRoomId,
+  //   required String currentUid,
+  // }) async {
+  //   if (messages.isEmpty) return;
+  //   final sw = Stopwatch()..start();
 
-    final companions = messages
-        .map((m) => _toCompanion(m, chatRoomId, currentUid))
-        .toList();
+  //   final companions = messages
+  //       .map((m) => _toCompanion(m, chatRoomId, currentUid))
+  //       .toList();
 
-    await _db.upsertMessages(companions);
+  //   await _db.upsertMessages(companions);
 
-    sw.stop();
-    debugPrint(
-      '🔥 Syncing Message in Chat Room process took: ${sw.elapsedMilliseconds}ms',
-    );
-  }
+  //   sw.stop();
+  //   debugPrint(
+  //     '🥷 Syncing Message in Chat Room process took: ${sw.elapsedMilliseconds}ms',
+  //   );
+  // }
 
   CachedMessagesCompanion _toCompanion(
     MessageModel msg,

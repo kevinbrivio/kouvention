@@ -193,15 +193,15 @@ class ChatRoomVM extends BaseNotifier {
             notifyListeners();
 
             // Synced up from Firestore to SQLite
-            if (_currentUid != null) {
-              ref
-                  .read(syncServiceProvider)
-                  .syncMessages(
-                    messages: msg,
-                    chatRoomId: chatId,
-                    currentUid: _currentUid,
-                  );
-            }
+            // if (_currentUid != null) {
+            //   ref
+            //       .read(syncServiceProvider)
+            //       .syncMessages(
+            //         messages: msg,
+            //         chatRoomId: chatId,
+            //         currentUid: _currentUid,
+            //       );
+            // }
           },
           onError: (error) {
             _error = error.toString();

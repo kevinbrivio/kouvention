@@ -5,6 +5,7 @@ import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/services/chat_service.dart';
+import 'package:kouvention/features/search/services/sync_service.dart';
 import 'package:oktoast/oktoast.dart';
 
 enum ChatFilter { all, direct, group }
@@ -23,6 +24,9 @@ class ChatListVM extends BaseNotifier {
   // Pin chat
   static const maxPinnedChat = 3;
   final Set<String> _selectedChatIds = {};
+
+  // Sync Chat Locally (but only in memory)
+  bool _hasSynced = false;
 
   String? _error;
 
@@ -87,6 +91,13 @@ class ChatListVM extends BaseNotifier {
                   });
             _error = null;
             notifyListeners();
+            if (!_hasSynced && chats.isNotEmpty) {
+                  _hasSynced = true;
+                  ref.read(syncServiceProvider).syncAllChatRooms(
+                    currentUid: _currentUid,
+                    chatRooms: chats,
+                  );
+                }
           },
           onError: (error) {
             _error = error.toString();
