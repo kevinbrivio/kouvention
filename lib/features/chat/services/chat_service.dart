@@ -98,6 +98,21 @@ class ChatService {
     return query.get();
   }
 
+  // ---- Fetch without limit -----------------------
+  Future<List<MessageModel>> fetchMessagesSince(
+    String chatId, {
+    required DateTime since,
+  }) async {
+    final snapshot = await _messagesRef(chatId)
+        .orderBy('sentAt', descending: false)
+        .where('sentAt', isGreaterThan: since)
+        .get();
+
+    return snapshot.docs
+        .map((doc) => MessageModel.fromMap(doc.id, doc.data()))
+        .toList();
+  }
+
   // --- Send Messages --------------------------------
   Future<void> sendMessage({
     required String chatId,

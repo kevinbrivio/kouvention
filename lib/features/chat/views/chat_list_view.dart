@@ -24,8 +24,7 @@ class ChatListView extends ConsumerWidget {
       provider: chatListVM,
       useGradient: false,
       appBar: (vm) {
-        if (searchVm.isActive) {
-        } else if (vm.isSelectionMode) {
+        if (vm.isSelectionMode) {
           return _buildSelectionAppBar(context, vm);
         }
         return HiddenAppBar();

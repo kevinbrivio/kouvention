@@ -31,7 +31,7 @@ class _SearchOverlayState extends State<SearchOverlay> {
   void initState() {
     super.initState();
     _controller = TextEditingController();
-    Future(() => _searchVm.openSearch()); // ← no ref, no problem
+    Future(() => _searchVm.openSearch(widget.chatVm.chats)); // ← no ref, no problem
   }
 
   @override

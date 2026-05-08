@@ -12,6 +12,7 @@ import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_list_viewmodel.dart';
+import 'package:kouvention/features/search/services/sync_service.dart';
 import 'package:kouvention/features/shared/services/fcm_service.dart';
 import 'package:kouvention/features/shared/services/storage_service.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
@@ -96,6 +97,10 @@ class ProfileVM extends BaseNotifier {
       // Update user offline status
       final presence = ref.read(presenceNotifierProvider);
       await presence.signOutWithPresence(_authService);
+
+      // Clear search cache - prevent other user access previous search cache
+      final syncService = ref.read(syncServiceProvider);
+      await syncService.clearAllData();
 
       ref.invalidate(chatListVM);
       if (ctx.mounted) {

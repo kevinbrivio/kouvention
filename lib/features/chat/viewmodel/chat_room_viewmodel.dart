@@ -10,6 +10,7 @@ import 'package:kouvention/features/chat/models/reply_to_model.dart';
 import 'package:kouvention/features/chat/services/chat_service.dart';
 import 'package:kouvention/features/notification/services/notification_service.dart';
 import 'package:kouvention/features/notification/viewmodel/active_chat_id_provider.dart';
+import 'package:kouvention/features/search/services/sync_service.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
 import 'package:kouvention/features/user/services/user_service.dart';
 
@@ -190,6 +191,17 @@ class ChatRoomVM extends BaseNotifier {
               _fetchPaginationCursor();
 
             notifyListeners();
+
+            // Synced up from Firestore to SQLite
+            if (_currentUid != null) {
+              ref
+                  .read(syncServiceProvider)
+                  .syncMessages(
+                    messages: msg,
+                    chatRoomId: chatId,
+                    currentUid: _currentUid,
+                  );
+            }
           },
           onError: (error) {
             _error = error.toString();

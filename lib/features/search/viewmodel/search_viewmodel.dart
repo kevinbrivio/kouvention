@@ -6,22 +6,24 @@ import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/search/models/search_result_group.dart';
 import 'package:kouvention/features/search/models/search_result_model.dart';
-import 'package:kouvention/features/search/services/firestore_search_service.dart';
-import 'package:kouvention/features/search/services/search_service.dart';
+import 'package:kouvention/features/search/services/local_search_service.dart';
+import 'package:kouvention/features/search/services/sync_service.dart';
 
 enum SearchState { idle, searching, results, empty, error }
 
 final searchVM = ChangeNotifierProvider.autoDispose<SearchVM>((ref) {
-  final searchService = ref.read(searchServiceProvider);
+  final searchService = ref.read(localSearchServiceProvider);
+  final syncService = ref.read(syncServiceProvider);
   final currentUid = ref.read(authServiceProvider).currentUser?.uid;
-  return SearchVM(searchService, currentUid!);
+  return SearchVM(searchService, syncService, currentUid!);
 });
 
 class SearchVM extends ChangeNotifier {
-  final SearchService _searchService;
+  final LocalSearchService _searchService;
+  final SyncService _syncService;
   final String _currentUid;
 
-  SearchVM(this._searchService, this._currentUid);
+  SearchVM(this._searchService, this._syncService, this._currentUid);
 
   // --- State -----
   SearchState _state = SearchState.idle;
@@ -70,11 +72,18 @@ class SearchVM extends ChangeNotifier {
     notifyListeners();
 
     try {
+      debugPrint('------ SQLite Local SEARCHING WORKING -------');
+      final sw = Stopwatch()..start();
+      
       final results = await _searchService.searchMessages(
         query: query,
         currentUid: _currentUid,
         chatRooms: chatRooms,
       );
+
+      sw.stop();
+      debugPrint('🥷 SQLite search took: ${sw.elapsedMilliseconds}ms');
+      debugPrint('🥷 Results found: ${results.length}');
 
       if (_query != query) return;
 
@@ -117,10 +126,21 @@ class SearchVM extends ChangeNotifier {
     }).toList();
   }
 
-  void openSearch() {
+  void openSearch(List<ChatModel> chatRooms) {
     _isActive = true;
     _state = SearchState.idle;
     notifyListeners();
+
+    final sw = Stopwatch()..start();
+    _syncService.syncAllChatRooms(
+      currentUid: _currentUid,
+      chatRooms: chatRooms,
+    );
+
+    sw.stop();
+    debugPrint(
+      '🔥 Syncing All Chat Rooms process took: ${sw.elapsedMilliseconds}ms',
+    );
   }
 
   void clearSearch() {
