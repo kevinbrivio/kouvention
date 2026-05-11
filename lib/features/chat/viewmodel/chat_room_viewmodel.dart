@@ -1,8 +1,10 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
+import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
@@ -35,6 +37,8 @@ class ChatRoomVM extends BaseNotifier {
   bool _hasMoreMessages = true;
   bool _isLoadingMore = false;
   String? _highlightedMessageId;
+  String? _pendingScrollMessageId;
+  DateTime? _pendingScrollSentAt;
 
   // Typing indicator debounce
   Timer? _typingTimer;
@@ -65,6 +69,8 @@ class ChatRoomVM extends BaseNotifier {
   MessageModel? get replyMessage => _replyMessage;
   String? get error => _error;
   String? get highlightedMessageId => _highlightedMessageId;
+  String? get pendingScrollMessageId => _pendingScrollMessageId;
+  DateTime? get pendingScrollSentAt => _pendingScrollSentAt;
 
   /// Display name for the chat header
   String get chatDisplayName {
@@ -317,20 +323,48 @@ class ChatRoomVM extends BaseNotifier {
     });
   }
 
-  Future<int?> findMessageIndex(String messageId) async {
-    const maxAttempts = 10;
+  void scrollToTarget({required String messageId, required DateTime sentAt}) {
+    _pendingScrollMessageId = messageId;
+    _pendingScrollSentAt = sentAt;
+    notifyListeners();
+  }
 
-    for (int attempt = 0; attempt < maxAttempts; attempt++) {
-      // 1. Search from what we have
-      final index = _messages.indexWhere((m) => m.id == messageId);
-      if (index != -1) return index;
+  void clearPendingScroll() {
+    _pendingScrollMessageId = null;
+    _pendingScrollSentAt = null;
+  }
 
-      // 2. Callback if there is no more to load
-      if (!_hasMoreMessages || _lastDocument == null) return null;
+  Future<int?> findMessageIndex(String messageId, {DateTime? sentAt}) async {
+    final index = _messages.indexWhere((m) => m.id == messageId);
+    if (index != -1) return index;
 
-      // 3. Load one more page and try again
-      final loaded = await _loadOlderBatch();
-      if (!loaded) return null;
+    if (sentAt != null) {
+      final batch = await _chatService.fetchMessageAround(
+        chatId,
+        aroundTimestamp: sentAt,
+      );
+
+      final existingIds = _messages.map((m) => m.id).toSet();
+      final newMessages = batch
+          .where((m) => !existingIds.contains(m.id))
+          .toList();
+
+      _messages.addAll(newMessages);
+      _messages.sort((a, b) => b.sentAt.compareTo(a.sentAt));
+      notifyListeners();
+
+      final found = _messages.indexWhere((m) => m.id == messageId);
+      if (found != -1) return found;
+    }
+
+    const maxAttempts = 20;
+
+    // Fallback: paginate with big batches
+    for (var attempt = 0; attempt < maxAttempts; attempt++) {
+      final hadMore = await _loadOlderBatch();
+      final found = _messages.indexWhere((m) => m.id == messageId);
+      if (found != -1) return found;
+      if (!hadMore) break;
     }
 
     return null;

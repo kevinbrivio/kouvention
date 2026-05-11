@@ -70,7 +70,7 @@ class ChatService {
   Future<List<MessageModel>> fetchOlderMesages(
     String chatId, {
     required DocumentSnapshot lastDocument,
-    int limit = 20,
+    int limit = 50,
   }) async {
     final snapshot = await _messagesRef(chatId)
         .orderBy('sentAt', descending: true)
@@ -85,7 +85,7 @@ class ChatService {
   Future<QuerySnapshot<Map<String, dynamic>>> fetchRawMesages(
     String chatId, {
     DocumentSnapshot? lastDocument,
-    int limit = 20,
+    int limit = 100,
   }) async {
     Query<Map<String, dynamic>> query = _messagesRef(
       chatId,
