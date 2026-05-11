@@ -10,6 +10,7 @@ import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/image_paths.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
+import 'package:kouvention/cores/widgets/loading_indicator.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_selection_viewmodel.dart';
@@ -244,9 +245,12 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
             padding: EdgeInsets.symmetric(vertical: 16.h),
             child: Center(
               child: SizedBox(
-                width: 20.w,
-                height: 20.w,
-                child: CircularProgressIndicator(strokeWidth: 2),
+                width: 24.w,
+                height: 24.w,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.w,
+                  color: AppColors.primary,
+                ),
               ),
             ),
           );
@@ -503,6 +507,7 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
 
   Future<void> _scrollToMessage(String messageId) async {
     final index = await viewmodel.findMessageIndex(messageId);
+    print('going to: $index');
 
     if (index == null) {
       if (mounted) {
@@ -516,31 +521,44 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
     // Rebuild page after we load older mesages
     viewmodel.notifyListeners();
 
-    await Future.delayed(Duration(milliseconds: 100));
+    await Future.delayed(Duration(milliseconds: 200));
 
     if (_itemScrollController.isAttached) {
       _itemScrollController.scrollTo(
         index: index,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInBack,
       );
     }
 
+    print('Scroll to done');
     viewmodel.highlightMessage(messageId);
   }
 
   void _onPositionChanged() {
-    final position = _itemPositionsListener.itemPositions.value;
+    final positions = _itemPositionsListener.itemPositions.value;
 
-    if (position.isEmpty) return;
+    if (positions.isEmpty) return;
 
     // Check if latest message (index 0) is still visible
-    final isAtBottom = position.any((pos) => pos.index == 0);
+    final isAtBottom = positions.any((pos) => pos.index == 0);
 
     if (_showScrollBottom != !isAtBottom) {
       setState(() {
         _showScrollBottom = !isAtBottom;
       });
+    }
+
+    // Pagination: load more messages near the oldest
+    final maxIndex = positions
+        .map((p) => p.index)
+        .reduce((a, b) => a > b ? a : b);
+
+    final threshold = viewmodel.messages.length - 5;
+    if (viewmodel.messages.length >= 20 &&
+        maxIndex >= threshold &&
+        !viewmodel.isLoadingMore) {
+      viewmodel.loadMoreMessages();
     }
   }
 
