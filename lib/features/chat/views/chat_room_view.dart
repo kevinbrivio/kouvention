@@ -507,7 +507,6 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
 
   Future<void> _scrollToMessage(String messageId) async {
     final index = await viewmodel.findMessageIndex(messageId);
-    print('going to: $index');
 
     if (index == null) {
       if (mounted) {
@@ -531,7 +530,6 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
       );
     }
 
-    print('Scroll to done');
     viewmodel.highlightMessage(messageId);
   }
 
