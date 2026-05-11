@@ -17,6 +17,38 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.3.69"
+  algolia_client_core:
+    dependency: transitive
+    description:
+      name: algolia_client_core
+      sha256: f2c86c6da8413863b74f8542f7161517cf113157a4f3dbdb466121407f45b0ac
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.49.1"
+  algolia_client_insights:
+    dependency: transitive
+    description:
+      name: algolia_client_insights
+      sha256: "84f9a01d65cd0f834d8083ce4c6bc8750ca84eceebb34d4501925b4a15bf3d7b"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.49.1"
+  algolia_client_search:
+    dependency: transitive
+    description:
+      name: algolia_client_search
+      sha256: cf6a828099e71dff2554f0c4a53e6e104f0080a7e7ed43f3d47e1645fd4dc91a
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.49.1"
+  algoliasearch:
+    dependency: "direct main"
+    description:
+      name: algoliasearch
+      sha256: "5b0700bdeb2e1a02f8aa5d58037879c451222a70a935aecff0b372bd4ba93f5d"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.49.1"
   analyzer:
     dependency: transitive
     description:
@@ -25,6 +57,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "10.0.1"
+  archive:
+    dependency: transitive
+    description:
+      name: archive
+      sha256: a96e8b390886ee8abb49b7bd3ac8df6f451c621619f52a26e815fdcf568959ff
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.0.9"
   args:
     dependency: transitive
     description:
@@ -241,6 +281,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.7.12"
+  dio:
+    dependency: transitive
+    description:
+      name: dio
+      sha256: aff32c08f92787a557dd5c0145ac91536481831a01b4648136373cddb0e64f8c
+      url: "https://pub.dev"
+    source: hosted
+    version: "5.9.2"
+  dio_web_adapter:
+    dependency: transitive
+    description:
+      name: dio_web_adapter
+      sha256: "2f9e64323a7c3c7ef69567d5c800424a11f8337b8b228bad02524c9fb3c1f340"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.1.2"
   envied:
     dependency: "direct main"
     description:
@@ -840,6 +896,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.13.0"
+  meilisearch:
+    dependency: "direct main"
+    description:
+      name: meilisearch
+      sha256: "4040442ba62d8dcf3a6d71904e1943548a5e1e7300dd8d6041a9c6f62ee0c419"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.19.0"
   meta:
     dependency: transitive
     description:
@@ -944,6 +1008,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.5.2"
+  posix:
+    dependency: transitive
+    description:
+      name: posix
+      sha256: "185ef7606574f789b40f289c233efa52e96dead518aed988e040a10737febb07"
+      url: "https://pub.dev"
+    source: hosted
+    version: "6.5.0"
   pub_semver:
     dependency: transitive
     description:
@@ -1157,6 +1229,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.4.0"
+  typesense:
+    dependency: "direct main"
+    description:
+      name: typesense
+      sha256: "5f7c01ca63c497faab5c5b3d4d52dd5bff84ac6fa06e3e6da19f7a796cda33dc"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.5.2"
   vector_math:
     dependency: transitive
     description:

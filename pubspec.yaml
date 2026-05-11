@@ -38,6 +38,9 @@ dependencies:
   intl: ^0.20.2
   swipe_to: ^1.0.6
   scrollable_positioned_list: ^0.3.8
+  typesense: ^0.5.2
+  meilisearch: ^0.19.0
+  algoliasearch: ^1.49.1
 
 dev_dependencies:
   flutter_test:
