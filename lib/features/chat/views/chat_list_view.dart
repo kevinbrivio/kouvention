@@ -10,15 +10,7 @@ import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/cores/utils/date_time_helper.dart';
 import 'package:kouvention/cores/widgets/hidden_app_bar.dart';
-import 'package:kouvention/features/auth/services/auth_service.dart';
-import 'package:kouvention/features/chat/services/chat_service.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_list_viewmodel.dart';
-import 'package:kouvention/features/search/services/search_service/algolia/algolia_config.dart';
-import 'package:kouvention/features/search/services/search_service/algolia/algolia_index_service.dart';
-import 'package:kouvention/features/search/services/search_service/meilisearch/meili_config.dart';
-import 'package:kouvention/features/search/services/search_service/meilisearch/meili_index_service.dart';
-import 'package:kouvention/features/search/services/search_service/typesense/typesense_config.dart';
-import 'package:kouvention/features/search/services/search_service/typesense/typesense_index_service.dart';
 import 'package:kouvention/features/search/viewmodel/search_viewmodel.dart';
 import 'package:kouvention/features/search/widgets/search_body.dart';
 import 'package:kouvention/features/search/widgets/search_overlay.dart';
@@ -345,16 +337,6 @@ class ChatListView extends ConsumerWidget {
   ) => InkWell(
     onTap: () async {
       HapticFeedback.selectionClick();
-      final client = AlgoliaConfig.adminClient;
-      final chatService = ref.read(chatServiceProvider);
-      final indexService = AlgoliaIndexService(client, chatService);
-
-      final uid = ref.read(authServiceProvider).currentUser!.uid;
-      final chats = ref.read(chatListVM).chats;
-
-      // Index in background
-      indexService.indexAllMessages(currentUid: uid, chatRooms: chats);
-
       // Open search immediately
       searchVM.openSearch();
       _openSearchSheet(context, vm, searchVM);

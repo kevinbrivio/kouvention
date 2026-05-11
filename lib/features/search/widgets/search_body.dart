@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
+import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
 import 'package:kouvention/features/search/models/search_result_model.dart';
 import 'package:kouvention/features/search/viewmodel/search_viewmodel.dart';
 import 'package:kouvention/features/search/widgets/search_result_group_tile.dart';
@@ -13,7 +15,7 @@ void _navigateToMessage(BuildContext context, SearchResultModel result) {
   );
 }
 
-Widget searchBody(BuildContext context, SearchVM vm) {
+Widget searchBody(BuildContext context, SearchVM vm, WidgetRef ref) {
   switch (vm.state) {
     case SearchState.idle:
       return Center(
@@ -32,7 +34,14 @@ Widget searchBody(BuildContext context, SearchVM vm) {
         itemBuilder: (context, index) => SearchResultGroupTile(
           group: vm.groups[index],
           query: vm.query,
-          onResultTap: (result) => _navigateToMessage(context, result),
+          onResultTap: (result) {
+            _navigateToMessage(context, result);
+
+            ref.read(chatRoomVM(result.chatRoomId)).scrollToTarget(
+              messageId: result.messageId,
+              sentAt: result.sentAt,
+            );
+          },
         ),
       );
 
@@ -43,7 +52,7 @@ Widget searchBody(BuildContext context, SearchVM vm) {
           children: [
             Icon(Icons.search_off, size: 48, color: Colors.grey),
             SizedBox(height: 12),
-            if (vm.query.isNotEmpty) 
+            if (vm.query.isNotEmpty)
               Text(
                 'No results for "${vm.query}"',
                 style: textTheme.subDescription3,
