@@ -9,7 +9,11 @@ import 'package:kouvention/features/search/widgets/search_result_group_tile.dart
 
 void _navigateToMessage(BuildContext context, SearchResultModel result) {
   // Close search, navigate to chat room with target message
-  context.push('/chats/${result.chatRoomId}');
+  context.push(
+    '/chats/${result.chatRoomId}'
+    '?scrollTo=${result.messageId}'
+    '&sentAt=${result.sentAt.millisecondsSinceEpoch}',
+  );
 }
 
 Widget searchBody(BuildContext context, SearchVM vm, WidgetRef ref) {
@@ -31,15 +35,7 @@ Widget searchBody(BuildContext context, SearchVM vm, WidgetRef ref) {
         itemBuilder: (context, index) => SearchResultGroupTile(
           group: vm.groups[index],
           query: vm.query,
-          onResultTap: (result) {
-            _navigateToMessage(context, result);
-            ref
-                .read(chatRoomVM(result.chatRoomId))
-                .scrollToTarget(
-                  messageId: result.messageId,
-                  sentAt: result.sentAt,
-                );
-          },
+          onResultTap: (result) => _navigateToMessage(context, result),
         ),
       );
 
