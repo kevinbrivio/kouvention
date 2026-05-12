@@ -41,6 +41,8 @@ class SyncService {
 
     int totalSynced = 0;
 
+    final sw = Stopwatch()..start();
+
     for (final chat in chatRooms) {
       try {
         final messages = await _chatService.fetchMessagesSince(
@@ -63,9 +65,14 @@ class SyncService {
       }
     }
 
+    sw.stop();
+
     _prefsService.lastSyncTime = DateTime.now();
     _isSyncing = false;
 
+    debugPrint(
+      '🥷 Syncing Message in Chat Room process took: ${sw.elapsedMilliseconds}ms',
+    );
     debugPrint('🥷 Sync complete! Total: $totalSynced messages');
   }
 

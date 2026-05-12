@@ -113,6 +113,34 @@ class ChatService {
         .toList();
   }
 
+  // ---- Fetch for navigation ----------------------
+  Future<List<MessageModel>> fetchMessageAround(
+    String chatId, {
+    required DateTime aroundTimestamp,
+    int limit = 50,
+  }) async {
+    final timestamp = Timestamp.fromDate(aroundTimestamp);
+    final halfLimit = limit ~/ 2;
+
+    final olderSnap = await _messagesRef(chatId)
+        .orderBy('sentAt', descending: true)
+        .where('sentAt', isLessThanOrEqualTo: timestamp)
+        .limit(halfLimit)
+        .get();
+
+    final newerSnap = await _messagesRef(chatId)
+        .orderBy('sentAt')
+        .where('sentAt', isGreaterThan: timestamp)
+        .limit(halfLimit)
+        .get();
+
+    final allDocs = [...newerSnap.docs.reversed, ...olderSnap.docs];
+
+    return allDocs
+        .map((doc) => MessageModel.fromMap(doc.id, doc.data()))
+        .toList();
+  }
+
   // --- Send Messages --------------------------------
   Future<void> sendMessage({
     required String chatId,

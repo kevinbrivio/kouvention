@@ -34,6 +34,8 @@ class LocalSearchService implements SearchService {
       limit: limit,
     );
 
+    print(rows);
+
     // If user is typing another query, return empty array
     if (_isCancelled) return [];
 

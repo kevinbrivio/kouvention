@@ -1,10 +1,8 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
-import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
@@ -12,7 +10,6 @@ import 'package:kouvention/features/chat/models/reply_to_model.dart';
 import 'package:kouvention/features/chat/services/chat_service.dart';
 import 'package:kouvention/features/notification/services/notification_service.dart';
 import 'package:kouvention/features/notification/viewmodel/active_chat_id_provider.dart';
-import 'package:kouvention/features/search/services/sync_service.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
 import 'package:kouvention/features/user/services/user_service.dart';
 
@@ -250,7 +247,7 @@ class ChatRoomVM extends BaseNotifier {
       // clear typing indicator before sending
       await clearTyping();
       final ReplyToModel? replyTo = _replyMessage != null
-          ? ReplyToModel(
+        ? ReplyToModel(
               messageId: _replyMessage!.id,
               senderId: _replyMessage!.senderId,
               senderName: senderDisplayName(_replyMessage!.senderId),
