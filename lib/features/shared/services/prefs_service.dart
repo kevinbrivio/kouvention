@@ -17,6 +17,7 @@ class PrefsService {
   static const String _privacyPolicyKey = 'has_accepted_privacy_policy';
   static const String _fcmTokenKey = 'fcm_tokens';
   static const String _lastSyncedKey = 'search_last_sync_time';
+  static const String _deviceIdKey = 'device_id';
 
   // --- ONBOARDING
   Future<bool> hasSeenOnboarding() async =>
@@ -54,4 +55,8 @@ class PrefsService {
       _prefs.setInt(_lastSyncedKey, value.millisecondsSinceEpoch);
     }
   }
+
+  // --- DEVICE ID
+  Future<bool> setDeviceId(String val) => _prefs.setString(_deviceIdKey, val);
+  String? deviceId() => _prefs.getString(_deviceIdKey);
 }
