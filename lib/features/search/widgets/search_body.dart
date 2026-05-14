@@ -1,6 +1,4 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
@@ -58,11 +56,6 @@ Widget searchBody(BuildContext context, SearchVM vm, WidgetRef ref) {
                   query: vm.query,
                   onTap: () {
                     final chatId = vm.matchingContacts[index].id;
-                    debugPrint('🔍 Navigating to chatId: $chatId');
-                    final currentUser = FirebaseAuth.instance.currentUser;
-                      debugPrint('🔍 chatId: $chatId');
-                      debugPrint('🔍 currentUser uid: ${currentUser?.uid}');
-                      debugPrint('🔍 currentUser is null: ${currentUser == null}');
                     context.push('/chats/$chatId');
                   },
                 ),
