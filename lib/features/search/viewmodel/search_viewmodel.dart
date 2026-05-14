@@ -32,6 +32,7 @@ class SearchVM extends ChangeNotifier {
   String? _error;
   Timer? _debouncer;
   bool _isActive = false;
+  List<ChatModel> _matchingContacts = [];
 
   // --- Getter -----
   SearchState get state => _state;
@@ -40,6 +41,8 @@ class SearchVM extends ChangeNotifier {
   String? get error => _error;
   Timer? get debouncer => _debouncer;
   bool get isActive => _isActive;
+  List<ChatModel> get matchingContacts => _matchingContacts;
+  String get currentUid => _currentUid;
 
   // Called on every keystroke hit in TextField
   void onTextChanged(String query, List<ChatModel> chatRooms) {
@@ -50,6 +53,7 @@ class SearchVM extends ChangeNotifier {
       _state = SearchState.idle;
       _query = '';
       _groups = [];
+      _matchingContacts = [];
       _debouncer?.cancel();
       _searchService.cancelSearch();
 
@@ -74,7 +78,17 @@ class SearchVM extends ChangeNotifier {
     try {
       debugPrint('------ SQLite Local SEARCHING WORKING -------');
       final sw = Stopwatch()..start();
-      
+
+      final lowerQuery = query.toLowerCase();
+      _matchingContacts = chatRooms
+          .where(
+            (chat) => chat
+                .displayName(_currentUid)
+                .toLowerCase()
+                .contains(lowerQuery),
+          )
+          .toList();
+
       final results = await _searchService.searchMessages(
         query: query,
         currentUid: _currentUid,
@@ -87,7 +101,7 @@ class SearchVM extends ChangeNotifier {
 
       if (_query != query) return;
 
-      if (results.isEmpty) {
+      if (results.isEmpty && _matchingContacts.isEmpty) {
         _state = SearchState.empty;
         _groups = [];
       } else {
@@ -151,6 +165,7 @@ class SearchVM extends ChangeNotifier {
     _groups = [];
     _error = null;
     _state = SearchState.idle;
+    _matchingContacts.clear();
     notifyListeners();
   }
 

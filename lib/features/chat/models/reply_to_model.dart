@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class ReplyToModel {
   final String messageId;
   final String text;
@@ -18,7 +20,7 @@ class ReplyToModel {
     text: map['text'] ?? '',
     senderId: map['senderId'] ?? '',
     senderName: map['senderName'] ?? '',
-    sentAt: map['sentAt'] ?? ''
+    sentAt: (map['sentAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
   );
 
   Map<String, dynamic> toMap() => {

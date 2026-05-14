@@ -36,8 +36,6 @@ class SyncService {
     if (_isSyncing) return;
     _isSyncing = true;
 
-    // final since = _prefsService.lastSynced ?? DateTime(2020);
-
     int totalSynced = 0;
 
     final sw = Stopwatch()..start();
@@ -55,7 +53,7 @@ class SyncService {
 
         List<MessageModel> messages;
         if (lastSync == 0) {
-          messages = await _chatService.fetchRecentMessages(chat.id);
+          messages = await _chatService.fetchAllMessages(chat.id);
         } else {
           final since = DateTime.fromMillisecondsSinceEpoch(lastSync);
 
@@ -123,6 +121,27 @@ class SyncService {
     }
   }
 
+  Future<void> syncSingleChat(
+    String currentUid,
+    String chatId,
+    int lastSync,
+  ) async {
+    final since = DateTime.fromMillisecondsSinceEpoch(lastSync);
+    final messages = await _chatService.fetchMessagesSince(
+      chatId,
+      since: since,
+    );
+
+    if (messages.isNotEmpty) {
+      await _db.upsertMessages(
+        messages.map((m) => _toCompanion(m, chatId, currentUid)).toList(),
+      );
+    }
+
+    // update last sync
+    await _db.updateLastSync(chatId, DateTime.now().millisecondsSinceEpoch);
+  }
+
   /// Wiped out all data when signout
   Future<void> clearAllData() async {
     await _db.clearAll();
@@ -130,28 +149,6 @@ class SyncService {
     _prefsService.lastSyncTime = null;
     debugPrint('🥷 Search cache cleared');
   }
-
-  // Real-time sync from sending message in Firestore
-  // Convert and write batch messages in SQLite
-  // Future<void> syncMessages({
-  //   required List<MessageModel> messages,
-  //   required String chatRoomId,
-  //   required String currentUid,
-  // }) async {
-  //   if (messages.isEmpty) return;
-  //   final sw = Stopwatch()..start();
-
-  //   final companions = messages
-  //       .map((m) => _toCompanion(m, chatRoomId, currentUid))
-  //       .toList();
-
-  //   await _db.upsertMessages(companions);
-
-  //   sw.stop();
-  //   debugPrint(
-  //     '🥷 Syncing Message in Chat Room process took: ${sw.elapsedMilliseconds}ms',
-  //   );
-  // }
 
   CachedMessagesCompanion _toCompanion(
     MessageModel msg,

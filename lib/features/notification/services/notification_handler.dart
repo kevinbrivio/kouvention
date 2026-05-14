@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:firebase_auth/firebase_auth.dart';
@@ -33,9 +34,17 @@ void onBackgroundNotificationResponse(NotificationResponse response) async {
   final chat = await chatService.getChat(chatId);
   if (chat == null) return;
 
+  final docId = FirebaseFirestore.instance
+    .collection('chats')
+    .doc(chatId)
+    .collection('messages')
+    .doc()
+    .id;
+
   // Write to firestore
   await chatService.sendMessage(
     chatId: chatId,
+    messageId: docId,
     senderId: currentUser.uid,
     senderName: senderName ?? '',
     text: replyText,

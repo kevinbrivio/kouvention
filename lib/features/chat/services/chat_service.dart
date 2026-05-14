@@ -54,31 +54,46 @@ class ChatService {
   /// [limit] controls the page size. Start with 20.
   /// This stream is for the FIRST page only — it stays live
   /// so new incoming messages appear instantly.
-  Stream<List<MessageModel>> streamMessages(String chatId, {int limit = 100}) {
-    return _messagesRef(chatId)
-        .orderBy('sentAt', descending: true)
-        .limit(limit)
-        .snapshots()
-        .map(
-          (snapshot) => snapshot.docs
-              .map((doc) => MessageModel.fromMap(doc.id, doc.data()))
-              .toList(),
-        );
-  }
+  Stream<List<MessageModel>> streamMessages(String chatId, {int limit = 100}) =>
+      _messagesRef(chatId)
+          .orderBy('sentAt', descending: true)
+          .limit(limit)
+          .snapshots()
+          .map(
+            (snapshot) => snapshot.docs
+                .map((doc) => MessageModel.fromMap(doc.id, doc.data()))
+                .toList(),
+          );
 
-  /// Streams only for new message, which hold by lastSyntTimestamp
-  Stream<List<MessageModel>> streamNewMessages(
-    String chatId, {
-    required DateTime since,
-  }) => _messagesRef(chatId)
-      .orderBy('sentAt')
-      .where('sentAt', isGreaterThan: Timestamp.fromDate(since))
-      .snapshots()
-      .map(
-        (snapshot) => snapshot.docs
-            .map((doc) => MessageModel.fromMap(doc.id, doc.data()))
-            .toList(),
+  Future<List<MessageModel>> fetchAllMessages(String chatId) async {
+    List<MessageModel> allMessages = [];
+    DocumentSnapshot? lastDoc;
+    const batchSize = 500;
+
+    while (true) {
+      Query<Map<String, dynamic>> query = _messagesRef(
+        chatId,
+      ).orderBy('sentAt', descending: true).limit(batchSize);
+
+      if (lastDoc != null) {
+        query = query.startAfterDocument(lastDoc);
+      }
+
+      final snapshot = await query.get();
+
+      if (snapshot.docs.isEmpty) break;
+
+      allMessages.addAll(
+        snapshot.docs.map((doc) => MessageModel.fromMap(doc.id, doc.data())),
       );
+
+      lastDoc = snapshot.docs.last;
+
+      if (snapshot.docs.length < batchSize) break;
+    }
+
+    return allMessages;
+  }
 
   /// Fetches recent message from Firestore
   Future<List<MessageModel>> fetchRecentMessages(
@@ -172,6 +187,7 @@ class ChatService {
   // --- Send Messages --------------------------------
   Future<void> sendMessage({
     required String chatId,
+    required String messageId,
     required String senderId,
     required String senderName,
     required String text,
@@ -180,7 +196,7 @@ class ChatService {
   }) async {
     final batch = _firestore.batch();
 
-    final msgRef = _messagesRef(chatId).doc();
+    final msgRef = _messagesRef(chatId).doc(messageId);
     batch.set(
       msgRef,
       MessageModel.toNewMessageMap(

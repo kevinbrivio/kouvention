@@ -184,7 +184,6 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
     _itemPositionsListener.itemPositions.addListener(_onPositionChanged);
 
     if (widget.scrollToMessageId != null && widget.scrollToSentAt != null) {
-      print('= = = = = = LAGI HANDLING SEARCHING = = ==  = = = = = = = =');
       _isSearchingMessage = true;
       _handlePendingScroll();
     }
@@ -335,7 +334,14 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
               message: message,
               isMe: isMe,
               onReplyMessage: () => viewmodel.onSwipedMessage(message),
-              onTapReply: _scrollToMessage,
+              onTapReply: (_) => _scrollToMessage(
+                message.replyTo != null
+                    ? message.replyTo!.messageId
+                    : message.id,
+                sentAt: message.replyTo != null
+                    ? message.replyTo!.sentAt
+                    : message.sentAt,
+              ),
             ),
           ],
         );
@@ -567,7 +573,8 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
 
   Future<void> _scrollToMessage(String messageId, {DateTime? sentAt}) async {
     final sw = Stopwatch()..start();
-
+    debugPrint(' - - - - MESSAGE ID: $messageId}');
+    debugPrint(' - - - - SENT AT: ${sentAt}');
     final index = await viewmodel.findMessageIndex(messageId, sentAt: sentAt);
     debugPrint(' - - - index -> $index');
 
@@ -583,14 +590,7 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
     // Rebuild page after we load older mesages
     viewmodel.notifyListeners();
 
-    await Future.delayed(Duration(milliseconds: 200));
-
     if (_itemScrollController.isAttached) {
-      // _itemScrollController.scrollTo(
-      //   index: index,
-      //   duration: const Duration(milliseconds: 500),
-      //   curve: Curves.easeInBack,
-      // );
       _itemScrollController.jumpTo(index: index);
     }
 
@@ -630,18 +630,17 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
     }
   }
 
-  void _scrollToBottom() {
+  void _scrollToBottom() async {
     if (viewmodel.isJumpMode) {
-      viewmodel.switchToNormalMode();
+      await viewmodel.switchToNormalMode();
       setState(() {
         _initialScrollIndex = null;
       });
-      return;
     }
     if (_itemScrollController.isAttached) {
       _itemScrollController.scrollTo(
         index: 0,
-        duration: const Duration(milliseconds: 500),
+        duration: const Duration(milliseconds: 100),
         curve: Curves.easeOut,
       );
     }

@@ -370,7 +370,7 @@ class ChatListView extends ConsumerWidget {
     // Smooth curve for the slide-up animation
     transitionAnimationController: AnimationController(
       vsync: Navigator.of(context),
-      duration: const Duration(milliseconds: 400),
+      duration: const Duration(milliseconds: 200),
     ),
     builder: (sheetContext) =>
         SearchOverlay(chatVm: chatVM, searchVm: searchVM),
