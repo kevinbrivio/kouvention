@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
@@ -6,7 +7,7 @@ import 'package:kouvention/features/chat/viewmodel/chat_list_viewmodel.dart';
 import 'package:kouvention/features/search/viewmodel/search_viewmodel.dart';
 import 'package:kouvention/features/search/widgets/search_body.dart';
 
-class SearchOverlay extends StatefulWidget {
+class SearchOverlay extends ConsumerStatefulWidget {
   final SearchVM searchVm;
   final ChatListVM chatVm;
 
@@ -17,10 +18,10 @@ class SearchOverlay extends StatefulWidget {
   });
 
   @override
-  State<SearchOverlay> createState() => _SearchOverlayState();
+  ConsumerState<SearchOverlay> createState() => _SearchOverlayState();
 }
 
-class _SearchOverlayState extends State<SearchOverlay> {
+class _SearchOverlayState extends ConsumerState<SearchOverlay> {
   late final TextEditingController _controller;
 
   // Access VMs through widget — available everywhere, no ref needed
@@ -31,7 +32,7 @@ class _SearchOverlayState extends State<SearchOverlay> {
   void initState() {
     super.initState();
     _controller = TextEditingController();
-    Future(() => _searchVm.openSearch()); // ← no ref, no problem
+    Future(() => _searchVm.openSearch(widget.chatVm.chats)); // ← no ref, no problem
   }
 
   @override
@@ -53,7 +54,7 @@ class _SearchOverlayState extends State<SearchOverlay> {
         children: [
           _buildDragHandle(),
           _buildSearchBar(),
-          Expanded(child: searchBody(context, _searchVm)),
+          Expanded(child: searchBody(context, _searchVm, ref)),
         ],
       ),
     ),

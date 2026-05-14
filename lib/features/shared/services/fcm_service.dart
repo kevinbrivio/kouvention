@@ -19,11 +19,16 @@ class FcmService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final PrefsService _prefs;
 
+  late String _deviceId;
+
   // Listen to token (device)every time notification came
   StreamSubscription<String>? _tokenRefreshSub;
 
   FcmService(this._prefs);
   Future<void> initialize() async {
+    final deviceId = _prefs.deviceId() ?? '_unknown_device_id_';
+    
+    _deviceId = deviceId;
     final granted = await requestPermission();
     if (!granted) return;
 
@@ -60,8 +65,11 @@ class FcmService {
           'fcmTokens.$oldToken': FieldValue.delete(),
         });
       }
+
       await _saveTokenToFirestore(uid, newToken);
       _prefs.setFcmToken(newToken);
+
+      await _cleanupOldTokensForDevice(uid, newToken);
     } catch (e) {
       debugPrint('FCM getToken failed: $e');
     }
@@ -73,12 +81,47 @@ class FcmService {
         'fcmTokens': {
           token: {
             'device': _getDevicePlatform(),
+            'deviceId': _deviceId,
             'updatedAt': FieldValue.serverTimestamp(),
           },
         },
       },
       SetOptions(merge: true),
     ); // => Create if doc is missing, replace if exist
+  }
+
+  Future<void> _cleanupOldTokensForDevice(
+    String uid,
+    String currentToken,
+  ) async {
+    try {
+      final doc = await _firestore.doc('users/$uid').get();
+      final tokens = doc.data()?['fcmTokens'] as Map<String, dynamic>? ?? {};
+
+      final tokensToDelete = <String>[];
+
+      for (final entry in tokens.entries) {
+        final tokenKey = entry.key;
+        final tokenData = entry.value as Map<String, dynamic>? ?? {};
+
+        // Same device but different token, so replace
+        if (tokenData['deviceId'] == _deviceId && tokenKey != currentToken) {
+          tokensToDelete.add(tokenKey);
+        }
+      }
+
+      if (tokensToDelete.isEmpty) return;
+
+      final updates = <String, dynamic>{};
+      for (final oldToken in tokensToDelete) {
+        updates['fcmTokens.$oldToken'] = FieldValue.delete();
+      }
+
+      await _firestore.doc('users/$uid').update(updates);
+      debugPrint('Cleaned up ${tokensToDelete.length} stale token(s)');
+    } catch (e) {
+      debugPrint('Token cleanup failed: $e');
+    }
   }
 
   String _getDevicePlatform() =>

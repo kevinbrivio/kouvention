@@ -1,6 +1,7 @@
 class SearchResultModel {
   final String messageId;
   final String chatRoomId;
+  final String chatName;
   final String senderId;
   final String messageText; // matched searched
   final String senderName;
@@ -9,11 +10,10 @@ class SearchResultModel {
   SearchResultModel({
     required this.messageId,
     required this.chatRoomId,
+    required this.chatName,
     required this.senderId,
     required this.messageText,
     required this.senderName,
     required this.sentAt,
   });
-
-  
 }

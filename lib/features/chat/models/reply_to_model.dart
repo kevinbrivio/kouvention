@@ -1,14 +1,18 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class ReplyToModel {
   final String messageId;
   final String text;
   final String senderId;
   final String senderName;
+  final DateTime sentAt;
 
   ReplyToModel({
     required this.messageId,
     required this.text,
     required this.senderId,
     required this.senderName,
+    required this.sentAt,
   });
 
   factory ReplyToModel.fromMap(Map<String, dynamic> map) => ReplyToModel(
@@ -16,6 +20,7 @@ class ReplyToModel {
     text: map['text'] ?? '',
     senderId: map['senderId'] ?? '',
     senderName: map['senderName'] ?? '',
+    sentAt: (map['sentAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
   );
 
   Map<String, dynamic> toMap() => {
@@ -23,5 +28,6 @@ class ReplyToModel {
     'text': text,
     'senderId': senderId,
     'senderName': senderName,
+    'sentAt': sentAt,
   };
 }

@@ -1,16 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:gap/gap.dart';
+import 'package:kouvention/cores/constants/colors.dart';
+import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/cores/utils/date_time_helper.dart';
 import 'package:kouvention/features/search/models/search_result_model.dart';
 
 class SearchResultTile extends StatelessWidget {
   final SearchResultModel result;
   final String query;
+  final String currentUid;
   final VoidCallback onTap;
 
   const SearchResultTile({
     super.key,
     required this.result,
     required this.query,
+    required this.currentUid,
     required this.onTap,
   });
 
@@ -18,19 +24,20 @@ class SearchResultTile extends StatelessWidget {
   Widget build(BuildContext context) => InkWell(
     onTap: onTap,
     child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Message text with highlighted matching part
           _buildHighlightedText(result.messageText, query, context),
-          const SizedBox(height: 4),
+          Gap(4.h),
           // Sender name and time
           Text(
-            '${result.senderName} · ${DateTimeHelper.formatDateMonthYear(result.sentAt)}',
-            style: Theme.of(
-              context,
-            ).textTheme.bodySmall?.copyWith(color: Colors.grey),
+            result.senderId == currentUid
+                ? 'You'
+                : '${result.senderName} '
+                      '· ${DateTimeHelper.formatDateMonthYear(result.sentAt)}',
+            style: textTheme.body2.copyWith(color: AppColors.grey),
           ),
         ],
       ),

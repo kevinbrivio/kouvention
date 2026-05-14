@@ -53,7 +53,8 @@ class ChatModel {
     if (deletedBy == null || !deletedBy!.containsKey(uid)) return false;
     final rawVal = deletedBy![uid];
     if (rawVal == null) return true;
-    final deletedAt = (rawVal as Timestamp).toDate();
+    final deletedAt = (rawVal as Timestamp?)?.toDate();
+    if (deletedAt == null) return false;
     final lastSentAt = lastMessage?.sentAt;
     if (lastSentAt != null && lastSentAt.isAfter(deletedAt)) return false;
 
@@ -139,7 +140,11 @@ class ChatModel {
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
       deletedBy: data['deletedBy'] as Map<String, dynamic>?,
       lastReadAt: (data['lastReadAt'] as Map<String, dynamic>? ?? {}).map(
-        (uid, ts) => MapEntry(uid, (ts as Timestamp).toDate()),
+        (uid, ts) => MapEntry(
+          uid,
+          (ts as Timestamp?)?.toDate() ??
+              DateTime.fromMillisecondsSinceEpoch(0),
+        ),
       ),
     );
   }

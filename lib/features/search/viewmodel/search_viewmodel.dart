@@ -6,22 +6,24 @@ import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/search/models/search_result_group.dart';
 import 'package:kouvention/features/search/models/search_result_model.dart';
-import 'package:kouvention/features/search/services/firestore_search_service.dart';
-import 'package:kouvention/features/search/services/search_service.dart';
+import 'package:kouvention/features/search/services/local_search_service.dart';
+import 'package:kouvention/features/search/services/sync_service.dart';
 
 enum SearchState { idle, searching, results, empty, error }
 
 final searchVM = ChangeNotifierProvider.autoDispose<SearchVM>((ref) {
-  final searchService = ref.read(searchServiceProvider);
+  final searchService = ref.read(localSearchServiceProvider);
+  final syncService = ref.read(syncServiceProvider);
   final currentUid = ref.read(authServiceProvider).currentUser?.uid;
-  return SearchVM(searchService, currentUid!);
+  return SearchVM(searchService, syncService, currentUid!);
 });
 
 class SearchVM extends ChangeNotifier {
-  final SearchService _searchService;
+  final LocalSearchService _searchService;
+  final SyncService _syncService;
   final String _currentUid;
 
-  SearchVM(this._searchService, this._currentUid);
+  SearchVM(this._searchService, this._syncService, this._currentUid);
 
   // --- State -----
   SearchState _state = SearchState.idle;
@@ -30,6 +32,7 @@ class SearchVM extends ChangeNotifier {
   String? _error;
   Timer? _debouncer;
   bool _isActive = false;
+  List<ChatModel> _matchingContacts = [];
 
   // --- Getter -----
   SearchState get state => _state;
@@ -38,6 +41,8 @@ class SearchVM extends ChangeNotifier {
   String? get error => _error;
   Timer? get debouncer => _debouncer;
   bool get isActive => _isActive;
+  List<ChatModel> get matchingContacts => _matchingContacts;
+  String get currentUid => _currentUid;
 
   // Called on every keystroke hit in TextField
   void onTextChanged(String query, List<ChatModel> chatRooms) {
@@ -48,6 +53,7 @@ class SearchVM extends ChangeNotifier {
       _state = SearchState.idle;
       _query = '';
       _groups = [];
+      _matchingContacts = [];
       _debouncer?.cancel();
       _searchService.cancelSearch();
 
@@ -70,15 +76,32 @@ class SearchVM extends ChangeNotifier {
     notifyListeners();
 
     try {
+      debugPrint('------ SQLite Local SEARCHING WORKING -------');
+      final sw = Stopwatch()..start();
+
+      final lowerQuery = query.toLowerCase();
+      _matchingContacts = chatRooms
+          .where(
+            (chat) => chat
+                .displayName(_currentUid)
+                .toLowerCase()
+                .contains(lowerQuery),
+          )
+          .toList();
+
       final results = await _searchService.searchMessages(
         query: query,
         currentUid: _currentUid,
         chatRooms: chatRooms,
       );
 
+      sw.stop();
+      debugPrint('🥷 SQLite search took: ${sw.elapsedMilliseconds}ms');
+      debugPrint('🥷 Results found: ${results.length}');
+
       if (_query != query) return;
 
-      if (results.isEmpty) {
+      if (results.isEmpty && _matchingContacts.isEmpty) {
         _state = SearchState.empty;
         _groups = [];
       } else {
@@ -117,10 +140,21 @@ class SearchVM extends ChangeNotifier {
     }).toList();
   }
 
-  void openSearch() {
+  void openSearch(List<ChatModel> chatRooms) {
     _isActive = true;
     _state = SearchState.idle;
     notifyListeners();
+
+    final sw = Stopwatch()..start();
+    _syncService.syncAllChatRooms(
+      currentUid: _currentUid,
+      chatRooms: chatRooms,
+    );
+
+    sw.stop();
+    debugPrint(
+      '🔥 Syncing All Chat Rooms process took: ${sw.elapsedMilliseconds}ms',
+    );
   }
 
   void clearSearch() {
@@ -131,6 +165,7 @@ class SearchVM extends ChangeNotifier {
     _groups = [];
     _error = null;
     _state = SearchState.idle;
+    _matchingContacts.clear();
     notifyListeners();
   }
 

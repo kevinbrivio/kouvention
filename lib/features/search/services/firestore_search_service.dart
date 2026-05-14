@@ -7,7 +7,7 @@ final searchServiceProvider = Provider<SearchService>(
   (ref) => FirestoreSearchService(),
 );
 
-class FirestoreSearchService extends SearchService {
+class FirestoreSearchService implements SearchService {
   @override
   Future<List<SearchResultModel>> searchMessages({
     required String query,

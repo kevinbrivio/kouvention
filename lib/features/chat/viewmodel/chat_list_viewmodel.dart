@@ -5,6 +5,8 @@ import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/services/chat_service.dart';
+import 'package:kouvention/features/chat/services/databases/cached_messages.dart';
+import 'package:kouvention/features/search/services/sync_service.dart';
 import 'package:oktoast/oktoast.dart';
 
 enum ChatFilter { all, direct, group }
@@ -23,6 +25,9 @@ class ChatListVM extends BaseNotifier {
   // Pin chat
   static const maxPinnedChat = 3;
   final Set<String> _selectedChatIds = {};
+
+  // Sync Chat Locally (but only in memory)
+  bool _hasSynced = false;
 
   String? _error;
 
@@ -87,12 +92,42 @@ class ChatListVM extends BaseNotifier {
                   });
             _error = null;
             notifyListeners();
+            if (!_hasSynced && chats.isNotEmpty) {
+              _hasSynced = true;
+              ref
+                  .read(syncServiceProvider)
+                  .syncAllChatRooms(currentUid: _currentUid, chatRooms: chats);
+            } else if (_hasSynced) {
+              _backgroundSyncNewMessages(chats);
+            }
           },
           onError: (error) {
             _error = error.toString();
             notifyListeners();
           },
         );
+  }
+
+  Future<void> _backgroundSyncNewMessages(List<ChatModel> chats) async {
+    final syncService = ref.read(syncServiceProvider);
+    final db = ref.read(messageDatabaseProvider);
+
+    for (final chat in chats) {
+      // Sync metadata chat
+      await syncService.syncChatRoom(_currentUid!, chat);
+
+      final lastSync = await db.getLastSyncTimestamp(chat.id);
+      final chatUpdatedAt = chat.updatedAt?.millisecondsSinceEpoch ?? 0;
+
+      // Only sync if chat changes from last sync
+      if (chatUpdatedAt > lastSync) {
+        await syncService.syncSingleChat(
+          _currentUid!, 
+          chat.id,
+          lastSync,
+        );
+      }
+    }
   }
 
   void setFilter(ChatFilter value) {
