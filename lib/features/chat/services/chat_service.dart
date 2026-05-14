@@ -54,7 +54,7 @@ class ChatService {
   /// [limit] controls the page size. Start with 20.
   /// This stream is for the FIRST page only — it stays live
   /// so new incoming messages appear instantly.
-  Stream<List<MessageModel>> streamMessages(String chatId, {int limit = 20}) {
+  Stream<List<MessageModel>> streamMessages(String chatId, {int limit = 100}) {
     return _messagesRef(chatId)
         .orderBy('sentAt', descending: true)
         .limit(limit)
@@ -66,17 +66,46 @@ class ChatService {
         );
   }
 
-  /// Fetches older messages for pagination
-  Future<List<MessageModel>> fetchOlderMesages(
+  /// Streams only for new message, which hold by lastSyntTimestamp
+  Stream<List<MessageModel>> streamNewMessages(
     String chatId, {
-    required DocumentSnapshot lastDocument,
-    int limit = 50,
+    required DateTime since,
+  }) => _messagesRef(chatId)
+      .orderBy('sentAt')
+      .where('sentAt', isGreaterThan: Timestamp.fromDate(since))
+      .snapshots()
+      .map(
+        (snapshot) => snapshot.docs
+            .map((doc) => MessageModel.fromMap(doc.id, doc.data()))
+            .toList(),
+      );
+
+  /// Fetches recent message from Firestore
+  Future<List<MessageModel>> fetchRecentMessages(
+    String chatId, {
+    int limit = 100,
+  }) async {
+    final snapshot = await _messagesRef(
+      chatId,
+    ).orderBy('sentAt', descending: true).limit(limit).get();
+
+    return snapshot.docs
+        .map((doc) => MessageModel.fromMap(doc.id, doc.data()))
+        .toList();
+  }
+
+  /// Fetches older messages for pagination
+  Future<List<MessageModel>> fetchOlderMessages(
+    String chatId, {
+    required DateTime before,
+    int limit = 20,
   }) async {
     final snapshot = await _messagesRef(chatId)
         .orderBy('sentAt', descending: true)
-        .startAfterDocument(lastDocument)
+        .where('sentAt', isLessThan: Timestamp.fromDate(before))
         .limit(limit)
         .get();
+
     return snapshot.docs
         .map((doc) => MessageModel.fromMap(doc.id, doc.data()))
         .toList();
@@ -89,7 +118,7 @@ class ChatService {
   }) async {
     Query<Map<String, dynamic>> query = _messagesRef(
       chatId,
-    ).orderBy('sentAt', descending: true).limit(limit);
+    ).orderBy('sentAt', descending: true);
 
     if (lastDocument != null) {
       query = query.startAfterDocument(lastDocument);
@@ -98,15 +127,14 @@ class ChatService {
     return query.get();
   }
 
-  // ---- Fetch without limit -----------------------
+  /// Fetches message after specific timestamp
   Future<List<MessageModel>> fetchMessagesSince(
     String chatId, {
     required DateTime since,
   }) async {
-    final snapshot = await _messagesRef(chatId)
-        .orderBy('sentAt', descending: false)
-        .where('sentAt', isGreaterThan: since)
-        .get();
+    final snapshot = await _messagesRef(
+      chatId,
+    ).orderBy('sentAt').where('sentAt', isGreaterThan: since).get();
 
     return snapshot.docs
         .map((doc) => MessageModel.fromMap(doc.id, doc.data()))
@@ -114,32 +142,32 @@ class ChatService {
   }
 
   // ---- Fetch for navigation ----------------------
-  Future<List<MessageModel>> fetchMessageAround(
-    String chatId, {
-    required DateTime aroundTimestamp,
-    int limit = 50,
-  }) async {
-    final timestamp = Timestamp.fromDate(aroundTimestamp);
-    final halfLimit = limit ~/ 2;
+  // Future<List<MessageModel>> fetchMessageAround(
+  //   String chatId, {
+  //   required DateTime aroundTimestamp,
+  //   int limit = 50,
+  // }) async {
+  //   final timestamp = Timestamp.fromDate(aroundTimestamp);
+  //   final halfLimit = limit ~/ 2;
 
-    final olderSnap = await _messagesRef(chatId)
-        .orderBy('sentAt', descending: true)
-        .where('sentAt', isLessThanOrEqualTo: timestamp)
-        .limit(halfLimit)
-        .get();
+  //   final olderSnap = await _messagesRef(chatId)
+  //       .orderBy('sentAt', descending: true)
+  //       .where('sentAt', isLessThanOrEqualTo: timestamp)
+  //       .limit(halfLimit)
+  //       .get();
 
-    final newerSnap = await _messagesRef(chatId)
-        .orderBy('sentAt')
-        .where('sentAt', isGreaterThan: timestamp)
-        .limit(halfLimit)
-        .get();
+  //   final newerSnap = await _messagesRef(chatId)
+  //       .orderBy('sentAt')
+  //       .where('sentAt', isGreaterThan: timestamp)
+  //       .limit(halfLimit)
+  //       .get();
 
-    final allDocs = [...newerSnap.docs.reversed, ...olderSnap.docs];
+  //   final allDocs = [...newerSnap.docs.reversed, ...olderSnap.docs];
 
-    return allDocs
-        .map((doc) => MessageModel.fromMap(doc.id, doc.data()))
-        .toList();
-  }
+  //   return allDocs
+  //       .map((doc) => MessageModel.fromMap(doc.id, doc.data()))
+  //       .toList();
+  // }
 
   // --- Send Messages --------------------------------
   Future<void> sendMessage({

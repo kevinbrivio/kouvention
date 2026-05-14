@@ -46,7 +46,15 @@ class ChatRoomView extends ConsumerWidget {
         appBar: (vm) => selectionVM.isSelecting
             ? SelectionAppBar(chatVM: vm)
             : _buildAppBar(context, vm),
-        builder: (context, vm) => _ChatRoomBody(chatId: chatId, viewmodel: vm),
+        builder: (context, vm) {
+          final queryParams = GoRouterState.of(context).uri.queryParameters;
+          return _ChatRoomBody(
+            chatId: chatId,
+            viewmodel: vm,
+            scrollToMessageId: queryParams['scrollTo'],
+            scrollToSentAt: queryParams['sentAt'],
+          );
+        },
         backgroundImage: DecorationImage(
           image: AssetImage(images.chatWallpaper),
           fit: BoxFit.cover,
@@ -143,8 +151,15 @@ PreferredSizeWidget _buildAppBar(BuildContext context, ChatRoomVM vm) => AppBar(
 class _ChatRoomBody extends StatefulWidget {
   final String chatId;
   final ChatRoomVM viewmodel;
+  final String? scrollToMessageId;
+  final String? scrollToSentAt;
 
-  const _ChatRoomBody({required this.chatId, required this.viewmodel});
+  const _ChatRoomBody({
+    required this.chatId,
+    required this.viewmodel,
+    this.scrollToMessageId,
+    this.scrollToSentAt,
+  });
 
   @override
   State<_ChatRoomBody> createState() => _ChatRoomBodyState();
@@ -158,6 +173,8 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
   final _focusNode = FocusNode();
 
   bool _showScrollBottom = false;
+  int? _initialScrollIndex;
+  bool _isSearchingMessage = false;
 
   ChatRoomVM get viewmodel => widget.viewmodel;
 
@@ -165,6 +182,48 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
   void initState() {
     super.initState();
     _itemPositionsListener.itemPositions.addListener(_onPositionChanged);
+
+    if (widget.scrollToMessageId != null && widget.scrollToSentAt != null) {
+      print('= = = = = = LAGI HANDLING SEARCHING = = ==  = = = = = = = =');
+      _isSearchingMessage = true;
+      _handlePendingScroll();
+    }
+  }
+
+  Future<void> _handlePendingScroll() async {
+    // Tunggu VM init + messages dari SQLite masuk
+    final sentAt = int.parse(widget.scrollToSentAt!);
+    viewmodel.setJumpTarget(sentAt);
+    final sw = Stopwatch()..start();
+    while (!viewmodel.isInitialized || viewmodel.messages.isEmpty) {
+      await Future.delayed(const Duration(milliseconds: 50));
+      if (!mounted) return;
+    }
+
+    viewmodel.showOverlay = true;
+
+    final index = viewmodel.messages.indexWhere(
+      (m) => m.id == widget.scrollToMessageId!,
+    );
+
+    viewmodel.showOverlay = false;
+
+    if (index != -1 && mounted) {
+      setState(() {
+        _initialScrollIndex = index;
+        _isSearchingMessage = false;
+      });
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        viewmodel.highlightMessage(widget.scrollToMessageId!);
+      });
+    }
+
+    sw.stop();
+    debugPrint('=== JUMP-TO-MESSAGE - jump mode: ${viewmodel.isJumpMode} ===');
+    debugPrint('Target index: $index');
+    debugPrint('Total messages: ${viewmodel.messages.length}');
+    debugPrint('Time: ${sw.elapsedMilliseconds}ms');
   }
 
   @override
@@ -233,6 +292,7 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
     return ScrollablePositionedList.builder(
       itemScrollController: _itemScrollController,
       itemPositionsListener: _itemPositionsListener,
+      initialScrollIndex: _initialScrollIndex ?? 0,
       reverse: true,
       padding: EdgeInsets.only(
         bottom: 12.h,
@@ -505,8 +565,11 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
     );
   }
 
-  Future<void> _scrollToMessage(String messageId) async {
-    final index = await viewmodel.findMessageIndex(messageId);
+  Future<void> _scrollToMessage(String messageId, {DateTime? sentAt}) async {
+    final sw = Stopwatch()..start();
+
+    final index = await viewmodel.findMessageIndex(messageId, sentAt: sentAt);
+    debugPrint(' - - - index -> $index');
 
     if (index == null) {
       if (mounted) {
@@ -523,14 +586,21 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
     await Future.delayed(Duration(milliseconds: 200));
 
     if (_itemScrollController.isAttached) {
-      _itemScrollController.scrollTo(
-        index: index,
-        duration: const Duration(milliseconds: 500),
-        curve: Curves.easeInBack,
-      );
+      // _itemScrollController.scrollTo(
+      //   index: index,
+      //   duration: const Duration(milliseconds: 500),
+      //   curve: Curves.easeInBack,
+      // );
+      _itemScrollController.jumpTo(index: index);
     }
 
     viewmodel.highlightMessage(messageId);
+
+    sw.stop();
+    debugPrint('=== SCROLL-TO-MESSAGE ===');
+    debugPrint('Target index: $index');
+    debugPrint('Total messages: ${viewmodel.messages.length}');
+    debugPrint('Time: ${sw.elapsedMilliseconds}ms');
   }
 
   void _onPositionChanged() {
@@ -547,20 +617,27 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
       });
     }
 
-    // Pagination: load more messages near the oldest
+    // Gap filling
     final maxIndex = positions
         .map((p) => p.index)
         .reduce((a, b) => a > b ? a : b);
 
     final threshold = viewmodel.messages.length - 5;
-    if (viewmodel.messages.length >= 20 &&
+    if (viewmodel.messages.length >= 50 &&
         maxIndex >= threshold &&
         !viewmodel.isLoadingMore) {
-      viewmodel.loadMoreMessages();
+      viewmodel.loadOlderFromLocal();
     }
   }
 
   void _scrollToBottom() {
+    if (viewmodel.isJumpMode) {
+      viewmodel.switchToNormalMode();
+      setState(() {
+        _initialScrollIndex = null;
+      });
+      return;
+    }
     if (_itemScrollController.isAttached) {
       _itemScrollController.scrollTo(
         index: 0,

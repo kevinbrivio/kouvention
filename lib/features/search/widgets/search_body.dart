@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
-import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
 import 'package:kouvention/features/search/models/search_result_model.dart';
 import 'package:kouvention/features/search/viewmodel/search_viewmodel.dart';
 import 'package:kouvention/features/search/widgets/search_result_group_tile.dart';

@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
@@ -8,6 +11,7 @@ import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
 import 'package:kouvention/features/chat/models/reply_to_model.dart';
 import 'package:kouvention/features/chat/services/chat_service.dart';
+import 'package:kouvention/features/chat/services/databases/cached_messages.dart';
 import 'package:kouvention/features/notification/services/notification_service.dart';
 import 'package:kouvention/features/notification/viewmodel/active_chat_id_provider.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
@@ -18,10 +22,12 @@ class ChatRoomVM extends BaseNotifier {
   final UserService _userService;
   final String? _currentUid;
   final String chatId;
+  final MessageDatabase _db;
 
   // Messages from newest
   List<MessageModel> _messages = [];
-  StreamSubscription? _messageSubscription;
+  StreamSubscription? _localSubscription; // SQLite
+  StreamSubscription? _syncSubscription; // Firestore -> SQLite
 
   // Chat metadata
   ChatModel? _chat;
@@ -47,12 +53,17 @@ class ChatRoomVM extends BaseNotifier {
   // Reply Message
   MessageModel? _replyMessage;
 
+  // Jump to searched message
+  int? _jumpToSentAt;
+  bool _isJumpMode = false;
+
   String? _error;
 
   ChatRoomVM(super.ref, {required this.chatId})
     : _chatService = ref.read(chatServiceProvider),
       _currentUid = ref.read(authServiceProvider).currentUser?.uid,
-      _userService = ref.read(userServiceProvider);
+      _userService = ref.read(userServiceProvider),
+      _db = ref.read(messageDatabaseProvider);
 
   // --- GETTERS ------------------------------
   List<MessageModel> get messages => _messages;
@@ -68,6 +79,7 @@ class ChatRoomVM extends BaseNotifier {
   String? get highlightedMessageId => _highlightedMessageId;
   String? get pendingScrollMessageId => _pendingScrollMessageId;
   DateTime? get pendingScrollSentAt => _pendingScrollSentAt;
+  bool get isJumpMode => _isJumpMode;
 
   /// Display name for the chat header
   String get chatDisplayName {
@@ -136,6 +148,19 @@ class ChatRoomVM extends BaseNotifier {
   bool isMyMessage(MessageModel message) => message.senderId == _currentUid;
   bool isRepliedMessageMine(String senderId) => _currentUid == senderId;
 
+  void setJumpTarget(int sentAt) {
+    _jumpToSentAt = sentAt;
+    _isJumpMode = true;
+  }
+
+  void switchToNormalMode() {
+    if (!_isJumpMode) return;
+    _isJumpMode = false;
+    _jumpToSentAt = null;
+    _localSubscription?.cancel();
+    _subscribeToLocalMessages();
+  }
+
   @override
   FutureOr<void> init() async {
     if (_currentUid == null) {
@@ -146,7 +171,8 @@ class ChatRoomVM extends BaseNotifier {
       });
 
       _subscribeToChat();
-      _subscribeToMessages();
+      _subscribeToLocalMessages();
+      _syncFromFirestore();
       _resetUnreadCount();
 
       // Mark read when opening the chat
@@ -180,37 +206,99 @@ class ChatRoomVM extends BaseNotifier {
 
   /// Subscribe to the latest messages
   /// This stream stays live - when someone send a new message
-  void _subscribeToMessages() {
-    _messageSubscription = _chatService
-        .streamMessages(chatId)
-        .listen(
-          (msg) {
-            _messages = msg
-                .where((m) => !m.deletedFor.contains(_currentUid!))
-                .toList();
-            _error = null;
+  void _subscribeToLocalMessages() {
+    final sw = Stopwatch()..start();
 
-            if (_lastDocument == null && messages.isNotEmpty)
-              _fetchPaginationCursor();
+    try {
+      final stream = _isJumpMode
+          ? _db.watchMessagesAround(chatId, targetSentAt: _jumpToSentAt!)
+          : _db.watchMessages(chatId);
 
-            notifyListeners();
+      _localSubscription = stream.listen(
+        (cachedMessages) {
+          _messages = cachedMessages
+              .where((m) {
+                // parse from json in local version
+                final deletedFor = _parseDeletedFor(m.deletedFor);
+                return !deletedFor.contains(_currentUid!);
+              })
+              .map(_cachedToMessageModel)
+              .toList();
+          _error = null;
 
-            // Synced up from Firestore to SQLite
-            // if (_currentUid != null) {
-            //   ref
-            //       .read(syncServiceProvider)
-            //       .syncMessages(
-            //         messages: msg,
-            //         chatRoomId: chatId,
-            //         currentUid: _currentUid,
-            //       );
-            // }
-          },
-          onError: (error) {
-            _error = error.toString();
-            notifyListeners();
-          },
+          if (sw.isRunning) {
+            sw.stop();
+
+            debugPrint(
+              '======= Fetching from Local with jump: $_isJumpMode =======',
+            );
+            debugPrint('Messages loaded: ${_messages.length}');
+            debugPrint('Load time: ${sw.elapsedMilliseconds}ms');
+            debugPrint(
+              'Est. memory: ~${(_messages.length * 0.5).toStringAsFixed(0)} KB',
+            );
+          }
+
+          notifyListeners();
+        },
+        onError: (error) {
+          _error = error.toString();
+          notifyListeners();
+        },
+      );
+    } catch (e, s) {
+      print(e);
+      print(s);
+    }
+  }
+
+  // Catch up newest message -> Update -> Stream
+  Future<void> _syncFromFirestore() async {
+    try {
+      // Catch up latest sync
+      final lastSync = await _db.getLastSyncTimestamp(chatId);
+      final sinceDate = DateTime.fromMillisecondsSinceEpoch(lastSync);
+
+      // check missed out messages from last sync
+      final missedMessages = await _chatService.fetchMessagesSince(
+        chatId,
+        since: sinceDate,
+      );
+
+      if (missedMessages.isNotEmpty) {
+        // if there is message, UPSERT to local
+        await _db.upsertMessages(
+          missedMessages.map(_messageToCompanion).toList(),
         );
+      }
+
+      // update last sync
+      final now = DateTime.now().millisecondsSinceEpoch;
+      await _db.updateLastSync(chatId, now);
+
+      // Stream new message
+      _syncSubscription = _chatService
+          .streamNewMessages(chatId, since: DateTime.now())
+          .listen(
+            (newMessages) {
+              if (newMessages.isNotEmpty) {
+                _db.upsertMessages(
+                  newMessages.map(_messageToCompanion).toList(),
+                );
+
+                _db.updateLastSync(
+                  chatId,
+                  DateTime.now().millisecondsSinceEpoch,
+                );
+              }
+            },
+            onError: (error) {
+              debugPrint('sync error: $error');
+            },
+          );
+    } catch (e) {
+      debugPrint('Catch-up sync error: $e');
+    }
   }
 
   /// Subscribe to the latest messages from the other user
@@ -227,6 +315,60 @@ class ChatRoomVM extends BaseNotifier {
             notifyListeners();
           },
         );
+  }
+
+  /// Convert CachedMessage → MessageModel (SQLite → UI)
+  MessageModel _cachedToMessageModel(CachedMessage m) => MessageModel(
+    id: m.id,
+    senderId: m.senderId,
+    senderName: m.senderName,
+    text: m.messageText,
+    type: m.type,
+    sentAt: DateTime.fromMillisecondsSinceEpoch(m.sentAt),
+    isDeleted: m.isDeleted,
+    replyTo: m.replyToId != null
+        ? ReplyToModel(
+            messageId: m.replyToId!,
+            text: m.replyToText ?? '',
+            senderId: '',
+            senderName: m.replyToSender ?? '',
+          )
+        : null,
+    mediaUrl: m.mediaUrl,
+    fileName: m.fileName,
+    fileSizeBytes: m.fileSizeBytes,
+  );
+
+  /// Convert MessageModel → CachedMessagesCompanion (Firestore → SQLite)
+  CachedMessagesCompanion _messageToCompanion(MessageModel m) =>
+      CachedMessagesCompanion(
+        id: Value(m.id),
+        chatRoomId: Value(chatId),
+        messageText: Value(m.text),
+        textLower: Value(m.text.toLowerCase()),
+        senderId: Value(m.senderId),
+        senderName: Value(m.senderName),
+        sentAt: Value(m.sentAt.millisecondsSinceEpoch),
+        type: Value(m.type),
+        isDeleted: Value(m.isDeleted),
+        deletedFor: Value(m.deletedFor.toString()),
+        replyToId: Value(m.replyTo?.messageId),
+        replyToText: Value(m.replyTo?.text),
+        replyToSender: Value(m.replyTo?.senderName),
+        mediaUrl: Value(m.mediaUrl),
+        fileName: Value(m.fileName),
+        fileSizeBytes: Value(m.fileSizeBytes),
+        syncedAt: Value(DateTime.now().millisecondsSinceEpoch),
+      );
+
+  /// Parse deletedFor JSON string ke List<String>
+  List<String> _parseDeletedFor(String json) {
+    try {
+      final list = (jsonDecode(json) as List).cast<String>();
+      return list;
+    } catch (_) {
+      return [];
+    }
   }
 
   Future<void> _fetchPaginationCursor() async {
@@ -247,11 +389,12 @@ class ChatRoomVM extends BaseNotifier {
       // clear typing indicator before sending
       await clearTyping();
       final ReplyToModel? replyTo = _replyMessage != null
-        ? ReplyToModel(
+          ? ReplyToModel(
               messageId: _replyMessage!.id,
               senderId: _replyMessage!.senderId,
               senderName: senderDisplayName(_replyMessage!.senderId),
               text: _replyMessage!.text,
+              sentAt: _replyMessage!.sentAt,
             )
           : null;
 
@@ -297,22 +440,22 @@ class ChatRoomVM extends BaseNotifier {
 
   /// Load more messages when the user scrolls to the top.
   Future<void> loadMoreMessages() async {
-    if (_isLoadingMore) return;
+    // if (_isLoadingMore) return;
 
-    _isLoadingMore = true;
-    notifyListeners();
+    // _isLoadingMore = true;
+    // notifyListeners();
 
-    await _loadOlderBatch();
+    // await _loadOlderBatch();
 
-    _isLoadingMore = false;
-    notifyListeners();
+    // _isLoadingMore = false;
+    // notifyListeners();
   }
 
   void highlightMessage(String messageId) {
     _highlightedMessageId = messageId;
     notifyListeners();
 
-    Future.delayed(Duration(milliseconds: 1500), () {
+    Future.delayed(Duration(milliseconds: 200), () {
       if (_highlightedMessageId == messageId) {
         _highlightedMessageId = null;
         notifyListeners();
@@ -332,17 +475,38 @@ class ChatRoomVM extends BaseNotifier {
   }
 
   Future<int?> findMessageIndex(String messageId, {DateTime? sentAt}) async {
+    // find from recent messages
     final index = _messages.indexWhere((m) => m.id == messageId);
     if (index != -1) return index;
 
-    if (sentAt != null) {
-      final batch = await _chatService.fetchMessageAround(
+    // find via timestamp in sqlite
+    int? targetSentAt = sentAt?.millisecondsSinceEpoch;
+
+    if (targetSentAt == null) {
+      final cached = await _db.getMessageById(messageId);
+      if (cached == null) return null;
+      targetSentAt = cached.sentAt;
+    }
+
+    final batch = await _db.fetc(
         chatId,
-        aroundTimestamp: sentAt,
+        targetSentAt: targetSentAt,
       );
 
+    if (sentAt != null) {
+      final batch = await _db.fetchOlderMessages(
+        chatId,
+        beforeSentAt: sentAt.millisecondsSinceEpoch + 1,
+        limit: 50,
+      );
+
+      debugPrint(
+        '================================= message length: ${batch.length}',
+      );
+
+      final batchModels = batch.map(_cachedToMessageModel).toList();
       final existingIds = _messages.map((m) => m.id).toSet();
-      final newMessages = batch
+      final newMessages = batchModels
           .where((m) => !existingIds.contains(m.id))
           .toList();
 
@@ -365,6 +529,48 @@ class ChatRoomVM extends BaseNotifier {
     }
 
     return null;
+  }
+
+  /// Load pesan lama — cek SQLite dulu, baru Firestore kalau gap
+  Future<void> loadOlderFromLocal() async {
+    if (_isLoadingMore || _messages.isEmpty) return;
+
+    _isLoadingMore = true;
+    notifyListeners();
+
+    final oldestSentAt = _messages.last.sentAt.millisecondsSinceEpoch;
+
+    // Step 1: Cek SQLite
+    final localOlder = await _db.fetchOlderMessages(
+      chatId,
+      beforeSentAt: oldestSentAt,
+    );
+
+    if (localOlder.isNotEmpty) {
+      // Ada di SQLite — gratis, ga perlu Firestore
+      final olderModels = localOlder.map(_cachedToMessageModel).toList();
+      _messages = [..._messages, ...olderModels];
+      notifyListeners();
+    } else {
+      // Gap! Fetch dari Firestore → simpan ke SQLite
+      // drift .watch() otomatis update UI
+      final oldest = _messages.last.sentAt;
+      final firestoreOlder = await _chatService.fetchOlderMessages(
+        chatId,
+        before: oldest,
+      );
+
+      if (firestoreOlder.isNotEmpty) {
+        await _db.upsertMessages(
+          firestoreOlder.map(_messageToCompanion).toList(),
+        );
+      } else {
+        _hasMoreMessages = false;
+      }
+    }
+
+    _isLoadingMore = false;
+    notifyListeners();
   }
 
   /// Helper to load one more page to check messages can be loaded or not.
@@ -472,7 +678,8 @@ class ChatRoomVM extends BaseNotifier {
   void dispose() {
     ref.read(activeChatIdProvider.notifier).state = null;
 
-    _messageSubscription?.cancel();
+    _localSubscription?.cancel();
+    _syncSubscription?.cancel();
     _chatSubscription?.cancel();
     _otherUserSubscription?.cancel();
     clearTyping();
