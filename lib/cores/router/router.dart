@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
+import 'package:kouvention/cores/router/router_guard.dart';
 import 'package:kouvention/cores/widgets/main_shell.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/auth/views/add_name_view.dart';
@@ -20,6 +21,7 @@ import 'package:kouvention/features/profile/views/edit_status_view..dart';
 import 'package:kouvention/features/profile/views/profile_view.dart';
 import 'package:kouvention/features/splash/views/splash_view.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
+import 'package:path/path.dart';
 
 GoRouter? _router;
 GoRouter get router => _router!;
@@ -34,40 +36,81 @@ final GlobalKey<NavigatorState> _profileBranchKey = GlobalKey<NavigatorState>(
   debugLabel: 'profileBranch',
 );
 
-setupRouter({required String initialRouter, required AuthService authService}) {
+setupRouter({
+  required String initialRouter,
+  required AuthService authService,
+  required RouterGuard routerGuard,
+}) {
   if (_router != null) return;
 
   _router = GoRouter(
     initialLocation: initialRouter,
     navigatorKey: navigatorKey,
+    refreshListenable: routerGuard,
     observers: [routeObserver],
     redirect: (context, state) {
       final isLoggedIn = authService.currentUser != null;
       final currentPath = state.matchedLocation;
-      debugPrint('ROUTER: path=$currentPath, isLoggedIn=$isLoggedIn');
+      debugPrint('GUARD: path = $currentPath');
 
-      final publicRoutes = [
-        RouterRoutes.splash.path,
-        RouterRoutes.onboarding.path,
-        RouterRoutes.privacyPolicy.path,
+      // Splash always return true.
+      if (currentPath == RouterRoutes.splash.path) return null;
+
+      if (!routerGuard.onboardingSeen) {
+        // navigate if the user is not in onboarding
+        if (currentPath != RouterRoutes.onboarding.path) {
+          debugPrint('GUARD: has not seen onboarding → /onboarding');
+          return RouterRoutes.onboarding.path;
+        }
+        // already in onboarding, just stay still
+        return null;
+      }
+
+      if (!routerGuard.privacyPolicySeen) {
+        // navigate if user on page other than privacy policy
+        if (currentPath != RouterRoutes.privacyPolicy.path) {
+          debugPrint('GUARD: has not seen privacy policy → /privacyPolicy');
+          return RouterRoutes.privacyPolicy.path;
+        }
+
+        return null;
+      }
+
+      if (!routerGuard.isLoggedIn) {
+        final authPages = [
+          RouterRoutes.login.path,
+          RouterRoutes.signUp.path,
+          RouterRoutes.emailSignIn.path,
+        ];
+        if (!authPages.contains(currentPath)) {
+          debugPrint('GUARD: not logged in → /login');
+          return RouterRoutes.login.path;
+        }
+
+        return null;
+      }
+
+      // --------------- USER ALREADY PASS EVERY CONDITIONS
+      final authPages = [
         RouterRoutes.login.path,
         RouterRoutes.signUp.path,
         RouterRoutes.emailSignIn.path,
       ];
 
-      final isOnPublicRoute = publicRoutes.contains(currentPath);
-
-      if (isLoggedIn &&
-          (currentPath == RouterRoutes.login.path ||
-              currentPath == RouterRoutes.signUp.path ||
-              currentPath == RouterRoutes.emailSignIn.path)) {
-        return null;
+      if (authPages.contains(currentPath)) {
+        debugPrint('GUARD: Logged in but on auth page -> /chats');
+        return RouterRoutes.chatList.path;
       }
 
-      if (!isLoggedIn && !isOnPublicRoute) {
-        return RouterRoutes.login.path;
+      // What if user hasn't set a name?
+      if (!routerGuard.hasDisplayName) {
+        if (currentPath != RouterRoutes.addName.path) {
+          debugPrint('GUARD: no display name → /add-name');
+          return RouterRoutes.addName.path;
+        }
       }
 
+      debugPrint('GUARD: all checks passed ✅');
       return null;
     },
     routes: [
