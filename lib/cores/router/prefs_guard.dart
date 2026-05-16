@@ -26,9 +26,15 @@ class PrefsGuard extends ChangeNotifier {
     _onboardingSeen = true;
     notifyListeners();
   }
-  
+
   void markPrivacyPolicySeen() {
     _privacyPolicySeen = true;
+    notifyListeners();
+  }
+
+  // Reset onboarding when user decline policy
+  void resetOnboarding() {
+    _onboardingSeen = false;
     notifyListeners();
   }
 }
