@@ -20,7 +20,7 @@ class DbKeyManager {
     final random = Random.secure();
     final bytes = List<int>.generate(32, (_) => random.nextInt(256));
 
-    // 3. Convert base64 to String (SQLite pragma accepts string)
+    // 3. Convert bytes to base64 String (SQLite pragma accepts string)
     final newKey = base64Url.encode(bytes);
 
     // 4. Save in storage
