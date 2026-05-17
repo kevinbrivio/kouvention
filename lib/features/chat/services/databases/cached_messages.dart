@@ -2,7 +2,9 @@ import 'dart:io';
 
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:kouvention/cores/services/db_key_manager.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
@@ -137,9 +139,8 @@ class MessageDatabase extends _$MessageDatabase {
         (cachedMessages.textLower.like('%$lowerQuery%')) &
             // cachedMessages.senderName.like('%$lowerQuery%') |
             // cachedChatRooms.name.like('%$lowerQuery%')) &
-        
-                cachedMessages.isDeleted.equals(false) &
-                cachedMessages.chatRoomId.isIn(chatRoomIds),
+            cachedMessages.isDeleted.equals(false) &
+            cachedMessages.chatRoomId.isIn(chatRoomIds),
       )
       ..orderBy([OrderingTerm.desc(cachedMessages.sentAt)])
       ..limit(limit);
@@ -269,14 +270,16 @@ class MessageDatabase extends _$MessageDatabase {
     )..where((r) => r.id.equals(chatId))).getSingleOrNull();
     return room?.lastSyncTimestamp ?? 0;
   }
-  
+
   Future<CachedMessage?> getMessageByDateTime(String chatId, int sentAt) =>
-    (select(cachedMessages)
-          ..where((m) => m.chatRoomId.equals(chatId))
-          ..where((m) => m.sentAt.isBetweenValues(sentAt - 1000, sentAt + 1000))
-          ..orderBy([(m) => OrderingTerm.asc(m.sentAt)])
-          ..limit(1))
-        .getSingleOrNull();
+      (select(cachedMessages)
+            ..where((m) => m.chatRoomId.equals(chatId))
+            ..where(
+              (m) => m.sentAt.isBetweenValues(sentAt - 1000, sentAt + 1000),
+            )
+            ..orderBy([(m) => OrderingTerm.asc(m.sentAt)])
+            ..limit(1))
+          .getSingleOrNull();
 
   Future<void> updateLastSync(String chatId, int timestamp) =>
       (update(cachedChatRooms)..where((r) => r.id.equals(chatId))).write(
@@ -303,7 +306,41 @@ class MessageDatabase extends _$MessageDatabase {
 LazyDatabase _openConnection() => LazyDatabase(() async {
   final dbFolder = await getApplicationDocumentsDirectory();
   final file = File(p.join(dbFolder.path, 'kouvention.db'));
-  return NativeDatabase.createInBackground(file);
+
+  // Get encryption key from secure storage
+  final key = await DbKeyManager.getOrCreateKey();
+  final escapedKey = key.replaceAll("'", "''");
+
+  return NativeDatabase.createInBackground(
+    file,
+    isolateSetup: () async {
+      // Migrate once: Delete old DB
+      final marker = File('${file.path}.encrypted');
+      if (await file.exists() && !await marker.exists()) {
+        await file.delete();
+        await marker.create();
+     }
+    },
+    setup: (rawDb) {
+      // ════════════════════════════════════════
+      // Check: Do app access encrypted SQLite?
+      // ════════════════════════════════════════
+      assert(() {
+        if (rawDb.select('PRAGMA cipher;').isEmpty) {
+          throw StateError(
+            'SQLite3MultipleCiphers not loaded! '
+            'Make sure config exists in pubspec.yaml',
+          );
+        }
+        return true;
+      }());
+
+      // ════════════════════════════════════════
+      // SET ENCRYPTION KEY
+      // ════════════════════════════════════════
+      rawDb.execute("PRAGMA key = '$escapedKey';");
+    },
+  );
 });
 
 final messageDatabaseProvider = Provider<MessageDatabase>(

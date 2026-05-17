@@ -10,7 +10,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:kouvention/cores/configs/env.dart';
 import 'package:kouvention/cores/configs/flavor_config.dart';
+import 'package:kouvention/cores/router/auth_notifier.dart';
+import 'package:kouvention/cores/router/prefs_guard.dart';
 import 'package:kouvention/cores/router/router.dart';
+import 'package:kouvention/cores/router/router_guard.dart';
 import 'package:kouvention/cores/widgets/flavor_banner.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/notification/services/notification_handler.dart';
@@ -62,6 +65,14 @@ void main() async {
       final prefs = await SharedPreferences.getInstance();
       final prefsService = PrefsService(prefs);
 
+      final onboardingSeen = await prefsService.hasSeenOnboarding();
+      final privacyPolicySeen = await prefsService.hasAcceptedPrivacyPolicy();
+
+      final prefsGuard = PrefsGuard(
+        onboardingSeen: onboardingSeen,
+        privacyPolicySeen: privacyPolicySeen,
+      );
+
       // FLAVOR SETUP
       const flavor = String.fromEnvironment('ENV');
       setupConfig(flavor);
@@ -73,13 +84,25 @@ void main() async {
             : EnvProd.googleServerClientId,
       );
 
-      await setupRouter(initialRouter: '/', authService: authService);
+      final authNotifier = AuthNotifier(authService);
+
+      final routerGuard = RouterGuard(
+        authNotifier: authNotifier,
+        prefsGuard: prefsGuard,
+      );
+
+      await setupRouter(
+        initialRouter: '/',
+        authService: authService,
+        routerGuard: routerGuard,
+      );
 
       runApp(
         ProviderScope(
           overrides: [
             prefsServiceProvider.overrideWithValue(prefsService),
             authServiceProvider.overrideWithValue(authService),
+            prefsGuardProvider.overrideWithValue(prefsGuard),
           ],
           child: const KouventionApp(),
         ),

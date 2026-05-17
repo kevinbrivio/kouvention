@@ -34,7 +34,7 @@ class AddNameView extends StatelessWidget {
 
   Widget _buildLogo() => Column(
     children: [
-      Image.asset(images.logo, height: 48.h),
+      Image.asset(images.splash, height: 144.w, width: 144.w,),
       Gap(8.h),
       Text(
         'Kouvention',

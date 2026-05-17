@@ -54,24 +54,8 @@ class SplashVM extends BaseNotifier {
       }
     }
 
-    _nextRoute = _resolveInitialRoute();
+    _nextRoute = RouterRoutes.chatList.path;
     notifyListeners();
-  }
-
-  String _resolveInitialRoute() {
-    if (!_hasSeenOnboarding) {
-      return RouterRoutes.onboarding.path;
-    }
-
-    if (_isLoggedIn) {
-      return RouterRoutes.chatList.path;
-    }
-
-    if (!_hasAcceptedPrivacyPolicy) {
-      return RouterRoutes.privacyPolicy.path;
-    }
-
-    return RouterRoutes.login.path;
   }
 
   Future<String> _getDeviceInstanceId() async {
