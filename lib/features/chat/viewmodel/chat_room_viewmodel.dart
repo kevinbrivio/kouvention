@@ -1,21 +1,28 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:drift/drift.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
+import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/models/reply_to_model.dart';
+import 'package:kouvention/features/chat/models/upload_result_model.dart';
 import 'package:kouvention/features/chat/services/chat_service.dart';
+import 'package:kouvention/features/chat/services/cloudinary_service.dart';
 import 'package:kouvention/features/chat/services/databases/cached_messages.dart';
 import 'package:kouvention/features/notification/services/notification_service.dart';
 import 'package:kouvention/features/notification/viewmodel/active_chat_id_provider.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
 import 'package:kouvention/features/user/services/user_service.dart';
+import 'package:oktoast/oktoast.dart';
 
 class ChatRoomVM extends BaseNotifier {
   final ChatService _chatService;
@@ -23,6 +30,7 @@ class ChatRoomVM extends BaseNotifier {
   final String? _currentUid;
   final String chatId;
   final MessageDatabase _db;
+  final CloudinaryService _cloudinaryService;
 
   // Messages from newest
   List<MessageModel> _messages = [];
@@ -57,13 +65,21 @@ class ChatRoomVM extends BaseNotifier {
   int? _jumpToSentAt;
   bool _isJumpMode = false;
 
+  // Upload file
+  final _imagePicker = ImagePicker();
+  bool _isUploading = false;
+  double _uploadProgress = 0.0;
+  bool get isUploading => _isUploading;
+  double get uploadProgress => _uploadProgress;
+
   String? _error;
 
   ChatRoomVM(super.ref, {required this.chatId})
     : _chatService = ref.read(chatServiceProvider),
       _currentUid = ref.read(authServiceProvider).currentUser?.uid,
       _userService = ref.read(userServiceProvider),
-      _db = ref.read(messageDatabaseProvider);
+      _db = ref.read(messageDatabaseProvider),
+      _cloudinaryService = ref.read(cloudinaryServiceProvider);
 
   // --- GETTERS ------------------------------
   List<MessageModel> get messages => _messages;
@@ -284,25 +300,23 @@ class ChatRoomVM extends BaseNotifier {
       await _db.updateLastSync(chatId, now);
 
       // Stream new message
-      _syncSubscription = _chatService
-          .streamMessages(chatId)
-          .listen(
-            (newMessages) {
-              // Titik 1: apakah stream fire?
-              debugPrint('🔥 Stream fired! ${newMessages.length} messages');
-              
-              if (newMessages.isNotEmpty) {
-                // Titik 2: apakah upsert jalan?
-                debugPrint('🔥 Upserting ${newMessages.length} messages');
-                _db.upsertMessages(
-                  newMessages.map(_messageToCompanion).toList(),
-                ).then((_) {
-                  // Titik 3: apakah upsert selesai?
-                  debugPrint('🔥 Upsert complete!');
-                });
-              }
-            },
-          );
+      _syncSubscription = _chatService.streamMessages(chatId).listen((
+        newMessages,
+      ) {
+        // Titik 1: apakah stream fire?
+        debugPrint('🔥 Stream fired! ${newMessages.length} messages');
+
+        if (newMessages.isNotEmpty) {
+          // Titik 2: apakah upsert jalan?
+          debugPrint('🔥 Upserting ${newMessages.length} messages');
+          _db
+              .upsertMessages(newMessages.map(_messageToCompanion).toList())
+              .then((_) {
+                // Titik 3: apakah upsert selesai?
+                debugPrint('🔥 Upsert complete!');
+              });
+        }
+      });
     } catch (e) {
       debugPrint('Catch-up sync error: $e');
     }
@@ -330,7 +344,7 @@ class ChatRoomVM extends BaseNotifier {
     senderId: m.senderId,
     senderName: m.senderName,
     text: m.messageText,
-    type: m.type,
+    type: MessageType.fromString(m.type),
     sentAt: DateTime.fromMillisecondsSinceEpoch(m.sentAt),
     isDeleted: m.isDeleted,
     replyTo: m.replyToId != null
@@ -345,6 +359,8 @@ class ChatRoomVM extends BaseNotifier {
     mediaUrl: m.mediaUrl,
     fileName: m.fileName,
     fileSizeBytes: m.fileSizeBytes,
+    mimeType: m.mimeType,
+    mediaDuration: m.mediaDuration,
   );
 
   /// Convert MessageModel → CachedMessagesCompanion (Firestore → SQLite)
@@ -357,7 +373,7 @@ class ChatRoomVM extends BaseNotifier {
         senderId: Value(m.senderId),
         senderName: Value(m.senderName),
         sentAt: Value(m.sentAt.millisecondsSinceEpoch),
-        type: Value(m.type),
+        type: Value(m.type.name),
         isDeleted: Value(m.isDeleted),
         deletedFor: Value(m.deletedFor.toString()),
         replyToId: Value(m.replyTo?.messageId),
@@ -367,6 +383,8 @@ class ChatRoomVM extends BaseNotifier {
         mediaUrl: Value(m.mediaUrl),
         fileName: Value(m.fileName),
         fileSizeBytes: Value(m.fileSizeBytes),
+        mimeType: Value(m.mimeType),
+        mediaDuration: Value(m.mediaDuration),
         syncedAt: Value(DateTime.now().millisecondsSinceEpoch),
       );
 
@@ -416,7 +434,7 @@ class ChatRoomVM extends BaseNotifier {
         senderId: _currentUid,
         senderName: senderDisplayName(_currentUid),
         text: trimmed,
-        type: 'text',
+        type: MessageType.text,
         sentAt: now,
         isDeleted: false,
         replyTo: replyTo,
@@ -677,6 +695,181 @@ class ChatRoomVM extends BaseNotifier {
 
     return MessageStatus.sent;
   }
+
+  // ---- Upload File ---------------------------
+  Future<UploadResultModel> uploadFile() async {
+    try {} on CloudinaryUploadException catch (e) {
+      showToast(e.message);
+    } catch (e) {
+      showToast('Error uploading. Please try again.');
+    }
+  }
+
+  Future<File?> pickImage({required bool fromCamera}) async {
+    final picked = await _imagePicker.pickImage(
+      source: fromCamera ? ImageSource.camera : ImageSource.gallery,
+      imageQuality: 70, // compress bit
+    );
+    if (picked == null) return null;
+    return File(picked.path);
+  }
+
+  Future<File?> pickVideo({required bool fromCamera}) async {
+    final picked = await _imagePicker.pickVideo(
+      source: fromCamera ? ImageSource.camera : ImageSource.gallery,
+      maxDuration: const Duration(minutes: 3),
+    );
+    if (picked == null) return null;
+    return File(picked.path);
+  }
+
+  Future<File?> pickFile() async {
+    final result = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: [
+        'pdf',
+        'doc',
+        'docx',
+        'xls',
+        'xlsx',
+        'ppt',
+        'pptx',
+        'mp3',
+        'm4a',
+        'wav',
+      ],
+      withData: false, // Don't save the data into memory
+      withReadStream: false,
+    );
+
+    if (result == null || result.files.isEmpty) return null;
+
+    final path = result.files.first.path;
+    if (path == null) return null;
+
+    return File(path);
+  }
+
+  Future<void> sendMediaMessage({
+    required File file,
+    String caption = '',
+  }) async {
+    if (_currentUid == null || _chat == null) return;
+
+    try {
+      _isUploading = true;
+      notifyListeners();
+
+      // Upload to cloudinary
+      final result = await _cloudinaryService.uploadFile(file);
+
+      // Generate messageID in Firestore
+      final docId = FirebaseFirestore.instance
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .doc()
+          .id;
+
+      final now = DateTime.now();
+
+      final localMessage = MessageModel(
+        id: docId,
+        senderId: _currentUid,
+        senderName: senderDisplayName(_currentUid),
+        text: caption,
+        type: result.messageType,
+        sentAt: now,
+        isDeleted: false,
+        fileName: result.fileName,
+        mediaUrl: result.url,
+        mimeType: result.mimeType,
+        mediaDuration: result.mediaDuration,
+        fileSizeBytes: result.fileSizeBytes,
+        replyTo: _replyMessage != null
+            ? ReplyToModel(
+                messageId: _replyMessage!.id,
+                senderId: _replyMessage!.senderId,
+                senderName: _replyMessage!.senderName,
+                text: _replyMessage!.text,
+                sentAt: _replyMessage!.sentAt,
+              )
+            : null,
+      );
+
+      onCancelReply();
+
+      // Save to local first
+      await _db.upsertMessage(_messageToCompanion(localMessage));
+
+      // Sync up to Firestore
+      await _chatService.sendMediaMessage(
+        chatId: chatId,
+        messageId: docId,
+        senderId: _currentUid,
+        senderName: senderDisplayName(_currentUid),
+        text: caption,
+        type: result.messageType,
+        mediaUrl: result.url,
+        fileName: result.fileName,
+        fileSizeBytes: result.fileSizeBytes,
+        mimeType: result.mimeType,
+        mediaDuration: result.mediaDuration,
+        memberUids: _chat!.members,
+        replyTo: _replyMessage != null
+            ? ReplyToModel(
+                messageId: _replyMessage!.id,
+                senderId: _replyMessage!.senderId,
+                senderName: _replyMessage!.senderName,
+                text: _replyMessage!.text,
+                sentAt: _replyMessage!.sentAt,
+              )
+            : null,
+      );
+      final notifText = _mediaNotificationText(result.messageType, caption);
+      _sendNotification(notifText);
+    } on CloudinaryUploadException catch (e) {
+      _error = e.message;
+      notifyListeners();
+    } catch (e) {
+      _error = 'Failed to upload file';
+      notifyListeners();
+    } finally {
+      _isUploading = false;
+      notifyListeners();
+    }
+  }
+
+  String _mediaNotificationText(MessageType type, String caption) {
+    if (caption.isNotEmpty) return caption;
+    switch (type) {
+      case MessageType.image: return '📷 Photo';
+      case MessageType.video: return '🎥 Video';
+      case MessageType.audio: return '🎵 Audio';
+      case MessageType.file:  return '📎 File';
+      default: return '';
+    }
+  }
+
+  // Future<CroppedFile?> cropImage(String path, BuildContext context) async =>
+  //   await ImageCropper().cropImage(
+  //     sourcePath: path,
+  //     aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+  //     compressQuality: 80,
+  //     uiSettings: [
+  //       AndroidUiSettings(
+  //         toolbarTitle: 'Crop Photo',
+  //         toolbarColor: AppColors.primary,
+  //         toolbarWidgetColor: AppColors.white,
+  //         lockAspectRatio: true,
+  //       ),
+  //       IOSUiSettings(
+  //         title: 'Crop Photo',
+  //         aspectRatioLockEnabled: true,
+  //         resetAspectRatioEnabled: false,
+  //       ),
+  //     ],
+  //   );
 
   // --- CleanUp ----------------------------------
   @override

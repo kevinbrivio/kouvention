@@ -10,7 +10,6 @@ import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/image_paths.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
-import 'package:kouvention/cores/widgets/loading_indicator.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_selection_viewmodel.dart';
