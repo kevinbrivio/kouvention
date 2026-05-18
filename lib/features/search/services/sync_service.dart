@@ -162,7 +162,7 @@ class SyncService {
     senderId: Value(msg.senderId),
     senderName: Value(msg.senderName),
     sentAt: Value(msg.sentAt.millisecondsSinceEpoch),
-    type: Value(msg.type),
+    type: Value(msg.type.name),
     isDeleted: Value(msg.isDeleted),
     deletedFor: Value(jsonEncode(msg.deletedFor)),
     replyToId: Value(msg.replyTo?.messageId),
