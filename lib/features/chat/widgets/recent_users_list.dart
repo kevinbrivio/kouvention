@@ -98,7 +98,9 @@ class RecentUsersList extends ConsumerWidget {
           children: [
             CircleAvatar(
               radius: 22.r,
-              backgroundColor: AppColors.primary.withValues(alpha: 0.2),
+              backgroundColor: AppColors.senderNameColor(
+                user.uid,
+              ).withValues(alpha: 0.2),
               backgroundImage: user.photoUrl != null
                   ? NetworkImage(user.photoUrl!)
                   : null,
@@ -107,10 +109,11 @@ class RecentUsersList extends ConsumerWidget {
                       user.displayName.isNotEmpty
                           ? user.displayName[0].toUpperCase()
                           : '?',
-                      style: TextStyle(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16.sp,
+                      style: textTheme.senderName.copyWith(
+                        fontSize: 18.sp,
+                        color: AppColors.senderNameColor(
+                          user.uid,
+                        ).withValues(alpha: 0.7),
                       ),
                     )
                   : null,

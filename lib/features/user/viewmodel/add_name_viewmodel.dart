@@ -2,7 +2,6 @@
 
 import 'dart:async';
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/bases/base_form_notifier.dart';
@@ -10,6 +9,7 @@ import 'package:kouvention/cores/mixins/form_validator_mixin.dart';
 import 'package:kouvention/cores/models/text_input_model.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
+import 'package:kouvention/features/shared/services/fcm_service.dart';
 import 'package:kouvention/features/user/models/add_name_form.dart';
 import 'package:kouvention/features/user/services/user_service.dart';
 import 'package:oktoast/oktoast.dart';
@@ -57,6 +57,10 @@ class AddNameVM extends BaseFormNotifier<AddNameForm> with FormValidatorMixin {
         displayName: form.displayName.text,
         email: user.email ?? '',
       );
+
+      // Register fcm tokens
+      final fcmService = ref.read(fcmServiceProvider);
+      await fcmService.initialize();
 
       // Also mirror to Firebase Auth for convenience
       await user.updateDisplayName(form.displayName.text);

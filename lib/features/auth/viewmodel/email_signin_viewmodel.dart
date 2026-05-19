@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/bases/base_form_notifier.dart';
@@ -11,6 +10,7 @@ import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/features/auth/models/email_sign_in_form.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/shared/services/connectivity_service.dart';
+import 'package:kouvention/features/shared/services/fcm_service.dart';
 import 'package:kouvention/features/shared/viewmodel/connectivity_viewmodel.dart';
 import 'package:kouvention/features/user/services/user_service.dart';
 import 'package:oktoast/oktoast.dart';
@@ -89,6 +89,10 @@ class EmailSignInVM extends BaseFormNotifier<EmailSignInForm>
       // Check whether user already registered inside user docs
       final hasProfile = await _userService.userDocExists(credential.user!.uid);
       if (ctx.mounted) {
+        // Set user token to FCM
+        final fcmService = ref.read(fcmServiceProvider);
+        await fcmService.initialize();
+        
         if (hasProfile) {
           ctx.go(RouterRoutes.chatList.path);
         } else {

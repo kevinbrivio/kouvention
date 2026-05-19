@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -9,10 +10,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:kouvention/cores/configs/env.dart';
 import 'package:kouvention/cores/configs/flavor_config.dart';
+import 'package:kouvention/cores/router/auth_notifier.dart';
+import 'package:kouvention/cores/router/prefs_guard.dart';
 import 'package:kouvention/cores/router/router.dart';
+import 'package:kouvention/cores/router/router_guard.dart';
 import 'package:kouvention/cores/widgets/flavor_banner.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
+import 'package:kouvention/features/notification/services/notification_handler.dart';
 import 'package:kouvention/features/shared/services/prefs_service.dart';
+import 'package:kouvention/features/shared/services/security_service.dart';
+import 'package:kouvention/features/shared/viewmodel/security_notifier.dart';
+import 'package:kouvention/features/shared/views/device_blocked_view.dart';
 import 'package:kouvention/features/user/viewmodel/presence_notifier.dart';
 import 'package:oktoast/oktoast.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -37,11 +45,27 @@ void main() async {
 
       await ScreenUtil.ensureScreenSize();
 
-      // TODO: SETUP FLAVOR CONFIG
+      // FLAVOR SETUP
+      const flavor = String.fromEnvironment('ENV');
+      setupConfig(flavor);
+      // Register Jailbreak Detector
+      await SecurityService.initialize(isProd: flavor != 'staging');
+      SecurityNotifier.instance.attachListeners();
 
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
+
+      final authService = AuthService();
+      await authService.initialize(
+        clientId: '',
+        serverClientId: flavor == 'staging'
+            ? EnvStaging.googleServerClientId
+            : EnvProd.googleServerClientId,
+      );
+
+      // Background handler for notification
+      FirebaseMessaging.onBackgroundMessage(firebaseBackgroundHandler);
 
       // Pass all uncuaught errors from Flutter to Crashlytics
       FlutterError.onError =
@@ -57,21 +81,25 @@ void main() async {
       final prefs = await SharedPreferences.getInstance();
       final prefsService = PrefsService(prefs);
 
-      // FLAVOR SETUP
-      const flavor = String.fromEnvironment('ENV');
-      setupConfig(flavor);
-      final authService = AuthService();
-      await authService.initialize(
-        clientId: '',
-        serverClientId: flavor == 'staging'
-            ? EnvStaging.googleServerClientId
-            : EnvProd.googleServerClientId,
+      final onboardingSeen = await prefsService.hasSeenOnboarding();
+      final privacyPolicySeen = await prefsService.hasAcceptedPrivacyPolicy();
+
+      final prefsGuard = PrefsGuard(
+        onboardingSeen: onboardingSeen,
+        privacyPolicySeen: privacyPolicySeen,
       );
 
-      final container = ProviderContainer();
+      final authNotifier = AuthNotifier(authService);
+
+      final routerGuard = RouterGuard(
+        authNotifier: authNotifier,
+        prefsGuard: prefsGuard,
+      );
+
       await setupRouter(
         initialRouter: '/',
-        authService: container.read(authServiceProvider),
+        authService: authService,
+        routerGuard: routerGuard,
       );
 
       runApp(
@@ -79,6 +107,7 @@ void main() async {
           overrides: [
             prefsServiceProvider.overrideWithValue(prefsService),
             authServiceProvider.overrideWithValue(authService),
+            prefsGuardProvider.overrideWithValue(prefsGuard),
           ],
           child: const KouventionApp(),
         ),
@@ -113,6 +142,7 @@ class _KouventionAppState extends ConsumerState<KouventionApp>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    ref.read(securityNotifierProvider).attachListeners();
     ref.read(
       presenceNotifierProvider,
     ); // listen to presence notifier to check user presence throughout the use
@@ -131,6 +161,17 @@ class _KouventionAppState extends ConsumerState<KouventionApp>
       designSize: const Size(375, 768),
       minTextAdapt: true,
     );
+
+    final security = ref.watch(securityNotifierProvider);
+    
+    if (security.isCompromised) {
+      return MaterialApp(
+        home: DeviceBlockedView(
+          threatType: security.threatType,
+          onExit: () => SystemNavigator.pop(),
+        ),
+      );
+    }
     return OKToast(
       child: MaterialApp.router(
         builder: (_, child) => MediaQuery(

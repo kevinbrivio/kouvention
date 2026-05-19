@@ -1,6 +1,6 @@
-// lib/features/chat/views/chat_room_view.dart
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
@@ -10,97 +10,127 @@ import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/image_paths.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
+import 'package:kouvention/cores/widgets/loading_indicator.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
+import 'package:kouvention/features/chat/viewmodel/chat_selection_viewmodel.dart';
+import 'package:kouvention/features/chat/widgets/message_bubble.dart';
+import 'package:kouvention/features/chat/widgets/selection_app_bar.dart';
 import 'package:kouvention/features/chat/widgets/typing_dots.dart';
+import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
-class ChatRoomView extends StatelessWidget {
+class ChatRoomView extends ConsumerWidget {
   final String chatId;
 
   const ChatRoomView({super.key, required this.chatId});
 
   @override
-  Widget build(BuildContext context) => PopScope(
-    canPop: false,
-    onPopInvokedWithResult: (didPop, _) {
-      if (!didPop) { // Navigate to chat list
-        context.go(RouterRoutes.chatList.path);
-      }
-    },
-    child: BaseView<ChatRoomVM>(
-    provider: chatRoomVM(chatId),
-    useGradient: false,
-    backgroundColor: Colors.white,
-    appBar: (vm) => _buildAppBar(context, vm),
-    builder: (context, vm) => _ChatRoomBody(chatId: chatId, viewmodel: vm),
-    backgroundImage: DecorationImage(
-      image: AssetImage(images.chatWallpaper),
-      fit: BoxFit.cover,
-      onError: (error, stackTrace) {
-        debugPrint('Background image error: $error');
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selectionVM = ref.watch(chatSelectionVM);
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (selectionVM.isSelecting) {
+          selectionVM.clearSelection();
+        }
+        if (!didPop) {
+          // Navigate to chat list
+          context.go(RouterRoutes.chatList.path);
+        }
       },
-    ),
-    ),
-  );
+      child: BaseView<ChatRoomVM>(
+        provider: chatRoomVM(chatId),
+        useGradient: false,
+        backgroundColor: Colors.white,
+        appBar: (vm) => selectionVM.isSelecting
+            ? SelectionAppBar(chatVM: vm)
+            : _buildAppBar(context, vm),
+        builder: (context, vm) {
+          final queryParams = GoRouterState.of(context).uri.queryParameters;
+          return _ChatRoomBody(
+            chatId: chatId,
+            viewmodel: vm,
+            scrollToMessageId: queryParams['scrollTo'],
+            scrollToSentAt: queryParams['sentAt'],
+          );
+        },
+        backgroundImage: DecorationImage(
+          image: AssetImage(images.chatWallpaper),
+          fit: BoxFit.cover,
+          onError: (error, stackTrace) {
+            debugPrint('Background image error: $error');
+          },
+        ),
+      ),
+    );
+  }
 }
 
 PreferredSizeWidget _buildAppBar(BuildContext context, ChatRoomVM vm) => AppBar(
   backgroundColor: Colors.white,
   elevation: 0.5,
+  scrolledUnderElevation: 0,
   leading: IconButton(
     icon: Icon(Icons.arrow_back, color: AppColors.primary),
     onPressed: () => context.go(RouterRoutes.chatList.path),
   ),
-  title: Row(
-    children: [
-      CircleAvatar(
-        radius: 18.r,
-        backgroundColor: AppColors.primary.withValues(alpha: 0.2),
-        backgroundImage: vm.chatPhotoUrl != null
-            ? NetworkImage(vm.chatPhotoUrl!)
-            : null,
-        child: vm.chatPhotoUrl == null
-            ? Text(
-                vm.chatDisplayName.isNotEmpty
-                    ? vm.chatDisplayName[0].toUpperCase()
-                    : '?',
-                style: TextStyle(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14.sp,
-                ),
-              )
-            : null,
-      ),
-      Gap(10.w),
-      Flexible(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              vm.chatDisplayName,
-              overflow: TextOverflow.ellipsis,
-              softWrap: true,
-              style: TextStyle(
-                color: Colors.black87,
-                fontSize: 16.sp,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            if (vm.onlineStatusText != null)
-              Text(
-                vm.onlineStatusText!,
-                style: textTheme.subDescription3.copyWith(
-                  color: vm.onlineStatusText == 'Online'
-                      ? Colors.green
-                      : Colors.grey[500],
-                  fontSize: 12.sp,
-                ),
-              ),
-          ],
+  title: InkWell(
+    onTap: () {
+      if (context.mounted) context.push('/chats/${vm.chat!.id}/detail');
+    },
+    borderRadius: BorderRadius.circular(8.r),
+    child: Row(
+      children: [
+        CircleAvatar(
+          radius: 18.r,
+          backgroundColor: AppColors.primary.withValues(alpha: 0.2),
+          backgroundImage: vm.chatPhotoUrl != null
+              ? NetworkImage(vm.chatPhotoUrl!)
+              : null,
+          child: vm.chatPhotoUrl == null
+              ? Text(
+                  vm.chatDisplayName.isNotEmpty
+                      ? vm.chatDisplayName[0].toUpperCase()
+                      : '?',
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14.sp,
+                  ),
+                )
+              : null,
         ),
-      ),
-    ],
+        Gap(10.w),
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                vm.chatDisplayName,
+                overflow: TextOverflow.ellipsis,
+                softWrap: true,
+                style: TextStyle(
+                  color: Colors.black87,
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (vm.onlineStatusText != null)
+                Text(
+                  vm.onlineStatusText!,
+                  style: textTheme.subDescription3.copyWith(
+                    color: vm.onlineStatusText == 'Online'
+                        ? Colors.green
+                        : Colors.grey[500],
+                    fontSize: 12.sp,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    ),
   ),
   actions: [
     IconButton(
@@ -121,8 +151,15 @@ PreferredSizeWidget _buildAppBar(BuildContext context, ChatRoomVM vm) => AppBar(
 class _ChatRoomBody extends StatefulWidget {
   final String chatId;
   final ChatRoomVM viewmodel;
+  final String? scrollToMessageId;
+  final String? scrollToSentAt;
 
-  const _ChatRoomBody({required this.chatId, required this.viewmodel});
+  const _ChatRoomBody({
+    required this.chatId,
+    required this.viewmodel,
+    this.scrollToMessageId,
+    this.scrollToSentAt,
+  });
 
   @override
   State<_ChatRoomBody> createState() => _ChatRoomBodyState();
@@ -130,27 +167,68 @@ class _ChatRoomBody extends StatefulWidget {
 
 class _ChatRoomBodyState extends State<_ChatRoomBody> {
   final _textController = TextEditingController();
-  final _scrollController = ScrollController();
+  final ItemScrollController _itemScrollController = ItemScrollController();
+  final ItemPositionsListener _itemPositionsListener =
+      ItemPositionsListener.create();
+  final _focusNode = FocusNode();
+
+  bool _showScrollBottom = false;
+  int? _initialScrollIndex;
+  bool _isSearchingMessage = false;
 
   ChatRoomVM get viewmodel => widget.viewmodel;
 
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(_onScroll);
+    _itemPositionsListener.itemPositions.addListener(_onPositionChanged);
+
+    if (widget.scrollToMessageId != null && widget.scrollToSentAt != null) {
+      _isSearchingMessage = true;
+      _handlePendingScroll();
+    }
   }
 
-  void _onScroll() {
-    if (_scrollController.position.pixels >=
-        _scrollController.position.maxScrollExtent - 100) {
-      viewmodel.loadMoreMessages();
+  Future<void> _handlePendingScroll() async {
+    // Tunggu VM init + messages dari SQLite masuk
+    final sentAt = int.parse(widget.scrollToSentAt!);
+    viewmodel.setJumpTarget(sentAt);
+    final sw = Stopwatch()..start();
+    while (!viewmodel.isInitialized || viewmodel.messages.isEmpty) {
+      await Future.delayed(const Duration(milliseconds: 50));
+      if (!mounted) return;
     }
+
+    viewmodel.showOverlay = true;
+
+    final index = viewmodel.messages.indexWhere(
+      (m) => m.id == widget.scrollToMessageId!,
+    );
+
+    viewmodel.showOverlay = false;
+
+    if (index != -1 && mounted) {
+      setState(() {
+        _initialScrollIndex = index;
+        _isSearchingMessage = false;
+      });
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        viewmodel.highlightMessage(widget.scrollToMessageId!);
+      });
+    }
+
+    sw.stop();
+    debugPrint('=== JUMP-TO-MESSAGE - jump mode: ${viewmodel.isJumpMode} ===');
+    debugPrint('Target index: $index');
+    debugPrint('Total messages: ${viewmodel.messages.length}');
+    debugPrint('Time: ${sw.elapsedMilliseconds}ms');
   }
 
   @override
   void dispose() {
     _textController.dispose();
-    _scrollController.dispose();
+    _itemPositionsListener.itemPositions.removeListener(_onPositionChanged);
     super.dispose();
   }
 
@@ -158,9 +236,42 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
   Widget build(BuildContext context) => Column(
     children: [
       Expanded(
-        child: viewmodel.error != null
-            ? Center(child: Text(viewmodel.error ?? ''))
-            : _buildMessageList(),
+        child: Stack(
+          children: [
+            viewmodel.error != null
+                ? Center(child: Text(viewmodel.error ?? ''))
+                : _buildMessageList(),
+
+            if (_showScrollBottom)
+              Positioned(
+                right: 16.w,
+                bottom: 16.h,
+                child: GestureDetector(
+                  onTap: _scrollToBottom,
+                  child: Container(
+                    width: 40.w,
+                    height: 40.w,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.15),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      Icons.keyboard_arrow_down,
+                      color: AppColors.primary,
+                      size: 24.sp,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
       if (viewmodel.typingText != null) _buildTypingIndicator(),
       _buildInputBar(),
@@ -177,20 +288,28 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
       );
     }
 
-    return ListView.builder(
-      controller: _scrollController,
+    return ScrollablePositionedList.builder(
+      itemScrollController: _itemScrollController,
+      itemPositionsListener: _itemPositionsListener,
+      initialScrollIndex: _initialScrollIndex ?? 0,
       reverse: true,
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+      padding: EdgeInsets.only(
+        bottom: 12.h,
+        top: MediaQuery.of(context).padding.top + kToolbarHeight,
+      ),
       itemCount: viewmodel.messages.length + (viewmodel.isLoadingMore ? 1 : 0),
       itemBuilder: (context, index) {
         if (index == viewmodel.messages.length) {
           return Padding(
             padding: EdgeInsets.symmetric(vertical: 16.h),
-            child: const Center(
+            child: Center(
               child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
+                width: 24.w,
+                height: 24.w,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.w,
+                  color: AppColors.primary,
+                ),
               ),
             ),
           );
@@ -209,7 +328,21 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
         return Column(
           children: [
             if (showDate) _buildDateSeparator(message.sentAt),
-            _buildMessageBubble(message, isMe, isFirstSequence),
+            MessageBubble(
+              viewmodel: viewmodel,
+              isFirstSequence: isFirstSequence,
+              message: message,
+              isMe: isMe,
+              onReplyMessage: () => viewmodel.onSwipedMessage(message),
+              onTapReply: (_) => _scrollToMessage(
+                message.replyTo != null
+                    ? message.replyTo!.messageId
+                    : message.id,
+                sentAt: message.replyTo != null
+                    ? message.replyTo!.sentAt
+                    : message.sentAt,
+              ),
+            ),
           ],
         );
       },
@@ -243,109 +376,15 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
     );
   }
 
-  Widget _buildMessageBubble(
-    MessageModel message,
-    bool isMe,
-    bool isFirstSequence,
-  ) {
-    final time = _formatTime(message.sentAt);
-    final senderName = viewmodel.senderDisplayName(message.senderId);
-    final senderPhotoUrl = viewmodel.senderPhotoUrl(message.senderId);
-
-    return Padding(
-      padding: EdgeInsets.only(bottom: 8.h),
-      child: Row(
-        mainAxisAlignment: isMe
-            ? MainAxisAlignment.end
-            : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          if (!isMe) ...[
-            if (isFirstSequence)
-              CircleAvatar(
-                radius: 14.r,
-                backgroundColor: Colors.grey[300],
-                backgroundImage:
-                    senderPhotoUrl != null && senderPhotoUrl.isNotEmpty
-                    ? NetworkImage(senderPhotoUrl)
-                    : null,
-                onBackgroundImageError:
-                    senderPhotoUrl != null && senderPhotoUrl.isNotEmpty
-                    ? (_, __) {} // silently fall back to child
-                    : null,
-                child: senderPhotoUrl == null || senderPhotoUrl.isEmpty
-                    ? Text(
-                        senderName.isNotEmpty
-                            ? senderName[0].toUpperCase()
-                            : '?',
-                        style: TextStyle(
-                          fontSize: 10.sp,
-                          color: Colors.grey[700],
-                        ),
-                      )
-                    : null,
-              )
-            else
-              SizedBox(width: 28.r), // same width as avatar to keep alignment
-            Gap(8.w),
-          ],
-          Flexible(
-            child: Container(
-              constraints: BoxConstraints(maxWidth: 260.w),
-              padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
-              decoration: BoxDecoration(
-                color: isMe ? AppColors.primary : Colors.grey[100],
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(16.r),
-                  topRight: Radius.circular(16.r),
-                  bottomLeft: Radius.circular(isMe ? 16.r : 4.r),
-                  bottomRight: Radius.circular(isMe ? 4.r : 16.r),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: isMe
-                    ? CrossAxisAlignment.end
-                    : CrossAxisAlignment.start,
-                children: [
-                  if (!isMe && viewmodel.isGroup && isFirstSequence) ...[
-                    Text(senderName, style: textTheme.senderName),
-                    Gap(4.h),
-                  ],
-                  Text(
-                    message.text,
-                    style: TextStyle(
-                      color: isMe ? Colors.white : Colors.black87,
-                      fontSize: 14.sp,
-                    ),
-                  ),
-                  Gap(4.h),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        time,
-                        style: TextStyle(
-                          color: isMe ? Colors.white70 : Colors.grey[500],
-                          fontSize: 11.sp,
-                        ),
-                      ),
-                      if (isMe) ...[
-                        Gap(4.w),
-                        Icon(
-                          Icons.done_all,
-                          size: 14.sp,
-                          color: Colors.white70,
-                        ),
-                      ],
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+  Widget buildMessageStatus(MessageStatus status) {
+    switch (status) {
+      case MessageStatus.sending:
+        return Icon(Icons.check, size: 14.sp, color: Colors.grey);
+      case MessageStatus.sent:
+        return Icon(Icons.done_all, size: 14.sp, color: Colors.grey);
+      case MessageStatus.read:
+        return Icon(Icons.done_all, size: 14.sp, color: AppColors.primary);
+    }
   }
 
   Widget _buildTypingIndicator() => Container(
@@ -353,16 +392,17 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
     alignment: Alignment.centerLeft,
     child: Row(
       children: [
-        CircleAvatar(
-          radius: 14.r,
-          backgroundColor: Colors.grey[300],
-          child: Text(
-            viewmodel.chatDisplayName.isNotEmpty
-                ? viewmodel.chatDisplayName[0].toUpperCase()
-                : '?',
-            style: TextStyle(fontSize: 10.sp, color: Colors.grey[700]),
+        if (viewmodel.isGroup)
+          CircleAvatar(
+            radius: 14.r,
+            backgroundColor: Colors.grey[300],
+            child: Text(
+              viewmodel.chatDisplayName.isNotEmpty
+                  ? viewmodel.chatDisplayName[0].toUpperCase()
+                  : '?',
+              style: TextStyle(fontSize: 10.sp, color: Colors.grey[700]),
+            ),
           ),
-        ),
         Gap(8.w),
         Container(
           padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
@@ -393,56 +433,216 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
         ),
       ],
     ),
-    child: Row(
-      children: [
-        IconButton(
-          icon: Icon(Icons.add, color: AppColors.primary),
-          onPressed: () {},
-        ),
-        Expanded(
-          child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 14.w),
-            decoration: BoxDecoration(
-              color: Colors.grey[100],
-              borderRadius: BorderRadius.circular(24.r),
-            ),
-            child: TextField(
-              controller: _textController,
-              onChanged: viewmodel.onTextChanged,
-              decoration: InputDecoration(
-                hintText: 'Type a message...',
-                hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14.sp),
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(vertical: 10.h),
-              ),
-              style: TextStyle(fontSize: 14.sp),
-              textCapitalization: TextCapitalization.sentences,
-            ),
-          ),
-        ),
-        Gap(8.w),
-        GestureDetector(
-          onTap: () {
-            if (_textController.text.trim().isNotEmpty) {
-              viewmodel.sendMessage(_textController.text);
-              _textController.clear();
-            }
-          },
-          child: CircleAvatar(
-            radius: 20.r,
-            backgroundColor: AppColors.primary,
-            child: Icon(Icons.send, color: Colors.white, size: 18.sp),
-          ),
-        ),
-      ],
-    ),
+    child: _buildTextField(),
   );
 
-  String _formatTime(DateTime dateTime) {
-    final hour = dateTime.hour;
-    final minute = dateTime.minute.toString().padLeft(2, '0');
-    final period = hour >= 12 ? 'PM' : 'AM';
-    final displayHour = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
-    return '$displayHour:$minute $period';
+  Widget _buildTextField() => Row(
+    children: [
+      IconButton(
+        icon: Icon(Icons.add, color: AppColors.primary),
+        onPressed: () {},
+      ),
+
+      Flexible(
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: viewmodel.replyMessage != null ? 6.w : 12.w,
+            vertical: 4.h,
+          ),
+          decoration: BoxDecoration(
+            color: AppColors.white.withValues(alpha: 0.85),
+            borderRadius: BorderRadius.circular(
+              viewmodel.replyMessage != null ? 12.r : 24.r,
+            ),
+          ),
+          child: AnimatedSize(
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeOut,
+            alignment: Alignment.bottomCenter,
+            child: Column(
+              children: [
+                if (viewmodel.replyMessage != null)
+                  _buildReplyPreview(viewmodel.replyMessage!),
+
+                TextField(
+                  focusNode: _focusNode,
+                  controller: _textController,
+                  minLines: 1,
+                  maxLines: 5,
+                  onChanged: viewmodel.onTextChanged,
+                  decoration: InputDecoration(
+                    hintText: 'Type a message...',
+                    hintStyle: textTheme.typeMessage.copyWith(
+                      color: AppColors.grey,
+                    ),
+                    isDense: true,
+                    filled: false,
+                    border: OutlineInputBorder(borderSide: BorderSide.none),
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 4.w,
+                      vertical: 10.h,
+                    ),
+                  ),
+                  style: textTheme.typeMessage,
+                  textCapitalization: TextCapitalization.sentences,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      Gap(8.w),
+      GestureDetector(
+        onTap: () {
+          if (_textController.text.trim().isNotEmpty) {
+            viewmodel.sendMessage(_textController.text);
+            _textController.clear();
+            _scrollToBottom();
+          }
+        },
+        child: CircleAvatar(
+          radius: 20.r,
+          backgroundColor: viewmodel.isSending
+              ? AppColors.grey
+              : AppColors.primary,
+          child: viewmodel.isSending
+              ? SizedBox(
+                  width: 18.sp,
+                  height: 18.sp,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : Icon(Icons.send, color: Colors.white, size: 18.sp),
+        ),
+      ),
+    ],
+  );
+
+  Widget _buildReplyPreview(MessageModel message) {
+    final isMe = viewmodel.isMyMessage(message);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.grey.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border(
+          left: BorderSide(color: AppColors.primary, width: 3.w),
+        ),
+      ),
+      padding: EdgeInsets.only(left: 12.w, right: 12.w, top: 4.h, bottom: 8.h),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Sender name
+                Text(
+                  isMe ? 'You' : viewmodel.senderDisplayName(message.senderId),
+                  style: textTheme.senderName,
+                ),
+
+                Gap(4.h),
+
+                Text(
+                  message.text,
+                  style: textTheme.body2.copyWith(
+                    color: AppColors.grey.withValues(alpha: 0.9),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          InkWell(
+            onTap: () {
+              HapticFeedback.selectionClick();
+              viewmodel.onCancelReply();
+            },
+            child: Icon(Icons.close, size: 18.r, color: Colors.grey),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _scrollToMessage(String messageId, {DateTime? sentAt}) async {
+    final sw = Stopwatch()..start();
+    debugPrint(' - - - - MESSAGE ID: $messageId}');
+    debugPrint(' - - - - SENT AT: ${sentAt}');
+    final index = await viewmodel.findMessageIndex(messageId, sentAt: sentAt);
+    debugPrint(' - - - index -> $index');
+
+    if (index == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Message not found')));
+      }
+      return;
+    }
+
+    // Rebuild page after we load older mesages
+    viewmodel.notifyListeners();
+
+    if (_itemScrollController.isAttached) {
+      _itemScrollController.jumpTo(index: index);
+    }
+
+    viewmodel.highlightMessage(messageId);
+
+    sw.stop();
+    debugPrint('=== SCROLL-TO-MESSAGE ===');
+    debugPrint('Target index: $index');
+    debugPrint('Total messages: ${viewmodel.messages.length}');
+    debugPrint('Time: ${sw.elapsedMilliseconds}ms');
+  }
+
+  void _onPositionChanged() {
+    final positions = _itemPositionsListener.itemPositions.value;
+
+    if (positions.isEmpty) return;
+
+    // Check if latest message (index 0) is still visible
+    final isAtBottom = positions.any((pos) => pos.index == 0);
+
+    if (_showScrollBottom != !isAtBottom) {
+      setState(() {
+        _showScrollBottom = !isAtBottom;
+      });
+    }
+
+    // Gap filling
+    final maxIndex = positions
+        .map((p) => p.index)
+        .reduce((a, b) => a > b ? a : b);
+
+    final threshold = viewmodel.messages.length - 5;
+    if (viewmodel.messages.length >= 50 &&
+        maxIndex >= threshold &&
+        !viewmodel.isLoadingMore) {
+      viewmodel.loadOlderFromLocal();
+    }
+  }
+
+  void _scrollToBottom() async {
+    if (viewmodel.isJumpMode) {
+      await viewmodel.switchToNormalMode();
+      setState(() {
+        _initialScrollIndex = null;
+      });
+    }
+    if (_itemScrollController.isAttached) {
+      _itemScrollController.scrollTo(
+        index: 0,
+        duration: const Duration(milliseconds: 100),
+        curve: Curves.easeOut,
+      );
+    }
   }
 }

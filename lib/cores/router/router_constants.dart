@@ -18,6 +18,8 @@ class RouterRoutes {
     name: 'privacy-policy',
   );
   static const profile = RouterRoute(path: '/profile', name: 'profile');
+  static const editName = RouterRoute(path: '/profile/edit-name', name: 'editName');
+  static const editStatus = RouterRoute(path: '/profile/edit-status', name: 'editStatus');
   static const login = RouterRoute(path: '/login', name: 'login');
   static const signUp = RouterRoute(path: '/sign-up', name: 'signup');
   static const emailSignIn = RouterRoute(path: '/email', name: 'emailSignIn');
@@ -33,6 +35,10 @@ class RouterRoutes {
   static const groupSetup = RouterRoute(
     path: '/new-chat/group/setup',
     name: 'groupSetup',
+  );
+  static const chatDetail = RouterRoute(
+    path: '/chats/:chatId/detail',
+    name: 'chatDetail',
   );
 }
 

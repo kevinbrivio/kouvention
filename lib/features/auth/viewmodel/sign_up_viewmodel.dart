@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/bases/base_form_notifier.dart';
@@ -91,7 +90,7 @@ class SignUpVM extends BaseFormNotifier<SignUpForm> with FormValidatorMixin {
     } on FirebaseAuthException catch (e) {
       if (e.code == 'email-already-in-use') {
         showToast('Account already exists. Redirecting to sign in...');
-        if (ctx.mounted) ctx.go(RouterRoutes.emailSignIn.path);
+        ctx.go(RouterRoutes.emailSignIn.path);
       }
       final message = switch (e.code) {
         'invalid-email' => 'Invalid email address',

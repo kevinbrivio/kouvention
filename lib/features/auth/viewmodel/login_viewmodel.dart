@@ -7,6 +7,7 @@ import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/shared/services/connectivity_service.dart';
+import 'package:kouvention/features/shared/services/fcm_service.dart';
 import 'package:kouvention/features/shared/viewmodel/connectivity_viewmodel.dart';
 import 'package:kouvention/features/user/services/user_service.dart';
 import 'package:oktoast/oktoast.dart';
@@ -53,6 +54,10 @@ class LoginVM extends BaseNotifier {
       }
       
       if (ctx.mounted) {
+        // Set user token to FCM
+        final fcmService = ref.read(fcmServiceProvider);
+        await fcmService.initialize();
+        
         ctx.go(RouterRoutes.chatList.path);
       }
     } on AuthException catch (e) {
@@ -70,8 +75,7 @@ class LoginVM extends BaseNotifier {
     context.push(RouterRoutes.signUp.path);
   }
 
-  void goToEmailSignIn() {
-    final context = ctx;
+  void goToEmailSignIn(BuildContext context) {
     if (context.mounted) {
       context.push(RouterRoutes.emailSignIn.path);
     }

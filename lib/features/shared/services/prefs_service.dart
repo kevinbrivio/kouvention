@@ -15,15 +15,48 @@ class PrefsService {
   // --- KEYS
   static const String _onboardingKey = 'has_seen_onboarding';
   static const String _privacyPolicyKey = 'has_accepted_privacy_policy';
+  static const String _fcmTokenKey = 'fcm_tokens';
+  static const String _lastSyncedKey = 'search_last_sync_time';
+  static const String _deviceIdKey = 'device_id';
 
   // --- ONBOARDING
-  Future<bool> hasSeenOnboarding() async => _prefs.getBool(_onboardingKey) ?? false;
+  Future<bool> hasSeenOnboarding() async =>
+      _prefs.getBool(_onboardingKey) ?? false;
 
-  Future<bool> setHasSeenOnboarding(bool value) async => _prefs.setBool(_onboardingKey, value);
+  Future<bool> setHasSeenOnboarding(bool value) async =>
+      _prefs.setBool(_onboardingKey, value);
 
   // --- PRIVACY POLICY
-  Future<bool> hasAcceptedPrivacyPolicy() async => _prefs.getBool(_privacyPolicyKey) ?? false;
+  Future<bool> hasAcceptedPrivacyPolicy() async =>
+      _prefs.getBool(_privacyPolicyKey) ?? false;
 
-  Future<bool> setHasAcceptedPrivacyPolicy(bool value) async => _prefs.setBool(_privacyPolicyKey, value);
+  Future<bool> setHasAcceptedPrivacyPolicy(bool value) async =>
+      _prefs.setBool(_privacyPolicyKey, value);
 
+  // --- FCM
+  String? getFcmToken() => _prefs.getString(_fcmTokenKey);
+
+  Future<bool> setFcmToken(String val) async =>
+      _prefs.setString(_fcmTokenKey, val);
+
+  Future<bool> removeFcmToken() async => _prefs.remove(_fcmTokenKey);
+
+  // --- SEARCH LAST SYNC
+  DateTime? get lastSynced {
+    final millis = _prefs.getInt(_lastSyncedKey);
+    if (millis == null) return null;
+    return DateTime.fromMillisecondsSinceEpoch(millis);
+  }
+
+  set lastSyncTime(DateTime? value) {
+    if (value == null) {
+      _prefs.remove(_lastSyncedKey);
+    } else {
+      _prefs.setInt(_lastSyncedKey, value.millisecondsSinceEpoch);
+    }
+  }
+
+  // --- DEVICE ID
+  Future<bool> setDeviceId(String val) => _prefs.setString(_deviceIdKey, val);
+  String? deviceId() => _prefs.getString(_deviceIdKey);
 }

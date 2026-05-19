@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/bases/base_view.dart';
+import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/image_paths.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
@@ -43,7 +44,7 @@ class EmailSignInView extends StatelessWidget {
 
   Widget _buildLogo() => Column(
     children: [
-      Image.asset(images.logo, height: 48.h),
+      Image.asset(images.splash, height: 144.w, width: 144.w,),
       Gap(8.h),
       Text(
         'Kouvention',
@@ -57,6 +58,8 @@ class EmailSignInView extends StatelessWidget {
   );
 
   Widget _buildCard(BuildContext context, EmailSignInVM vm) => TransparentBox(
+    color: AppColors.primary.withValues(alpha: 0.3),
+    borderColor: AppColors.white.withValues(alpha: 0.7),
     child: Form(
       key: vm.formKey,
       child: Column(
@@ -146,6 +149,7 @@ class EmailSignInView extends StatelessWidget {
     child: Button(
       onPressed: vm.isLoading ? null : () => vm.signIn(),
       text: 'Sign In',
+      isWhiteBackground: true,
     ),
   );
 

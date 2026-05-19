@@ -25,9 +25,12 @@ class PresenceNotifier extends ChangeNotifier {
     });
   }
 
-  void _start(String userId) {
+  void _start(String userId) async {
     _uid = userId;
-  
+
+    // Set online when user access app
+    await _userService.setOnline(userId);
+
     _lifecycleListener = AppLifecycleListener(
       onResume: () async {
         try {
@@ -71,7 +74,7 @@ class PresenceNotifier extends ChangeNotifier {
 
     await authService.signOut();
   }
-  
+
   @override
   void dispose() {
     _stop();

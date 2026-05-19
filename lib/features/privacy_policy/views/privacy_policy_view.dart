@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:kouvention/cores/bases/base_view.dart';
 import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/cores/widgets/custom_button.dart';
-import 'package:kouvention/cores/widgets/hidden_app_bar.dart';
 import 'package:kouvention/cores/widgets/icon_holder.dart';
 import 'package:kouvention/cores/widgets/transparent_box.dart';
 import 'package:kouvention/features/privacy_policy/viewmodel/privacy_policy_viewmodel.dart';
@@ -16,43 +16,91 @@ class PrivacyPolicyView extends StatelessWidget {
   @override
   Widget build(BuildContext context) => BaseView(
     provider: privacyPolicyVM,
-    appBar: (_) => HiddenAppBar(),
-    builder: _buildScreen,
-  );
-
-  Widget _buildScreen(BuildContext context, PrivacyPolicyVM vm) => Column(
-    children: [
-      Expanded(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: EdgeInsetsGeometry.symmetric(horizontal: 16.w),
-                child: Text('Privacy Policy', style: textTheme.headline1),
-              ),
-              Gap(4.h),
-              Padding(
-                padding: EdgeInsetsGeometry.symmetric(horizontal: 16.w),
-                child: Text(
-                  'Please review how we handle your data before continuing.',
-                  style: textTheme.subDescription,
+    appBar: (vm) => AppBar(
+      backgroundColor: Colors.transparent,
+      elevation: 0.5,
+      leadingWidth: 64.w,
+      leading: Padding(
+        padding: EdgeInsets.only(left: 16.w),
+        child: Center(
+          child: InkWell(
+            onTap: () {
+              HapticFeedback.selectionClick();
+              _showDeclineDialog(context, vm);
+            },
+            child: Container(
+              width: 48.w,
+              height: 48.w,
+              decoration: BoxDecoration(
+                color: AppColors.white.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(12.r),
+                border: BoxBorder.all(
+                  color: AppColors.white.withValues(alpha: 0.5),
                 ),
               ),
-              Gap(12.h),
-              Padding(
-                padding: EdgeInsetsGeometry.symmetric(horizontal: 16.w),
-                child: TransparentBox(child: _buildPolicy()),
+              child: Icon(
+                Icons.close_rounded,
+                color: AppColors.white,
+                size: 20.sp,
               ),
-
-              Gap(12.h),
-
-              _buildAcceptButton(context, vm),
-            ],
+            ),
           ),
         ),
       ),
-    ],
+      actions: [
+        Padding(
+          padding: EdgeInsets.only(right: 8.w),
+          child: Text(
+            'LAST UPDATED: MAY 2026',
+            style: textTheme.subDescription3.copyWith(
+              color: AppColors.white.withValues(alpha: 0.6),
+            ),
+          ),
+        ),
+      ],
+    ),
+    builder: _buildScreen,
+  );
+
+  Widget _buildScreen(BuildContext context, PrivacyPolicyVM vm) => SafeArea(
+    child: Column(
+      children: [
+        Gap(MediaQuery.of(context).padding.top),
+        Expanded(
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: EdgeInsetsGeometry.symmetric(horizontal: 16.w),
+                  child: Text('Privacy Policy', style: textTheme.subheadline1),
+                ),
+                Gap(4.h),
+                Padding(
+                  padding: EdgeInsetsGeometry.symmetric(horizontal: 16.w),
+                  child: Text(
+                    'Please review how we handle your data before continuing.',
+                    style: textTheme.subDescription2,
+                  ),
+                ),
+                Gap(24.h),
+                Padding(
+                  padding: EdgeInsetsGeometry.symmetric(horizontal: 16.w),
+                  child: TransparentBox(
+                    color: AppColors.white.withValues(alpha: 0.3),
+                    child: _buildPolicy(),
+                  ),
+                ),
+
+                Gap(16.h),
+
+                _buildAcceptButton(context, vm),
+              ],
+            ),
+          ),
+        ),
+      ],
+    ),
   );
 
   Widget _buildPolicy() => Column(
@@ -65,7 +113,7 @@ class PrivacyPolicyView extends StatelessWidget {
         children: [
           IconHolder(
             radius: BorderRadius.circular(24.r),
-            icon: const Icon(Icons.abc),
+            icon: const Icon(Icons.data_array),
           ),
           Gap(12.w),
           Flexible(
@@ -79,7 +127,7 @@ class PrivacyPolicyView extends StatelessWidget {
           Text(
             'We collect information necessary to provide you with secure '
             'messaging services. This includes your profile details, usage '
-            'data and device information.',
+            'data and device information',
             style: textTheme.subDescription,
             softWrap: true,
           ),
@@ -132,7 +180,7 @@ class PrivacyPolicyView extends StatelessWidget {
         'Our real-time messaging infrastructure is powered by Google '
         'Firebase. Your messages are encrypted in transit and securely '
         'stored using Firebase\'s cloud infrastructure, adhering to '
-        'strict security protocols.',
+        'strict security protocols',
         style: textTheme.subDescription,
         softWrap: true,
         textDirection: TextDirection.rtl,
@@ -156,7 +204,7 @@ class PrivacyPolicyView extends StatelessWidget {
       Text(
         'You have full control over your personal data. You can request '
         'to access, update, or permanently delete your account and '
-        'associated data at any time through the app settings.',
+        'associated data at any time through the app settings',
         style: textTheme.subDescription,
         softWrap: true,
       ),
@@ -227,10 +275,12 @@ class PrivacyPolicyView extends StatelessWidget {
                     ),
                   ),
                   Gap(8.w),
-                  Flexible(child: Text(
-                    'I have read and agree to the Privacy Policy',
-                    style: textTheme.subDescription,
-                  )),
+                  Flexible(
+                    child: Text(
+                      'I have read and agree to the Privacy Policy',
+                      style: textTheme.subDescription,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -278,28 +328,30 @@ class PrivacyPolicyView extends StatelessWidget {
   void _showDeclineDialog(BuildContext context, PrivacyPolicyVM vm) =>
       showDialog(
         context: context,
-        builder: (context) => AlertDialog(
+        builder: (dialogContext) => AlertDialog(
+          backgroundColor: AppColors.primary.withValues(alpha: 0.99),
           title: Text('Decline Privacy Policy', style: textTheme.subheadline1),
           content: Text(
             'Are you sure you want to decline the privacy policy? '
             'You will not be able to use the app without accepting it.',
-            style: textTheme.subDescription,
+            style: textTheme.subDescription2,
           ),
           actions: [
             Button(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(dialogContext),
               text: 'Cancel',
-              isCancel: true,
+              isWhiteBackground: true,
             ),
 
-            Gap(4.h),
-            
+            SizedBox(height: 4.h),
+
             Button(
               onPressed: () {
-                Navigator.pop(context);
+                Navigator.pop(dialogContext);
                 vm.declinePolicy();
               },
-              text:'Decline',
+              isWhiteBackground: true,
+              text: 'Decline',
             ),
           ],
         ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
+import 'package:kouvention/cores/router/router_guard.dart';
 import 'package:kouvention/cores/widgets/main_shell.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/auth/views/add_name_view.dart';
@@ -8,54 +9,108 @@ import 'package:kouvention/features/auth/views/email_sign_in_view.dart';
 import 'package:kouvention/features/auth/views/login_view.dart';
 import 'package:kouvention/features/auth/views/sign_up_view.dart';
 import 'package:kouvention/features/chat/views/chat_list_view.dart';
+import 'package:kouvention/features/chat/views/chat_profile_view.dart';
 import 'package:kouvention/features/chat/views/chat_room_view.dart';
 import 'package:kouvention/features/chat/views/group_setup_view.dart';
 import 'package:kouvention/features/chat/views/new_chat_view.dart';
 import 'package:kouvention/features/chat/views/new_group_chat_view.dart';
 import 'package:kouvention/features/onboarding/views/onboarding_view.dart';
 import 'package:kouvention/features/privacy_policy/views/privacy_policy_view.dart';
+import 'package:kouvention/features/profile/views/edit_name_view.dart';
+import 'package:kouvention/features/profile/views/edit_status_view..dart';
 import 'package:kouvention/features/profile/views/profile_view.dart';
 import 'package:kouvention/features/splash/views/splash_view.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
+import 'package:path/path.dart';
 
-late GoRouter _router;
-GoRouter get router => _router;
+GoRouter? _router;
+GoRouter get router => _router!;
 
 final RouteObserver<ModalRoute<void>> routeObserver =
     RouteObserver<ModalRoute<void>>();
 
-setupRouter({required String initialRouter, required AuthService authService}) {
+final GlobalKey<NavigatorState> _chatBranchKey = GlobalKey<NavigatorState>(
+  debugLabel: 'chatBranch',
+);
+final GlobalKey<NavigatorState> _profileBranchKey = GlobalKey<NavigatorState>(
+  debugLabel: 'profileBranch',
+);
+
+setupRouter({
+  required String initialRouter,
+  required AuthService authService,
+  required RouterGuard routerGuard,
+}) {
+  if (_router != null) return;
+
   _router = GoRouter(
     initialLocation: initialRouter,
     navigatorKey: navigatorKey,
+    refreshListenable: routerGuard,
     observers: [routeObserver],
     redirect: (context, state) {
       final isLoggedIn = authService.currentUser != null;
       final currentPath = state.matchedLocation;
-      debugPrint('ROUTER: path=$currentPath, isLoggedIn=$isLoggedIn');
+      debugPrint('GUARD: path = $currentPath');
 
-      final publicRoutes = [
-        RouterRoutes.splash.path,
-        RouterRoutes.onboarding.path,
-        RouterRoutes.privacyPolicy.path,
+      // Splash always return true.
+      if (currentPath == RouterRoutes.splash.path) return null;
+
+      if (!routerGuard.onboardingSeen) {
+        // navigate if the user is not in onboarding
+        if (currentPath != RouterRoutes.onboarding.path) {
+          debugPrint('GUARD: has not seen onboarding → /onboarding');
+          return RouterRoutes.onboarding.path;
+        }
+        // already in onboarding, just stay still
+        return null;
+      }
+
+      if (!routerGuard.privacyPolicySeen) {
+        // navigate if user on page other than privacy policy
+        if (currentPath != RouterRoutes.privacyPolicy.path) {
+          debugPrint('GUARD: has not seen privacy policy → /privacyPolicy');
+          return RouterRoutes.privacyPolicy.path;
+        }
+
+        return null;
+      }
+
+      if (!routerGuard.isLoggedIn) {
+        final authPages = [
+          RouterRoutes.login.path,
+          RouterRoutes.signUp.path,
+          RouterRoutes.emailSignIn.path,
+        ];
+        if (!authPages.contains(currentPath)) {
+          debugPrint('GUARD: not logged in → /login');
+          return RouterRoutes.login.path;
+        }
+
+        return null;
+      }
+
+      // --------------- USER ALREADY PASS EVERY CONDITIONS
+      final authPages = [
         RouterRoutes.login.path,
         RouterRoutes.signUp.path,
         RouterRoutes.emailSignIn.path,
       ];
 
-      final isOnPublicRoute = publicRoutes.contains(currentPath);
-
-      if (isLoggedIn &&
-          (currentPath == RouterRoutes.login.path ||
-              currentPath == RouterRoutes.signUp.path ||
-              currentPath == RouterRoutes.emailSignIn.path)) {
-        return null;
+      if (authPages.contains(currentPath)) {
+        debugPrint('GUARD: Logged in but on auth page -> /chats');
+        return RouterRoutes.chatList.path;
       }
 
-      if (!isLoggedIn && !isOnPublicRoute) {
-        return RouterRoutes.login.path;
+      // What if user hasn't set a name?
+      if (!routerGuard.hasDisplayName) {
+        if (currentPath != RouterRoutes.addName.path) {
+          debugPrint('GUARD: no display name → /add-name');
+          return RouterRoutes.addName.path;
+        }
       }
 
+      debugPrint('GUARD: all checks passed ✅');
       return null;
     },
     routes: [
@@ -103,6 +158,7 @@ setupRouter({required String initialRouter, required AuthService authService}) {
         branches: [
           // Tab 0: Chats
           StatefulShellBranch(
+            navigatorKey: _chatBranchKey,
             routes: [
               GoRoute(
                 path: RouterRoutes.chatList.path,
@@ -113,6 +169,7 @@ setupRouter({required String initialRouter, required AuthService authService}) {
           ),
           // Tab 1: Profile
           StatefulShellBranch(
+            navigatorKey: _profileBranchKey,
             routes: [
               GoRoute(
                 path: RouterRoutes.profile.path,
@@ -146,9 +203,27 @@ setupRouter({required String initialRouter, required AuthService authService}) {
       GoRoute(
         path: RouterRoutes.groupSetup.path,
         name: RouterRoutes.groupSetup.name,
-        builder: (_, state) => GroupSetupView(
-          selectedUsers: state.extra as List<UserModel>,
-        ),
+        builder: (_, state) =>
+            GroupSetupView(selectedUsers: state.extra as List<UserModel>),
+      ),
+      GoRoute(
+        path: RouterRoutes.chatDetail.path,
+        name: RouterRoutes.chatDetail.name,
+        builder: (_, state) {
+          final chatId = state.pathParameters['chatId'] as String;
+          return ChatProfileView(chatId: chatId);
+        },
+      ),
+      GoRoute(
+        path: RouterRoutes.editName.path,
+        name: RouterRoutes.editName.name,
+        builder: (_, state) => EditNameView(currentName: state.extra as String),
+      ),
+      GoRoute(
+        path: RouterRoutes.editStatus.path,
+        name: RouterRoutes.editStatus.name,
+        builder: (_, state) =>
+            EditStatusView(currentStatus: state.extra as String?),
       ),
     ],
   );

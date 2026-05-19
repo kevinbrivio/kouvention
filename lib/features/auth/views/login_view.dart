@@ -7,6 +7,7 @@ import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/icon_paths.dart';
 import 'package:kouvention/cores/constants/image_paths.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
+import 'package:kouvention/cores/widgets/floating_widget.dart';
 import 'package:kouvention/cores/widgets/transparent_box.dart';
 import 'package:kouvention/features/auth/viewmodel/login_viewmodel.dart';
 import 'package:kouvention/features/auth/widgets/connectivity_banner.dart';
@@ -19,39 +20,39 @@ class LoginView extends ConsumerWidget {
       BaseView(provider: loginProvider, builder: _buildScreen);
 
   Widget _buildScreen(BuildContext context, LoginVM loginVM) => SafeArea(
-    child: Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16.w),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // Connectivity Banner
-          const ConnectivityBanner(),
+    child: SingleChildScrollView(
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16.w),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Connectivity Banner
+            const ConnectivityBanner(),
 
-          Gap(40.h),
-          _buildLogo(),
-          Gap(40.h),
+            Gap(32.h),
+            _buildLogo(),
 
-          _buildCard(context, loginVM),
-        ],
+            _buildCard(context, loginVM),
+            Gap(MediaQuery.of(context).padding.bottom),
+          ],
+        ),
       ),
     ),
   );
 
   Widget _buildLogo() => Center(
-    child: Row(
-      children: [
-        Image.asset(images.logo, height: 48.h, width: 48.h),
-        Gap(8.w),
-        Text(
-          'Kouvention',
-          style: textTheme.subheadline1,
-          textAlign: TextAlign.center,
-        ),
-      ],
+    child: FloatingWidget(
+      child: SizedBox(
+        width: 220.w,
+        height: 220.w,
+        child: Image.asset(images.splash, fit: BoxFit.cover),
+      ),
     ),
   );
 
   Widget _buildCard(BuildContext context, LoginVM vm) => TransparentBox(
+    color: AppColors.primary.withValues(alpha: 0.4),
+    borderColor: AppColors.white.withValues(alpha: 0.7),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -98,7 +99,6 @@ class LoginView extends ConsumerWidget {
         ),
       ),
       style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12.r),
         ),
@@ -111,7 +111,7 @@ class LoginView extends ConsumerWidget {
     height: 48.h,
     width: double.infinity,
     child: OutlinedButton.icon(
-      onPressed: vm.isLoading ? null : () => vm.goToEmailSignIn(),
+      onPressed: vm.isLoading ? null : () => vm.goToEmailSignIn(context),
       icon: Icon(Icons.email_outlined, color: Colors.white, size: 22.sp),
       label: Text(
         'Sign in with Email',

@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
+import 'package:kouvention/features/chat/models/reply_to_model.dart';
 
 class ChatService {
   final FirebaseFirestore _firestore;
@@ -31,6 +33,7 @@ class ChatService {
         .map(
           (snapshot) => snapshot.docs
               .map((doc) => ChatModel.fromMap(doc.id, doc.data()))
+              .where((chat) => !chat.isDeletedBy(currentUid))
               .toList(),
         );
   }
@@ -51,29 +54,73 @@ class ChatService {
   /// [limit] controls the page size. Start with 20.
   /// This stream is for the FIRST page only — it stays live
   /// so new incoming messages appear instantly.
-  Stream<List<MessageModel>> streamMessages(String chatId, {int limit = 20}) {
-    return _messagesRef(chatId)
-        .orderBy('sentAt', descending: true)
-        .limit(limit)
-        .snapshots()
-        .map(
-          (snapshot) => snapshot.docs
-              .map((doc) => MessageModel.fromMap(doc.id, doc.data()))
-              .toList(),
-        );
+  Stream<List<MessageModel>> streamMessages(String chatId, {int limit = 100}) =>
+      _messagesRef(chatId)
+          .orderBy('sentAt', descending: true)
+          .limit(limit)
+          .snapshots()
+          .map(
+            (snapshot) => snapshot.docs
+                .map((doc) => MessageModel.fromMap(doc.id, doc.data()))
+                .toList(),
+          );
+
+  Future<List<MessageModel>> fetchAllMessages(String chatId) async {
+    List<MessageModel> allMessages = [];
+    DocumentSnapshot? lastDoc;
+    const batchSize = 500;
+
+    while (true) {
+      Query<Map<String, dynamic>> query = _messagesRef(
+        chatId,
+      ).orderBy('sentAt', descending: true).limit(batchSize);
+
+      if (lastDoc != null) {
+        query = query.startAfterDocument(lastDoc);
+      }
+
+      final snapshot = await query.get();
+
+      if (snapshot.docs.isEmpty) break;
+
+      allMessages.addAll(
+        snapshot.docs.map((doc) => MessageModel.fromMap(doc.id, doc.data())),
+      );
+
+      lastDoc = snapshot.docs.last;
+
+      if (snapshot.docs.length < batchSize) break;
+    }
+
+    return allMessages;
+  }
+
+  /// Fetches recent message from Firestore
+  Future<List<MessageModel>> fetchRecentMessages(
+    String chatId, {
+    int limit = 100,
+  }) async {
+    final snapshot = await _messagesRef(
+      chatId,
+    ).orderBy('sentAt', descending: true).limit(limit).get();
+
+    return snapshot.docs
+        .map((doc) => MessageModel.fromMap(doc.id, doc.data()))
+        .toList();
   }
 
   /// Fetches older messages for pagination
-  Future<List<MessageModel>> fetchOlderMesages(
+  Future<List<MessageModel>> fetchOlderMessages(
     String chatId, {
-    required DocumentSnapshot lastDocument,
+    required DateTime before,
     int limit = 20,
   }) async {
     final snapshot = await _messagesRef(chatId)
         .orderBy('sentAt', descending: true)
-        .startAfterDocument(lastDocument)
+        .where('sentAt', isLessThan: Timestamp.fromDate(before))
         .limit(limit)
         .get();
+
     return snapshot.docs
         .map((doc) => MessageModel.fromMap(doc.id, doc.data()))
         .toList();
@@ -82,11 +129,11 @@ class ChatService {
   Future<QuerySnapshot<Map<String, dynamic>>> fetchRawMesages(
     String chatId, {
     DocumentSnapshot? lastDocument,
-    int limit = 20,
+    int limit = 100,
   }) async {
     Query<Map<String, dynamic>> query = _messagesRef(
       chatId,
-    ).orderBy('sentAt', descending: true).limit(limit);
+    ).orderBy('sentAt', descending: true);
 
     if (lastDocument != null) {
       query = query.startAfterDocument(lastDocument);
@@ -95,24 +142,78 @@ class ChatService {
     return query.get();
   }
 
+  /// Fetches message after specific timestamp
+  Future<List<MessageModel>> fetchMessagesSince(
+    String chatId, {
+    required DateTime since,
+  }) async {
+    final snapshot = await _messagesRef(
+      chatId,
+    ).orderBy('sentAt').where('sentAt', isGreaterThan: since).get();
+
+    return snapshot.docs
+        .map((doc) => MessageModel.fromMap(doc.id, doc.data()))
+        .toList();
+  }
+
+  // ---- Fetch for navigation ----------------------
+  // Future<List<MessageModel>> fetchMessageAround(
+  //   String chatId, {
+  //   required DateTime aroundTimestamp,
+  //   int limit = 50,
+  // }) async {
+  //   final timestamp = Timestamp.fromDate(aroundTimestamp);
+  //   final halfLimit = limit ~/ 2;
+
+  //   final olderSnap = await _messagesRef(chatId)
+  //       .orderBy('sentAt', descending: true)
+  //       .where('sentAt', isLessThanOrEqualTo: timestamp)
+  //       .limit(halfLimit)
+  //       .get();
+
+  //   final newerSnap = await _messagesRef(chatId)
+  //       .orderBy('sentAt')
+  //       .where('sentAt', isGreaterThan: timestamp)
+  //       .limit(halfLimit)
+  //       .get();
+
+  //   final allDocs = [...newerSnap.docs.reversed, ...olderSnap.docs];
+
+  //   return allDocs
+  //       .map((doc) => MessageModel.fromMap(doc.id, doc.data()))
+  //       .toList();
+  // }
+
   // --- Send Messages --------------------------------
   Future<void> sendMessage({
     required String chatId,
+    required String messageId,
     required String senderId,
+    required String senderName,
     required String text,
     required List<String> memberUids,
+    ReplyToModel? replyTo,
   }) async {
     final batch = _firestore.batch();
 
-    final msgRef = _messagesRef(chatId).doc();
+    final msgRef = _messagesRef(chatId).doc(messageId);
     batch.set(
       msgRef,
-      MessageModel.toNewMessageMap(senderId: senderId, text: text),
+      MessageModel.toNewMessageMap(
+        senderId: senderId,
+        senderName: senderName,
+        text: text,
+        replyTo: replyTo,
+      ),
     );
-
     final chatRef = _chatsRef.doc(chatId);
     batch.update(chatRef, {
-      ...MessageModel.toLastMessageMap(senderId: senderId, text: text),
+      ...MessageModel.toLastMessageMap(
+        senderId: senderId,
+        senderName: senderName,
+        text: text,
+        replyTo: replyTo,
+      ),
       'updatedAt': FieldValue.serverTimestamp(),
     });
 
@@ -125,6 +226,26 @@ class ChatService {
     batch.update(chatRef, unreadUpdates);
 
     await batch.commit();
+  }
+
+  // --- GET CHATS --------------------------------
+  /// Get chat detail
+  Future<ChatModel?> getChat(String chatId) async {
+    final doc = await _chatsRef.doc(chatId).get();
+    return doc.exists ? ChatModel.fromMap(doc.id, doc.data()!) : null;
+  }
+
+  /// Get other user group in common
+  Future<List<ChatModel>> getGroupInCommon(String currentUid, otherUid) async {
+    final doc = await _chatsRef
+        .where('type', isEqualTo: 'group')
+        .where('members', arrayContains: currentUid)
+        .get();
+
+    return doc.docs
+        .map((d) => ChatModel.fromMap(d.id, d.data()))
+        .where((chat) => chat.members.contains(otherUid))
+        .toList();
   }
 
   // --- UNREAD COUNT --------------------------------
@@ -177,7 +298,8 @@ class ChatService {
   }
 
   Future<String> createGroupChat({
-    required String createdBy,
+    required String createdByUid,
+    required String createdByName,
     required List<String> members,
     required Map<String, MemberInfo> memberInfo,
     required String groupName,
@@ -185,7 +307,8 @@ class ChatService {
   }) async {
     final docRef = await _chatsRef.add(
       ChatModel.toNewGroupChatMap(
-        createdBy: createdBy,
+        createdByUid: createdByUid,
+        createdByName: createdByName,
         members: members,
         memberInfo: memberInfo,
         groupName: groupName,
@@ -194,6 +317,68 @@ class ChatService {
     );
 
     return docRef.id;
+  }
+
+  // ------ PIN CHAT ----------
+  Future<void> pinChat(String uid, chatId) async {
+    debugPrint('Pinning chat: $chatId for user: $uid');
+    debugPrint('Path: ${_chatsRef.doc(chatId).path}');
+    await _chatsRef.doc(chatId).update({
+      'pinnedBy': FieldValue.arrayUnion([uid]),
+    });
+  }
+
+  Future<void> unpinChat(String uid, chatId) async {
+    await _chatsRef.doc(chatId).update({
+      'pinnedBy': FieldValue.arrayRemove([uid]),
+    });
+  }
+
+  Future<void> deleteChat(String uid, String chatId) async {
+    await _chatsRef.doc(chatId).update({
+      'deletedBy.$uid': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> deleteMessageForMe({
+    required String uid,
+    required String chatId,
+    required List<String> messageIds,
+  }) async {
+    final batch = _firestore.batch();
+    for (final msgId in messageIds) {
+      batch.update(_messagesRef(chatId).doc(msgId), {
+        'deletedFor': FieldValue.arrayUnion([uid]),
+      });
+    }
+
+    await batch.commit();
+  }
+
+  Future<void> deleteMessageForEveryone(
+    String chatId,
+    List<String> messageIds,
+  ) async {
+    // final batch = _messagesRef(chatId).firestore.batch();
+    final batch = _firestore.batch();
+
+    for (final msgId in messageIds) {
+      batch.update(_messagesRef(chatId).doc(msgId), {
+        'isDeleted': true,
+        'text': '',
+        'replyTo': null,
+      });
+    }
+
+    await batch.commit();
+  }
+
+  // ---- CHECK MESSAGE STATUS ------------------
+  Future<void> markChatAsRead(String chatId, uid) async {
+    await _chatsRef.doc(chatId).update({
+      'lastReadAt.$uid': FieldValue.serverTimestamp(),
+      'unreadCount.$uid': 0,
+    });
   }
 }
 

@@ -5,20 +5,24 @@ import 'package:kouvention/cores/constants/colors.dart';
 class TransparentBox extends StatelessWidget {
   final Widget child;
   final BorderRadius? radius;
+  final Color? color;
+  final Color? borderColor;
 
   const TransparentBox({
     super.key,
     required this.child,
     this.radius,
+    this.color,
+    this.borderColor,
   });
 
   @override
   Widget build(BuildContext context) => Container(
     decoration: BoxDecoration(
-      color: AppColors.white.withValues(alpha: 0.35),
+      color: color ?? AppColors.white,
       borderRadius: radius ?? BorderRadius.circular(28.r),
       border: Border.all(
-        color: AppColors.white.withValues(alpha: 0.2),
+        color: borderColor ?? AppColors.white.withValues(alpha: 0.2),
         style: BorderStyle.solid,
         width: 1.sp,
       ),

@@ -70,6 +70,21 @@ class _TextTheme {
     fontWeight: FontWeight.w600,
     height: 1.5,
   );
+
+  final appBar = TextStyle(
+    fontSize: 16.sp,
+    color: AppColors.primary.withValues(alpha: 0.9),
+    fontWeight: FontWeight.w500,
+    height: 1.5,
+  );
+
+  final typeMessage = TextStyle(
+    fontSize: 13.sp,
+    color: AppColors.black.withValues(alpha: 0.8),
+    fontWeight: FontWeight.w500,
+    height: 1.5,
+    decoration: TextDecoration.none,
+  );
 }
 
 final textTheme = _TextTheme();
