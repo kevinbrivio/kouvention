@@ -10,12 +10,12 @@ class SecurityService {
     final config = TalsecConfig(
       androidConfig: AndroidConfig(
         packageName: 'com.example.kouvention',
-        signingCertHashes: [isProd ? EnvProd.SHA256 : EnvStaging.SHA256], // TODO: GANTI KE ENV
+        signingCertHashes: [isProd ? EnvProd.sha256 : EnvStaging.sha256],
         supportedStores: ['com.android.vending'],
       ),
       iosConfig: IOSConfig(
         bundleIds: ['com.example.kouvention'],
-        teamId: '',
+        teamId: '[PLACEHOLDER]', // Change to iOS teamID
       ),
       watcherMail: 'kenkenku6@gmail.com',
       isProd: isProd,
