@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:kouvention/cores/constants/colors.dart';
+import 'package:kouvention/cores/constants/text_theme.dart';
 
 class DeviceBlockedView extends StatelessWidget {
   final String threatType;
@@ -17,7 +18,7 @@ class DeviceBlockedView extends StatelessWidget {
   String get _threatMessage {
     switch (threatType) {
       case 'rooted':
-        return 'Your device have been detected root | jailbreak.';
+        return 'Your device have been detected root or jailbreak.';
       case 'hooks':
         return 'Detected some apps might misuse your phone';
       case 'tampered':
@@ -46,35 +47,20 @@ class DeviceBlockedView extends StatelessWidget {
           Gap(24.h),
           Text(
             'Access Refused',
-            style: TextStyle(
-              fontSize: 22.sp,
-              fontWeight: FontWeight.w600,
-              fontFamily: 'Asap',
-              color: Colors.white,
-            ),
+            style: textTheme.subheadline1
           ),
           Gap(16.h),
           Text(
             _threatMessage,
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14.sp,
-              fontFamily: 'Asap',
-              color: Colors.white70,
-              height: 1.5,
-            ),
+            style: textTheme.subDescription2
           ),
           Gap(8.h),
           Text(
             'Kouvention cannot be used in this device '
             ' for your own data safety.',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 13.sp,
-              fontFamily: 'Asap',
-              color: Colors.white54,
-              height: 1.5,
-            ),
+            style: textTheme.subDescription2
           ),
           Gap(32.h),
           SizedBox(
@@ -89,13 +75,8 @@ class DeviceBlockedView extends StatelessWidget {
                 ),
               ),
               child: Text(
-                'Tutup Aplikasi',
-                style: TextStyle(
-                  fontSize: 15.sp,
-                  fontFamily: 'Asap',
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
+                'Close App',
+                style: textTheme.subDescription,
               ),
             ),
           ),

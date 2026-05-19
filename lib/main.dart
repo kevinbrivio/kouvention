@@ -48,20 +48,20 @@ void main() async {
       // FLAVOR SETUP
       const flavor = String.fromEnvironment('ENV');
       setupConfig(flavor);
-      final authService = AuthService();
-      await authService.initialize(
-        clientId: '',
-        serverClientId: flavor == 'staging'
-            ? EnvStaging.googleServerClientId
-            : EnvProd.googleServerClientId,
-      );
-
       // Register Jailbreak Detector
       await SecurityService.initialize(isProd: true);
       SecurityNotifier.instance.attachListeners();
 
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
+      );
+
+      final authService = AuthService();
+      await authService.initialize(
+        clientId: '',
+        serverClientId: flavor == 'staging'
+            ? EnvStaging.googleServerClientId
+            : EnvProd.googleServerClientId,
       );
 
       // Background handler for notification
@@ -163,7 +163,7 @@ class _KouventionAppState extends ConsumerState<KouventionApp>
     );
 
     final security = ref.watch(securityNotifierProvider);
-
+    
     if (security.isCompromised) {
       return MaterialApp(
         home: DeviceBlockedView(

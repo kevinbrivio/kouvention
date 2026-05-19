@@ -4,8 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:freerasp/freerasp.dart';
 
 // Provider
-final securityNotifierProvider =
-    ChangeNotifierProvider<SecurityNotifier>((ref) => SecurityNotifier.instance);
+final securityNotifierProvider = ChangeNotifierProvider<SecurityNotifier>(
+  (ref) => SecurityNotifier.instance,
+);
 
 class SecurityNotifier extends ChangeNotifier {
   // Singleton
@@ -20,10 +21,9 @@ class SecurityNotifier extends ChangeNotifier {
   void attachListeners() {
     final callback = ThreatCallback(
       // ====== CRITICAL ======
-      onPrivilegedAccess: () => _handleThreat('rooted'),      // root / jailbreak
-      onHooks: () => _handleThreat('hooks'),                  // Frida, Xposed
-      onAppIntegrity: () => _handleThreat('tampered'),         // APK modified
-
+      onPrivilegedAccess: () => _handleThreat('rooted'), // root / jailbreak
+      onHooks: () => _handleThreat('hooks'), // Frida, Xposed
+      onAppIntegrity: () => _handleThreat('tampered'), // APK modified
       // ====== WARNING ======
       onDebug: () => debugPrint('[Security] Debugger detected'),
       onSimulator: () => debugPrint('[Security] Emulator detected'),
@@ -34,20 +34,27 @@ class SecurityNotifier extends ChangeNotifier {
       onObfuscationIssues: () => debugPrint('[Security] Obfuscation missing'),
       onDeviceBinding: () => debugPrint('[Security] Device binding issue'),
       onDeviceID: () => debugPrint('[Security] Device ID issue'),
-      onSecureHardwareNotAvailable: () => debugPrint('[Security] No secure hardware'),
+      onSecureHardwareNotAvailable: () =>
+          debugPrint('[Security] No secure hardware'),
       onADBEnabled: () => debugPrint('[Security] ADB enabled'),
       onScreenshot: () => debugPrint('[Security] Screenshot taken'),
       onScreenRecording: () => debugPrint('[Security] Screen recording'),
     );
 
+    final stateCallback = RaspExecutionStateCallback(
+      onAllChecksDone: () {
+        debugPrint('🛡️ ALL SECURITY CHECKS DONE');
+        notifyListeners();
+      },
+    );
+
     Talsec.instance.attachListener(callback);
+    Talsec.instance.attachExecutionStateListener(stateCallback);
   }
 
   void _handleThreat(String type) {
     _threatType = type;
     _isCompromised = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      notifyListeners();
-    });
+    notifyListeners();
   }
 }
