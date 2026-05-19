@@ -49,7 +49,7 @@ void main() async {
       const flavor = String.fromEnvironment('ENV');
       setupConfig(flavor);
       // Register Jailbreak Detector
-      await SecurityService.initialize(isProd: true);
+      await SecurityService.initialize(isProd: flavor != 'staging');
       SecurityNotifier.instance.attachListeners();
 
       await Firebase.initializeApp(
