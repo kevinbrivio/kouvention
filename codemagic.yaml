@@ -34,12 +34,15 @@ workflows:
       - name: Create dummy .env.prod
         script: |
           cp $CM_BUILD_DIR/.env.staging $CM_BUILD_DIR/.env.prod
-
-      - name: Get packages
-        script: flutter pub get
+          
+      - name: Clean previous cache envied files
+        script: dart run build_runner clean
 
       - name: Generate envied files
         script: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Get packages
+        script: flutter pub get
 
       - name: Build staging APK
         script: flutter build apk --release --flavor staging
