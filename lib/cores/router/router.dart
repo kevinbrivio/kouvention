@@ -8,10 +8,12 @@ import 'package:kouvention/features/auth/views/add_name_view.dart';
 import 'package:kouvention/features/auth/views/email_sign_in_view.dart';
 import 'package:kouvention/features/auth/views/login_view.dart';
 import 'package:kouvention/features/auth/views/sign_up_view.dart';
+import 'package:kouvention/features/chat/viewmodel/media_preview_viewmodel.dart';
 import 'package:kouvention/features/chat/views/chat_list_view.dart';
 import 'package:kouvention/features/chat/views/chat_profile_view.dart';
 import 'package:kouvention/features/chat/views/chat_room_view.dart';
 import 'package:kouvention/features/chat/views/group_setup_view.dart';
+import 'package:kouvention/features/chat/views/media_preview_view.dart';
 import 'package:kouvention/features/chat/views/new_chat_view.dart';
 import 'package:kouvention/features/chat/views/new_group_chat_view.dart';
 import 'package:kouvention/features/onboarding/views/onboarding_view.dart';
@@ -189,6 +191,17 @@ setupRouter({
           final chatId = state.pathParameters['chatId']!;
           return ChatRoomView(chatId: chatId);
         },
+        routes: [
+          GoRoute(
+            path: 'media-preview',
+            name: RouterRoutes.mediaPreview.name,
+            builder: (context, state) {
+              final chatId = state.pathParameters['chatId']!;
+              final args = state.extra as MediaPreviewArgs;
+              return MediaPreviewView(chatId: chatId, args: args);
+            },
+          ),
+        ],
       ),
       GoRoute(
         path: RouterRoutes.newChat.path,
