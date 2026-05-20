@@ -14,6 +14,7 @@ import 'package:kouvention/cores/router/auth_notifier.dart';
 import 'package:kouvention/cores/router/prefs_guard.dart';
 import 'package:kouvention/cores/router/router.dart';
 import 'package:kouvention/cores/router/router_guard.dart';
+import 'package:kouvention/cores/services/dio_handler.dart';
 import 'package:kouvention/cores/widgets/flavor_banner.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/notification/services/notification_handler.dart';
@@ -102,6 +103,9 @@ void main() async {
         routerGuard: routerGuard,
       );
 
+      // Register DIO Handler
+      DioHandler.setup();
+
       runApp(
         ProviderScope(
           overrides: [
@@ -163,7 +167,7 @@ class _KouventionAppState extends ConsumerState<KouventionApp>
     );
 
     final security = ref.watch(securityNotifierProvider);
-    
+
     if (security.isCompromised) {
       return MaterialApp(
         home: DeviceBlockedView(
