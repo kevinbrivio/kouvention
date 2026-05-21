@@ -16,8 +16,9 @@ class DioHandler {
     : dio = Dio(
         BaseOptions(
           baseUrl: 'https://api.cloudinary.com/v1_1/$_cloudName',
-          connectTimeout: Duration(seconds: 5),
-          sendTimeout: Duration(seconds: 3),
+          connectTimeout: Duration(seconds: 30),
+          sendTimeout: Duration(seconds: 60),
+          receiveTimeout: Duration(seconds: 30),
         ),
       ) {
     dio.interceptors.add(
