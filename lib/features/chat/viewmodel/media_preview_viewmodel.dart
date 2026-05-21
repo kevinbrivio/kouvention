@@ -9,13 +9,17 @@ import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/models/upload_result_model.dart';
+import 'package:kouvention/features/chat/services/media_service.dart';
+import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
 
 class MediaPreviewVM extends BaseNotifier {
+  final String chatId;
   static int maxFiles = 5;
   List<File> files;
   int _currentIndex = 0;
   final MessageType type;
-  final void Function(List<UploadResultModel> result, String? caption) onSend;
+  final Future<void> Function(List<UploadResultModel> result, String? caption)
+  onSend;
 
   bool _isSending = false;
   String? _caption;
@@ -28,13 +32,16 @@ class MediaPreviewVM extends BaseNotifier {
     required this.files,
     required this.type,
     required this.onSend,
+    required this.chatId,
   });
 
   bool get isSending => _isSending;
   String? get caption => _caption;
 
   @override
-  FutureOr<void> init() {}
+  FutureOr<void> init() {
+    ref.watch(chatRoomVM(chatId));
+  }
 
   void selectFile(int index) {
     _currentIndex = index;
@@ -65,27 +72,32 @@ class MediaPreviewVM extends BaseNotifier {
     _caption = value.trim().isEmpty ? null : value.trim();
   }
 
-  // Future<void> send(BuildContext context) async {
-  //   _isSending = true;
-  //   notifyListeners();
+  Future<void> send(BuildContext context) async {
+    _isSending = true;
+    notifyListeners();
 
-  //   final mediaService = MediaService();
+    final mediaService = MediaService();
 
-  //   try {
+    try {
+      final rawResults = await Future.wait(
+        files.map(
+          (file) => mediaService.uploadFile(file: file, mediaType: type),
+        ),
+      );
 
-  //     final result = await mediaService.uploadFile(file: file, mediaType: type);
+      final results = rawResults.whereType<UploadResultModel>().toList();
 
-  //     if (result == null) return;
+      if (results.isEmpty) return;
 
-  //     onSend(result, _caption);
-  //     if (context.mounted) Navigator.pop(context);
-  //   } on DioException catch (e) {
-  //     print('Error send media message: $e');
-  //   } finally {
-  //     _isSending = false;
-  //     notifyListeners();
-  //   }
-  // }
+      await onSend(results, _caption);
+      if (context.mounted) Navigator.pop(context);
+    } on DioException catch (e) {
+      print('Error send media message: $e');
+    } finally {
+      _isSending = false;
+      notifyListeners();
+    }
+  }
 
   Future<File?> cropImage(String path) async {
     final cropped = await ImageCropper().cropImage(
@@ -120,6 +132,7 @@ final mediaPreviewProvider = ChangeNotifierProvider.autoDispose
         ref,
         files: args.files,
         type: args.mediaType,
+        chatId: args.chatId,
         onSend: args.onSend,
       ),
     );
@@ -127,11 +140,13 @@ final mediaPreviewProvider = ChangeNotifierProvider.autoDispose
 class MediaPreviewArgs {
   final List<File> files;
   final MessageType mediaType;
-  final void Function(List<UploadResultModel>, String?) onSend;
+  final String chatId;
+  final Future<void> Function(List<UploadResultModel>, String?) onSend;
 
   const MediaPreviewArgs({
     required this.files,
     required this.mediaType,
+    required this.chatId,
     required this.onSend,
   });
 }

@@ -189,11 +189,6 @@ class _MediaPreviewViewState extends ConsumerState<MediaPreviewView> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              Positioned(
-                right: 0,
-                top: 0,
-                child: Icon(Icons.close, color: AppColors.primary,),
-              ),
               Image.file(vm.files[index], fit: BoxFit.cover),
 
               if (!isSelected)
