@@ -3,6 +3,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
+import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/models/reply_to_model.dart';
 
 class ChatService {
@@ -226,6 +227,78 @@ class ChatService {
     batch.update(chatRef, unreadUpdates);
 
     await batch.commit();
+  }
+
+  // --- SEND MEDIA MESSAGE ---------------------
+  Future<void> sendMediaMessage({
+    required String chatId,
+    required String messageId,
+    required String senderId,
+    required String senderName,
+    required String text,
+    required MessageType type,
+    required List<String> mediaUrls,
+    required String fileName,
+    required int fileSizeBytes,
+    required String mimeType,
+    int? mediaDuration,
+    required List<String> memberUids,
+    ReplyToModel? replyTo,
+  }) async {
+    final messageMap = MessageModel.toNewMessageMap(
+      senderId: senderId,
+      senderName: senderName,
+      text: text,
+      type: type,
+      replyTo: replyTo,
+      mediaUrls: mediaUrls,
+      fileName: fileName,
+      fileSizeBytes: fileSizeBytes,
+      mimeType: mimeType,
+      mediaDuration: mediaDuration,
+    );
+
+    final lastMessageMap = MessageModel.toLastMessageMap(
+      senderId: senderId,
+      senderName: senderName,
+      text: text.isNotEmpty ? text : _mediaLabel(type),
+      type: type,
+      replyTo: replyTo,
+    );
+
+    // Sama seperti sendMessage — write ke Firestore
+    final batch = FirebaseFirestore.instance.batch();
+
+    batch.set(
+      FirebaseFirestore.instance
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .doc(messageId),
+      messageMap,
+    );
+
+    batch.update(
+      FirebaseFirestore.instance.collection('chats').doc(chatId),
+      lastMessageMap,
+    );
+
+    await batch.commit();
+  }
+
+  String _mediaLabel(MessageType type) {
+    switch (type) {
+      case MessageType.image:
+        return '📷 Photo';
+      case MessageType.video:
+        return '🎥 Video';
+      case MessageType.audio:
+        return '🎵 Audio';
+      case MessageType.file:
+        return '📎 File';
+      default:
+        return '';
+    }
   }
 
   // --- GET CHATS --------------------------------
