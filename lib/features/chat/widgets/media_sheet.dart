@@ -109,14 +109,16 @@ class MediaSheet extends ConsumerWidget {
         if (!context.mounted) return;
         final router = GoRouter.of(context);
         Navigator.pop(context);
-        
+
         router.pushNamed(
           RouterRoutes.mediaPreview.name,
           pathParameters: {'chatId': vm.chatId},
           extra: MediaPreviewArgs(
             files: pickedFiles,
             mediaType: MessageType.image,
-            onSend: (result, caption) => vm.sendMediaMessage(result: result),
+            chatId: vm.chatId,
+            onSend: (result, caption) =>
+                vm.sendMediaMessage(result: result, caption: caption ?? ''),
           ),
         );
       },

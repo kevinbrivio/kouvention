@@ -10,10 +10,10 @@ import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/image_paths.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
-import 'package:kouvention/cores/widgets/loading_indicator.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_selection_viewmodel.dart';
+import 'package:kouvention/features/chat/widgets/media_sheet.dart';
 import 'package:kouvention/features/chat/widgets/message_bubble.dart';
 import 'package:kouvention/features/chat/widgets/selection_app_bar.dart';
 import 'package:kouvention/features/chat/widgets/typing_dots.dart';
@@ -183,6 +183,17 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
     super.initState();
     _itemPositionsListener.itemPositions.addListener(_onPositionChanged);
 
+    // Update keyboard height after init screen
+    _focusNode.addListener(() {
+      if (_focusNode.hasFocus) {
+        if (viewmodel.showMediaPanel) {
+          viewmodel.toggleMediaPanel(context);
+        }
+      }
+      final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+      viewmodel.updateKeyboardHeight(keyboardHeight);
+    });
+    
     if (widget.scrollToMessageId != null && widget.scrollToSentAt != null) {
       _isSearchingMessage = true;
       _handlePendingScroll();
@@ -236,45 +247,49 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
   Widget build(BuildContext context) => Column(
     children: [
       Expanded(
-        child: Stack(
-          children: [
-            viewmodel.error != null
-                ? Center(child: Text(viewmodel.error ?? ''))
-                : _buildMessageList(),
-
-            if (_showScrollBottom)
-              Positioned(
-                right: 16.w,
-                bottom: 16.h,
-                child: GestureDetector(
-                  onTap: _scrollToBottom,
-                  child: Container(
-                    width: 40.w,
-                    height: 40.w,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.15),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Icon(
-                      Icons.keyboard_arrow_down,
-                      color: AppColors.primary,
-                      size: 24.sp,
+        child: GestureDetector(
+          onTap: () => viewmodel.toggleMediaPanel(context),
+          child: Stack(
+            children: [
+              viewmodel.error != null
+                  ? Center(child: Text(viewmodel.error ?? ''))
+                  : _buildMessageList(),
+  
+              if (_showScrollBottom)
+                Positioned(
+                  right: 16.w,
+                  bottom: 16.h,
+                  child: GestureDetector(
+                    onTap: _scrollToBottom,
+                    child: Container(
+                      width: 40.w,
+                      height: 40.w,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.15),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        Icons.keyboard_arrow_down,
+                        color: AppColors.primary,
+                        size: 24.sp,
+                      ),
                     ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
       if (viewmodel.typingText != null) _buildTypingIndicator(),
       _buildInputBar(),
+      _buildMediaPanel(viewmodel),
     ],
   );
 
@@ -433,14 +448,27 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
         ),
       ],
     ),
-    child: _buildTextField(),
+    child: _buildTextField(context),
   );
 
-  Widget _buildTextField() => Row(
+  Widget _buildTextField(BuildContext context) => Row(
     children: [
       IconButton(
         icon: Icon(Icons.add, color: AppColors.primary),
-        onPressed: () {},
+        // onPressed: () => showModalBottomSheet(
+        //   context: context,
+        //   backgroundColor: Colors.transparent,
+        //   useRootNavigator: true,
+        //   isDismissible: true,
+        //   isScrollControlled: true,
+        //   builder: (bottomCtx) => Padding(
+        //     padding: EdgeInsets.only(
+        //       bottom: MediaQuery.of(bottomCtx).viewInsets.bottom,
+        //     ),
+        //     child: MediaSheet(vm: viewmodel),
+        //   ),
+        // ),
+        onPressed: () => viewmodel.toggleMediaPanel(context),
       ),
 
       Flexible(
@@ -520,6 +548,18 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
         ),
       ),
     ],
+  );
+
+  Widget _buildMediaPanel(ChatRoomVM viewmodel) => AnimatedContainer(
+    duration: const Duration(milliseconds: 250),
+    curve: Curves.easeOut,
+    height: viewmodel.showMediaPanel ? viewmodel.panelHeight : 0,
+    child: SingleChildScrollView(
+      child: SizedBox(
+        // height: viewmodel.panelHeight,
+        child: MediaSheet(vm: viewmodel),
+      ),
+    ),
   );
 
   Widget _buildReplyPreview(MessageModel message) {

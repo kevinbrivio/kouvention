@@ -103,7 +103,7 @@ class _MediaPreviewViewState extends ConsumerState<MediaPreviewView> {
 
         // Send button
         GestureDetector(
-          // onTap: vm.isSending ? null : () => vm.send(context),
+          onTap: vm.isSending ? null : () => vm.send(context),
           child: CircleAvatar(
             radius: 24.r,
             backgroundColor: AppColors.primary,
@@ -143,16 +143,14 @@ class _MediaPreviewViewState extends ConsumerState<MediaPreviewView> {
 
   // ─── Thumbnail Strip ─────────────────────────────────────
   Widget _buildThumbnailStrip(MediaPreviewVM vm) {
-    // Sembunyikan kalau hanya satu file
     if (vm.files.length <= 1) return const SizedBox.shrink();
 
     return Container(
       height: 72.h,
       color: Colors.black,
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        // +1 untuk tombol tambah file
         itemCount: vm.files.length + 1,
         itemBuilder: (_, index) {
           if (index == vm.files.length) return _buildAddButton(vm);
@@ -167,7 +165,6 @@ class _MediaPreviewViewState extends ConsumerState<MediaPreviewView> {
 
     return GestureDetector(
       onTap: () {
-        // Sync dua arah: VM + PageController
         vm.goToIndex(index);
         _pageController.animateToPage(
           index,
@@ -192,6 +189,11 @@ class _MediaPreviewViewState extends ConsumerState<MediaPreviewView> {
           child: Stack(
             fit: StackFit.expand,
             children: [
+              Positioned(
+                right: 0,
+                top: 0,
+                child: Icon(Icons.close, color: AppColors.primary,),
+              ),
               Image.file(vm.files[index], fit: BoxFit.cover),
 
               if (!isSelected)
