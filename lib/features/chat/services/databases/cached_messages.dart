@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/cores/services/db_key_manager.dart';
 import 'package:path_provider/path_provider.dart';
@@ -31,9 +30,11 @@ class CachedMessages extends Table {
   IntColumn get replyToSentAt => integer().nullable()();
 
   // Media (nullable)
-  TextColumn get mediaUrl => text().nullable()();
+  TextColumn get mediaUrls => text().nullable()();
   TextColumn get fileName => text().nullable()();
   IntColumn get fileSizeBytes => integer().nullable()();
+  TextColumn get mimeType => text().nullable()();
+  IntColumn get mediaDuration => integer().nullable()();
 
   // Sync tracking
   IntColumn get syncedAt => integer()();
@@ -68,7 +69,7 @@ class MessageDatabase extends _$MessageDatabase {
   MessageDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -102,6 +103,24 @@ class MessageDatabase extends _$MessageDatabase {
       if (from < 4) {
         await customStatement(
           'ALTER TABLE cached_messages ADD COLUMN reply_to_sent_at INTEGER',
+        );
+      }
+      if (from < 5) {
+        await customStatement(
+            'ALTER TABLE cached_messages ADD COLUMN mime_type TEXT',
+          );
+        await customStatement(
+          'ALTER TABLE cached_messages ADD COLUMN media_duration INTEGER',
+        );
+      }
+      if (from < 6) {
+        await migrator.alterTable(
+          TableMigration(
+            cachedMessages,
+            columnTransformer: {
+              cachedMessages.mediaUrls: const CustomExpression('media_url'),
+            },
+          ),
         );
       }
     },
@@ -217,9 +236,11 @@ class MessageDatabase extends _$MessageDatabase {
               replyToText: row.readNullable<String>('reply_to_text'),
               replyToSender: row.readNullable<String>('reply_to_sender'),
               replyToSentAt: row.readNullable<int>('reply_to_sent_at'),
-              mediaUrl: row.readNullable<String>('media_url'),
+              mediaUrls: row.readNullable<String>('media_url'),
               fileName: row.readNullable<String>('file_name'),
               fileSizeBytes: row.readNullable<int>('file_size_bytes'),
+              mimeType: row.readNullable<String>('mime_type'),
+              mediaDuration: row.readNullable<int>('media_duration'),
               syncedAt: row.read<int>('synced_at'),
             ),
           )
@@ -319,7 +340,7 @@ LazyDatabase _openConnection() => LazyDatabase(() async {
       if (await file.exists() && !await marker.exists()) {
         await file.delete();
         await marker.create();
-     }
+      }
     },
     setup: (rawDb) {
       // ════════════════════════════════════════
