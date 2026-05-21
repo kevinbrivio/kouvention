@@ -20,13 +20,13 @@ class UploadResultModel {
   factory UploadResultModel.fromJson(Map<String, dynamic> json) =>
       UploadResultModel(
         url: json['secure_url'],
-        fileName: json['original_file_name'],
+        fileName: json['original_filename'],
         mimeType: _buildMimeType(json['resource_type'], json['format']),
         fileSizeBytes: json['bytes'],
         mediaDuration: json['duration'] != null
             ? (json['duration'] as double).round()
             : null,
-        messageType: MessageType.fromString(json['type']),
+        messageType: MessageType.fromString(json['resource_type']),
       );
 
   static String _buildMimeType(String? resourceType, String? format) {
@@ -35,7 +35,6 @@ class UploadResultModel {
 
     switch (resourceType) {
       case 'image':
-        // jpg khusus karena mime-nya "jpeg" bukan "jpg"
         return 'image/${format == 'jpg' ? 'jpeg' : format}';
       case 'video':
         return 'video/$format';
