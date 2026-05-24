@@ -1,54 +1,135 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/services/chat_service.dart';
-import 'package:kouvention/features/chat/services/databases/cached_messages.dart';
-import 'package:kouvention/features/search/services/sync_service.dart';
+import 'package:kouvention/features/chat/services/databases/message_database.dart';
+import 'package:kouvention/features/shared/services/sync_service.dart';
 import 'package:oktoast/oktoast.dart';
 
 enum ChatFilter { all, direct, group }
 
 class ChatListVM extends BaseNotifier {
   final ChatService _chatService;
+  final SyncService _syncService;
   final String? _currentUid;
-
-  // Live chat list - updated everytime Firestore emits
-  List<ChatModel> _chats = [];
-  StreamSubscription? _chatSubscription;
 
   // Filter chats
   ChatFilter _filter = ChatFilter.all;
 
   // Pin chat
   static const maxPinnedChat = 3;
-  final Set<String> _selectedChatIds = {};
 
-  // Sync Chat Locally (but only in memory)
-  bool _hasSynced = false;
+  // Selected chat
+  final Set<String> _selectedChatIds = {};
 
   String? _error;
 
   ChatListVM(super.ref)
     : _chatService = ref.read(chatServiceProvider),
+      _syncService = ref.read(syncServiceProvider),
       _currentUid = ref.read(authServiceProvider).currentUser?.uid;
 
   // --- GETTERS ----------------------
-  List<ChatModel> get chats => _chats;
   String? get error => _error;
   String? get currentId => _currentUid;
-  bool get hasChats => _chats.isNotEmpty;
   ChatFilter get filter => _filter;
-
   bool isGroupType(ChatModel chat) => !chat.isDirect;
-
   Set<String> get selectedChatIds => _selectedChatIds;
   bool get isSelectionMode => _selectedChatIds.isNotEmpty;
+  bool get isSelectedChatsPinned =>
+      ref
+          .read(filteredChatListProvider)
+          .valueOrNull
+          ?.where((chat) => selectedChatIds.contains(chat.id))
+          .every((chat) => chat.isPinnedBy(currentId!)) ??
+      false;
 
-  List<ChatModel> get selectedChats =>
-      _chats.where((c) => _selectedChatIds.contains(c.id)).toList();
+  @override
+  FutureOr<void> init() {
+    if (_currentUid == null) {
+      _error = 'Not authenticated';
+    }
+
+    // Sync all chat rooms from Firestore -> Local
+    _syncService.syncInitialChatRooms(currentId!);
+  }
+
+  List<ChatModel> get _currentChatFromStream =>
+      ref.read(localChatListFromStreamProvider).value ?? [];
+
+  // ---- PIN ---------------
+  Future<void> pinSelectedChats() async {
+    if (_currentUid == null) return;
+
+    final allChats = _currentChatFromStream;
+    final selectedChats = allChats
+        .where((c) => _selectedChatIds.contains(c.id))
+        .toList();
+    final unpinned = selectedChats
+        .where((c) => !c.isPinnedBy(_currentUid))
+        .toList();
+
+    if (unpinned.isEmpty) {
+      for (final chat in selectedChats) {
+        await _chatService.unpinChat(_currentUid, chat.id);
+      }
+      clearSelection();
+      return;
+    }
+
+    final currentPinnedCount = allChats
+        .where((c) => c.isPinnedBy(_currentUid))
+        .length;
+
+    if (currentPinnedCount + unpinned.length > maxPinnedChat) {
+      showToast(
+        'You can only pin up to $maxPinnedChat chats',
+        position: ToastPosition.bottom,
+      );
+      clearSelection();
+      return;
+    }
+
+    for (final chat in unpinned) {
+      await _chatService.pinChat(_currentUid, chat.id);
+    }
+    clearSelection();
+  }
+
+  Future<void> deleteSelectedChat() async {
+    if (_currentUid == null) return;
+
+    final allChats = _currentChatFromStream;
+    final selectedChats = allChats
+        .where((c) => _selectedChatIds.contains(c.id))
+        .toList();
+
+    for (final chat in selectedChats) {
+      await _chatService.deleteChat(_currentUid, chat.id);
+    }
+    clearSelection();
+  }
+
+  Future<void> pinChat(String chatId) async {
+    if (_currentUid != null) await _chatService.pinChat(_currentUid, chatId);
+  }
+
+  Future<void> unpinChat(String chatId) async {
+    if (_currentUid != null) await _chatService.unpinChat(_currentUid, chatId);
+  }
+
+  Future<void> deleteChat(String chatId) async {
+    if (_currentUid != null)
+      await _chatService.deleteChat(_currentUid, chatId);
+  }
+
+  // ================================
+  // HELPER
+  // ================================
 
   void selectChat(String chatId) {
     if (_selectedChatIds.contains(chatId)) {
@@ -59,92 +140,15 @@ class ChatListVM extends BaseNotifier {
     notifyListeners();
   }
 
-  void clearSection() {
+  void clearSelection() {
     _selectedChatIds.clear();
     notifyListeners();
   }
 
-  @override
-  FutureOr<void> init() {
-    if (_currentUid == null) {
-      _error = 'Not authenticated';
-    } else {
-      _subscribeToChatList();
-    }
-  }
-
-  void _subscribeToChatList() {
-    _chatSubscription = _chatService
-        .streamChatList(_currentUid!)
-        .listen(
-          (chats) {
-            _chats =
-                chats.where((chat) => !chat.isDeletedBy(_currentUid)).toList()
-                  ..sort((a, b) {
-                    // Pinned first
-                    final aPinned = a.isPinnedBy(_currentUid) ? 0 : 1;
-                    final bPinned = b.isPinnedBy(_currentUid) ? 0 : 1;
-                    if (aPinned != bPinned) return aPinned.compareTo(bPinned);
-                    // Then by last message
-                    final aTime = a.lastMessage?.sentAt ?? a.createdAt;
-                    final bTime = b.lastMessage?.sentAt ?? b.createdAt;
-                    return bTime.compareTo(aTime);
-                  });
-            _error = null;
-            notifyListeners();
-            if (!_hasSynced && chats.isNotEmpty) {
-              _hasSynced = true;
-              ref
-                  .read(syncServiceProvider)
-                  .syncAllChatRooms(currentUid: _currentUid, chatRooms: chats);
-            } else if (_hasSynced) {
-              _backgroundSyncNewMessages(chats);
-            }
-          },
-          onError: (error) {
-            _error = error.toString();
-            notifyListeners();
-          },
-        );
-  }
-
-  Future<void> _backgroundSyncNewMessages(List<ChatModel> chats) async {
-    final syncService = ref.read(syncServiceProvider);
-    final db = ref.read(messageDatabaseProvider);
-
-    for (final chat in chats) {
-      // Sync metadata chat
-      await syncService.syncChatRoom(_currentUid!, chat);
-
-      final lastSync = await db.getLastSyncTimestamp(chat.id);
-      final chatUpdatedAt = chat.updatedAt?.millisecondsSinceEpoch ?? 0;
-
-      // Only sync if chat changes from last sync
-      if (chatUpdatedAt > lastSync) {
-        await syncService.syncSingleChat(
-          _currentUid!, 
-          chat.id,
-          lastSync,
-        );
-      }
-    }
-  }
-
   void setFilter(ChatFilter value) {
     _filter = value;
-    clearSection();
+    clearSelection();
     notifyListeners();
-  }
-
-  List<ChatModel> get filteredChats {
-    switch (_filter) {
-      case ChatFilter.all:
-        return chats;
-      case ChatFilter.direct:
-        return chats.where((chat) => chat.type == 'direct').toList();
-      case ChatFilter.group:
-        return chats.where((chat) => chat.type == 'group').toList();
-    }
   }
 
   String chatDisplayName(ChatModel chat) => chat.displayName(_currentUid!);
@@ -168,67 +172,71 @@ class ChatListVM extends BaseNotifier {
       return '${names.join(', ')} others are typing...';
     }
   }
-
-  // ---- PIN ---------------
-  Future<void> pinSelectedChats() async {
-    final unpinned = selectedChats
-        .where((c) => !c.isPinnedBy(_currentUid!))
-        .toList();
-
-    if (unpinned.isEmpty) {
-      // This mean all selected are pinned
-      for (final chat in selectedChats) {
-        await _chatService.unpinChat(_currentUid!, chat.id);
-      }
-      clearSection();
-      return;
-    }
-
-    final currentPinnedCount = _chats
-        .where((c) => c.isPinnedBy(_currentUid!))
-        .length;
-    if (currentPinnedCount + unpinned.length > maxPinnedChat) {
-      showToast(
-        'You can only pin up to $maxPinnedChat chats',
-        position: ToastPosition.bottom,
-      );
-      clearSection();
-      return;
-    }
-
-    for (final chat in unpinned) {
-      await _chatService.pinChat(_currentUid!, chat.id);
-    }
-
-    clearSection();
-  }
-
-  Future<void> deleteSelectedChat() async {
-    for (final chat in selectedChats) {
-      await _chatService.deleteChat(_currentUid!, chat.id);
-    }
-    clearSection();
-  }
-
-  Future<void> pinChat(String chatId) async {
-    await _chatService.pinChat(_currentUid!, chatId);
-  }
-
-  Future<void> unpinChat(String chatId) async {
-    await _chatService.unpinChat(_currentUid!, chatId);
-  }
-
-  Future<void> deleteChat(String chatId) async {
-    await _chatService.deleteChat(_currentUid!, chatId);
-  }
-
-  @override
-  void dispose() {
-    _chatSubscription?.cancel();
-    super.dispose();
-  }
 }
 
 final chatListVM = ChangeNotifierProvider.autoDispose<ChatListVM>(
   (ref) => ChatListVM(ref),
 );
+
+final localChatListFromStreamProvider =
+    StreamProvider.autoDispose<List<ChatModel>>((ref) {
+      final db = ref.watch(messageDatabaseProvider);
+
+      return db.watchChatRooms().map((driftChats) => driftChats.map((c) => ChatModel(
+            id: c.id,
+            type: c.type,
+            members: c.members,
+            memberInfo: c.memberInfo,
+            groupName: c.groupName,
+            groupPhotoUrl: c.groupPhotoUrl,
+            pinnedBy: c.pinnedBy,
+            unreadCount: c.unreadCount,
+            lastReadAt: c.lastReadAt,
+            lastMessage: c.lastMessage,
+
+            createdAt: DateTime.fromMillisecondsSinceEpoch(c.createdAt),
+            updatedAt: c.updatedAt != null
+                ? DateTime.fromMillisecondsSinceEpoch(c.updatedAt!)
+                : null,
+
+            deletedBy: c.deletedBy != null ? jsonDecode(c.deletedBy!) : null,
+            createdBy: c.createdBy,
+
+            typingUsers: [],
+            memberHash: null,
+          )
+        ).toList()
+      );
+    });
+
+final filteredChatListProvider =
+    Provider.autoDispose<AsyncValue<List<ChatModel>>>((ref) {
+      final chatAsyncValue = ref.watch(localChatListFromStreamProvider);
+      final filter = ref.watch(chatListVM).filter;
+      final currentUid = ref.watch(authServiceProvider).currentUser?.uid;
+
+      return chatAsyncValue.whenData((chats) {
+        List<ChatModel> filtered = chats;
+        if (filter == ChatFilter.direct) {
+          filtered = chats.where((c) => c.type == 'direct').toList();
+        } else if (filter == ChatFilter.group) {
+          filtered = chats.where((c) => c.type == 'group').toList();
+        }
+
+        // 2. Sorting
+        if (currentUid != null) {
+          filtered.sort((a, b) {
+            final aPinned = a.isPinnedBy(currentUid) ? 0 : 1;
+            final bPinned = b.isPinnedBy(currentUid) ? 0 : 1;
+
+            if (aPinned != bPinned) return aPinned.compareTo(bPinned);
+
+            final aTime = a.lastMessage?.sentAt ?? a.createdAt;
+            final bTime = b.lastMessage?.sentAt ?? b.createdAt;
+            return bTime.compareTo(aTime);
+          });
+        }
+
+        return filtered;
+      });
+    });

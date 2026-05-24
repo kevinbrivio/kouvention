@@ -143,47 +143,60 @@ class ChatService {
     return query.get();
   }
 
+  Future<List<ChatModel>> fetchChatRooms(
+    String currentUid, {
+    int limit = 20,
+  }) async {
+    final snapshot = await _chatsRef
+        .where('members', arrayContains: currentUid)
+        .limit(limit)
+        .get();
+        
+    return snapshot.docs
+        .map((doc) => ChatModel.fromMap(doc.id, doc.data()))
+        .toList();
+  }
+
   /// Fetches message after specific timestamp
-  Future<List<MessageModel>> fetchMessagesSince(
+  Future<List<MessageModel>> fetchMessages(
     String chatId, {
-    required DateTime since,
+    int limit = 20,
   }) async {
     final snapshot = await _messagesRef(
       chatId,
-    ).orderBy('sentAt').where('sentAt', isGreaterThan: since).get();
+    ).orderBy('sentAt', descending: true).limit(limit).get();
 
     return snapshot.docs
         .map((doc) => MessageModel.fromMap(doc.id, doc.data()))
         .toList();
   }
 
-  // ---- Fetch for navigation ----------------------
-  // Future<List<MessageModel>> fetchMessageAround(
-  //   String chatId, {
-  //   required DateTime aroundTimestamp,
-  //   int limit = 50,
-  // }) async {
-  //   final timestamp = Timestamp.fromDate(aroundTimestamp);
-  //   final halfLimit = limit ~/ 2;
+  Future<List<MessageModel>> fetchMessageAround(
+    String chatId, {
+    required DateTime aroundTimestamp,
+    int limit = 50,
+  }) async {
+    final timestamp = Timestamp.fromDate(aroundTimestamp);
+    final halfLimit = limit ~/ 2;
 
-  //   final olderSnap = await _messagesRef(chatId)
-  //       .orderBy('sentAt', descending: true)
-  //       .where('sentAt', isLessThanOrEqualTo: timestamp)
-  //       .limit(halfLimit)
-  //       .get();
+    final olderSnap = await _messagesRef(chatId)
+        .orderBy('sentAt', descending: true)
+        .where('sentAt', isLessThanOrEqualTo: timestamp)
+        .limit(halfLimit)
+        .get();
 
-  //   final newerSnap = await _messagesRef(chatId)
-  //       .orderBy('sentAt')
-  //       .where('sentAt', isGreaterThan: timestamp)
-  //       .limit(halfLimit)
-  //       .get();
+    final newerSnap = await _messagesRef(chatId)
+        .orderBy('sentAt')
+        .where('sentAt', isGreaterThan: timestamp)
+        .limit(halfLimit)
+        .get();
 
-  //   final allDocs = [...newerSnap.docs.reversed, ...olderSnap.docs];
+    final allDocs = [...newerSnap.docs.reversed, ...olderSnap.docs];
 
-  //   return allDocs
-  //       .map((doc) => MessageModel.fromMap(doc.id, doc.data()))
-  //       .toList();
-  // }
+    return allDocs
+        .map((doc) => MessageModel.fromMap(doc.id, doc.data()))
+        .toList();
+  }
 
   // --- Send Messages --------------------------------
   Future<void> sendMessage({

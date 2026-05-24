@@ -1,9 +1,11 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/cores/services/db_key_manager.dart';
+import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
@@ -16,7 +18,38 @@ enum SyncStatus { pending, sent, failed }
 // ===============================
 class Chats extends Table {
   TextColumn get id => text()();
-  TextColumn get name => text()();
+  TextColumn get type => text()();
+
+  // Group
+  TextColumn get groupName => text().nullable()();
+  TextColumn get groupPhotoUrl => text().nullable()();
+
+  TextColumn get members => text()
+      .map(const StringListConverter())
+      .withDefault(const Constant('[]'))();
+  TextColumn get memberInfo => text()
+      .map(const MemberInfoMapConverter())
+      .withDefault(const Constant('{}'))();
+  TextColumn get pinnedBy => text()
+      .map(const StringListConverter())
+      .withDefault(const Constant('[]'))();
+  TextColumn get unreadCount => text()
+      .map(const MapStringIntConverter())
+      .withDefault(const Constant('{}'))();
+  TextColumn get lastReadAt => text()
+      .map(const MapStringDateTimeConverter())
+      .withDefault(const Constant('{}'))();
+
+  // Last Message
+  TextColumn get lastMessage =>
+      text().map(const LastMessageConverter()).nullable()();
+
+  // Timestamp
+  IntColumn get createdAt => integer()();
+  IntColumn get updatedAt => integer().nullable()();
+
+  TextColumn get createdBy => text().map(const MapStringStringConverter()).nullable()();
+  TextColumn get deletedBy => text().nullable()();
 
   // Flag to point last message existence, so Firestore cannot reach it
   BoolColumn get hasReachedBeginning =>
@@ -36,6 +69,8 @@ class Chats extends Table {
 class Messages extends Table {
   TextColumn get id => text()();
   TextColumn get chatRoomId => text().references(Chats, #id)();
+  TextColumn get senderId => text()();
+  TextColumn get senderName => text()();
 
   TextColumn get type => text().withDefault(const Constant('text'))();
   TextColumn get textContent => text()();
@@ -44,11 +79,21 @@ class Messages extends Table {
   TextColumn get localPath => text().nullable()(); // Local path on phone
   TextColumn get mediaUrl => text().nullable()(); // Saved url in cloud
   TextColumn get mediaGroupId => text().nullable()();
+  IntColumn get mediaDuration => integer().nullable()();
+  TextColumn get mimeType => text().nullable()();
+  TextColumn get fileName => text().nullable()();
+  IntColumn get fileSizeBytes => integer().nullable()();
 
   // Reply
   TextColumn get replyToId => text().nullable()();
-  TextColumn get replyToName => text().nullable()();
+  TextColumn get replyToText => text().nullable()();
   TextColumn get replyToSenderName => text().nullable()();
+
+  // Deleted
+  BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
+  TextColumn get deletedFor => text()
+      .map(const StringListConverter())
+      .withDefault(const Constant('[]'))(); // Will be in Json
 
   // Syncing status
   IntColumn get sentAt => integer()();
@@ -68,13 +113,14 @@ class MessageDatabase extends _$MessageDatabase {
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (Migrator m) async {
+      print('🛠️ [DATABASE] Membuat tabel baru dari nol!');
       await m.createAll(); // Create the tables
 
       // Build FTS using FTS5
       await customStatement('''
         CREATE VIRTUAL TABLE messages_fts USING fts5(
           message_id UNINDEXED,
-          textContent,
+          text_content,
           tokenize='unicode61'
         );
       ''');
@@ -85,7 +131,7 @@ class MessageDatabase extends _$MessageDatabase {
         AFTER INSERT ON messages
         WHEN new.type = 'text'
         BEGIN
-          INSERT INTO messages_fts(message_id, textContent)
+          INSERT INTO messages_fts(message_id, text_content)
           VALUES (new.id, new.text_content);
         END;
       ''');
@@ -115,6 +161,7 @@ class MessageDatabase extends _$MessageDatabase {
     },
 
     onUpgrade: (Migrator m, int from, int to) async {
+      print('🛠️ [DATABASE] Migrasi! Menghancurkan dan membuat ulang...');
       await customStatement('PRAGMA foreign_keys = OFF');
 
       if (from < 2) {}
@@ -135,7 +182,7 @@ class MessageDatabase extends _$MessageDatabase {
       '''
         SELECT m.* FROM messages m
         JOIN messages_fts f ON m.id = f.message_id
-        WHERE f.textContent MATCH ?
+        WHERE f.text_content MATCH ?
         ORDER BY sent_at DESC
         LIMIT ?
       ''',
@@ -212,7 +259,7 @@ class MessageDatabase extends _$MessageDatabase {
             WHERE chat_room_id = ? AND sent_at <= ?
             ORDER BY sent_at DESC LIMIT ?
           )
-          OR ID IN (
+          OR id IN (
             SELECT id FROM messages
             WHERE chat_room_id = ? AND sent_at > ?
             ORDER BY sent_at ASC LIMIT ?
@@ -234,17 +281,182 @@ class MessageDatabase extends _$MessageDatabase {
       readsFrom: {messages},
     ).watch().map((rows) => rows.map((row) => messages.map(row.data)).toList());
   }
+
+  // ==============================
+  // WATCH CHAT ROOM MESSAGES
+  // ==============================
+  /// Only watch messages limited in chat room
+  Stream<List<Message>> watchMessages(String chatRoomId, {int limit = 50}) =>
+      (select(messages)
+            ..where((m) => m.chatRoomId.equals(chatRoomId))
+            ..orderBy([(m) => OrderingTerm.desc(m.sentAt)])
+            ..limit(limit))
+          .watch();
+
+  Stream<List<Chat>> watchChatRooms({int limit = 20}) =>
+      (select(chats)
+            ..orderBy([(c) => OrderingTerm.asc(c.createdAt)])
+            ..limit(limit))
+          .watch();
+
+  // ============================
+  // Upsert
+  // ============================
+  Future<void> upsertChatRooms(List<ChatsCompanion> newChatRooms) async {
+    await batch((b) {
+      for (final room in newChatRooms) {
+        b.insert(chats, room, onConflict: DoUpdate((old) => room));
+      }
+    });
+  }
+
+  Future<void> upsertMessages(List<MessagesCompanion> newMessages) async {
+    await batch((b) {
+      for (final msg in newMessages) {
+        b.insert(messages, msg, onConflict: DoUpdate((old) => msg));
+      }
+    });
+  }
+
+  Future<void> upsertMessage(MessagesCompanion message) =>
+      into(messages).insertOnConflictUpdate(message);
+
+  // ============================
+  // UPDATE
+  // ============================
+  Future<void> updateMessageStatus(String messageId, SyncStatus newStatus) =>
+      (update(messages)..where((m) => m.id.equals(messageId))).write(
+        MessagesCompanion(syncStatus: Value(newStatus)),
+      );
+
+  Future<void> updateMediaMessageSuccess(String messageId, String cloudUrl) =>
+      (update(messages)..where((m) => m.id.equals(messageId))).write(
+        MessagesCompanion(
+          syncStatus: Value(SyncStatus.sent),
+          mediaUrl: Value(cloudUrl),
+        ),
+      );
+
+  // ===========================
+  // DELETE
+  // ===========================
+  Future<int> hardDeleteMessages({required List<String> messageIds}) async {
+    if (messageIds.isEmpty) return Future.value(0);
+
+    // Hard delete on SQLite, then StreamProvider will automatically updates the value
+    return (delete(messages)..where((m) => m.id.isIn(messageIds))).go();
+  }
+
+  Future<int> softDeleteMessages({required List<String> messageIds}) async {
+    if (messageIds.isEmpty) return Future.value(0);
+    // Soft delete on SQLite, append DeletedFor column
+    return (update(messages)..where((m) => m.id.isIn(messageIds))).write(
+      const MessagesCompanion(
+        isDeleted: Value(true),
+        syncStatus: Value(SyncStatus.pending),
+        textContent: Value('This message was deleted'),
+        mediaUrl: Value(null),
+        mediaGroupId: Value(null),
+      ),
+    );
+  }
+
+  // ====================================
+  // CLEAN ALL DATA
+  // ====================================
+  Future<void> clearAllTables() async {
+    await transaction(() async {
+      await delete(messages).go();
+      await delete(chats).go();
+    });
+  }
+}
+
+class StringListConverter extends TypeConverter<List<String>, String> {
+  const StringListConverter();
+
+  @override
+  List<String> fromSql(String fromDb) => List<String>.from(jsonDecode(fromDb));
+
+  @override
+  String toSql(List<String> value) => jsonEncode(value);
+}
+
+class MapStringStringConverter
+    extends TypeConverter<Map<String, String>, String> {
+  const MapStringStringConverter();
+
+  @override
+  Map<String, String> fromSql(String fromDb) =>
+      Map<String, String>.from(jsonDecode(fromDb));
+
+  @override
+  String toSql(Map<String, String> value) => jsonEncode(value);
+}
+
+class MapStringIntConverter extends TypeConverter<Map<String, int>, String> {
+  const MapStringIntConverter();
+  @override
+  Map<String, int> fromSql(String fromDb) =>
+      Map<String, int>.from(jsonDecode(fromDb));
+  @override
+  String toSql(Map<String, int> value) => jsonEncode(value);
+}
+
+class MemberInfoMapConverter
+    extends TypeConverter<Map<String, MemberInfo>, String> {
+  const MemberInfoMapConverter();
+  @override
+  Map<String, MemberInfo> fromSql(String fromDb) {
+    final map = jsonDecode(fromDb) as Map<String, dynamic>;
+    // Asumsi lu punya factory MemberInfo.fromJson(json)
+    return map.map((k, v) => MapEntry(k, MemberInfo.fromMap(v)));
+  }
+
+  @override
+  String toSql(Map<String, MemberInfo> value) {
+    final map = value.map((k, v) => MapEntry(k, v.toMap()));
+    return jsonEncode(map);
+  }
+}
+
+class MapStringDateTimeConverter
+    extends TypeConverter<Map<String, DateTime>, String> {
+  const MapStringDateTimeConverter();
+  @override
+  Map<String, DateTime> fromSql(String fromDb) {
+    final map = jsonDecode(fromDb) as Map<String, dynamic>;
+    return map.map(
+      (k, v) => MapEntry(k, DateTime.fromMillisecondsSinceEpoch(v)),
+    );
+  }
+
+  @override
+  String toSql(Map<String, DateTime> value) {
+    final map = value.map((k, v) => MapEntry(k, v.millisecondsSinceEpoch));
+    return jsonEncode(map);
+  }
+}
+
+class LastMessageConverter extends TypeConverter<LastMessage, String> {
+  const LastMessageConverter();
+  @override
+  LastMessage fromSql(String fromDb) =>
+      LastMessage.fromJson(jsonDecode(fromDb));
+  @override
+  String toSql(LastMessage value) => jsonEncode(value.toJson());
 }
 
 LazyDatabase _openConnection() => LazyDatabase(() async {
   final dbFolder = await getApplicationDocumentsDirectory();
-  final file = File(p.join(dbFolder.path, 'kouvention.db'));
+  final file = File(p.join(dbFolder.path, 'kouvention4.db'));
 
   final key = await DbKeyManager.getOrCreateKey();
   final escapedKey = key.replaceAll("'", "''");
 
   return NativeDatabase.createInBackground(
     file,
+    logStatements: true,
     isolateSetup: () async {
       final marker = File('${file.path}.encrypted');
       // Check if marker exist, then repalce it with encrypted one
@@ -262,7 +474,7 @@ LazyDatabase _openConnection() => LazyDatabase(() async {
       }());
 
       // LOCK
-      rawDb.execute("PARGMA key = '$escapedKey;'");
+      rawDb.execute("PRAGMA key = '$escapedKey';");
     },
   );
 });

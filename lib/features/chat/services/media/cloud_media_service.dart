@@ -8,9 +8,11 @@ import 'package:kouvention/cores/services/dio_handler.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/models/upload_result_model.dart';
 
-final mediaServiceProvider = Provider<MediaService>((ref) => MediaService());
+final cloudMediaServiceProvider = Provider<CloudMediaService>(
+  (ref) => CloudMediaService(),
+);
 
-class MediaService {
+class CloudMediaService {
   final Dio _dio = getIt<DioHandler>().dio;
   final String _uploadPreset = FlavorConfig.instance?.name == 'staging'
       ? EnvStaging.cloudinaryUploadPreset

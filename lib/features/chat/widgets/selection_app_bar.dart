@@ -3,16 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
-import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_selection_viewmodel.dart';
 
 class SelectionAppBar extends ConsumerWidget implements PreferredSizeWidget {
-  final ChatRoomVM chatVM; // used for get selected message
-  SelectionAppBar({super.key, required this.chatVM});
+  final String chatId;
+  final String currentUid;
+  const SelectionAppBar({ super.key, required this.chatId, required this.currentUid });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final vm = ref.watch(chatSelectionVM);
+    final vm = ref.watch(chatSelectionVM(chatId));
 
     return AppBar(
       backgroundColor: Colors.white,
@@ -29,17 +29,14 @@ class SelectionAppBar extends ConsumerWidget implements PreferredSizeWidget {
       actions: [
         IconButton(
           icon: Icon(Icons.copy, color: AppColors.primary),
-          onPressed: () => vm.copyToClipboard(chatVM),
+          onPressed: vm.copyToClipboard,
         ),
         IconButton(
           icon: Icon(Icons.delete_outline, color: AppColors.primary),
           onPressed: () {
-            final selectedMessages = vm.getSelectedMessages(chatVM);
+            final selectedMessages = vm.getSelectedMessages();
             // filter for me
-            debugPrint('---- current uid: ${chatVM.currentUid}');
-            final allMine = selectedMessages.every(
-              (m) => m.senderId == chatVM.currentUid,
-            );
+            final allMine = selectedMessages.every((m) => m.senderId == currentUid);
             final anyAlreadyDeleted = selectedMessages.any((m) => m.isDeleted);
 
             showDialog(
@@ -74,7 +71,7 @@ class SelectionAppBar extends ConsumerWidget implements PreferredSizeWidget {
                     TextButton(
                       onPressed: () {
                         Navigator.of(context).pop();
-                        vm.deleteForMe(chatVM);
+                        vm.deleteForMe();
                       },
                       child: Text(
                         'Delete for me',
@@ -87,7 +84,7 @@ class SelectionAppBar extends ConsumerWidget implements PreferredSizeWidget {
                       TextButton(
                         onPressed: () {
                           Navigator.of(context).pop();
-                          vm.deleteForEveryone(chatVM);
+                          vm.deleteForEveryone();
                         },
                         child: Text(
                           'Delete for everyone',

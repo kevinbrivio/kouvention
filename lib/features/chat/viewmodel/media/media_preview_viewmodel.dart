@@ -5,11 +5,12 @@ import 'package:dio/dio.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_cropper/image_cropper.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/models/upload_result_model.dart';
-import 'package:kouvention/features/chat/services/media_service.dart';
+import 'package:kouvention/features/chat/services/media/cloud_media_service.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
 
 class MediaPreviewVM extends BaseNotifier {
@@ -40,7 +41,7 @@ class MediaPreviewVM extends BaseNotifier {
 
   @override
   FutureOr<void> init() {
-    ref.watch(chatRoomVM(chatId));
+    ref.watch(chatRoomVMProvider(chatId));
   }
 
   void selectFile(int index) {
@@ -61,9 +62,10 @@ class MediaPreviewVM extends BaseNotifier {
     notifyListeners();
   }
 
-  void addFile(File newFile) {
+  void addFile(XFile newFile) {
     if (files.length < maxFiles) {
-      files.add(newFile);
+      final file = File(newFile.path);
+      files.add(file);
     }
     notifyListeners();
   }
@@ -76,7 +78,7 @@ class MediaPreviewVM extends BaseNotifier {
     _isSending = true;
     notifyListeners();
 
-    final mediaService = MediaService();
+    final mediaService = ref.read(cloudMediaServiceProvider);
 
     try {
       final rawResults = await Future.wait(

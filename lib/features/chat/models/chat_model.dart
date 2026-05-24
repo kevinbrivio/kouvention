@@ -127,11 +127,11 @@ class ChatModel {
       memberHash: data['memberHash'] as String?,
       groupName: data['groupName'] as String?,
       groupPhotoUrl: data['groupPhotoUrl'] as String?,
-      createdBy: (data['createdBy'] as Map<String, dynamic>?)?.map(
-        (key, value) => MapEntry(key, value as String),
-      ),
+      createdBy: data['createdBy'] != null 
+          ? Map<String, String>.from(data['createdBy']) 
+          : null,
       lastMessage: data['lastMessage'] != null
-          ? LastMessage.fromMap(data['lastMessage'] as Map<String, dynamic>)
+          ? LastMessage.fromFirestore(data['lastMessage'] as Map<String, dynamic>)
           : null,
       unreadCount: parsedUnread,
       typingUsers: List<String>.from(data['typingUsers'] ?? []),
@@ -232,17 +232,34 @@ class LastMessage {
     required this.sentAt,
     this.type = 'text',
   });
+  
+  factory LastMessage.fromJson(Map<String, dynamic> data) => LastMessage(
+    text: data['text'] as String? ?? '',
+    sentBy: data['sentBy'] as String? ?? '',
+    sentAt: data['sentAt'] != null 
+        ? DateTime.fromMillisecondsSinceEpoch(data['sentAt'] as int)
+        : DateTime.now(),
+    type: data['type'] as String? ?? 'text',
+  );
 
-  factory LastMessage.fromMap(Map<String, dynamic> data) {
-    return LastMessage(
-      text: data['text'] as String? ?? '',
-      sentBy: data['sentBy'] as String? ?? '',
-      sentAt: (data['sentAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      type: data['type'] as String? ?? 'text',
-    );
+  Map<String, dynamic> toJson() {
+    return {
+      'text': text,
+      'sentBy': sentBy,
+      'sentAt': sentAt.millisecondsSinceEpoch, 
+      'type': type,
+    };
   }
 
-  Map<String, dynamic> toMap() {
+  factory LastMessage.fromFirestore(Map<String, dynamic> data) => LastMessage(
+    text: data['text'] as String? ?? '',
+    sentBy: data['sentBy'] as String? ?? '',
+    sentAt: (data['sentAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+    type: data['type'] as String? ?? 'text',
+  );
+
+
+  Map<String, dynamic> toFirestore() {
     return {
       'text': text,
       'sentBy': sentBy,

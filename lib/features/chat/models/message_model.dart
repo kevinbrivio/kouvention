@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/models/reply_to_model.dart';
+import 'package:kouvention/features/chat/services/databases/message_database.dart';
 
 class MessageModel {
   final String id;
@@ -16,16 +17,19 @@ class MessageModel {
   final String? mimeType;
   final int? mediaDuration;
 
-  // FUTURE CASES
+  final SyncStatus syncStatus;
+
+  // MEDIA
   final List<String>? mediaUrls;
   final String? fileName;
   final int? fileSizeBytes;
+  final String? mediaGroupId;
 
   bool get hasMedia => mediaUrls != null;
   bool get isImage => type == MessageType.image;
   bool get isVideo => type == MessageType.video;
   bool get isAudio => type == MessageType.audio;
-  bool get isFile  => type == MessageType.file;
+  bool get isFile => type == MessageType.file;
 
   List<String> get allMediaUrls {
     if (mediaUrls != null && mediaUrls!.isNotEmpty) return mediaUrls!;
@@ -40,6 +44,7 @@ class MessageModel {
     this.type = MessageType.text,
     required this.sentAt,
     this.replyTo,
+    required this.syncStatus,
     this.mimeType,
     this.mediaDuration,
     this.mediaUrls,
@@ -47,6 +52,7 @@ class MessageModel {
     this.fileSizeBytes,
     this.isDeleted = false,
     this.deletedFor = const [],
+    this.mediaGroupId,
   });
 
   factory MessageModel.fromMap(String docId, Map<String, dynamic> data) =>
@@ -61,6 +67,12 @@ class MessageModel {
             ? ReplyToModel.fromMap(data['replyTo'])
             : null,
         mediaUrls: data['mediaUrl'] as List<String>?,
+        syncStatus: data['sync_status'] != null
+          ? SyncStatus.values.firstWhere(
+            (e) => e.name == data['sync_status'],
+            orElse: () => SyncStatus.sent,
+          )
+          : SyncStatus.sent,
         fileName: data['fileName'] as String?,
         mimeType: data['mimeType'] as String?,
         mediaDuration: (data['mediaDuration'] as num?)?.toInt(),

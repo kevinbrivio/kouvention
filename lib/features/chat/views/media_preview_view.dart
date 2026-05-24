@@ -5,8 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
-import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
-import 'package:kouvention/features/chat/viewmodel/media_preview_viewmodel.dart';
+import 'package:kouvention/features/chat/viewmodel/media/media_picker_helper.dart';
+import 'package:kouvention/features/chat/viewmodel/media/media_preview_viewmodel.dart';
 import 'package:kouvention/features/chat/widgets/preview/image_preview.dart';
 import 'package:kouvention/features/chat/widgets/preview/video_preview.dart';
 
@@ -203,8 +203,8 @@ class _MediaPreviewViewState extends ConsumerState<MediaPreviewView> {
   Widget _buildAddButton(MediaPreviewVM vm) => GestureDetector(
     onTap: () async {
       final newFile = await ref
-          .read(chatRoomVM(widget.chatId))
-          .pickImage(fromCamera: false);
+          .read(mediaPickerHelperProvider)
+          .pickImage(fromGallery: true);
       if (newFile == null) return;
       
       vm.addFile(newFile);

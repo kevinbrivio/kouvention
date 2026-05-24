@@ -2,12 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
-import 'package:go_router/go_router.dart';
-import 'package:kouvention/cores/router/router_constants.dart';
-import 'package:kouvention/features/chat/models/message_type.dart';
-import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
-import 'package:kouvention/features/chat/viewmodel/media_preview_viewmodel.dart';
-import 'package:kouvention/features/chat/views/chat_room_view.dart';
 
 class _MediaOption {
   final IconData icon;
@@ -25,13 +19,16 @@ class _MediaOption {
   });
 }
 
+enum MediaOptions { image, camera, files, location, audio }
+
 class MediaSheet extends ConsumerWidget {
-  final ChatRoomVM vm;
-  const MediaSheet({super.key, required this.vm});
+  final Function(MediaOptions option) onClick;
+  
+  const MediaSheet({super.key, required this.onClick});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final options = _buildOptions(context, vm);
+    final options = _buildOptions(context);
 
     return Container(
       decoration: BoxDecoration(
@@ -97,80 +94,41 @@ class MediaSheet extends ConsumerWidget {
         ),
       );
 
-  List<_MediaOption> _buildOptions(BuildContext context, ChatRoomVM vm) => [
+  List<_MediaOption> _buildOptions(BuildContext context) => [
     _MediaOption(
       icon: Icons.photo_library_outlined,
       label: 'Photos & video',
       circleColor: const Color(0xFFEDE7F6),
       iconColor: const Color(0xFF7C4DFF),
-      onTap: () async {
-        final pickedFiles = await vm.pickMultipleImages();
-        if (pickedFiles.isEmpty) return;
-        if (!context.mounted) return;
-        final router = GoRouter.of(context);
-        Navigator.pop(context);
-
-        router.pushNamed(
-          RouterRoutes.mediaPreview.name,
-          pathParameters: {'chatId': vm.chatId},
-          extra: MediaPreviewArgs(
-            files: pickedFiles,
-            mediaType: MessageType.image,
-            chatId: vm.chatId,
-            onSend: (result, caption) =>
-                vm.sendMediaMessage(result: result, caption: caption ?? ''),
-          ),
-        );
-      },
+      onTap: () => onClick(MediaOptions.image),
     ),
     _MediaOption(
       icon: Icons.camera_alt_outlined,
       label: 'Camera',
       circleColor: const Color(0xFFFCE4EC),
       iconColor: const Color(0xFFE91E63),
-      onTap: () {
-        vm.pickImage(fromCamera: true);
-      },
+      onTap: () => onClick(MediaOptions.camera),
     ),
     _MediaOption(
       icon: Icons.insert_drive_file_outlined,
       label: 'Document',
       circleColor: const Color(0xFFE3F2FD),
       iconColor: const Color(0xFF1E88E5),
-      onTap: () {
-        Navigator.pop(context);
-        // TODO: file_picker
-      },
+      onTap: () => onClick(MediaOptions.files),
     ),
     _MediaOption(
       icon: Icons.mic_outlined,
       label: 'Audio',
       circleColor: const Color(0xFFFFF3E0),
       iconColor: const Color(0xFFFB8C00),
-      onTap: () {
-        Navigator.pop(context);
-        // TODO: audio picker
-      },
+      onTap: () => onClick(MediaOptions.audio),
     ),
     _MediaOption(
       icon: Icons.location_on_outlined,
       label: 'Location',
       circleColor: const Color(0xFFE8F5E9),
       iconColor: const Color(0xFF43A047),
-      onTap: () {
-        Navigator.pop(context);
-        // TODO: location
-      },
-    ),
-    _MediaOption(
-      icon: Icons.person_outline,
-      label: 'Contact',
-      circleColor: const Color(0xFFE0F2F1),
-      iconColor: const Color(0xFF00897B),
-      onTap: () {
-        Navigator.pop(context);
-        // TODO: contact picker
-      },
+      onTap: () => onClick(MediaOptions.location),
     ),
   ];
 }

@@ -55,8 +55,6 @@ class AuthService {
 
       // Future-proofing: Google may add new event types.
       // Without this, a new event would silently do nothing.
-      default:
-        debugPrint('Unhandled Google auth event: $event');
     }
   }
 

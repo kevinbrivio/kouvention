@@ -2,56 +2,29 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:drift/drift.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/models/reply_to_model.dart';
-import 'package:kouvention/features/chat/models/upload_result_model.dart';
 import 'package:kouvention/features/chat/services/chat_service.dart';
-import 'package:kouvention/features/chat/services/databases/cached_messages.dart';
-import 'package:kouvention/features/chat/services/media_service.dart';
-import 'package:kouvention/features/notification/services/notification_service.dart';
+import 'package:kouvention/features/chat/services/databases/message_database.dart';
 import 'package:kouvention/features/notification/viewmodel/active_chat_id_provider.dart';
+import 'package:kouvention/features/shared/services/sync_service.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
 import 'package:kouvention/features/user/services/user_service.dart';
-import 'package:oktoast/oktoast.dart';
-import 'package:path_provider/path_provider.dart';
 
 class ChatRoomVM extends BaseNotifier {
   final ChatService _chatService;
-  final UserService _userService;
-  final MediaService _mediaService;
+  final SyncService _syncService;
   final String? _currentUid;
   final String chatId;
-  final MessageDatabase _db;
-
-  // Messages from newest
-  List<MessageModel> _messages = [];
-  StreamSubscription? _localSubscription; // SQLite
-  StreamSubscription? _syncSubscription; // Firestore -> SQLite
-
-  // Chat metadata
-  ChatModel? _chat;
-  StreamSubscription? _chatSubscription;
-  StreamSubscription? _otherUserSubscription;
-  UserModel? _otherUser;
 
   // Pagination
-  DocumentSnapshot? _lastDocument;
-  bool _hasMoreMessages = true;
-  bool _isLoadingMore = false;
   String? _highlightedMessageId;
-  String? _pendingScrollMessageId;
-  DateTime? _pendingScrollSentAt;
 
   // Typing indicator debounce
   Timer? _typingTimer;
@@ -61,414 +34,79 @@ class ChatRoomVM extends BaseNotifier {
   bool _isSending = false;
 
   // Reply Message
-  MessageModel? _replyMessage;
-
-  // Jump to searched message
-  int? _jumpToSentAt;
-  bool _isJumpMode = false;
+  ReplyToModel? _replyMessage;
 
   // Upload file
-  final _imagePicker = ImagePicker();
   bool _isUploading = false;
-  double _uploadProgress = 0.0;
   bool _showMediaPanel = false;
-  double _panelHeight = 280.0; // fallback keyboard height
 
   String? _error;
 
   ChatRoomVM(super.ref, {required this.chatId})
     : _chatService = ref.read(chatServiceProvider),
-      _currentUid = ref.read(authServiceProvider).currentUser?.uid,
-      _userService = ref.read(userServiceProvider),
-      _db = ref.read(messageDatabaseProvider),
-      _mediaService = ref.read(mediaServiceProvider);
+      _syncService = ref.read(syncServiceProvider),
+      _currentUid = ref.read(authServiceProvider).currentUser?.uid;
 
   // --- GETTERS ------------------------------
-  List<MessageModel> get messages => _messages;
-  ChatModel? get chat => _chat;
   String? get currentUid => _currentUid;
-  bool get hasMoreMessages => _hasMoreMessages;
-  bool get isLoadingMore => _isLoadingMore;
   bool get isTyping => _isTyping;
-  bool get isGroup => _chat?.type == 'group';
   bool get isSending => _isSending;
-  MessageModel? get replyMessage => _replyMessage;
+  ReplyToModel? get replyMessage => _replyMessage;
   String? get error => _error;
   String? get highlightedMessageId => _highlightedMessageId;
-  String? get pendingScrollMessageId => _pendingScrollMessageId;
-  DateTime? get pendingScrollSentAt => _pendingScrollSentAt;
-  bool get isJumpMode => _isJumpMode;
   bool get isUploading => _isUploading;
-  double get uploadProgress => _uploadProgress;
   bool get showMediaPanel => _showMediaPanel;
-  double get panelHeight => _panelHeight;
-
-  /// Display name for the chat header
-  String get chatDisplayName {
-    if (_chat == null || _currentUid == null) return '';
-    return _chat!.displayName(_currentUid);
-  }
-
-  /// Display sender name
-  String senderDisplayName(String senderId) =>
-      _chat?.memberInfo[senderId]?.displayName ?? '';
-
-  /// Display sender name
-  String? senderPhotoUrl(String senderId) =>
-      _chat?.memberInfo[senderId]?.photoUrl ?? '';
-
-  /// Photo URL
-  String? get chatPhotoUrl {
-    if (_chat == null || _currentUid == null) return null;
-    return _chat!.displayPhotoUrl(_currentUid);
-  }
-
-  /// Get current user whose typing..
-  String? get typingText {
-    if (_chat == null || _currentUid == null) return null;
-
-    final others = _chat!.typingUsers
-        .where((uid) => uid != _currentUid)
-        .toList();
-
-    if (others.isEmpty) return null;
-
-    final names = others
-        .map((uid) => _chat!.memberInfo[uid]?.displayName ?? '')
-        .toList();
-
-    if (names.length == 1) return '${names.first} is typing...';
-    return '${names.join(', ')} are typing...';
-  }
-
-  /// Get other user status
-  String? get onlineStatusText {
-    if (_chat == null) return null;
-
-    if (_chat!.type != 'direct') return null;
-    if (_otherUser == null) return null;
-
-    if (!_otherUser!.privacy.showOnlineStatus) return null;
-
-    if (_otherUser!.isOnline) return 'Online';
-    if (_otherUser!.privacy.showLastSeen && _otherUser!.lastSeen != null) {
-      return _formatLastSeen(_otherUser!.lastSeen!);
-    }
-    return null;
-  }
-
-  String _formatLastSeen(DateTime lastSeen) {
-    final now = DateTime.now();
-    final diff = now.difference(lastSeen);
-
-    if (diff.inMinutes < 60) return 'Last seen ${diff.inMinutes}m ago';
-    if (diff.inHours < 24) return 'Last seen ${diff.inHours}h ago';
-    if (diff.inDays == 1) return 'Last seen yesterday';
-    return 'Last seen ${lastSeen.day}/${lastSeen.month}/${lastSeen.year}';
-  }
-
-  bool isMyMessage(MessageModel message) => message.senderId == _currentUid;
-  bool isRepliedMessageMine(String senderId) => _currentUid == senderId;
-
-  void setJumpTarget(int sentAt) {
-    _jumpToSentAt = sentAt;
-    _isJumpMode = true;
-
-    _localSubscription?.cancel();
-    _subscribeToLocalMessages();
-  }
-
-  Future<void> switchToNormalMode() async {
-    if (!_isJumpMode) return;
-    _isJumpMode = false;
-    _jumpToSentAt = null;
-
-    final latestMessages = await _db.fetchNewerMessages(
-      chatId,
-      afterSentAt: 0, // fetch from newest to latest
-    );
-    if (latestMessages.isNotEmpty) {
-      _messages = latestMessages.map(_cachedToMessageModel).toList();
-      notifyListeners();
-    }
-    _localSubscription?.cancel();
-    _subscribeToLocalMessages();
-  }
 
   @override
   FutureOr<void> init() async {
     if (_currentUid == null) {
       _error = 'Not authenticated';
     } else {
-      scheduleMicrotask(() {
+      // Turn off notification when in the chatId room
+      Future.microtask(() {
         ref.read(activeChatIdProvider.notifier).state = chatId;
+        ref.read(syncServiceProvider).syncMessages(chatId);
       });
 
-      _subscribeToChat();
-      _subscribeToLocalMessages();
-      _syncFromFirestore();
-      _resetUnreadCount();
-
-      // Mark read when opening the chat
+      await _chatService.resetUnreadCount(chatId, _currentUid);
       await _chatService.markChatAsRead(chatId, _currentUid);
     }
   }
 
-  // --- STREAMS -----------------------------
-  void _subscribeToChat() {
-    _chatSubscription = _chatService
-        .streamChat(chatId)
-        .listen(
-          (chat) {
-            _chat = chat;
-
-            if (chat != null &&
-                chat.type == 'direct' &&
-                _otherUserSubscription == null &&
-                _currentUid != null) {
-              final otherUid = chat.otherMemberUid(_currentUid);
-              _subscribeToOtherUser(otherUid);
-            }
-            notifyListeners();
-          },
-          onError: (error) {
-            _error = error.toString();
-            notifyListeners();
-          },
-        );
-  }
-
-  /// Subscribe to the latest messages
-  /// This stream stays live - when someone send a new message
-  void _subscribeToLocalMessages() {
-    final sw = Stopwatch()..start();
-
-    try {
-      final stream = _db.watchMessages(chatId);
-
-      _localSubscription = stream.listen(
-        (cachedMessages) {
-          _messages = cachedMessages
-              .where((m) {
-                // parse from json in local version
-                final deletedFor = _parseDeletedFor(m.deletedFor);
-                return !deletedFor.contains(_currentUid!);
-              })
-              .map(_cachedToMessageModel)
-              .toList();
-          _error = null;
-
-          if (sw.isRunning) {
-            sw.stop();
-            debugPrint('Messages loaded: ${_messages.length}');
-            debugPrint('Load time: ${sw.elapsedMilliseconds}ms');
-          }
-
-          notifyListeners();
-        },
-        onError: (error) {
-          _error = error.toString();
-          notifyListeners();
-        },
-      );
-    } catch (e, s) {
-      print(e);
-      print(s);
-    }
-  }
-
-  // Catch up newest message -> Update -> Stream
-  Future<void> _syncFromFirestore() async {
-    try {
-      // Catch up latest sync
-      final lastSync = await _db.getLastSyncTimestamp(chatId);
-      final sinceDate = DateTime.fromMillisecondsSinceEpoch(lastSync);
-
-      // check missed out messages from last sync
-      final missedMessages = await _chatService.fetchMessagesSince(
-        chatId,
-        since: sinceDate,
-      );
-
-      debugPrint('---- missed messages: ${missedMessages.length} ---------');
-
-      if (missedMessages.isNotEmpty) {
-        // if there is message, UPSERT to local
-        debugPrint('----- UPSERTING MESSAGE -----');
-        await _db.upsertMessages(
-          missedMessages.map(_messageToCompanion).toList(),
-        );
-        debugPrint('----- SUCCESS UPSERTING -----');
-      }
-
-      // update last sync
-      final now = DateTime.now().millisecondsSinceEpoch;
-      await _db.updateLastSync(chatId, now);
-
-      // Stream new message
-      _syncSubscription = _chatService.streamMessages(chatId).listen((
-        newMessages,
-      ) {
-        // Titik 1: apakah stream fire?
-        debugPrint('🔥 Stream fired! ${newMessages.length} messages');
-
-        if (newMessages.isNotEmpty) {
-          // Titik 2: apakah upsert jalan?
-          debugPrint('🔥 Upserting ${newMessages.length} messages');
-          _db
-              .upsertMessages(newMessages.map(_messageToCompanion).toList())
-              .then((_) {
-                // Titik 3: apakah upsert selesai?
-                debugPrint('🔥 Upsert complete!');
-              });
-        }
-      });
-    } catch (e) {
-      debugPrint('Catch-up sync error: $e');
-    }
-  }
-
-  /// Subscribe to the latest messages from the other user
-  void _subscribeToOtherUser(String otherUserId) {
-    _otherUserSubscription = _userService
-        .streamUser(otherUserId)
-        .listen(
-          (user) {
-            _otherUser = user;
-            notifyListeners();
-          },
-          onError: (error) {
-            _error = error.toString();
-            notifyListeners();
-          },
-        );
-  }
-
-  List<String> _decodeMediaUrls(String? raw) {
-    if (raw == null || raw.isEmpty) return [];
-    try {
-      final decoded = jsonDecode(raw);
-  
-      // jsonDecode bisa return null kalau isinya string "null"
-      if (decoded == null) return [];
-  
-      return List<String>.from(decoded);
-    } catch (_) {
-      return [];
-    }
-  }
-
-  /// Convert CachedMessage → MessageModel (SQLite → UI)
-  MessageModel _cachedToMessageModel(CachedMessage m) => MessageModel(
-    id: m.id,
-    senderId: m.senderId,
-    senderName: m.senderName,
-    text: m.messageText,
-    type: MessageType.fromString(m.type),
-    sentAt: DateTime.fromMillisecondsSinceEpoch(m.sentAt),
-    isDeleted: m.isDeleted,
-    replyTo: m.replyToId != null
-        ? ReplyToModel(
-            messageId: m.replyToId!,
-            text: m.replyToText ?? '',
-            senderId: '',
-            senderName: m.replyToSender ?? '',
-            sentAt: DateTime.fromMillisecondsSinceEpoch(m.replyToSentAt ?? 0),
-          )
-        : null,
-    mediaUrls: _decodeMediaUrls(m.mediaUrls),
-    fileName: m.fileName,
-    fileSizeBytes: m.fileSizeBytes,
-  );
-
-  /// Convert MessageModel → CachedMessagesCompanion (Firestore → SQLite)
-  CachedMessagesCompanion _messageToCompanion(MessageModel m) =>
-      CachedMessagesCompanion(
-        id: Value(m.id),
-        chatRoomId: Value(chatId),
-        messageText: Value(m.text),
-        textLower: Value(m.text.toLowerCase()),
-        senderId: Value(m.senderId),
-        senderName: Value(m.senderName),
-        sentAt: Value(m.sentAt.millisecondsSinceEpoch),
-        type: Value(m.type.name),
-        isDeleted: Value(m.isDeleted),
-        deletedFor: Value(m.deletedFor.toString()),
-        replyToId: Value(m.replyTo?.messageId),
-        replyToText: Value(m.replyTo?.text),
-        replyToSender: Value(m.replyTo?.senderName),
-        replyToSentAt: Value(m.replyTo?.sentAt.millisecondsSinceEpoch),
-        mediaUrls: Value(jsonEncode(m.mediaUrls)),
-        fileName: Value(m.fileName),
-        fileSizeBytes: Value(m.fileSizeBytes),
-        syncedAt: Value(DateTime.now().millisecondsSinceEpoch),
-      );
-
-  /// Parse deletedFor JSON string ke List<String>
-  List<String> _parseDeletedFor(String json) {
-    try {
-      final list = (jsonDecode(json) as List).cast<String>();
-      return list;
-    } catch (_) {
-      return [];
-    }
-  }
-
-  // --- METHODS -----------------------------
+  // ============================================
+  // SEND MESSAGE
+  // ============================================
   Future<void> sendMessage(String text) async {
     final trimmed = text.trim();
-    if (trimmed.isEmpty || _currentUid == null || _chat == null) return;
+    if (trimmed.isEmpty || _currentUid == null) return;
+
+    final chat = ref.read(chatMetadataStreamProvider(chatId)).value;
+    if (chat == null) {
+      _error = 'Getting chat room ready';
+      notifyListeners();
+      return;
+    }
+
+    UserModel? otherUser;
+    if (chat.type == 'direct') {
+      final otherUid = chat.otherMemberUid(_currentUid);
+      otherUser = ref.read(otherUserStreamProvider(otherUid)).value;
+    }
 
     try {
       _isSending = true;
       notifyListeners();
-      // clear typing indicator before sending
-      await clearTyping();
-      final ReplyToModel? replyTo = _replyMessage != null
-          ? ReplyToModel(
-              messageId: _replyMessage!.id,
-              senderId: _replyMessage!.senderId,
-              senderName: senderDisplayName(_replyMessage!.senderId),
-              text: _replyMessage!.text,
-              sentAt: _replyMessage!.sentAt,
-            )
-          : null;
+
+      await _syncService.sendMessage(
+        chatRoomId: chatId,
+        textContent: trimmed,
+        senderName: chat.displayName(_currentUid),
+        memberUids: chat.members,
+        otherUserFcmTokens: otherUser?.fcmTokens,
+        replyTo: _replyMessage,
+      );
 
       onCancelReply();
-
-      // Write get Id
-      final docId = FirebaseFirestore.instance
-          .collection('chats')
-          .doc(chatId)
-          .collection('messages')
-          .doc()
-          .id;
-
-      final now = DateTime.now();
-      final localMessage = MessageModel(
-        id: docId,
-        senderId: _currentUid,
-        senderName: senderDisplayName(_currentUid),
-        text: trimmed,
-        type: MessageType.text,
-        sentAt: now,
-        isDeleted: false,
-        replyTo: replyTo,
-      );
-
-      await _db.upsertMessage(_messageToCompanion(localMessage));
-
-      await _chatService.sendMessage(
-        chatId: chatId,
-        messageId: docId,
-        senderId: _currentUid,
-        senderName: senderDisplayName(_currentUid),
-        text: trimmed,
-        memberUids: _chat!.members,
-        replyTo: replyTo,
-      );
-
-      _sendNotification(trimmed);
     } catch (e) {
       _error = e.toString();
       notifyListeners();
@@ -478,166 +116,59 @@ class ChatRoomVM extends BaseNotifier {
     }
   }
 
-  void _sendNotification(String messageText) {
-    if (_chat?.type != 'direct') return;
-
-    final fcmTokens = _otherUser?.fcmTokens;
-    if (fcmTokens == null) return;
-
-    final notificationService = ref.read(notificationServiceProvider);
-    for (final tokenString in fcmTokens.keys) {
-      notificationService.sendChatNotification(
-        targetToken: tokenString,
-        messageText: messageText,
-        chatId: chatId,
-        senderId: _currentUid!,
-        senderName: senderDisplayName(_currentUid),
-        senderImageUrl: senderPhotoUrl(_currentUid),
-      );
-    }
-  }
-
-  /// Load more messages when the user scrolls to the top.
-  Future<void> loadMoreMessages() async {
-    // if (_isLoadingMore) return;
-
-    // _isLoadingMore = true;
-    // notifyListeners();
-
-    // await _loadOlderBatch();
-
-    // _isLoadingMore = false;
-    // notifyListeners();
-  }
-
-  void highlightMessage(String messageId) {
-    _highlightedMessageId = messageId;
-    notifyListeners();
-
-    Future.delayed(Duration(milliseconds: 200), () {
-      if (_highlightedMessageId == messageId) {
-        _highlightedMessageId = null;
-        notifyListeners();
-      }
-    });
-  }
-
-  void scrollToTarget({required String messageId, required DateTime sentAt}) {
-    _pendingScrollMessageId = messageId;
-    _pendingScrollSentAt = sentAt;
-    notifyListeners();
-  }
-
-  void clearPendingScroll() {
-    _pendingScrollMessageId = null;
-    _pendingScrollSentAt = null;
-  }
-
-  Future<int?> findMessageIndex(String messageId, {DateTime? sentAt}) async {
-    // find from recent messages
-    final index = _messages.indexWhere((m) => m.id == messageId);
-    if (index != -1) return index;
-
-    // find via timestamp in sqlite
-    int? targetSentAt = sentAt?.millisecondsSinceEpoch;
-    debugPrint('$targetSentAt');
-
-    List<CachedMessage> allBatch = [];
-    if (targetSentAt == null) {
-      // jump to latest messages
-      final batch = await _db.fetchNewerMessages(chatId, afterSentAt: 0);
-      return _addBatchAndFind(batch, messageId);
-    }
-
-    final cached = await _db.getMessageByDateTime(chatId, targetSentAt);
-
-    if (cached != null) {
-      final olderBatch = await _db.fetchOlderMessages(
-        chatId,
-        beforeSentAt: cached.sentAt,
-        limit: 50,
-      );
-      allBatch.addAll(olderBatch);
-
-      final newerBatch = await _db.fetchNewerMessages(
-        chatId,
-        afterSentAt: cached.sentAt,
-        limit: 50,
-      );
-      allBatch.addAll(newerBatch);
-    }
-
-    return _addBatchAndFind(allBatch, messageId);
-
-    // final found = _messages.indexWhere((m) => m.id == messageId);
-    // if (found != -1) return found;
-
-    // // Not found in SQLite but try to fetch from Firestore
-    // final firestoreBatch = await _chatService.fetchOlderMessages(
-    //   chatId,
-    //   before: DateTime.fromMillisecondsSinceEpoch(targetSentAt),
-    // );
-
-    // if (firestoreBatch.isNotEmpty) {
-    //   await _db.upsertMessages(
-    //     firestoreBatch.map(_messageToCompanion).toList(),
-    //   );
-
-    //   final freshModels = firestoreBatch
-    //       .where((m) => !existingIds.contains(m.id))
-    //       .toList();
-    //   _messages.addAll(freshModels);
-    //   _messages.sort((a, b) => b.sentAt.compareTo(a.sentAt));
-    //   notifyListeners();
-
-    //   return _messages.indexWhere((m) => m.id == messageId);
-    // }
-
-    // return null;
-  }
-
-  Future<int?> _addBatchAndFind(
-    List<CachedMessage> batch,
-    String messageId,
+  // ========================================
+  // UPLOAD FILES
+  // ========================================
+  Future<void> sendMediaMessage(
+    List<File> files,
+    MessageType type,
+    String caption,
   ) async {
-    if (batch.isEmpty) return null;
-
-    final batchModels = batch.map(_cachedToMessageModel).toList();
-    final existingIds = _messages.map((m) => m.id).toSet();
-    final newMessages = batchModels
-        .where((m) => !existingIds.contains(m.id))
-        .toList();
-    _messages.addAll(newMessages);
-    _messages.sort((a, b) => b.sentAt.compareTo(a.sentAt));
-    notifyListeners();
-    return _messages.indexWhere((m) => m.id == messageId);
-  }
-
-  /// Load pesan lama — cek SQLite dulu, baru Firestore kalau gap
-  Future<void> loadOlderFromLocal() async {
-    if (_isLoadingMore || _messages.isEmpty) return;
-
-    _isLoadingMore = true;
+    if (_currentUid == null) return;
+    _isUploading = true;
     notifyListeners();
 
-    final oldestSentAt = _messages.last.sentAt.millisecondsSinceEpoch;
-
-    // Step 1: Cek SQLite
-    final localOlder = await _db.fetchOlderMessages(
-      chatId,
-      beforeSentAt: oldestSentAt,
-    );
-
-    if (localOlder.isNotEmpty) {
-      // Ada di SQLite — gratis, ga perlu Firestore
-      final olderModels = localOlder.map(_cachedToMessageModel).toList();
-      _messages = [..._messages, ...olderModels];
+    final chat = ref.read(chatMetadataStreamProvider(chatId)).value;
+    if (chat == null) {
+      _error = 'Getting chat room ready';
       notifyListeners();
-    } else {
-      _hasMoreMessages = false;
+      return;
     }
 
-    _isLoadingMore = false;
+    UserModel? otherUser;
+    if (chat.type == 'direct') {
+      final otherUid = chat.otherMemberUid(_currentUid);
+      otherUser = ref.read(otherUserStreamProvider(otherUid)).value;
+    }
+
+    try {
+      await _syncService.sendMediaMessage(
+        chatRoomId: chatId,
+        type: type,
+        caption: caption,
+        files: files,
+
+        senderName: chat.displayName(_currentUid),
+        memberUids: chat.members,
+        otherUserFcmTokens: otherUser?.fcmTokens,
+        replyTo: _replyMessage,
+      );
+
+      onCancelReply();
+    } catch (e) {
+      _error = 'Failed to upload file';
+      notifyListeners();
+    } finally {
+      _isUploading = false;
+      notifyListeners();
+    }
+  }
+
+  void toggleMediaPanel(BuildContext context) {
+    _showMediaPanel = !_showMediaPanel;
+    if (_showMediaPanel) {
+      FocusScope.of(context).unfocus();
+    }
     notifyListeners();
   }
 
@@ -654,7 +185,7 @@ class ChatRoomVM extends BaseNotifier {
 
     // Reset debounce timer
     _typingTimer?.cancel();
-    _typingTimer = Timer(const Duration(seconds: 10), () => clearTyping());
+    _typingTimer = Timer(const Duration(seconds: 10), clearTyping);
 
     if (text.isEmpty) clearTyping();
   }
@@ -667,8 +198,10 @@ class ChatRoomVM extends BaseNotifier {
     }
   }
 
-  // ---- Reply Message -----------------------
-  void onSwipedMessage(MessageModel message) {
+  // ========================================
+  // UI HELPERS (Reply & Scroll)
+  // ========================================
+  void onSwipedMessage(ReplyToModel message) {
     _replyMessage = message;
     notifyListeners();
   }
@@ -678,262 +211,21 @@ class ChatRoomVM extends BaseNotifier {
     notifyListeners();
   }
 
-  // --- Unread Count --------------------------
-  void _resetUnreadCount() {
-    if (_currentUid != null) {
-      _chatService.resetUnreadCount(chatId, _currentUid);
-    }
+  void highlightMessage(String messageId) {
+    ref.read(highlightMessageProvider(chatId).notifier).state = messageId;
+
+    // reset
+    Future.delayed(const Duration(seconds: 2), () {
+      ref.read(highlightMessageProvider(chatId).notifier).state = null;
+    });
   }
 
-  // ---- Message Status ----------------------
-  MessageStatus getMessageStatus(MessageModel message) {
-    if (message.senderId != _currentUid) return MessageStatus.sent;
-
-    // Use the flag you already have
-    if (_isSending) return MessageStatus.sending;
-
-    if (_chat?.type == 'direct') {
-      final otherUid = _chat!.otherMemberUid(_currentUid!);
-      final otherLastRead = _chat!.lastReadAt[otherUid];
-
-      if (otherLastRead != null && !message.sentAt.isAfter(otherLastRead)) {
-        return MessageStatus.read;
-      }
-    } else if (_chat != null) {
-      final anyRead = _chat!.members.where((uid) => uid != _currentUid).any((
-        uid,
-      ) {
-        final lastRead = _chat!.lastReadAt[uid];
-        return lastRead != null && !message.sentAt.isAfter(lastRead);
-      });
-      if (anyRead) return MessageStatus.read;
-    }
-
-    return MessageStatus.sent;
+  void setJumpTarget(int sentAt) {
+    ref.read(jumpToTargetProvider(chatId).notifier).state = sentAt;
   }
 
-  // ---- Upload File ---------------------------
-  void updateKeyboardHeight(double height) {
-    if (height > 0) _panelHeight = height;
-  }
-
-  void toggleMediaPanel(BuildContext context) {
-    _showMediaPanel = !_showMediaPanel;
-    if (_showMediaPanel) {
-      FocusScope.of(context).unfocus();
-    }
-    notifyListeners();
-  }
-
-  Future<List<UploadResultModel>> uploadFiles({
-    required List<File> files,
-    required MessageType type,
-  }) async {
-    try {
-      final results = await Future.wait(
-        files.map((f) => _mediaService.uploadFile(file: f, mediaType: type)),
-      );
-
-      return results.whereType<UploadResultModel>().toList();
-    } on CloudinaryUploadException catch (e) {
-      showToast(e.message);
-    } catch (e) {
-      showToast('Error uploading. Please try again.');
-    }
-
-    return [];
-  }
-
-  Future<File?> pickImage({required bool fromCamera}) async {
-    final picked = await _imagePicker.pickImage(
-      source: fromCamera ? ImageSource.camera : ImageSource.gallery,
-      imageQuality: 70,
-    );
-    if (picked == null) return null;
-    return _toTempFile(picked);
-  }
-
-  Future<List<File>> pickMultipleImages() async {
-    final pickedList = await _imagePicker.pickMultiImage(imageQuality: 70);
-    if (pickedList.isEmpty) return [];
-
-    final files = await Future.wait(
-      pickedList.map((xfile) => _toTempFile(xfile)),
-    );
-
-    return files.whereType<File>().toList();
-  }
-
-  Future<File?> _toTempFile(XFile picked) async {
-    try {
-      final bytes = await picked.readAsBytes();
-      final tempDir = await getTemporaryDirectory();
-      final tempFile = File('${tempDir.path}/${picked.name}');
-      await tempFile.writeAsBytes(bytes);
-      return tempFile;
-    } catch (e) {
-      print('Failed to convert file: $e');
-      return null;
-    }
-  }
-
-  Future<File?> pickVideo({required bool fromCamera}) async {
-    final picked = await _imagePicker.pickVideo(
-      source: fromCamera ? ImageSource.camera : ImageSource.gallery,
-      maxDuration: const Duration(minutes: 3),
-    );
-    if (picked == null) return null;
-    return File(picked.path);
-  }
-
-  Future<File?> pickFile() async {
-    final result = await FilePicker.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: [
-        'pdf',
-        'doc',
-        'docx',
-        'xls',
-        'xlsx',
-        'ppt',
-        'pptx',
-        'mp3',
-        'm4a',
-        'wav',
-      ],
-      withData: false, // Don't save the data into memory
-      withReadStream: false,
-    );
-
-    if (result == null || result.files.isEmpty) return null;
-
-    final path = result.files.first.path;
-    if (path == null) return null;
-
-    return File(path);
-  }
-
-  Future<void> sendMediaMessage({
-    required List<UploadResultModel> result,
-    String caption = '',
-  }) async {
-    if (_currentUid == null || _chat == null) return;
-
-    try {
-      _isUploading = true;
-      notifyListeners();
-
-      // Generate messageID in Firestore
-      final docId = FirebaseFirestore.instance
-          .collection('chats')
-          .doc(chatId)
-          .collection('messages')
-          .doc()
-          .id;
-
-      final now = DateTime.now();
-
-      final mimeType = result.first.mimeType;
-      final mediaDuration = result.first.mediaDuration;
-      final mediaUrls = result.map((r) => r.url).toList();
-      
-      final totalBytes = result.fold<int>(
-        0, (sum, r) => sum + r.fileSizeBytes,
-      );
-  
-      final fileName = result.length == 1
-          ? result.first.fileName
-          : '${result.length} files';
-
-      final messageType = _resolveMessageType(result);
-
-      final localMessage = MessageModel(
-        id: docId,
-        senderId: _currentUid,
-        senderName: senderDisplayName(_currentUid),
-        text: caption,
-        type: messageType,
-        sentAt: now,
-        isDeleted: false,
-        fileName: fileName,
-        mediaUrls: mediaUrls,
-        mimeType: mimeType,
-        mediaDuration: mediaDuration,
-        fileSizeBytes: totalBytes,
-        replyTo: _replyMessage != null
-            ? ReplyToModel(
-                messageId: _replyMessage!.id,
-                senderId: _replyMessage!.senderId,
-                senderName: _replyMessage!.senderName,
-                text: _replyMessage!.text,
-                sentAt: _replyMessage!.sentAt,
-              )
-            : null,
-      );
-
-      onCancelReply();
-
-      // Save to local first
-      await _db.upsertMessage(_messageToCompanion(localMessage));
-
-      // Sync up to Firestore
-      await _chatService.sendMediaMessage(
-        chatId: chatId,
-        messageId: docId,
-        senderId: _currentUid,
-        senderName: senderDisplayName(_currentUid),
-        text: caption,
-        type: messageType,
-        mediaUrls: mediaUrls,
-        fileName: fileName,
-        fileSizeBytes: totalBytes,
-        mimeType: mimeType,
-        mediaDuration: mediaDuration,
-        memberUids: _chat!.members,
-        replyTo: _replyMessage != null
-            ? ReplyToModel(
-                messageId: _replyMessage!.id,
-                senderId: _replyMessage!.senderId,
-                senderName: _replyMessage!.senderName,
-                text: _replyMessage!.text,
-                sentAt: _replyMessage!.sentAt,
-              )
-            : null,
-      );
-      final notifText = _mediaNotificationText(messageType, caption);
-      _sendNotification(notifText);
-    } on CloudinaryUploadException catch (e) {
-      _error = e.message;
-      notifyListeners();
-    } catch (e) {
-      _error = 'Failed to upload file';
-      notifyListeners();
-    } finally {
-      _isUploading = false;
-      notifyListeners();
-    }
-  }
-
-  MessageType _resolveMessageType(List<UploadResultModel> results) {
-    final types = results.map((r) => r.messageType).toSet();
-    if (types.length == 1) return types.first; // semua sama
-    return MessageType.media;                  // campuran
-  }
-
-  String _mediaNotificationText(MessageType type, String caption) {
-    if (caption.isNotEmpty) return caption;
-    switch (type) {
-      case MessageType.image:
-        return '📷 Photo';
-      case MessageType.video:
-        return '🎥 Video';
-      case MessageType.audio:
-        return '🎵 Audio';
-      case MessageType.file:
-        return '📎 File';
-      default:
-        return '';
-    }
+  void switchToNormalMode() {
+    ref.read(jumpToTargetProvider(chatId).notifier).state = null;
   }
 
   // --- CleanUp ----------------------------------
@@ -941,20 +233,99 @@ class ChatRoomVM extends BaseNotifier {
   void dispose() {
     ref.read(activeChatIdProvider.notifier).state = null;
 
-    _localSubscription?.cancel();
-    _syncSubscription?.cancel();
-    _chatSubscription?.cancel();
-    _otherUserSubscription?.cancel();
     clearTyping();
     _typingTimer?.cancel();
     super.dispose();
   }
 }
 
+// ==========================
+// PROVIDER
+// ==========================
 // Use .family because each chat room will have its own vm
-final chatRoomVM = ChangeNotifierProvider.autoDispose
+final chatRoomVMProvider = ChangeNotifierProvider.autoDispose
     .family<ChatRoomVM, String>(
       (ref, chatId) => ChatRoomVM(ref, chatId: chatId),
     );
 
-enum MessageStatus { sending, sent, read }
+final jumpToTargetProvider = StateProvider.autoDispose.family<int?, String>(
+  (ref, chatId) => null,
+);
+
+final chatMessagesStreamProvider = StreamProvider.autoDispose
+    .family<List<MessageModel>, String>((ref, chatId) {
+      final db = ref.watch(messageDatabaseProvider);
+
+      final targetSentAt = ref.watch(jumpToTargetProvider(chatId));
+
+      Stream<List<Message>> localStream;
+
+      if (targetSentAt != null) {
+        localStream = db.watchMessagesAround(
+          chatId,
+          targetSentAt: targetSentAt,
+          limit: 50,
+        );
+      } else {
+        // No target sent means nothing for us to jump
+        localStream = db.watchMessages(chatId, limit: 50);
+      }
+
+      return localStream.map((localMsgs) {
+        debugPrint('🕵️‍♂️ [DEBUG CHAT] Stream terpanggil! ChatID: $chatId');
+        debugPrint(
+          '🕵️‍♂️ [DEBUG CHAT] Jumlah pesan dari SQLite (Drift): ${localMsgs.length}',
+        );
+
+        return localMsgs
+            .map(
+              (m) => MessageModel(
+                id: m.id,
+                senderId: m.senderId,
+                senderName: m.senderName,
+                text: m.textContent,
+                type: MessageType.values.firstWhere(
+                  (e) => e.name == m.type,
+                  orElse: () => MessageType.text,
+                ),
+                sentAt: DateTime.fromMillisecondsSinceEpoch(m.sentAt),
+                isDeleted: m.isDeleted,
+
+                syncStatus: m.syncStatus,
+
+                // Decode array jika ada
+                mediaUrls: m.mediaUrl != null
+                    ? List<String>.from(jsonDecode(m.mediaUrl!))
+                    : null,
+                fileName: m.fileName,
+
+                // Mapping Reply
+                replyTo: m.replyToId != null
+                    ? ReplyToModel(
+                        messageId: m.replyToId!,
+                        senderId: '', // Sesuaikan jika lu butuh
+                        senderName: m.replyToSenderName ?? '',
+                        text: m.replyToText ?? '',
+                        sentAt: DateTime.now(), // Sesuaikan
+                      )
+                    : null,
+              ),
+            )
+            .toList();
+      });
+    });
+
+final chatMetadataStreamProvider = StreamProvider.autoDispose
+    .family<ChatModel?, String>((ref, chatId) {
+      final chatService = ref.watch(chatServiceProvider);
+      return chatService.streamChat(chatId);
+    });
+
+final otherUserStreamProvider = StreamProvider.autoDispose
+    .family<UserModel?, String>((ref, otherUserId) {
+      final userService = ref.watch(userServiceProvider);
+      return userService.streamUser(otherUserId);
+    });
+
+final highlightMessageProvider = StateProvider.autoDispose
+    .family<String?, String>((ref, chatId) => null);
