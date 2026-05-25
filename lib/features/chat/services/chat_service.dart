@@ -160,11 +160,14 @@ class ChatService {
   /// Fetches message after specific timestamp
   Future<List<MessageModel>> fetchMessages(
     String chatId, {
+    required DateTime lastSyncTimestamp,
     int limit = 20,
   }) async {
     final snapshot = await _messagesRef(
       chatId,
-    ).orderBy('sentAt', descending: true).limit(limit).get();
+    )
+    .where('sentAt', isGreaterThan: lastSyncTimestamp)
+    .orderBy('sentAt', descending: true).limit(limit).get();
 
     return snapshot.docs
         .map((doc) => MessageModel.fromMap(doc.id, doc.data()))

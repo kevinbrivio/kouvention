@@ -151,6 +151,33 @@ class SyncService {
     }
   }
 
+  Future<void> fetchMessages(String chatId) async {
+    final chatRoom = await _db.getChatById(chatId);
+    final lastSyncAt = chatRoom?.lastSyncTimestamp ?? 0;
+
+    final missedMessages = await _chatService.fetchMessages(
+      chatId,
+      lastSyncTimestamp: DateTime.fromMillisecondsSinceEpoch(lastSyncAt),
+      limit: 50,
+    );
+
+    if (missedMessages.isEmpty) {
+      await _db.updateChatLastSync(chatId, lastSyncAt);
+      return;
+    }
+
+    final companions = await Isolate.run(() {
+      return missedMessages
+          .map((m) => messageToCompanion(m, chatId, SyncStatus.sent))
+          .toList();
+    });
+
+    await _db.upsertMessages(companions);
+
+    final latestMsgTime = missedMessages.last.sentAt.millisecondsSinceEpoch;
+    await _db.updateChatLastSync(chatId, latestMsgTime);
+  }
+
   // ==========================================
   // SEND TEXT MESSAGE
   // ==========================================

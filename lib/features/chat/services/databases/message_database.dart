@@ -48,7 +48,8 @@ class Chats extends Table {
   IntColumn get createdAt => integer()();
   IntColumn get updatedAt => integer().nullable()();
 
-  TextColumn get createdBy => text().map(const MapStringStringConverter()).nullable()();
+  TextColumn get createdBy =>
+      text().map(const MapStringStringConverter()).nullable()();
   TextColumn get deletedBy => text().nullable()();
 
   // Flag to point last message existence, so Firestore cannot reach it
@@ -337,6 +338,11 @@ class MessageDatabase extends _$MessageDatabase {
         ),
       );
 
+  Future<void> updateChatLastSync(String chatId, int timestamp) =>
+      (update(chats)..where((c) => c.id.equals(chatId))).write(
+        ChatsCompanion(lastSyncTimestamp: Value(timestamp)),
+    );
+
   // ===========================
   // DELETE
   // ===========================
@@ -370,6 +376,12 @@ class MessageDatabase extends _$MessageDatabase {
       await delete(chats).go();
     });
   }
+
+  // ==============================
+  // HELPER
+  // ==============================
+  Future<Chat?> getChatById(String chatId) =>
+      (select(chats)..where((c) => c.id.equals(chatId))).getSingleOrNull();
 }
 
 class StringListConverter extends TypeConverter<List<String>, String> {
