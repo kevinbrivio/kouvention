@@ -68,22 +68,18 @@ class SyncService {
   // Sync Chat Rooms after Login
   // ============================
   Future<void> syncInitialChatRooms(String currentUid) async {
-    // 1. Kita pegang jamnya dan langsung mulai berhitung! (Ingat titik dua)
     final sw = Stopwatch()..start();
 
     debugPrint(
-      ' ================== [MULAI] MENYEDOT DATA CHAT ========================',
+      ' ================== [Start Sync Chats] ========================',
     );
 
-    // Menyedot dari Awan (Firebase)
     final List<ChatModel> chatRooms = await _chatService.fetchChatRooms(
       currentUid,
     );
 
-    // 2. Kita intip jamnya di tengah jalan!
-    // Ini penting agar kita tahu Firebase lambat atau cepat.
     debugPrint(
-      ' ========= [INTERNET SELESAI] Butuh waktu: ${sw.elapsedMilliseconds} milidetik =========',
+      ' ========= [Fetching from Firestore done!] Took: ${sw.elapsedMilliseconds} ms =========',
     );
 
     List<ChatsCompanion> companions;
@@ -100,9 +96,8 @@ class SyncService {
 
     await _db.upsertChatRooms(companions);
 
-    // 3. Kita lihat total waktu akhirnya!
     debugPrint(
-      ' ========= [SEMUA SELESAI] Total waktu keseluruhan: ${sw.elapsedMilliseconds} milidetik =======',
+      ' ========= [Everything is done] Total testing time: ${sw.elapsedMilliseconds} ms =======',
     );
 
     // 4. Sebagai anak yang baik, kita matikan jamnya jika sudah selesai
