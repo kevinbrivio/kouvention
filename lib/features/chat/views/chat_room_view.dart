@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,6 +16,7 @@ import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
 import 'package:kouvention/features/chat/models/message_status.dart';
+import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/models/reply_to_model.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_selection_viewmodel.dart';
@@ -52,7 +54,7 @@ class ChatRoomView extends ConsumerWidget {
         useGradient: false,
         backgroundColor: Colors.white,
         appBar: (vm) => selectionVM.isSelecting
-            ? SelectionAppBar(chatId: chatId, currentUid: currentUid!,)
+            ? SelectionAppBar(chatId: chatId, currentUid: currentUid!)
             : ChatRoomAppBar(chatId: chatId),
         builder: (context, vm) {
           final queryParams = GoRouterState.of(context).uri.queryParameters;
@@ -282,13 +284,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
             message: message,
             isMe: isMe,
             senderName: message.senderName,
-            onReplyMessage: () => vm.onSwipedMessage(ReplyToModel(
-              messageId: message.id,
-              senderId: message.senderId,
-              senderName: message.senderName,
-              sentAt: message.sentAt,
-              text: message.text,
-            )),
+            onReplyMessage: () => vm.onSwipedMessage(message),
             onTapReply: (_) => _scrollToMessage(
               message.replyTo != null ? message.replyTo!.messageId : message.id,
               sentAt: message.replyTo != null
@@ -425,7 +421,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
             child: Column(
               children: [
                 if (vm.replyMessage != null)
-                  _buildReplyPreview(vm.replyMessage!, chat, currentUid),
+                  _buildReplyPreview(vm.replyMessage!),
 
                 TextField(
                   focusNode: _focusNode,
@@ -494,56 +490,116 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     duration: const Duration(milliseconds: 250),
     curve: Curves.easeOut,
     height: vm.showMediaPanel ? 280.h : 0,
-    child: SingleChildScrollView(child: MediaSheet(vm: vm,)),
+    child: SingleChildScrollView(child: MediaSheet(vm: vm)),
   );
 
-  Widget _buildReplyPreview(
-    ReplyToModel message,
-    ChatModel? chat,
-    String? currentUid,
-  ) {
-    final isMe = message.senderId == currentUid;
-    final senderName = message.senderName;
+  Widget _buildReplyPreview(MessageModel message) {
+    final isMe = vm.isMyMessage(message);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.grey.withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(16.r),
-        border: Border(
-          left: BorderSide(color: AppColors.primary, width: 3.w),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16.r),
+      child: Container(
+        height: 76.h,
+        decoration: BoxDecoration(
+          color: AppColors.grey.withValues(alpha: 0.35),
+          border: Border(
+            left: BorderSide(color: AppColors.primary, width: 3.w),
+          ),
         ),
-      ),
-      padding: EdgeInsets.only(left: 12.w, right: 12.w, top: 4.h, bottom: 8.h),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Sender name
-                Text(isMe ? 'You' : senderName, style: textTheme.senderName),
 
-                Gap(4.h),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: 12.w,
+                  right: 8.w,
+                  top: 8.h,
+                  bottom: 8.h,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      isMe ? 'You' : message.senderName,
+                      style: textTheme.senderName,
+                    ),
+                    Gap(4.h),
 
-                Text(
-                  message.text,
-                  style: textTheme.body2.copyWith(
-                    color: AppColors.grey.withValues(alpha: 0.9),
+                    if (message.isImage) ...[
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.image_outlined,
+                            color: AppColors.grey,
+                            size: 16.r,
+                          ),
+                          Gap(4.w),
+                          Expanded(
+                            child: Text(
+                              message.text.isNotEmpty ? message.text : 'Photo',
+                              style: textTheme.senderName.copyWith(
+                                color: AppColors.grey,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ] else ...[
+                      Text(
+                        message.text,
+                        style: textTheme.body2.copyWith(
+                          color: AppColors.errorLight.withValues(alpha: 0.9),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8.w),
+              child: Center(
+                child: InkWell(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    vm.onCancelReply();
+                  },
+                  child: Icon(Icons.close, size: 18.r, color: Colors.grey),
+                ),
+              ),
+            ),
+
+            if (message.isImage && message.allMediaUrls.isNotEmpty)
+              CachedNetworkImage(
+                imageUrl: message.allMediaUrls.first,
+                width: 64.w,
+                fit: BoxFit.cover,
+
+                // Efek loading sementara yang mulus
+                placeholder: (context, url) => Container(
+                  color: AppColors.grey.withValues(alpha: 0.2),
+                  width: 50.w,
+                ),
+                errorWidget: (context, url, error) => Container(
+                  color: AppColors.grey.withValues(alpha: 0.2),
+                  width: 50.w,
+                  child: Icon(
+                    Icons.broken_image,
+                    size: 16.r,
+                    color: Colors.grey,
                   ),
                 ),
-              ],
-            ),
-          ),
-
-          InkWell(
-            onTap: () {
-              HapticFeedback.selectionClick();
-              vm.onCancelReply();
-            },
-            child: Icon(Icons.close, size: 18.r, color: Colors.grey),
-          ),
-        ],
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -611,15 +667,15 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
 
   Future<void> onClickMedia(MediaOptions options) async {
     final mediaPickerProvider = ref.read(mediaPickerHelperProvider);
-    
+
     // Switch every media options value
     switch (options) {
       case MediaOptions.image:
         final files = await mediaPickerProvider.pickMultipleImages();
       case MediaOptions.camera:
-        // await vm.openCamera();
+      // await vm.openCamera();
       case MediaOptions.files:
-        // await vm.pickFiles();
+      // await vm.pickFiles();
       case MediaOptions.audio:
       //TODO: Add audio
       case MediaOptions.location:

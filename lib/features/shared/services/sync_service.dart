@@ -37,6 +37,9 @@ MessagesCompanion messageToCompanion(
   replyToId: Value(msg.replyTo?.messageId),
   replyToText: Value(msg.replyTo?.text),
   replyToSenderName: Value(msg.replyTo?.senderName),
+  replyToMediaType: Value(msg.replyTo?.mediaType),
+  replyToMediaUrl: Value(msg.replyTo?.mediaUrl),
+  replyToSentAt: Value(msg.replyTo?.sentAt.millisecondsSinceEpoch),
 
   isDeleted: Value(msg.isDeleted),
   deletedFor: Value(msg.deletedFor),

@@ -46,7 +46,7 @@ class ChatRoomVM extends BaseNotifier {
   bool _isSending = false;
 
   // Reply Message
-  ReplyToModel? _replyMessage;
+  MessageModel? _replyMessage;
 
   // Upload file
   final _imagePicker = ImagePicker();
@@ -70,7 +70,7 @@ class ChatRoomVM extends BaseNotifier {
   String? get currentUid => _currentUid;
   bool get isTyping => _isTyping;
   bool get isSending => _isSending;
-  ReplyToModel? get replyMessage => _replyMessage;
+  MessageModel? get replyMessage => _replyMessage;
   String? get error => _error;
   String? get highlightedMessageId => _highlightedMessageId;
   bool get isUploading => _isUploading;
@@ -127,13 +127,13 @@ class ChatRoomVM extends BaseNotifier {
       await clearTyping();
       final ReplyToModel? replyTo = _replyMessage != null
           ? ReplyToModel(
-              messageId: _replyMessage!.messageId,
+              messageId: _replyMessage!.id,
               senderId: _replyMessage!.senderId,
               senderName: _replyMessage!.senderName,
               text: _replyMessage!.text,
               sentAt: _replyMessage!.sentAt,
-              mediaUrl: _replyMessage!.mediaUrl,
-              mediaType: _replyMessage!.mediaType,
+              mediaUrl: _replyMessage!.allMediaUrls.toString(),
+              mediaType: _replyMessage!.type.name,
             )
           : null;
 
@@ -187,7 +187,7 @@ class ChatRoomVM extends BaseNotifier {
   // ========================================
   // UI HELPERS (Reply & Scroll)
   // ========================================
-  void onSwipedMessage(ReplyToModel message) {
+  void onSwipedMessage(MessageModel message) {
     _replyMessage = message;
     notifyListeners();
   }
@@ -205,6 +205,9 @@ class ChatRoomVM extends BaseNotifier {
       ref.read(highlightMessageProvider(chatId).notifier).state = null;
     });
   }
+
+  bool isMyMessage(MessageModel message) => message.senderId == _currentUid;
+  bool isRepliedMessageMine(String senderId) => _currentUid == senderId;
 
   void setJumpTarget(int sentAt) {
     ref.read(jumpToTargetProvider(chatId).notifier).state = sentAt;
@@ -428,7 +431,7 @@ class ChatRoomVM extends BaseNotifier {
     }
 
     final uploadedFile = File(file.fileName);
-    
+
     try {
       _isSending = true;
       notifyListeners();
@@ -441,7 +444,17 @@ class ChatRoomVM extends BaseNotifier {
         files: [uploadedFile],
         type: file.messageType,
         otherUserFcmTokens: otherUser?.fcmTokens,
-        replyTo: _replyMessage,
+        replyTo: _replyMessage != null
+          ? ReplyToModel(
+              messageId: _replyMessage!.id,
+              senderId: _replyMessage!.senderId,
+              senderName: _replyMessage!.senderName,
+              text: _replyMessage!.text,
+              sentAt: _replyMessage!.sentAt,
+              mediaUrl: _replyMessage!.mediaUrls?.firstOrNull,
+              mediaType: _replyMessage!.type.name,
+            )
+          : null,
       );
 
       onCancelReply();
@@ -560,48 +573,49 @@ final chatMessagesStreamProvider = StreamProvider.autoDispose
       }
 
       return localStream.map((localMsgs) {
-        debugPrint('🕵️‍♂️ [DEBUG CHAT] Stream terpanggil! ChatID: $chatId');
+        debugPrint(
+          '🕵️‍♂️ [DEBUG CHAT] Local Stream terpanggil! ChatID: $chatId',
+        );
         debugPrint(
           '🕵️‍♂️ [DEBUG CHAT] Jumlah pesan dari SQLite (Drift): ${localMsgs.length}',
         );
 
-        return localMsgs
-            .map(
-              (m) => MessageModel(
-                id: m.id,
-                senderId: m.senderId,
-                senderName: m.senderName,
-                text: m.textContent,
-                type: MessageType.values.firstWhere(
-                  (e) => e.name == m.type,
-                  orElse: () => MessageType.text,
-                ),
-                sentAt: DateTime.fromMillisecondsSinceEpoch(m.sentAt),
-                updatedAt: DateTime.fromMillisecondsSinceEpoch(m.updatedAt),
-                isDeleted: m.isDeleted,
-                deletedFor: m.deletedFor,
+        return localMsgs.map((m) => MessageModel(
+            id: m.id,
+            senderId: m.senderId,
+            senderName: m.senderName,
+            text: m.textContent,
+            type: MessageType.values.firstWhere(
+              (e) => e.name.toLowerCase() == m.type.toLowerCase(),
+              orElse: () => MessageType.text,
+            ),
+            sentAt: DateTime.fromMillisecondsSinceEpoch(m.sentAt),
+            updatedAt: DateTime.fromMillisecondsSinceEpoch(m.updatedAt),
+            isDeleted: m.isDeleted,
+            deletedFor: m.deletedFor,
 
-                syncStatus: m.syncStatus,
+            syncStatus: m.syncStatus,
 
-                // Decode array jika ada
-                mediaUrls: m.mediaUrls != null
-                    ? List<String>.from(jsonDecode(m.mediaUrls!))
-                    : null,
-                fileName: m.fileName,
+            // Decode array jika ada
+            mediaUrls: m.mediaUrls != null
+                ? List<String>.from(jsonDecode(m.mediaUrls!))
+                : null,
+            fileName: m.fileName,
 
-                // Mapping Reply
-                replyTo: m.replyToId != null
-                    ? ReplyToModel(
-                        messageId: m.replyToId!,
-                        senderId: '', // Sesuaikan jika lu butuh
-                        senderName: m.replyToSenderName ?? '',
-                        text: m.replyToText ?? '',
-                        sentAt: DateTime.now(), // Sesuaikan
-                      )
-                    : null,
-              ),
-            )
-            .toList();
+            // Mapping Reply
+            replyTo: m.replyToId != null
+                ? ReplyToModel(
+                    messageId: m.replyToId!,
+                    senderId: '', // Sesuaikan jika lu butuh
+                    senderName: m.replyToSenderName ?? '',
+                    text: m.replyToText ?? '',
+                    sentAt: DateTime.now(),
+                    mediaType: m.replyToMediaType,
+                    mediaUrl: m.replyToMediaUrl,
+                  )
+                : null,
+          ),
+        ).toList();
       });
     });
 

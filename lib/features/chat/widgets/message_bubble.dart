@@ -246,7 +246,6 @@ class MessageBubble extends ConsumerWidget {
   }
 
   Widget _buildInBubbleReplyPreview(ReplyToModel replyTo, String currentUid) {
-    // Mengecek apakah pesan yang dibalas adalah milik kita sendiri
     final isRepliedMessageMine = replyTo.senderId == currentUid;
 
     return Container(
@@ -269,7 +268,7 @@ class MessageBubble extends ConsumerWidget {
             style: TextStyle(
               fontWeight: FontWeight.w600,
               fontSize: 12.sp,
-              color: isMe ? AppColors.white : AppColors.senderNameColor(replyTo.senderId), // Primary gak keliatan di bubble biru
+              color: isMe ? AppColors.white : AppColors.senderNameColor(replyTo.senderId),
             ),
           ),
           Gap(2.h),
