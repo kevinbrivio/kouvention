@@ -129,28 +129,6 @@ class SyncService {
     lastSyncTimestamp: Value(DateTime.now().millisecondsSinceEpoch),
   );
 
-  // ============================
-  // Sync Messages
-  // ============================
-  Future<void> syncMessages(String chatId) async {
-    try {
-      final List<MessageModel> messages = await _chatService.fetchMessages(
-        chatId,
-      );
-
-      final companions = await Isolate.run(
-        () => messages
-            .map((msg) => messageToCompanion(msg, chatId, SyncStatus.sent))
-            .toList(),
-      );
-
-      await _db.upsertMessages(companions);
-    } catch (e, s) {
-      debugPrint('🚨 [SYNC ERROR]: $e');
-      print(s);
-    }
-  }
-
   Future<void> fetchMessages(String chatId) async {
     final chatRoom = await _db.getChatById(chatId);
     final lastSyncAt = chatRoom?.lastSyncTimestamp ?? 0;
@@ -174,8 +152,36 @@ class SyncService {
 
     await _db.upsertMessages(companions);
 
-    final latestMsgTime = missedMessages.last.sentAt.millisecondsSinceEpoch;
+    final latestMsgTime = missedMessages
+        .first
+        .sentAt
+        .millisecondsSinceEpoch; // Firestore send descendingly, hence use .first
     await _db.updateChatLastSync(chatId, latestMsgTime);
+  }
+
+  Stream<void> streamFirestoreMessages(String chatId) async* {
+    final chatRoom = await _db.getChatById(chatId);
+    final lastSyncAt = chatRoom?.lastSyncTimestamp ?? 0;
+
+    // Yield the new message stream from Firestore value into Drift stream
+    yield* _chatService
+        .streamMessagesSince(
+          chatId,
+          DateTime.fromMillisecondsSinceEpoch(lastSyncAt),
+        )
+        .asyncMap((newMessages) async {
+          if (newMessages.isEmpty) return;
+
+          final companions = await Isolate.run(() {
+            return newMessages
+                .map((m) => messageToCompanion(m, chatId, SyncStatus.sent))
+                .toList();
+          });
+
+          await _db.upsertMessages(companions);
+          final latestMsgTime = newMessages.first.sentAt.millisecondsSinceEpoch;
+          await _db.updateChatLastSync(chatId, latestMsgTime);
+        });
   }
 
   // ==========================================

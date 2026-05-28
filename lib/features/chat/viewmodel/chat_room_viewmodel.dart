@@ -23,6 +23,9 @@ class ChatRoomVM extends BaseNotifier {
   final String? _currentUid;
   final String chatId;
 
+  // Subscribing to Firestore
+  StreamSubscription? _firestoreSubscription;
+
   // Pagination
   String? _highlightedMessageId;
 
@@ -63,9 +66,19 @@ class ChatRoomVM extends BaseNotifier {
       _error = 'Not authenticated';
     } else {
       // Turn off notification when in the chatId room
-      Future.microtask(() {
+      Future.microtask(() async {
         ref.read(activeChatIdProvider.notifier).state = chatId;
-        ref.read(syncServiceProvider).syncMessages(chatId);
+        final syncProvider = ref.read(syncServiceProvider);
+
+        // Fetch from local
+        await syncProvider.fetchMessages(chatId);
+
+        // Also listen to Firestore updates
+        _firestoreSubscription = await syncProvider
+            .streamFirestoreMessages(chatId)
+            .listen((_) {
+              debugPrint('New messages arrived in Drift local database');
+            });
       });
 
       await _chatService.resetUnreadCount(chatId, _currentUid);
@@ -232,7 +245,7 @@ class ChatRoomVM extends BaseNotifier {
   @override
   void dispose() {
     ref.read(activeChatIdProvider.notifier).state = null;
-
+    _firestoreSubscription?.cancel();
     clearTyping();
     _typingTimer?.cancel();
     super.dispose();

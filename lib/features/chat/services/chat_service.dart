@@ -55,10 +55,10 @@ class ChatService {
   /// [limit] controls the page size. Start with 20.
   /// This stream is for the FIRST page only — it stays live
   /// so new incoming messages appear instantly.
-  Stream<List<MessageModel>> streamMessages(String chatId, {int limit = 100}) =>
+  Stream<List<MessageModel>> streamMessagesSince(String chatId, DateTime lastSyncAt) =>
       _messagesRef(chatId)
+          .where('sentAt', isGreaterThan: lastSyncAt)
           .orderBy('sentAt', descending: true)
-          .limit(limit)
           .snapshots()
           .map(
             (snapshot) => snapshot.docs
