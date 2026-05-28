@@ -277,7 +277,7 @@ class ChatService {
     final lastMessageMap = MessageModel.toLastMessageMap(
       senderId: senderId,
       senderName: senderName,
-      text: text.isNotEmpty ? text : _mediaLabel(type),
+      text: text.isNotEmpty ? text : _mediaLabel(type, fileName),
       type: type,
       replyTo: replyTo,
     );
@@ -302,16 +302,16 @@ class ChatService {
     await batch.commit();
   }
 
-  String _mediaLabel(MessageType type) {
+  String _mediaLabel(MessageType type, String filename) {
     switch (type) {
       case MessageType.image:
         return '📷 Photo';
       case MessageType.video:
-        return '🎥 Video';
+        return '🎥 ${filename}';
       case MessageType.audio:
-        return '🎵 Audio';
+        return '🎵 ${filename}';
       case MessageType.file:
-        return '📎 File';
+        return '📎 ${filename}';
       default:
         return '';
     }

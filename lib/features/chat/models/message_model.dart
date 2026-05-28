@@ -20,7 +20,7 @@ class MessageModel {
   final SyncStatus syncStatus;
 
   // MEDIA
-  final List<String>? mediaUrls;
+  final List<dynamic>? mediaUrls;
   final String? fileName;
   final int? fileSizeBytes;
   final String? mediaGroupId;
@@ -31,12 +31,12 @@ class MessageModel {
   bool get isAudio => type == MessageType.audio;
   bool get isFile => type == MessageType.file;
 
-  List<String> get allMediaUrls {
+  List<dynamic> get allMediaUrls {
     if (mediaUrls != null && mediaUrls!.isNotEmpty) return mediaUrls!;
     return [];
   }
 
-  const MessageModel({
+  MessageModel({
     required this.id,
     required this.senderId,
     required this.senderName,
@@ -47,7 +47,7 @@ class MessageModel {
     required this.syncStatus,
     this.mimeType,
     this.mediaDuration,
-    this.mediaUrls,
+    this.mediaUrls = const [],
     this.fileName,
     this.fileSizeBytes,
     this.isDeleted = false,
@@ -55,8 +55,7 @@ class MessageModel {
     this.mediaGroupId,
   });
 
-  factory MessageModel.fromMap(String docId, Map<String, dynamic> data) =>
-      MessageModel(
+  factory MessageModel.fromMap(String docId, Map<String, dynamic> data) => MessageModel(
         id: docId,
         senderId: data['senderId'] as String,
         senderName: data['senderName'] as String,
@@ -66,13 +65,13 @@ class MessageModel {
         replyTo: (data['replyTo'] != null)
             ? ReplyToModel.fromMap(data['replyTo'])
             : null,
-        mediaUrls: data['mediaUrl'] as List<String>?,
         syncStatus: data['sync_status'] != null
           ? SyncStatus.values.firstWhere(
             (e) => e.name == data['sync_status'],
             orElse: () => SyncStatus.sent,
           )
           : SyncStatus.sent,
+        mediaUrls: data['mediaUrls'] as List<dynamic>?,
         fileName: data['fileName'] as String?,
         mimeType: data['mimeType'] as String?,
         mediaDuration: (data['mediaDuration'] as num?)?.toInt(),

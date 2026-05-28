@@ -16,6 +16,10 @@ import 'package:kouvention/features/notification/viewmodel/active_chat_id_provid
 import 'package:kouvention/features/shared/services/sync_service.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
 import 'package:kouvention/features/user/services/user_service.dart';
+import 'package:oktoast/oktoast.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:record/record.dart';
 
 class ChatRoomVM extends BaseNotifier {
   final ChatService _chatService;
@@ -43,6 +47,10 @@ class ChatRoomVM extends BaseNotifier {
   bool _isUploading = false;
   bool _showMediaPanel = false;
 
+  // audio record
+  final AudioRecorder _audioRecorder = AudioRecorder();
+  bool _isRecording = false;
+
   String? _error;
 
   ChatRoomVM(super.ref, {required this.chatId})
@@ -59,6 +67,7 @@ class ChatRoomVM extends BaseNotifier {
   String? get highlightedMessageId => _highlightedMessageId;
   bool get isUploading => _isUploading;
   bool get showMediaPanel => _showMediaPanel;
+  bool get isRecording => _isRecording;
 
   @override
   FutureOr<void> init() async {
@@ -86,9 +95,6 @@ class ChatRoomVM extends BaseNotifier {
     }
   }
 
-  // ============================================
-  // SEND MESSAGE
-  // ============================================
   Future<void> sendMessage(String text) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty || _currentUid == null) return;
@@ -109,15 +115,19 @@ class ChatRoomVM extends BaseNotifier {
     try {
       _isSending = true;
       notifyListeners();
-
-      await _syncService.sendMessage(
-        chatRoomId: chatId,
-        textContent: trimmed,
-        senderName: chat.displayName(_currentUid),
-        memberUids: chat.members,
-        otherUserFcmTokens: otherUser?.fcmTokens,
-        replyTo: _replyMessage,
-      );
+      // clear typing indicator before sending
+      await clearTyping();
+      final ReplyToModel? replyTo = _replyMessage != null
+          ? ReplyToModel(
+              messageId: _replyMessage!.id,
+              senderId: _replyMessage!.senderId,
+              senderName: _replyMessage!.senderName,
+              text: _replyMessage!.text,
+              sentAt: _replyMessage!.sentAt,
+              mediaUrl: _replyMessage!.mediaUrls?.firstOrNull,
+              mediaType: _replyMessage!.type.name,
+            )
+          : null;
 
       onCancelReply();
     } catch (e) {
@@ -132,51 +142,6 @@ class ChatRoomVM extends BaseNotifier {
   // ========================================
   // UPLOAD FILES
   // ========================================
-  Future<void> sendMediaMessage(
-    List<File> files,
-    MessageType type,
-    String caption,
-  ) async {
-    if (_currentUid == null) return;
-    _isUploading = true;
-    notifyListeners();
-
-    final chat = ref.read(chatMetadataStreamProvider(chatId)).value;
-    if (chat == null) {
-      _error = 'Getting chat room ready';
-      notifyListeners();
-      return;
-    }
-
-    UserModel? otherUser;
-    if (chat.type == 'direct') {
-      final otherUid = chat.otherMemberUid(_currentUid);
-      otherUser = ref.read(otherUserStreamProvider(otherUid)).value;
-    }
-
-    try {
-      await _syncService.sendMediaMessage(
-        chatRoomId: chatId,
-        type: type,
-        caption: caption,
-        files: files,
-
-        senderName: chat.displayName(_currentUid),
-        memberUids: chat.members,
-        otherUserFcmTokens: otherUser?.fcmTokens,
-        replyTo: _replyMessage,
-      );
-
-      onCancelReply();
-    } catch (e) {
-      _error = 'Failed to upload file';
-      notifyListeners();
-    } finally {
-      _isUploading = false;
-      notifyListeners();
-    }
-  }
-
   void toggleMediaPanel(BuildContext context) {
     _showMediaPanel = !_showMediaPanel;
     if (_showMediaPanel) {
@@ -240,6 +205,332 @@ class ChatRoomVM extends BaseNotifier {
   void switchToNormalMode() {
     ref.read(jumpToTargetProvider(chatId).notifier).state = null;
   }
+  
+  Future<List<UploadResultModel>> uploadFiles({
+    required List<File> files,
+    required MessageType type,
+  }) async {
+    try {
+      final results = await Future.wait(
+        files.map((f) => _mediaService.uploadFile(file: f, mediaType: type)),
+      );
+
+      return results.whereType<UploadResultModel>().toList();
+    } on CloudinaryUploadException catch (e) {
+      showToast(e.message);
+    } catch (e) {
+      showToast('Error uploading. Please try again.');
+    }
+
+    return [];
+  }
+
+  Future<List<File>> pickMultipleVideos({required bool fromCamera}) async {
+    final pickedList = await _imagePicker.pickMultiVideo(
+      limit: 5,
+      maxDuration: Duration(seconds: 180),
+    );
+    if (pickedList.isEmpty) return [];
+
+    final files = await Future.wait(
+      pickedList.map((xfile) => _toTempFile(xfile)),
+    );
+
+    return files.whereType<File>().toList();
+  }
+
+  Future<File?> pickImage({required bool fromCamera}) async {
+    final picked = await _imagePicker.pickImage(
+      source: fromCamera ? ImageSource.camera : ImageSource.gallery,
+      imageQuality: 70,
+    );
+    if (picked == null) return null;
+    return _toTempFile(picked);
+  }
+
+  Future<List<File>> pickMultipleImages() async {
+    final pickedList = await _imagePicker.pickMultiImage(imageQuality: 70, limit: 5);
+    if (pickedList.isEmpty) return [];
+
+    final files = await Future.wait(
+      pickedList.map((xfile) => _toTempFile(xfile)),
+    );
+
+    return files.whereType<File>().toList();
+  }
+
+  Future<File?> _toTempFile(XFile picked) async {
+    try {
+      final bytes = await picked.readAsBytes();
+      final tempDir = await getTemporaryDirectory();
+      final tempFile = File('${tempDir.path}/${picked.name}');
+      await tempFile.writeAsBytes(bytes);
+      return tempFile;
+    } catch (e) {
+      print('Failed to convert file: $e');
+      return null;
+    }
+  }
+
+  Future<File?> pickVideo({required bool fromCamera}) async {
+    final picked = await _imagePicker.pickVideo(
+      source: fromCamera ? ImageSource.camera : ImageSource.gallery,
+      maxDuration: const Duration(minutes: 3),
+    );
+    if (picked == null) return null;
+    return File(picked.path);
+  }
+
+  Future<File?> pickAudio() async {
+    final result = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowMultiple: false,
+      allowedExtensions: ['mp3', 'm4a'],
+      withData: false,
+      withReadStream: false,
+    );
+
+    if (result == null) return null;
+    return File(result.files.first.path!);
+  }
+
+  Future<File?> pickFile() async {
+    final result = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowMultiple: false,
+      allowedExtensions: [
+        'pdf',
+        'doc',
+        'docx',
+        'xls',
+        'xlsx',
+        'ppt',
+        'pptx',
+        'mp3',
+        'm4a',
+        'wav',
+      ],
+      withData: false,
+      withReadStream: false,
+    );
+
+    if (result == null) return null;
+    return File(result.files.first.path!);
+  }
+
+  Future<List<File>> pickMultipleFiles() async {
+    final result = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowMultiple: true,
+      allowedExtensions: [
+        'pdf',
+        'doc',
+        'docx',
+        'xls',
+        'xlsx',
+        'ppt',
+        'pptx',
+        'mp3',
+        'm4a',
+        'wav',
+      ],
+      withData: false, // Don't save the data into memory
+      withReadStream: false,
+    );
+
+    if (result == null || result.files.isEmpty) return [];
+
+    final path = result.files.first.path;
+    if (path == null) return [];
+
+    final files = await Future.wait(
+      result.xFiles.map((xfile) => _toTempFile(xfile)),
+    );
+
+    return files.whereType<File>().toList();
+  }
+
+  Future<void> sendMediaMessage({
+    required List<UploadResultModel> files,
+  }) async {
+    try {
+      _isUploading = true;
+      notifyListeners();
+
+      final filesWithCaption = files
+          .where((f) => f.caption != null && f.caption != '')
+          .toList();
+      final allUrls = files.map((f) => f.url).toList();
+
+      /// Only create within single bubble if only one caption was found.
+      if (filesWithCaption.length <= 1) {
+        final singleCaption = filesWithCaption.isNotEmpty
+            ? filesWithCaption.first.caption!
+            : '';
+
+        await _sendSingleBubble(
+          urls: allUrls,
+          caption: singleCaption,
+          file: files.first,
+        );
+      } else {
+        for (final file in files) {
+          await _sendSingleBubble(
+            urls: [file.url],
+            caption: file.caption ?? '',
+            file: file,
+          );
+        }
+      }
+    } on CloudinaryUploadException catch (e) {
+      _error = e.message;
+      notifyListeners();
+    } catch (e) {
+      _error = 'Failed to upload file';
+      notifyListeners();
+    } finally {
+      _isUploading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _sendSingleBubble({
+    required List<dynamic> urls,
+    required String caption,
+    required UploadResultModel file,
+  }) async {
+    if (_currentUid == null || _chat == null) return;
+
+    // Generate messageID in Firestore
+    final docId = FirebaseFirestore.instance
+        .collection('chats')
+        .doc(chatId)
+        .collection('messages')
+        .doc()
+        .id;
+
+    final now = DateTime.now();
+
+    final localMessage = MessageModel(
+      id: docId,
+      senderId: _currentUid,
+      senderName: senderDisplayName(_currentUid),
+      text: caption,
+      type: file.messageType,
+      sentAt: now,
+      isDeleted: false,
+      fileName: file.fileName,
+      mediaUrls: urls.cast<String>(),
+      mimeType: file.mimeType,
+      mediaDuration: file.mediaDuration,
+      fileSizeBytes: file.fileSizeBytes,
+      replyTo: _replyMessage != null
+          ? ReplyToModel(
+              messageId: _replyMessage!.id,
+              senderId: _replyMessage!.senderId,
+              senderName: _replyMessage!.senderName,
+              text: _replyMessage!.text,
+              sentAt: _replyMessage!.sentAt,
+              mediaUrl: _replyMessage!.mediaUrls?.firstOrNull,
+              mediaType: _replyMessage!.type.name,
+            )
+          : null,
+    );
+
+    onCancelReply();
+
+    // Save to local first
+    await _db.upsertMessage(_messageToCompanion(localMessage));
+
+    // Sync up to Firestore
+    await _chatService.sendMediaMessage(
+      chatId: chatId,
+      messageId: docId,
+      senderId: _currentUid,
+      senderName: senderDisplayName(_currentUid),
+      text: caption,
+      type: file.messageType,
+      mediaUrls: urls.cast<String>(),
+      fileName: file.fileName,
+      fileSizeBytes: file.fileSizeBytes,
+      mimeType: file.mimeType,
+      mediaDuration: file.mediaDuration,
+      memberUids: _chat!.members,
+      replyTo: _replyMessage != null
+          ? ReplyToModel(
+              messageId: _replyMessage!.id,
+              senderId: _replyMessage!.senderId,
+              senderName: _replyMessage!.senderName,
+              text: _replyMessage!.text,
+              sentAt: _replyMessage!.sentAt,
+              mediaUrl: _replyMessage!.mediaUrls?.firstOrNull,
+              mediaType: _replyMessage!.type.name,
+            )
+          : null,
+    );
+    final notifText = _mediaNotificationText(file.messageType, caption);
+    _sendNotification(notifText);
+  }
+
+  // =================================
+  // AUDIO RECORDING
+  // =================================
+  Future<void> startRecording() async {
+    try {
+      // Ketuk pintu: Minta izin mic
+      var status = await Permission.microphone.request();
+      if (status != PermissionStatus.granted) {
+        return;
+      }
+
+      await _audioRecorder.start(
+        const RecordConfig(),
+        path: 'my_temp_audio.m4a',
+      );
+
+      _isRecording = true;
+      notifyListeners();
+    } catch (e) {
+      print('Error in recording audio: $e');
+    }
+  }
+
+  Future<void> stopRecording() async {
+    try {
+      final path = await _audioRecorder.stop();
+
+      _isRecording = false;
+      notifyListeners();
+
+      if (path != null) {
+        print("Done recording, File in: $path");
+      }
+    } catch (e) {
+      print("Stop recording failed: $e");
+    }
+  }
+
+  MessageType _resolveMessageType(List<UploadResultModel> results) {
+    final types = results.map((r) => r.messageType).toSet();
+    if (types.length == 1) return types.first; // semua sama
+    return MessageType.media; // campuran
+  }
+
+  String _mediaNotificationText(MessageType type, String caption) {
+    if (caption.isNotEmpty) return caption;
+    switch (type) {
+      case MessageType.image:
+        return '📷 Photo';
+      case MessageType.video:
+        return '🎥 Video';
+      case MessageType.audio:
+        return '🎵 Audio';
+      case MessageType.file:
+        return '📎 File';
+      default:
+        return '';
+    }
+  }
 
   // --- CleanUp ----------------------------------
   @override
@@ -248,6 +539,7 @@ class ChatRoomVM extends BaseNotifier {
     _firestoreSubscription?.cancel();
     clearTyping();
     _typingTimer?.cancel();
+    _audioRecorder.dispose();
     super.dispose();
   }
 }

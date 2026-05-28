@@ -463,8 +463,11 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
             vm.sendMessage(_textController.text);
             _textController.clear();
             _scrollToBottom();
+          } else {
+            vm.startRecording();
           }
         },
+
         child: CircleAvatar(
           radius: 20.r,
           backgroundColor: vm.isSending ? AppColors.grey : AppColors.primary,
@@ -472,12 +475,16 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
               ? SizedBox(
                   width: 18.sp,
                   height: 18.sp,
-                  child: CircularProgressIndicator(
+                  child: const CircularProgressIndicator(
                     strokeWidth: 2,
                     color: Colors.white,
                   ),
                 )
-              : Icon(Icons.send, color: Colors.white, size: 18.sp),
+              : Icon(
+                  vm.isTyping ? Icons.send : Icons.mic,
+                  color: Colors.white,
+                  size: 18.sp,
+                ),
         ),
       ),
     ],

@@ -19,11 +19,14 @@ class MediaPreviewVM extends BaseNotifier {
   List<File> files;
   int _currentIndex = 0;
   final MessageType type;
-  final Future<void> Function(List<UploadResultModel> result, String? caption)
+  final Future<void> Function(
+    List<UploadResultModel> result,
+    Map<String, String> caption,
+  )
   onSend;
 
   bool _isSending = false;
-  String? _caption;
+  final Map<String, String> _captions = {};
   File get currentFile => files[_currentIndex];
   int get currentIndex => _currentIndex;
   int get totalFiles => files.length;
@@ -37,7 +40,7 @@ class MediaPreviewVM extends BaseNotifier {
   });
 
   bool get isSending => _isSending;
-  String? get caption => _caption;
+  String captionFor(String filePath) => _captions[filePath] ?? '';
 
   @override
   FutureOr<void> init() {
@@ -70,8 +73,9 @@ class MediaPreviewVM extends BaseNotifier {
     notifyListeners();
   }
 
-  void onCaptionChanged(String value) {
-    _caption = value.trim().isEmpty ? null : value.trim();
+  void onCaptionChanged(String filePath, String value) {
+    _captions[filePath] = value;
+    notifyListeners();
   }
 
   Future<void> send(BuildContext context) async {
@@ -87,17 +91,23 @@ class MediaPreviewVM extends BaseNotifier {
         ),
       );
 
-      final results = rawResults.whereType<UploadResultModel>().toList();
+      final results = <UploadResultModel>[];
+      for (int i = 0; i < files.length; i++) {
+        final result = rawResults[i];
+        if (result == null) continue;
 
+        final caption = _captions[files[i].path] ?? '';
+        results.add(result.copyWith(caption: caption));
+      }
       if (results.isEmpty) return;
 
-      await onSend(results, _caption);
+      await onSend(results, _captions);
       if (context.mounted) Navigator.pop(context);
     } on DioException catch (e) {
       print('Error send media message: $e');
+      notifyListeners();
     } finally {
       _isSending = false;
-      notifyListeners();
     }
   }
 
@@ -143,7 +153,8 @@ class MediaPreviewArgs {
   final List<File> files;
   final MessageType mediaType;
   final String chatId;
-  final Future<void> Function(List<UploadResultModel>, String?) onSend;
+  final Future<void> Function(List<UploadResultModel>, Map<String, String>)
+  onSend;
 
   const MediaPreviewArgs({
     required this.files,
