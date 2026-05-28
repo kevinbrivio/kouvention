@@ -27,6 +27,7 @@ MessagesCompanion messageToCompanion(
 
   type: Value(msg.type.name),
   sentAt: Value(msg.sentAt.millisecondsSinceEpoch),
+  updatedAt: Value(msg.updatedAt.millisecondsSinceEpoch),
 
   syncStatus: Value(status),
 
@@ -138,22 +139,16 @@ class SyncService {
   );
 
   Future<void> fetchMessages(String chatId) async {
-    debugPrint('🕵️‍♂️ [TRIPWIRE 1] Starting fetch for $chatId...');
     final chatRoom = await _db.getChatById(chatId);
     final lastSyncAt = chatRoom?.lastSyncTimestamp ?? 0;
-    debugPrint('🕵️‍♂️ [TRIPWIRE 2] Bookmark found: $lastSyncAt');
 
     final missedMessages = await _chatService.fetchMessages(
       chatId,
       lastSyncTimestamp: DateTime.fromMillisecondsSinceEpoch(lastSyncAt),
       limit: 50,
     );
-    debugPrint(
-      '🕵️‍♂️ [TRIPWIRE 3] Firestore returned ${missedMessages.length} messages',
-    );
 
     if (missedMessages.isEmpty) {
-      debugPrint('🕵️‍♂️ [TRIPWIRE 4] No new messages. Going home early.');
       await _db.updateChatLastSync(chatId, lastSyncAt);
       return;
     }
@@ -165,10 +160,6 @@ class SyncService {
     });
 
     await _db.upsertMessages(companions);
-
-    debugPrint(
-      '🪣 [BUCKET] Successfully saved ${companions.length} messages to Drift!',
-    );
 
     final latestMsgTime = missedMessages
         .first
@@ -225,6 +216,7 @@ class SyncService {
       senderName: senderName,
       text: textContent,
       sentAt: now,
+      updatedAt: now,
       isDeleted: false,
       syncStatus: SyncStatus.pending,
       replyTo: replyTo,
