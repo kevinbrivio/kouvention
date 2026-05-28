@@ -555,7 +555,8 @@ final chatMessagesStreamProvider = StreamProvider.autoDispose
         );
       } else {
         // No target sent means nothing for us to jump
-        localStream = db.watchMessages(chatId, limit: 50);
+        final uid = ref.read(currentUidProvider);
+        localStream = db.watchMessages(chatId, uid!, limit: 50);
       }
 
       return localStream.map((localMsgs) {
@@ -576,7 +577,9 @@ final chatMessagesStreamProvider = StreamProvider.autoDispose
                   orElse: () => MessageType.text,
                 ),
                 sentAt: DateTime.fromMillisecondsSinceEpoch(m.sentAt),
+                updatedAt: DateTime.fromMillisecondsSinceEpoch(m.updatedAt),
                 isDeleted: m.isDeleted,
+                deletedFor: m.deletedFor,
 
                 syncStatus: m.syncStatus,
 

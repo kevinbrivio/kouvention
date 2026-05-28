@@ -13,6 +13,7 @@ class MessageModel {
   final ReplyToModel? replyTo;
   final bool isDeleted;
   final List<String> deletedFor;
+  final DateTime updatedAt;
 
   final String? mimeType;
   final int? mediaDuration;
@@ -52,6 +53,7 @@ class MessageModel {
     this.fileSizeBytes,
     this.isDeleted = false,
     this.deletedFor = const [],
+    required this.updatedAt,
     this.mediaGroupId,
   });
 
@@ -62,6 +64,9 @@ class MessageModel {
         text: data['text'] as String? ?? '',
         type: MessageType.fromString(data['type'] as String? ?? 'text'),
         sentAt: (data['sentAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+        updatedAt: data['updatedAt'] != null 
+            ? (data['updatedAt'] as Timestamp).toDate() 
+            : (data['sentAt'] as Timestamp).toDate(),
         replyTo: (data['replyTo'] != null)
             ? ReplyToModel.fromMap(data['replyTo'])
             : null,
@@ -105,6 +110,7 @@ class MessageModel {
       if (mimeType != null) 'mimeType': mimeType,
       if (mediaDuration != null) 'mediaDuration': mediaDuration,
       'sentAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
     };
   }
 

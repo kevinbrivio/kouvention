@@ -101,6 +101,7 @@ class Messages extends Table {
 
   // Syncing status
   IntColumn get sentAt => integer()();
+  IntColumn get updatedAt => integer()();
   TextColumn get syncStatus => textEnum<SyncStatus>()();
 
   @override
@@ -290,9 +291,10 @@ class MessageDatabase extends _$MessageDatabase {
   // WATCH CHAT ROOM MESSAGES
   // ==============================
   /// Only watch messages limited in chat room
-  Stream<List<Message>> watchMessages(String chatRoomId, {int limit = 50}) =>
+  Stream<List<Message>> watchMessages(String chatRoomId, String currentUid, {int limit = 50}) =>
       (select(messages)
             ..where((m) => m.chatRoomId.equals(chatRoomId))
+            ..where((m) => m.deletedFor.like('%"$currentUid"%').not())
             ..orderBy([(m) => OrderingTerm.desc(m.sentAt)])
             ..limit(limit))
           .watch();
@@ -366,6 +368,25 @@ class MessageDatabase extends _$MessageDatabase {
         textContent: Value('This message was deleted'),
         mediaUrls: Value(null),
         mediaGroupId: Value(null),
+      ),
+    );
+  }
+
+  Future<void> deleteForMeLocal(String messageId, String currentUid) async {
+    if (messageId.isEmpty) return;
+
+    final msg = await (select(
+      messages,
+    )..where((m) => m.id.equals(messageId))).getSingle();
+    final currentDeletedFor = List<String>.from(msg.deletedFor);
+    if (!currentDeletedFor.contains(currentUid)) {
+      currentDeletedFor.add(currentUid);
+    }
+
+    await (update(messages)..where((m) => m.id.equals(messageId))).write(
+      MessagesCompanion(
+        deletedFor: Value(currentDeletedFor),
+        syncStatus: Value(SyncStatus.pending),
       ),
     );
   }
@@ -478,7 +499,7 @@ class LastMessageConverter extends TypeConverter<LastMessage, String> {
 
 LazyDatabase _openConnection() => LazyDatabase(() async {
   final dbFolder = await getApplicationDocumentsDirectory();
-  final file = File(p.join(dbFolder.path, 'kouvention4.db'));
+  final file = File(p.join(dbFolder.path, 'kouvention.db'));
 
   final key = await DbKeyManager.getOrCreateKey();
   final escapedKey = key.replaceAll("'", "''");
