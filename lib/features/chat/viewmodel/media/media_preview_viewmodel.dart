@@ -5,7 +5,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_cropper/image_cropper.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
@@ -65,10 +64,9 @@ class MediaPreviewVM extends BaseNotifier {
     notifyListeners();
   }
 
-  void addFile(XFile newFile) {
+  void addFile(File newFile) {
     if (files.length < maxFiles) {
-      final file = File(newFile.path);
-      files.add(file);
+      files.add(newFile);
     }
     notifyListeners();
   }

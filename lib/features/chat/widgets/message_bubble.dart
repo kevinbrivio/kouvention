@@ -5,9 +5,10 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
-import 'package:kouvention/features/auth/services/auth_service.dart'; // Pastikan path ini benar
+import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
+import 'package:kouvention/features/chat/models/message_status.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/models/reply_to_model.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
@@ -44,10 +45,8 @@ class MessageBubble extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 1. Ambil Current UID
     final currentUid = ref.watch(authServiceProvider).currentUser?.uid ?? '';
 
-    // 2. Tonton State UI Sementara (Selection & Highlight)
     final selectionVM = ref.watch(chatSelectionVM(chatId));
     final isSelected = selectionVM.isSelected(message.id);
     final isSelecting = selectionVM.isSelecting;
@@ -55,11 +54,9 @@ class MessageBubble extends ConsumerWidget {
     final highlightedId = ref.watch(highlightMessageProvider(chatId));
     final isHighlighted = highlightedId == message.id;
 
-    // 3. Format Waktu & Status
     final time = _formatTime(message.sentAt);
     final replyMsg = message.replyTo;
     
-    // Pastikan extension lu (getUIStatus) sudah di-import
     final status = message.getUIStatus(chat, currentUid); 
 
     return AnimatedContainer(
@@ -104,153 +101,86 @@ class MessageBubble extends ConsumerWidget {
     required String? senderPhotoUrl,
     required ReplyToModel? replyMsg,
     required String currentUid,
-    required MessageStatus status, // Dioper dari atas
+    required MessageStatus status,
   }) => Column(
-    crossAxisAlignment: isMe
-        ? CrossAxisAlignment.end
-        : CrossAxisAlignment.start,
-    children: [
-      Padding(
-        padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 16.w),
-        child: Row(
-          mainAxisAlignment: isMe
-              ? MainAxisAlignment.end
-              : MainAxisAlignment.start,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (!isMe) ...[
-              if (viewmodel.isGroup)
-                if (isFirstSequence)
+      crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 16.w),
+          child: Row(
+            mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (!isMe) ...[
+                if (isGroup && isFirstSequence)
                   CircleAvatar(
                     radius: 14.r,
-                    backgroundColor: AppColors.senderNameColor(
-                      message.senderId,
-                    ).withValues(alpha: 0.25),
-                    backgroundImage:
-                        senderPhotoUrl != null && senderPhotoUrl.isNotEmpty
+                    backgroundColor: AppColors.senderNameColor(message.senderId)
+                        .withValues(alpha: 0.25),
+                    backgroundImage: senderPhotoUrl != null && senderPhotoUrl.isNotEmpty
                         ? NetworkImage(senderPhotoUrl)
                         : null,
-                    onBackgroundImageError:
-                        senderPhotoUrl != null && senderPhotoUrl.isNotEmpty
+                    onBackgroundImageError: senderPhotoUrl != null && senderPhotoUrl.isNotEmpty
                         ? (_, __) {}
                         : null,
                     child: senderPhotoUrl == null || senderPhotoUrl.isEmpty
                         ? Text(
-                            senderName.isNotEmpty
-                                ? senderName[0].toUpperCase()
-                                : '?',
+                            senderName.isNotEmpty ? senderName[0].toUpperCase() : '?',
                             style: textTheme.senderName.copyWith(
-                              color: AppColors.senderNameColor(
-                                message.senderId,
-                              ).withValues(alpha: 0.7),
+                              color: AppColors.senderNameColor(message.senderId)
+                                  .withValues(alpha: 0.7),
                             ),
                           )
                         : null,
                   ),
-              Gap(8.w),
-            ],
-            Flexible(
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Container(
-                    constraints: BoxConstraints(maxWidth: 260.w),
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 12.w,
-                      vertical: 10.h,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isMe
-                          ? AppColors.primary2
-                          : AppColors.otherUserBubble,
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(isMe ? 16.r : 4.r),
-                        topRight: Radius.circular(isMe ? 4.r : 16.r),
-                        bottomRight: Radius.circular(16.r),
-                        bottomLeft: Radius.circular(16.r),
+                Gap(8.w),
+              ],
+              Flexible(
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      constraints: BoxConstraints(maxWidth: 260.w),
+                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+                      decoration: BoxDecoration(
+                        color: isMe ? AppColors.primary2 : AppColors.otherUserBubble,
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(isMe ? 16.r : 4.r),
+                          topRight: Radius.circular(isMe ? 4.r : 16.r),
+                          bottomRight: Radius.circular(16.r),
+                          bottomLeft: Radius.circular(16.r),
+                        ),
                       ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: isMe
-                          ? CrossAxisAlignment.end
-                          : CrossAxisAlignment.start,
-                      children: [
-                        if (replyMsg != null) ...[
-                          InkWell(
-                            onTap: onTapReply != null
-                                ? () {
-                                    HapticFeedback.selectionClick();
-                                    onTapReply!(replyMsg.messageId);
-                                  }
-                                : null,
-                            child: _buildInBubbleReplyPreview(replyMsg),
-                          ),
-                          Gap(6.h),
-                        ],
-                        if (!isMe && viewmodel.isGroup && isFirstSequence) ...[
-                          Text(
-                            senderName,
-                            style: textTheme.senderName.copyWith(
-                              color: AppColors.senderNameColor(
-                                message.senderId,
+                      child: Column(
+                        crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                        children: [
+                          if (replyMsg != null) ...[
+                            InkWell(
+                              onTap: onTapReply != null
+                                  ? () {
+                                      HapticFeedback.selectionClick();
+                                      onTapReply;
+                                    }
+                                  : null,
+                              child: _buildInBubbleReplyPreview(replyMsg, currentUid),
+                            ),
+                            Gap(6.h),
+                          ],
+                          if (!isMe && isGroup && isFirstSequence) ...[
+                            Text(
+                              senderName,
+                              style: textTheme.senderName.copyWith(
+                                color: AppColors.senderNameColor(message.senderId),
                               ),
                             ),
-                          ),
-                          Gap(4.h),
-                        ],
-                        if (message.type == MessageType.text) ...[
-                          Text(
-                            (message.text == '' && message.isDeleted)
-                                ? isMe
-                                      ? 'You deleted this message'
-                                      : 'This message was deleted'
-                                : message.text,
-                            style: textTheme.senderName.copyWith(
-                              color: isMe
-                                  ? message.isDeleted
-                                        ? AppColors.grey
-                                        : Colors.white
-                                  : message.isDeleted
-                                  ? AppColors.grey
-                                  : Colors.black87,
-                              fontStyle: message.isDeleted
-                                  ? FontStyle.italic
-                                  : FontStyle.normal,
-                            ),
-                          ),
-                        ] else if (message.mediaUrls != null &&
-                            message.mediaUrls!.isNotEmpty) ...[
-                          MediaBubble(message: message, isMe: isMe),
-                        ],
-
-                        Gap(4.h),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (replyMsg != null) ...[
-                              InkWell(
-                                onTap: onTapReply != null
-                                    ? () {
-                                        HapticFeedback.selectionClick();
-                                        onTapReply!(replyMsg.messageId);
-                                      }
-                                    : null,
-                                child: _buildInBubbleReplyPreview(replyMsg, currentUid), // Bawa UID
-                              ),
-                              Gap(6.h),
-                            ],
-                            if (!isMe && isGroup && isFirstSequence) ...[
-                              Text(
-                                senderName,
-                                style: textTheme.senderName.copyWith(
-                                  color: AppColors.senderNameColor(message.senderId),
-                                ),
-                              ),
-                              Gap(4.h),
-                            ],
+                            Gap(4.h),
+                          ],
+                          if (message.type == MessageType.text) ...[
                             Text(
                               (message.text == '' && message.isDeleted)
-                                  ? isMe ? 'You deleted this message' : 'This message was deleted'
+                                  ? isMe
+                                      ? 'You deleted this message'
+                                      : 'This message was deleted'
                                   : message.text,
                               style: textTheme.senderName.copyWith(
                                 color: isMe
@@ -259,47 +189,50 @@ class MessageBubble extends ConsumerWidget {
                                 fontStyle: message.isDeleted ? FontStyle.italic : FontStyle.normal,
                               ),
                             ),
-                            Gap(4.h),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  time,
-                                  style: TextStyle(
-                                    color: isMe ? Colors.white70 : Colors.grey[500],
-                                    fontSize: 11.sp,
-                                  ),
-                                ),
-                                if (isMe) ...[
-                                  Gap(4.w),
-                                  _buildMessageStatus(status), // Gunakan status yang di-passing
-                                ],
-                              ],
-                            ),
+                          ] else if (message.mediaUrls != null && message.mediaUrls!.isNotEmpty) ...[
+                            MediaBubble(message: message, isMe: isMe),
                           ],
-                        ),
+                          Gap(4.h),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                time,
+                                style: TextStyle(
+                                  color: isMe ? Colors.white70 : Colors.grey[500],
+                                  fontSize: 11.sp,
+                                ),
+                              ),
+                              if (isMe) ...[
+                                Gap(4.w),
+                                _buildMessageStatus(status),
+                              ],
+                            ],
+                          ),
+                        ],
                       ),
-                      if (isFirstSequence)
-                        Positioned(
-                          top: 0,
-                          left: isMe ? null : -4.w,
-                          right: isMe ? -4.w : null,
-                          child: CustomPaint(
-                            size: Size(8.w, 12.h),
-                            painter: BubbleTailPainter(
-                              color: isMe ? AppColors.primary2 : AppColors.otherUserBubble,
-                              isMe: isMe,
-                            ),
+                    ),
+                    if (isFirstSequence)
+                      Positioned(
+                        top: 0,
+                        left: isMe ? null : -4.w,
+                        right: isMe ? -4.w : null,
+                        child: CustomPaint(
+                          size: Size(8.w, 12.h),
+                          painter: BubbleTailPainter(
+                            color: isMe ? AppColors.primary2 : AppColors.otherUserBubble,
+                            isMe: isMe,
                           ),
                         ),
-                    ],
-                  ),
+                      ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      );
+        ),
+      ],
+    );
 
   Widget _buildMessageStatus(MessageStatus status) {
     switch (status) {

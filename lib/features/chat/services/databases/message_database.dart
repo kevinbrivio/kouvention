@@ -78,7 +78,7 @@ class Messages extends Table {
 
   // Multimedia
   TextColumn get localPath => text().nullable()(); // Local path on phone
-  TextColumn get mediaUrl => text().nullable()(); // Saved url in cloud
+  TextColumn get mediaUrls => text().nullable()(); // Saved url in cloud
   TextColumn get mediaGroupId => text().nullable()();
   IntColumn get mediaDuration => integer().nullable()();
   TextColumn get mimeType => text().nullable()();
@@ -89,6 +89,9 @@ class Messages extends Table {
   TextColumn get replyToId => text().nullable()();
   TextColumn get replyToText => text().nullable()();
   TextColumn get replyToSenderName => text().nullable()();
+  IntColumn get replyToSentAt => integer().nullable()();
+  TextColumn get replyToMediaUrl => text().nullable()();
+  TextColumn get replyToMediaType => text().nullable()();
 
   // Deleted
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
@@ -334,7 +337,7 @@ class MessageDatabase extends _$MessageDatabase {
       (update(messages)..where((m) => m.id.equals(messageId))).write(
         MessagesCompanion(
           syncStatus: Value(SyncStatus.sent),
-          mediaUrl: Value(cloudUrl),
+          mediaUrls: Value(cloudUrl),
         ),
       );
 
@@ -361,7 +364,7 @@ class MessageDatabase extends _$MessageDatabase {
         isDeleted: Value(true),
         syncStatus: Value(SyncStatus.pending),
         textContent: Value('This message was deleted'),
-        mediaUrl: Value(null),
+        mediaUrls: Value(null),
         mediaGroupId: Value(null),
       ),
     );

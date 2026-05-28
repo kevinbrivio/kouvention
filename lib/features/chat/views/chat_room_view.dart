@@ -494,7 +494,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     duration: const Duration(milliseconds: 250),
     curve: Curves.easeOut,
     height: vm.showMediaPanel ? 280.h : 0,
-    child: SingleChildScrollView(child: MediaSheet(onClick: onClickMedia)),
+    child: SingleChildScrollView(child: MediaSheet(vm: vm,)),
   );
 
   Widget _buildReplyPreview(

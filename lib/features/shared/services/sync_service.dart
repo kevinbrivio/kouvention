@@ -44,7 +44,7 @@ MessagesCompanion messageToCompanion(
   mediaDuration: Value(msg.mediaDuration),
   fileName: Value(msg.fileName),
   fileSizeBytes: Value(msg.fileSizeBytes),
-  mediaUrl: Value(msg.mediaUrls != null ? jsonEncode(msg.mediaUrls) : null),
+  mediaUrls: Value(msg.mediaUrls != null ? jsonEncode(msg.mediaUrls) : null),
   localPath: Value(null), // Firestore doesn't know about local path at all
   mediaGroupId: Value(msg.mediaGroupId),
 );
@@ -238,7 +238,7 @@ class SyncService {
     required String chatRoomId,
     required List<File> files,
     required MessageType type,
-    required String caption,
+    String? caption,
     required String senderName,
     required List<String> memberUids,
     Map<String, dynamic>? otherUserFcmTokens,
@@ -255,8 +255,6 @@ class SyncService {
     for (int i = 0; i < files.length; i++) {
       final file = files[i];
 
-      final fileCaption = (i == 0) ? caption : '';
-
       final randomStr = generateRandomString(5);
       final tempId = '${DateTime.now().millisecondsSinceEpoch}_$randomStr';
 
@@ -266,13 +264,13 @@ class SyncService {
         chatRoomId: Value(chatRoomId),
         senderId: Value(_currentUid!),
         senderName: Value(senderName),
-        textContent: Value(fileCaption),
+        textContent: Value(caption ?? ''), // Send empty string if media
         type: Value(type.name),
         sentAt: Value(DateTime.now().millisecondsSinceEpoch),
         syncStatus: Value(SyncStatus.pending),
 
         localPath: Value(file.path),
-        mediaUrl: Value(null), // no url yet
+        mediaUrls: Value(null), // no url yet
         mediaGroupId: Value(albumGroupId),
 
         replyToId: Value(replyTo?.messageId),
@@ -292,7 +290,7 @@ class SyncService {
       files: files,
       chatRoomId: chatRoomId,
       type: type,
-      caption: caption,
+      caption: caption ?? '',
       senderName: senderName,
       memberUids: memberUids,
       replyTo: replyTo,

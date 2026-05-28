@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
+import 'package:kouvention/features/chat/viewmodel/media/media_preview_viewmodel.dart';
 
 class _MediaOption {
   final IconData icon;
@@ -26,9 +27,8 @@ class _MediaOption {
 enum MediaOptions { image, camera, files, location, audio }
 
 class MediaSheet extends ConsumerWidget {
-  final Function(MediaOptions option) onClick;
-  
-  const MediaSheet({super.key, required this.onClick});
+  final ChatRoomVM vm;
+  const MediaSheet({super.key, required this.vm});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -117,8 +117,7 @@ class MediaSheet extends ConsumerWidget {
             files: pickedFiles,
             mediaType: MessageType.image,
             chatId: vm.chatId,
-            onSend: (result, caption) =>
-                vm.sendMediaMessage(files: result,),
+            onSend: (result, caption) => vm.sendMediaMessage(files: result),
           ),
         );
       },
@@ -143,8 +142,7 @@ class MediaSheet extends ConsumerWidget {
             files: [img],
             mediaType: MessageType.image,
             chatId: vm.chatId,
-            onSend: (result, caption) =>
-                vm.sendMediaMessage(files: result),
+            onSend: (result, caption) => vm.sendMediaMessage(files: result),
           ),
         );
       },
@@ -168,8 +166,7 @@ class MediaSheet extends ConsumerWidget {
             files: pickedFiles,
             mediaType: MessageType.video,
             chatId: vm.chatId,
-            onSend: (result, caption) =>
-                vm.sendMediaMessage(files: result),
+            onSend: (result, caption) => vm.sendMediaMessage(files: result),
           ),
         );
       },
@@ -193,8 +190,7 @@ class MediaSheet extends ConsumerWidget {
             files: pickedFiles,
             mediaType: MessageType.file,
             chatId: vm.chatId,
-            onSend: (result, caption) =>
-                vm.sendMediaMessage(files: result),
+            onSend: (result, caption) => vm.sendMediaMessage(files: result),
           ),
         );
       },
@@ -218,8 +214,7 @@ class MediaSheet extends ConsumerWidget {
             files: [picked],
             mediaType: MessageType.audio,
             chatId: vm.chatId,
-            onSend: (result, caption) =>
-                vm.sendMediaMessage(files: result),
+            onSend: (result, caption) => vm.sendMediaMessage(files: result),
           ),
         );
       },
