@@ -80,14 +80,6 @@ class MediaPreviewVM extends BaseNotifier {
     _isSending = true;
     notifyListeners();
 
-    print('======= CAPTIONS =======');
-    print(_captions);
-    print('Files count: ${files.length}');
-    _captions.forEach((path, caption) {
-      print('File: $path → Caption: $caption');
-    });
-    print('========================');
-
     final mediaService = MediaService();
 
     try {
