@@ -193,7 +193,7 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
       final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
       viewmodel.updateKeyboardHeight(keyboardHeight);
     });
-    
+
     if (widget.scrollToMessageId != null && widget.scrollToSentAt != null) {
       _isSearchingMessage = true;
       _handlePendingScroll();
@@ -254,7 +254,7 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
               viewmodel.error != null
                   ? Center(child: Text(viewmodel.error ?? ''))
                   : _buildMessageList(),
-  
+
               if (_showScrollBottom)
                 Positioned(
                   right: 16.w,
@@ -524,12 +524,15 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
       Gap(8.w),
       GestureDetector(
         onTap: () {
-          if (_textController.text.trim().isNotEmpty) {
+          if (viewmodel.isTyping) {
             viewmodel.sendMessage(_textController.text);
             _textController.clear();
             _scrollToBottom();
+          } else {
+            viewmodel.startRecording();
           }
         },
+
         child: CircleAvatar(
           radius: 20.r,
           backgroundColor: viewmodel.isSending
@@ -539,12 +542,16 @@ class _ChatRoomBodyState extends State<_ChatRoomBody> {
               ? SizedBox(
                   width: 18.sp,
                   height: 18.sp,
-                  child: CircularProgressIndicator(
+                  child: const CircularProgressIndicator(
                     strokeWidth: 2,
                     color: Colors.white,
                   ),
                 )
-              : Icon(Icons.send, color: Colors.white, size: 18.sp),
+              : Icon(
+                  viewmodel.isTyping ? Icons.send : Icons.mic,
+                  color: Colors.white,
+                  size: 18.sp,
+                ),
         ),
       ),
     ],

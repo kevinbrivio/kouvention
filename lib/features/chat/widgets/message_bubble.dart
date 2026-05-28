@@ -6,10 +6,12 @@ import 'package:gap/gap.dart';
 import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
+import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/models/reply_to_model.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_selection_viewmodel.dart';
 import 'package:kouvention/features/chat/widgets/bubble_tail_painter.dart';
+import 'package:kouvention/features/chat/widgets/media_bubble.dart';
 import 'package:swipe_to/swipe_to.dart';
 
 class MessageBubble extends ConsumerWidget {
@@ -134,9 +136,7 @@ class MessageBubble extends ConsumerWidget {
                             ),
                           )
                         : null,
-                  )
-                else
-                  SizedBox(width: 28.r),
+                  ),
               Gap(8.w),
             ],
             Flexible(
@@ -146,7 +146,7 @@ class MessageBubble extends ConsumerWidget {
                   Container(
                     constraints: BoxConstraints(maxWidth: 260.w),
                     padding: EdgeInsets.symmetric(
-                      horizontal: 14.w,
+                      horizontal: 12.w,
                       vertical: 10.h,
                     ),
                     decoration: BoxDecoration(
@@ -188,25 +188,31 @@ class MessageBubble extends ConsumerWidget {
                           ),
                           Gap(4.h),
                         ],
-                        Text(
-                          (message.text == '' && message.isDeleted)
-                              ? isMe
-                                    ? 'You deleted this message'
-                                    : 'This message was deleted'
-                              : message.text,
-                          style: textTheme.senderName.copyWith(
-                            color: isMe
-                                ? message.isDeleted
-                                      ? AppColors.grey
-                                      : Colors.white
-                                : message.isDeleted
-                                ? AppColors.grey
-                                : Colors.black87,
-                            fontStyle: message.isDeleted
-                                ? FontStyle.italic
-                                : FontStyle.normal,
+                        if (message.type == MessageType.text) ...[
+                          Text(
+                            (message.text == '' && message.isDeleted)
+                                ? isMe
+                                      ? 'You deleted this message'
+                                      : 'This message was deleted'
+                                : message.text,
+                            style: textTheme.senderName.copyWith(
+                              color: isMe
+                                  ? message.isDeleted
+                                        ? AppColors.grey
+                                        : Colors.white
+                                  : message.isDeleted
+                                  ? AppColors.grey
+                                  : Colors.black87,
+                              fontStyle: message.isDeleted
+                                  ? FontStyle.italic
+                                  : FontStyle.normal,
+                            ),
                           ),
-                        ),
+                        ] else if (message.mediaUrls != null &&
+                            message.mediaUrls!.isNotEmpty) ...[
+                          MediaBubble(message: message, isMe: isMe),
+                        ],
+
                         Gap(4.h),
                         Row(
                           mainAxisSize: MainAxisSize.min,
@@ -299,19 +305,92 @@ class MessageBubble extends ConsumerWidget {
             ),
           ),
           Gap(2.h),
-          Text(
-            replyTo.text,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 12.sp,
-              color: isMe ? Colors.white70 : Colors.grey[600],
+          if (replyTo.mediaType == 'text')
+            Text(
+              replyTo.text,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12.sp,
+                color: isMe ? Colors.white70 : Colors.grey[600],
+              ),
             ),
-          ),
+
+          if (replyTo.mediaUrl != null) ...[_buildReplyMediaPreview(replyTo)],
         ],
       ),
     );
   }
+
+  Widget _buildReplyMediaPreview(ReplyToModel replyTo) {
+    final type = replyTo.mediaType ?? '';
+    final url = replyTo.mediaUrl!;
+    final filename = url.split('/').last.toLowerCase().split('?').first;
+    final ext = filename.split('.').last.toLowerCase();
+
+    if (ext == 'pdf') return _iconBox(Icons.picture_as_pdf, filename);
+    if (ext == 'docx' || ext == 'doc')
+      return _iconBox(Icons.description, 'Document');
+    if (ext == 'xlsx' || ext == 'xls')
+      return _iconBox(Icons.table_chart, 'Spreadsheet');
+    if (ext == 'mp3' || ext == 'wav' || ext == 'ogg')
+      return _iconBox(Icons.audiotrack, 'Audio');
+
+    if (type == 'image') return _thumbnailBox(imageUrl: url);
+    if (type == 'video') {
+      return _thumbnailBox(
+        imageUrl: _getVideoThumbnailUrl(url),
+        icon: Icons.play_circle_fill,
+      );
+    }
+
+    return _iconBox(Icons.insert_drive_file, 'File');
+  }
+
+  String? _getVideoThumbnailUrl(String videoUrl) => videoUrl
+      .replaceFirst('/video/upload/', '/video/upload/so_0/')
+      .replaceAll('.mp4', '.jpg')
+      .replaceAll('.mov', '.jpg')
+      .replaceAll('.avi', '.jpg');
+
+  Widget _thumbnailBox({String? imageUrl, IconData? icon}) => SizedBox(
+    width: 80.w,
+    height: 80.w,
+    child: Stack(
+      fit: StackFit.expand,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4.r),
+          child: Image.network(
+            imageUrl!,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => Icon(Icons.broken_image, size: 20.sp),
+          ),
+        ),
+        if (icon != null)
+          Center(
+            child: Icon(icon, color: Colors.white, size: 20.sp),
+          ),
+      ],
+    ),
+  );
+
+  Widget _iconBox(IconData icon, String label) => Padding(
+    padding: EdgeInsets.all(4.w),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 20.sp, color: AppColors.grey,),
+        Gap(4.w),
+        Flexible(
+          child: Text(
+            label, 
+            style: textTheme.subDescription3,
+          ),
+        )
+      ],
+    ),
+  );
 
   String _formatTime(DateTime dateTime) {
     final hour = dateTime.hour;
