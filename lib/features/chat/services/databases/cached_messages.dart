@@ -28,6 +28,8 @@ class CachedMessages extends Table {
   TextColumn get replyToText => text().nullable()();
   TextColumn get replyToSender => text().nullable()();
   IntColumn get replyToSentAt => integer().nullable()();
+  TextColumn get replyToMediaUrl => text().nullable()();
+  TextColumn get replyToMediaType => text().nullable()();
 
   // Media (nullable)
   TextColumn get mediaUrls => text().nullable()();
@@ -69,7 +71,7 @@ class MessageDatabase extends _$MessageDatabase {
   MessageDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -121,6 +123,16 @@ class MessageDatabase extends _$MessageDatabase {
               cachedMessages.mediaUrls: const CustomExpression('media_url'),
             },
           ),
+        );
+      }
+      if (from < 7) {
+        await migrator.addColumn(
+          cachedMessages, 
+          cachedMessages.replyToMediaUrl,
+        );
+        await migrator.addColumn(
+          cachedMessages, 
+          cachedMessages.replyToMediaType,
         );
       }
     },
@@ -236,7 +248,9 @@ class MessageDatabase extends _$MessageDatabase {
               replyToText: row.readNullable<String>('reply_to_text'),
               replyToSender: row.readNullable<String>('reply_to_sender'),
               replyToSentAt: row.readNullable<int>('reply_to_sent_at'),
-              mediaUrls: row.readNullable<String>('media_url'),
+              replyToMediaUrl: row.readNullable<String>('reply_to_media_url'),
+              replyToMediaType: row.readNullable<String>('reply_to_media_type'),
+              mediaUrls: row.readNullable<String>('media_urls'),
               fileName: row.readNullable<String>('file_name'),
               fileSizeBytes: row.readNullable<int>('file_size_bytes'),
               mimeType: row.readNullable<String>('mime_type'),

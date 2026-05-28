@@ -7,6 +7,8 @@ import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
 import 'package:kouvention/features/chat/viewmodel/media_preview_viewmodel.dart';
+import 'package:kouvention/features/chat/widgets/preview/audio_preview.dart';
+import 'package:kouvention/features/chat/widgets/preview/document_preview.dart';
 import 'package:kouvention/features/chat/widgets/preview/image_preview.dart';
 import 'package:kouvention/features/chat/widgets/preview/video_preview.dart';
 
@@ -21,16 +23,19 @@ class MediaPreviewView extends ConsumerStatefulWidget {
 
 class _MediaPreviewViewState extends ConsumerState<MediaPreviewView> {
   late PageController _pageController;
+  late TextEditingController _captionController;
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController();
+    _captionController = TextEditingController();
   }
 
   @override
   void dispose() {
     _pageController.dispose();
+    _captionController.dispose();
     super.dispose();
   }
 
@@ -64,12 +69,13 @@ class _MediaPreviewViewState extends ConsumerState<MediaPreviewView> {
           style: const TextStyle(color: Colors.white, fontSize: 16),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.crop_rotate_rounded, color: Colors.white),
-            onPressed: () async {
-              await vm.cropImage(vm.currentFile.path);
-            },
-          ),
+          if (vm.type == MessageType.image)
+            IconButton(
+              icon: const Icon(Icons.crop_rotate_rounded, color: Colors.white),
+              onPressed: () async {
+                await vm.cropImage(vm.currentFile.path);
+              },
+            ),
         ],
       );
 
@@ -81,7 +87,11 @@ class _MediaPreviewViewState extends ConsumerState<MediaPreviewView> {
         // Caption field
         Expanded(
           child: TextField(
-            onChanged: vm.onCaptionChanged,
+            controller: _captionController,
+            onChanged: (value) {
+              final currentFile = vm.files[vm.currentIndex];
+              vm.onCaptionChanged(currentFile.path, value);
+            },
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
               hintText: 'Add a caption...',
@@ -128,7 +138,14 @@ class _MediaPreviewViewState extends ConsumerState<MediaPreviewView> {
     controller: _pageController,
     itemCount: vm.files.length,
     // Saat user swipe → update index di VM
-    onPageChanged: vm.goToIndex,
+    onPageChanged: (index) {
+      final currFile = vm.files[index];
+      _captionController.text = vm.captionFor(currFile.path);
+
+      _captionController.selection = TextSelection.fromPosition(
+        TextPosition(offset: _captionController.text.length),
+      );
+    },
     itemBuilder: (_, index) => _buildPreviewItem(vm.files[index]),
   );
 
@@ -136,8 +153,12 @@ class _MediaPreviewViewState extends ConsumerState<MediaPreviewView> {
   Widget _buildPreviewItem(File file) {
     final ext = file.path.split('.').last.toLowerCase();
     final isVideo = ['mp4', 'mov', 'avi', 'mkv'].contains(ext);
+    final isAudio = ['mp3', 'm4a'].contains(ext);
+    final isDocument = ['pdf', 'xlxs', 'docx', 'doc'].contains(ext);
 
+    if (isAudio) return AudioPreview(file: file);
     if (isVideo) return VideoPreview(file: file);
+    if (isDocument) return DocumentPreview(file: file);
     return ImagePreview(file: file);
   }
 
@@ -189,7 +210,24 @@ class _MediaPreviewViewState extends ConsumerState<MediaPreviewView> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              Image.file(vm.files[index], fit: BoxFit.cover),
+              if (vm.type == MessageType.file)
+                Icon(Icons.document_scanner_rounded),
+
+              if (vm.type == MessageType.image)
+                Image.file(vm.files[index], fit: BoxFit.cover)
+              else
+                Center(
+                  child: Icon(
+                    // pilih icon sesuai tipe
+                    vm.type == MessageType.video
+                        ? Icons.videocam
+                        : vm.type == MessageType.audio
+                        ? Icons.audiotrack
+                        : Icons.description,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                ),
 
               if (!isSelected)
                 Container(color: Colors.black.withValues(alpha: 0.3)),
@@ -202,12 +240,31 @@ class _MediaPreviewViewState extends ConsumerState<MediaPreviewView> {
 
   Widget _buildAddButton(MediaPreviewVM vm) => GestureDetector(
     onTap: () async {
-      final newFile = await ref
-          .read(chatRoomVM(widget.chatId))
-          .pickImage(fromCamera: false);
-      if (newFile == null) return;
-      
-      vm.addFile(newFile);
+      final chatRoomProvider = ref.read(chatRoomVM(widget.chatId));
+      switch (vm.type) {
+        case MessageType.image:
+          final newImg = await chatRoomProvider.pickImage(fromCamera: false);
+          if (newImg == null) return;
+
+          vm.addFile(newImg);
+        case MessageType.audio:
+          break;
+        // final newAudio = await chatRoomProvider.();
+        // if (newAudio == null) return;
+        // vm.addFile(newAudio);
+        case MessageType.video:
+          final newVideo = await chatRoomProvider.pickVideo(fromCamera: false);
+          if (newVideo == null) return;
+          vm.addFile(newVideo);
+        case MessageType.file:
+          final newFile = await chatRoomProvider.pickFile();
+          if (newFile == null) return;
+          vm.addFile(newFile);
+        case MessageType.text:
+          break;
+        case MessageType.media:
+          break;
+      }
     },
     child: Container(
       width: 52.w,

@@ -7,6 +7,7 @@ class UploadResultModel {
   final int fileSizeBytes;
   final MessageType messageType;
   final int? mediaDuration;
+  final String? caption;
 
   const UploadResultModel({
     required this.url,
@@ -15,6 +16,7 @@ class UploadResultModel {
     required this.mimeType,
     required this.messageType,
     this.mediaDuration,
+    this.caption,
   });
 
   factory UploadResultModel.fromJson(Map<String, dynamic> json) =>
@@ -27,7 +29,26 @@ class UploadResultModel {
             ? (json['duration'] as double).round()
             : null,
         messageType: MessageType.fromString(json['resource_type']),
+        caption: json['text'],
       );
+
+    UploadResultModel copyWith({
+      String?      url,
+      String?      fileName,
+      String?      mimeType,
+      int?         fileSizeBytes,
+      MessageType? messageType,
+      int?         mediaDuration,
+      String?      caption,
+    }) => UploadResultModel(
+      url:           url           ?? this.url,
+      fileName:      fileName      ?? this.fileName,
+      mimeType:      mimeType      ?? this.mimeType,
+      fileSizeBytes: fileSizeBytes ?? this.fileSizeBytes,
+      messageType:   messageType   ?? this.messageType,
+      mediaDuration: mediaDuration ?? this.mediaDuration,
+      caption:       caption       ?? this.caption,
+    );
 
   static String _buildMimeType(String? resourceType, String? format) {
     if (resourceType == null || format == null)

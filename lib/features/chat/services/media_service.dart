@@ -27,9 +27,12 @@ class MediaService {
         'file': await MultipartFile.fromFile(file.path),
         'upload_preset': _uploadPreset,
       });
-
+      final mediaName = (mediaType == MessageType.file || mediaType == MessageType.audio) 
+        ? 'auto' 
+        : mediaType.name;
+      
       final response = await _dio.post(
-        '/${mediaType.name}/upload',
+        '/$mediaName/upload',
         data: formData,
       );
 

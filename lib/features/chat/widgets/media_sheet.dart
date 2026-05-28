@@ -7,7 +7,6 @@ import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
 import 'package:kouvention/features/chat/viewmodel/media_preview_viewmodel.dart';
-import 'package:kouvention/features/chat/views/chat_room_view.dart';
 
 class _MediaOption {
   final IconData icon;
@@ -79,7 +78,6 @@ class MediaSheet extends ConsumerWidget {
           children: [
             Container(
               width: 48.w,
-              height: 48.w,
               decoration: BoxDecoration(
                 color: option.circleColor,
                 shape: BoxShape.circle,
@@ -100,7 +98,7 @@ class MediaSheet extends ConsumerWidget {
   List<_MediaOption> _buildOptions(BuildContext context, ChatRoomVM vm) => [
     _MediaOption(
       icon: Icons.photo_library_outlined,
-      label: 'Photos & video',
+      label: 'Photos',
       circleColor: const Color(0xFFEDE7F6),
       iconColor: const Color(0xFF7C4DFF),
       onTap: () async {
@@ -108,7 +106,7 @@ class MediaSheet extends ConsumerWidget {
         if (pickedFiles.isEmpty) return;
         if (!context.mounted) return;
         final router = GoRouter.of(context);
-        Navigator.pop(context);
+        vm.toggleMediaPanel(context);
 
         router.pushNamed(
           RouterRoutes.mediaPreview.name,
@@ -118,7 +116,7 @@ class MediaSheet extends ConsumerWidget {
             mediaType: MessageType.image,
             chatId: vm.chatId,
             onSend: (result, caption) =>
-                vm.sendMediaMessage(result: result, caption: caption ?? ''),
+                vm.sendMediaMessage(files: result,),
           ),
         );
       },
@@ -128,8 +126,50 @@ class MediaSheet extends ConsumerWidget {
       label: 'Camera',
       circleColor: const Color(0xFFFCE4EC),
       iconColor: const Color(0xFFE91E63),
-      onTap: () {
-        vm.pickImage(fromCamera: true);
+      onTap: () async {
+        final img = await vm.pickImage(fromCamera: true);
+        if (img == null) return;
+
+        if (!context.mounted) return;
+        final router = GoRouter.of(context);
+        vm.toggleMediaPanel(context);
+
+        router.pushNamed(
+          RouterRoutes.mediaPreview.name,
+          pathParameters: {'chatId': vm.chatId},
+          extra: MediaPreviewArgs(
+            files: [img],
+            mediaType: MessageType.image,
+            chatId: vm.chatId,
+            onSend: (result, caption) =>
+                vm.sendMediaMessage(files: result),
+          ),
+        );
+      },
+    ),
+    _MediaOption(
+      icon: Icons.video_library_outlined,
+      label: 'Videos',
+      circleColor: const Color(0xFFE0F2F1),
+      iconColor: const Color(0xFF00897B),
+      onTap: () async {
+        final pickedFiles = await vm.pickMultipleVideos(fromCamera: false);
+        if (pickedFiles.isEmpty) return;
+        if (!context.mounted) return;
+        final router = GoRouter.of(context);
+        vm.toggleMediaPanel(context);
+
+        router.pushNamed(
+          RouterRoutes.mediaPreview.name,
+          pathParameters: {'chatId': vm.chatId},
+          extra: MediaPreviewArgs(
+            files: pickedFiles,
+            mediaType: MessageType.video,
+            chatId: vm.chatId,
+            onSend: (result, caption) =>
+                vm.sendMediaMessage(files: result),
+          ),
+        );
       },
     ),
     _MediaOption(
@@ -137,9 +177,24 @@ class MediaSheet extends ConsumerWidget {
       label: 'Document',
       circleColor: const Color(0xFFE3F2FD),
       iconColor: const Color(0xFF1E88E5),
-      onTap: () {
-        Navigator.pop(context);
-        // TODO: file_picker
+      onTap: () async {
+        final pickedFiles = await vm.pickMultipleFiles();
+        if (pickedFiles.isEmpty) return;
+        if (!context.mounted) return;
+        final router = GoRouter.of(context);
+        vm.toggleMediaPanel(context);
+
+        router.pushNamed(
+          RouterRoutes.mediaPreview.name,
+          pathParameters: {'chatId': vm.chatId},
+          extra: MediaPreviewArgs(
+            files: pickedFiles,
+            mediaType: MessageType.file,
+            chatId: vm.chatId,
+            onSend: (result, caption) =>
+                vm.sendMediaMessage(files: result),
+          ),
+        );
       },
     ),
     _MediaOption(
@@ -147,9 +202,24 @@ class MediaSheet extends ConsumerWidget {
       label: 'Audio',
       circleColor: const Color(0xFFFFF3E0),
       iconColor: const Color(0xFFFB8C00),
-      onTap: () {
-        Navigator.pop(context);
-        // TODO: audio picker
+      onTap: () async {
+        final picked = await vm.pickAudio();
+        if (picked == null) return;
+        if (!context.mounted) return;
+        final router = GoRouter.of(context);
+        vm.toggleMediaPanel(context);
+
+        router.pushNamed(
+          RouterRoutes.mediaPreview.name,
+          pathParameters: {'chatId': vm.chatId},
+          extra: MediaPreviewArgs(
+            files: [picked],
+            mediaType: MessageType.audio,
+            chatId: vm.chatId,
+            onSend: (result, caption) =>
+                vm.sendMediaMessage(files: result),
+          ),
+        );
       },
     ),
     _MediaOption(
@@ -160,16 +230,6 @@ class MediaSheet extends ConsumerWidget {
       onTap: () {
         Navigator.pop(context);
         // TODO: location
-      },
-    ),
-    _MediaOption(
-      icon: Icons.person_outline,
-      label: 'Contact',
-      circleColor: const Color(0xFFE0F2F1),
-      iconColor: const Color(0xFF00897B),
-      onTap: () {
-        Navigator.pop(context);
-        // TODO: contact picker
       },
     ),
   ];
