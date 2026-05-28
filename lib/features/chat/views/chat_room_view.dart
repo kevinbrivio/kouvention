@@ -528,7 +528,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                     ),
                     Gap(4.h),
 
-                    if (message.isImage) ...[
+                    if (message.allMediaUrls.isNotEmpty) ...[
                       Row(
                         children: [
                           Icon(
@@ -577,26 +577,42 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
               ),
             ),
 
-            if (message.isImage && message.allMediaUrls.isNotEmpty)
-              CachedNetworkImage(
-                imageUrl: message.allMediaUrls.first,
-                width: 64.w,
-                fit: BoxFit.cover,
-
-                // Efek loading sementara yang mulus
-                placeholder: (context, url) => Container(
-                  color: AppColors.grey.withValues(alpha: 0.2),
-                  width: 50.w,
-                ),
-                errorWidget: (context, url, error) => Container(
-                  color: AppColors.grey.withValues(alpha: 0.2),
-                  width: 50.w,
-                  child: Icon(
-                    Icons.broken_image,
-                    size: 16.r,
-                    color: Colors.grey,
+            if (message.allMediaUrls.isNotEmpty)
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  CachedNetworkImage(
+                    imageUrl: message.isImage 
+                        ? message.allMediaUrls.first 
+                        : vm.getCloudinaryThumbnail(message.allMediaUrls.first), 
+                    width: 64.w,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(
+                      color: AppColors.grey.withValues(alpha: 0.2),
+                      width: 64.w,
+                    ),
+                    errorWidget: (context, url, error) => Container(
+                      color: AppColors.grey.withValues(alpha: 0.2),
+                      width: 64.w,
+                      child: Icon(Icons.broken_image, size: 16.r, color: Colors.grey),
+                    ),
                   ),
-                ),
+
+                  // 2. Overlay Ikon Play HANYA JIKA itu Video
+                  if (message.isVideo)
+                    Container(
+                      padding: EdgeInsets.all(4.r),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.5),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.play_arrow_rounded,
+                        color: Colors.white,
+                        size: 20.r,
+                      ),
+                    ),
+                ],
               ),
           ],
         ),

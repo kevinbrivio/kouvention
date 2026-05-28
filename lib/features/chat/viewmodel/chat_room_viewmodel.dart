@@ -505,6 +505,11 @@ class ChatRoomVM extends BaseNotifier {
     }
   }
 
+  String getCloudinaryThumbnail(String videoUrl) {
+    if (videoUrl.isEmpty) return '';
+    return videoUrl.replaceAll(RegExp(r'\.[^.]+$'), '.jpg');
+  }
+
   MessageType _resolveMessageType(List<UploadResultModel> results) {
     final types = results.map((r) => r.messageType).toSet();
     if (types.length == 1) return types.first; // semua sama
