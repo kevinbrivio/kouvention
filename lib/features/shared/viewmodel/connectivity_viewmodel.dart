@@ -15,19 +15,21 @@ final connectivityProvider = StreamProvider<bool>((ref) {
 
 final networkAutoSyncProvider = Provider<void>((ref) {
   ref.listen<AsyncValue<bool>>(connectivityProvider, (previous, next) {
-    
     final isOnline = next.value ?? false;
     final wasOnline = previous?.value ?? false;
 
     if (isOnline && !wasOnline) {
       debugPrint('🌍 [INTERNET Going online!]');
-      
+
       final currentUid = ref.read(authServiceProvider).currentUser?.uid;
-      
+
       if (currentUid != null) {
         debugPrint('🌍 Building network provider');
-        ref.read(syncServiceProvider).syncInitialChatRooms(currentUid);
+        final syncService = ref.read(syncServiceProvider);
 
+        syncService.syncInitialChatRooms(currentUid);
+        debugPrint('🧹 Pushing stuck pending messages to Firestore...');
+        syncService.retryStuckMessages();
       }
     } else if (!isOnline && wasOnline) {
       debugPrint('🛑 [NO INTERNET, going offline]');

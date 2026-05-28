@@ -341,7 +341,7 @@ class MessageDatabase extends _$MessageDatabase {
   Future<void> updateChatLastSync(String chatId, int timestamp) =>
       (update(chats)..where((c) => c.id.equals(chatId))).write(
         ChatsCompanion(lastSyncTimestamp: Value(timestamp)),
-    );
+      );
 
   // ===========================
   // DELETE
@@ -382,6 +382,17 @@ class MessageDatabase extends _$MessageDatabase {
   // ==============================
   Future<Chat?> getChatById(String chatId) =>
       (select(chats)..where((c) => c.id.equals(chatId))).getSingleOrNull();
+
+  Future<List<Message>> getStuckPendingMessages() async {
+    final fiveMinutesAgo = DateTime.now()
+        .subtract(const Duration(minutes: 5))
+        .millisecondsSinceEpoch;
+
+    return (select(messages)
+          ..where((m) => m.syncStatus.equals(SyncStatus.pending.name))
+          ..where((m) => m.sentAt.isSmallerThanValue(fiveMinutesAgo)))
+        .get();
+  }
 }
 
 class StringListConverter extends TypeConverter<List<String>, String> {

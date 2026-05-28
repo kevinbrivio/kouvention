@@ -130,16 +130,20 @@ class SyncService {
   );
 
   Future<void> fetchMessages(String chatId) async {
+    debugPrint('🕵️‍♂️ [TRIPWIRE 1] Starting fetch for $chatId...');
     final chatRoom = await _db.getChatById(chatId);
     final lastSyncAt = chatRoom?.lastSyncTimestamp ?? 0;
+    debugPrint('🕵️‍♂️ [TRIPWIRE 2] Bookmark found: $lastSyncAt');
 
     final missedMessages = await _chatService.fetchMessages(
       chatId,
       lastSyncTimestamp: DateTime.fromMillisecondsSinceEpoch(lastSyncAt),
       limit: 50,
     );
+    debugPrint('🕵️‍♂️ [TRIPWIRE 3] Firestore returned ${missedMessages.length} messages');
 
     if (missedMessages.isEmpty) {
+      debugPrint('🕵️‍♂️ [TRIPWIRE 4] No new messages. Going home early.');
       await _db.updateChatLastSync(chatId, lastSyncAt);
       return;
     }
@@ -151,6 +155,8 @@ class SyncService {
     });
 
     await _db.upsertMessages(companions);
+
+    debugPrint('🪣 [BUCKET] Successfully saved ${companions.length} messages to Drift!');
 
     final latestMsgTime = missedMessages
         .first
@@ -217,29 +223,12 @@ class SyncService {
       messageToCompanion(localMessage, chatRoomId, SyncStatus.pending),
     );
 
-    // Update to Firestore
-    try {
-      await _chatService.sendMessage(
-        chatId: chatRoomId,
-        messageId: tempId,
-        senderId: _currentUid,
-        senderName: senderName,
-        text: textContent,
-        memberUids: memberUids,
-        replyTo: replyTo,
-      );
-
-      // Upsert to SQLite again with SENT status
-      await _db.upsertMessage(
-        messageToCompanion(localMessage, chatRoomId, SyncStatus.sent),
-      );
-
-      // Shoot Notification Service
-      // await _notificationService.sendNotification(targetToken: , body: , title: , data: ,);
-    } catch (e) {
-      await _db.updateMessageStatus(tempId, SyncStatus.failed);
-      throw Exception('Failed sending message: $e');
-    }
+    // Update to Firestore (in background)
+    _sendMessageInBackground(
+      localMessage: localMessage,
+      chatRoomId: chatRoomId,
+      memberUids: memberUids,
+    );
   }
 
   // ==========================================
@@ -260,6 +249,8 @@ class SyncService {
     final albumGroupId = isAlbum
         ? 'album_${DateTime.now().millisecondsSinceEpoch}'
         : null;
+
+    final List<MessagesCompanion> localMessages = [];
 
     for (int i = 0; i < files.length; i++) {
       final file = files[i];
@@ -288,40 +279,117 @@ class SyncService {
         replyToText: Value(replyTo?.text),
         replyToSenderName: Value(replyTo?.senderName),
       );
-      await _db.upsertMessage(localMsg);
 
-      // Upload to Cloudinary
-      try {
-        final uploadResult = await _mediaService.uploadFile(
-          file: file,
-          mediaType: type,
-        );
-        if (uploadResult == null) return;
+      localMessages.add(localMsg);
+    }
 
-        // Shoot to Firestore
-        await _chatService.sendMediaMessage(
-          chatId: chatRoomId,
-          messageId: tempId,
-          text: caption,
-          type: type,
-          senderId: _currentUid,
-          senderName: senderName,
-          mediaUrls: [uploadResult.url],
-          mediaDuration: uploadResult.mediaDuration,
-          mimeType: uploadResult.mimeType,
-          fileSizeBytes: uploadResult.fileSizeBytes,
-          memberUids: memberUids,
-          replyTo: replyTo,
-          fileName: file.path.split('/').last, // king_emyu.jpeg
-        );
+    for (var msg in localMessages) {
+      await _db.upsertMessage(msg);
+    }
 
-        // Update to SQLite
-        await _db.updateMediaMessageSuccess(tempId, uploadResult.url);
+    _processMediaUploadsInBackground(
+      localMessages: localMessages,
+      files: files,
+      chatRoomId: chatRoomId,
+      type: type,
+      caption: caption,
+      senderName: senderName,
+      memberUids: memberUids,
+      replyTo: replyTo,
+    );
+  }
 
-        // Call FCM
-      } catch (e) {
-        await _db.updateMessageStatus(tempId, SyncStatus.failed);
-      }
+  Future<void> _processMediaUploadsInBackground({
+    required List<MessagesCompanion> localMessages,
+    required List<File> files,
+    required String chatRoomId,
+    required MessageType type,
+    required String caption,
+    required String senderName,
+    required List<String> memberUids,
+    required ReplyToModel? replyTo,
+  }) async {
+    final uploadTasks = <Future<void>>[];
+
+    for (int i = 0; i < files.length; i++) {
+      final file = files[i];
+      final tempId = localMessages[i].id.value;
+      final fileCaption = (i == 0) ? caption : '';
+
+      uploadTasks.add(() async {
+        try {
+          final uploadResult = await _mediaService.uploadFile(
+            file: file,
+            mediaType: type,
+          );
+          if (uploadResult == null) throw Exception('Upload failed');
+
+          // Shoot to Firestore
+          await _chatService.sendMediaMessage(
+            chatId: chatRoomId,
+            messageId: tempId,
+            text: caption,
+            type: type,
+            senderId: _currentUid!,
+            senderName: senderName,
+            mediaUrls: [uploadResult.url],
+            mediaDuration: uploadResult.mediaDuration,
+            mimeType: uploadResult.mimeType,
+            fileSizeBytes: uploadResult.fileSizeBytes,
+            memberUids: memberUids,
+            replyTo: replyTo,
+            fileName: file.path.split('/').last, // king_emyu.jpeg
+          );
+
+          // Update to SQLite
+          await _db.updateMediaMessageSuccess(tempId, uploadResult.url);
+        } catch (e) {
+          debugPrint('🚨 Failed media upload for $tempId: $e');
+          await _db.updateMessageStatus(tempId, SyncStatus.failed);
+        }
+      }());
+    }
+
+    await Future.wait(uploadTasks);
+  }
+
+  Future<void> _sendMessageInBackground({
+    required MessageModel localMessage,
+    required String chatRoomId,
+    required List<String> memberUids,
+  }) async {
+    try {
+      await _chatService.sendMessage(
+        chatId: chatRoomId,
+        memberUids: memberUids,
+        messageId: localMessage.id,
+        senderId: localMessage.senderId,
+        senderName: localMessage.senderName,
+        text: localMessage.text,
+        replyTo: localMessage.replyTo,
+      );
+
+      // Update status in local
+      await _db.updateMessageStatus(localMessage.id, SyncStatus.sent);
+    } catch (e) {
+      await _db.updateMessageStatus(localMessage.id, SyncStatus.failed);
+      debugPrint('Failed sending message: $e');
+    }
+  }
+
+  // ===========================================
+  // RETRY SENDING MESSAGE AFTER NO CONNECTION
+  // ==========================================
+  Future<void> retryStuckMessages() async {
+    final stuckMessages = await _db.getStuckPendingMessages();
+    if (stuckMessages.isEmpty) return;
+
+    for (final msg in stuckMessages) {
+      // if (msg.type == MessageType.text.name) {
+      //   _retryTextInBackground(msg);
+      // } else {
+      //   _retryMediaInBackground(msg);
+      // }
     }
   }
 
