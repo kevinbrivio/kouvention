@@ -82,11 +82,19 @@ class SyncService {
       ' ========= [Fetching from Firestore done!] Took: ${sw.elapsedMilliseconds} ms =========',
     );
 
+    final existingLocalRooms = await _db.getAllChatRooms(currentUid);
+
+    final lastSyncAtMap = {
+      for (var room in existingLocalRooms) room.id: room.lastSyncTimestamp,
+    };
+
     List<ChatsCompanion> companions;
 
     if (chatRooms.length < 100) {
       print('Chat list length: ${chatRooms.length}');
-      companions = chatRooms.map(chatToCompanion).toList();
+      companions = chatRooms.map((chat) {
+        return chatToCompanion(chat, lastSyncAt: lastSyncAtMap[chat.id]);
+      }).toList();
     } else {
       // Only use Isolate when plenty chats
       companions = await Isolate.run(
@@ -104,7 +112,7 @@ class SyncService {
     sw.stop();
   }
 
-  static ChatsCompanion chatToCompanion(ChatModel chat) => ChatsCompanion(
+  static ChatsCompanion chatToCompanion(ChatModel chat, {int? lastSyncAt}) => ChatsCompanion(
     id: Value(chat.id),
     type: Value(chat.type),
     groupName: Value(chat.groupName),
@@ -126,7 +134,7 @@ class SyncService {
     ),
     createdBy: Value(chat.createdBy),
 
-    lastSyncTimestamp: Value(DateTime.now().millisecondsSinceEpoch),
+    lastSyncTimestamp: Value(lastSyncAt ?? 0),
   );
 
   Future<void> fetchMessages(String chatId) async {
@@ -140,7 +148,9 @@ class SyncService {
       lastSyncTimestamp: DateTime.fromMillisecondsSinceEpoch(lastSyncAt),
       limit: 50,
     );
-    debugPrint('🕵️‍♂️ [TRIPWIRE 3] Firestore returned ${missedMessages.length} messages');
+    debugPrint(
+      '🕵️‍♂️ [TRIPWIRE 3] Firestore returned ${missedMessages.length} messages',
+    );
 
     if (missedMessages.isEmpty) {
       debugPrint('🕵️‍♂️ [TRIPWIRE 4] No new messages. Going home early.');
@@ -156,7 +166,9 @@ class SyncService {
 
     await _db.upsertMessages(companions);
 
-    debugPrint('🪣 [BUCKET] Successfully saved ${companions.length} messages to Drift!');
+    debugPrint(
+      '🪣 [BUCKET] Successfully saved ${companions.length} messages to Drift!',
+    );
 
     final latestMsgTime = missedMessages
         .first

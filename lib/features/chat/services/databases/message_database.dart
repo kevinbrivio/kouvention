@@ -396,6 +396,9 @@ class MessageDatabase extends _$MessageDatabase {
           ..where((m) => m.sentAt.isSmallerThanValue(fiveMinutesAgo)))
         .get();
   }
+
+  Future<List<Chat>> getAllChatRooms(String currentUid) =>
+      (select(chats)..where((c) => c.memberInfo.contains(currentUid))).get();
 }
 
 class StringListConverter extends TypeConverter<List<String>, String> {
