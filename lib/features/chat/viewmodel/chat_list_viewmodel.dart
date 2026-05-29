@@ -67,6 +67,7 @@ class ChatListVM extends BaseNotifier {
   Future<void> pinSelectedChats() async {
     if (_currentUid == null) return;
 
+    final db = ref.read(messageDatabaseProvider);
     final allChats = _currentChatFromStream;
     final selectedChats = allChats
         .where((c) => _selectedChatIds.contains(c.id))
@@ -78,6 +79,7 @@ class ChatListVM extends BaseNotifier {
     if (unpinned.isEmpty) {
       for (final chat in selectedChats) {
         await _chatService.unpinChat(_currentUid, chat.id);
+        await db.unpinChatLocally(chat.id, _currentUid!);
       }
       clearSelection();
       return;
@@ -98,8 +100,25 @@ class ChatListVM extends BaseNotifier {
 
     for (final chat in unpinned) {
       await _chatService.pinChat(_currentUid, chat.id);
+      await db.pinChatLocally(chat.id, _currentUid!);
     }
     clearSelection();
+  }
+
+  Future<void> pinChat(String chatId) async {
+    if (_currentUid != null) {
+      final db = ref.read(messageDatabaseProvider);
+      await _chatService.pinChat(_currentUid, chatId);
+      await db.pinChatLocally(chatId, _currentUid!);
+    }
+  }
+
+  Future<void> unpinChat(String chatId) async {
+    if (_currentUid != null) {
+      final db = ref.read(messageDatabaseProvider);
+      await _chatService.unpinChat(_currentUid, chatId);
+      await db.unpinChatLocally(chatId, _currentUid!);
+    }
   }
 
   Future<void> deleteSelectedChat() async {
@@ -116,14 +135,6 @@ class ChatListVM extends BaseNotifier {
       await db.markChatDeletedLocally(chat.id, _currentUid!);
     }
     clearSelection();
-  }
-
-  Future<void> pinChat(String chatId) async {
-    if (_currentUid != null) await _chatService.pinChat(_currentUid, chatId);
-  }
-
-  Future<void> unpinChat(String chatId) async {
-    if (_currentUid != null) await _chatService.unpinChat(_currentUid, chatId);
   }
 
   Future<void> deleteChat(String chatId) async {

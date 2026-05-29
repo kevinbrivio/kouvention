@@ -9,7 +9,9 @@ import 'package:kouvention/features/chat/viewmodel/chat_list_viewmodel.dart';
 import 'package:kouvention/features/search/viewmodel/search_viewmodel.dart';
 
 class ChatHeader extends ConsumerWidget {
-  const ChatHeader({super.key});
+  final bool compact;
+
+  const ChatHeader({super.key, this.compact = false});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -25,16 +27,17 @@ class ChatHeader extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Kouvention',
-                style: textTheme.subheadline1.copyWith(color: AppColors.primary),
-              ),
-              Gap(6.h),
+              if (!compact)
+                Text(
+                  'Kouvention',
+                  style: textTheme.subheadline1.copyWith(color: AppColors.primary),
+                ),
+              if (!compact) Gap(6.h),
               _buildSearchBox(context, chatVM, searchVM),
             ],
           ),
         ),
-        
+
         // 2. Filter chips (All, Direct, Groups)
         _buildFilterButtons(chatVM),
         Gap(4.h),

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
@@ -19,18 +18,26 @@ import 'package:kouvention/features/search/widgets/search_body.dart';
 class ChatListView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final vm = ref.watch(chatListVM);
     final searchVm = ref.watch(searchVMProvider);
 
-    return BaseView(
-      provider: chatListVM,
-      useGradient: false,
-      appBar: (vm) {
-        if (vm.isSelectionMode) {
-          return _buildSelectionAppBar(context, vm);
+    return PopScope(
+      canPop: !vm.isSelectionMode,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) {
+          vm.clearSelection();
         }
-        return HiddenAppBar();
       },
-      builder: (context, vm) => Stack(
+      child: BaseView(
+        provider: chatListVM,
+        useGradient: false,
+        appBar: (_) {
+          if (vm.isSelectionMode) {
+            return _buildSelectionAppBar(context, vm);
+          }
+          return HiddenAppBar();
+        },
+        builder: (context, _) => Stack(
         children: [
           if (searchVm.isActive)
             SearchBody()
@@ -51,6 +58,7 @@ class ChatListView extends ConsumerWidget {
             ),
         ],
       ),
+    ),
     );
   }
 
@@ -69,11 +77,7 @@ class ChatListView extends ConsumerWidget {
           if (!vm.isSelectionMode) ...[
             ChatHeader(),
           ] else ...[
-            Padding(
-              padding: EdgeInsets.only(
-                top: MediaQuery.of(context).padding.top + kToolbarHeight,
-              ),
-            ),
+            ChatHeader(compact: true),
           ],
 
           Expanded(
@@ -108,25 +112,6 @@ class ChatListView extends ConsumerWidget {
       ),
     );
   }
-
-  // void _openSearchSheet(
-  //   BuildContext context,
-  //   ChatListVM chatVM,
-  //   SearchVM searchVM,
-  // ) => showModalBottomSheet(
-  //   context: context,
-  //   showDragHandle: false,
-  //   enableDrag: false,
-  //   isScrollControlled: true,
-  //   useRootNavigator: true,
-  //   backgroundColor: AppColors.white,
-  //   // Smooth curve for the slide-up animation
-  //   transitionAnimationController: AnimationController(
-  //     vsync: Navigator.of(context),
-  //     duration: const Duration(milliseconds: 200),
-  //   ),
-  //   builder: (sheetContext) => SearchOverlay(chats: chatVM.,),
-  // );
 
   PreferredSizeWidget _buildSelectionAppBar(
     BuildContext context,

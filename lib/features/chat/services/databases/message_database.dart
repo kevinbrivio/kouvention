@@ -396,6 +396,32 @@ class MessageDatabase extends _$MessageDatabase {
     );
   }
 
+  Future<void> pinChatLocally(String chatId, String uid) async {
+    final existing = await (select(chats)..where((c) => c.id.equals(chatId))).getSingleOrNull();
+    if (existing == null) return;
+
+    final current = List<String>.from(existing.pinnedBy);
+    if (!current.contains(uid)) {
+      current.add(uid);
+    }
+
+    await (update(chats)..where((c) => c.id.equals(chatId))).write(
+      ChatsCompanion(pinnedBy: Value(current)),
+    );
+  }
+
+  Future<void> unpinChatLocally(String chatId, String uid) async {
+    final existing = await (select(chats)..where((c) => c.id.equals(chatId))).getSingleOrNull();
+    if (existing == null) return;
+
+    final current = List<String>.from(existing.pinnedBy);
+    current.remove(uid);
+
+    await (update(chats)..where((c) => c.id.equals(chatId))).write(
+      ChatsCompanion(pinnedBy: Value(current)),
+    );
+  }
+
   Future<void> deleteForMeLocal(String messageId, String currentUid) async {
     if (messageId.isEmpty) return;
 
