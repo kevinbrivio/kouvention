@@ -357,9 +357,8 @@ class SyncService {
             fileSizeBytes: uploadResult.fileSizeBytes,
             mimeType: uploadResult.mimeType,
           );
-        } catch (e, s) {
+        } catch (e) {
           debugPrint('🚨 Failed media upload for $tempId: $e');
-          print(s);
           await _db.updateMessageStatus(tempId, SyncStatus.failed);
         }
       }());
