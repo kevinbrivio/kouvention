@@ -21,19 +21,35 @@ class UploadResultModel {
     this.localPath,
   });
 
-  factory UploadResultModel.fromJson(Map<String, dynamic> json) =>
-      UploadResultModel(
-        url: json['secure_url'],
-        fileName: json['original_filename'],
-        mimeType: _buildMimeType(json['resource_type'], json['format']),
-        fileSizeBytes: json['bytes'],
-        mediaDuration: json['duration'] != null
-            ? (json['duration'] as double).round()
-            : null,
-        messageType: MessageType.fromString(json['resource_type']),
-        caption: json['text'],
-        localPath: json['local_path'],
-      );
+  factory UploadResultModel.fromJson(Map<String, dynamic> json) {
+    final resourceType = json['resource_type'] as String?;
+    final format = json['format'] as String?;
+    final isDocument =
+        format == 'pdf' ||
+        format == 'doc' ||
+        format == 'docx' ||
+        format == 'xls' ||
+        format == 'xlsx' ||
+        format == 'ppt' ||
+        format == 'pptx';
+
+    return UploadResultModel(
+      url: json['secure_url'],
+      fileName: json['original_filename'],
+      mimeType: isDocument
+          ? _rawMimeType(format!)
+          : _buildMimeType(resourceType, format),
+      messageType: isDocument
+          ? MessageType.file
+          : MessageType.fromString(resourceType!),
+      fileSizeBytes: json['bytes'],
+      mediaDuration: json['duration'] != null
+          ? (json['duration'] as double).round()
+          : null,
+      caption: json['text'],
+      localPath: json['local_path'],
+    );
+  }
 
   UploadResultModel copyWith({
     String? url,

@@ -335,11 +335,20 @@ class MessageDatabase extends _$MessageDatabase {
         MessagesCompanion(syncStatus: Value(newStatus)),
       );
 
-  Future<void> updateMediaMessageSuccess(String messageId, String cloudUrl) =>
+  Future<void> updateMediaMessageSuccess(
+    String messageId,
+    String cloudUrl, {
+    int? fileSizeBytes,
+    String? mimeType,
+    String? fileName,
+  }) =>
       (update(messages)..where((m) => m.id.equals(messageId))).write(
         MessagesCompanion(
           syncStatus: Value(SyncStatus.sent),
           mediaUrls: Value([cloudUrl]),
+          fileSizeBytes: Value(fileSizeBytes),
+          mimeType: Value(mimeType),
+          fileName: Value(fileName)
         ),
       );
 

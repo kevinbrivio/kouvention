@@ -37,6 +37,14 @@ class MessageModel {
     return [];
   }
 
+  List<String>? get thumbnailUrls {
+    if (mediaUrls == null) return null;
+    return mediaUrls!.map((url) {
+      if (url.endsWith('.pdf')) return url.replaceAll('.pdf', '.jpg');
+      return url;
+    }).toList();
+  }
+
   MessageModel({
     required this.id,
     required this.senderId,

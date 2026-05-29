@@ -323,7 +323,6 @@ class SyncService {
     for (int i = 0; i < files.length; i++) {
       final file = files[i];
       final tempId = localMessages[i].id.value;
-      final fileCaption = (i == 0) ? caption : '';
 
       uploadTasks.add(() async {
         try {
@@ -351,7 +350,13 @@ class SyncService {
           );
 
           // Update to SQLite
-          await _db.updateMediaMessageSuccess(tempId, uploadResult.url);
+          await _db.updateMediaMessageSuccess(
+            tempId, 
+            uploadResult.url,
+            fileName: file.path.split('/').last,
+            fileSizeBytes: uploadResult.fileSizeBytes,
+            mimeType: uploadResult.mimeType,
+          );
         } catch (e, s) {
           debugPrint('🚨 Failed media upload for $tempId: $e');
           print(s);

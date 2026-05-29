@@ -10,6 +10,7 @@ import 'package:gap/gap.dart';
 import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/cores/router/router.dart';
+import 'package:kouvention/cores/widgets/loading_indicator.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/viewmodel/audio_manager.dart';
@@ -68,7 +69,11 @@ class _ImageMedia extends StatelessWidget {
   final String caption;
   final List<String> urls;
   final bool isMe;
-  const _ImageMedia({required this.urls, required this.caption, required this.isMe});
+  const _ImageMedia({
+    required this.urls,
+    required this.caption,
+    required this.isMe,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -85,9 +90,7 @@ class _ImageMedia extends StatelessWidget {
             child: Text(
               '$count ${count == 1 ? "photo" : "photos"}',
               style: textTheme.senderName.copyWith(
-              color: isMe
-                ? Colors.white
-                : AppColors.grey 
+                color: isMe ? Colors.white : AppColors.grey,
               ),
             ),
           ),
@@ -106,9 +109,7 @@ class _ImageMedia extends StatelessWidget {
           Text(
             caption,
             style: textTheme.senderName.copyWith(
-              color: isMe
-                ? Colors.white
-                : AppColors.grey 
+              color: isMe ? Colors.white : AppColors.black,
             ),
           ),
         ],
@@ -127,7 +128,7 @@ class _ImageMedia extends StatelessWidget {
             width: double.infinity,
             height: 200,
             placeholder: (_, __) =>
-                const Center(child: CircularProgressIndicator()),
+                const Center(child: LoadingIndicator()),
             errorWidget: (_, __, ___) => Container(
               height: 200,
               color: Colors.grey[300],
@@ -148,7 +149,7 @@ class _ImageMedia extends StatelessWidget {
             width: 180.w, // fixed width for horizontal list
             height: 200.h,
             placeholder: (_, __) =>
-                const Center(child: CircularProgressIndicator()),
+                const Center(child: LoadingIndicator()),
             errorWidget: (_, __, ___) => Container(
               width: 180.w,
               height: 200.h,
@@ -226,7 +227,7 @@ class _FullScreenViewerState extends State<FullScreenViewer> {
                       imageUrl: widget.urls[index],
                       fit: BoxFit.contain,
                       placeholder: (_, __) => const Center(
-                        child: CircularProgressIndicator(color: Colors.white),
+                        child: LoadingIndicator(),
                       ),
                       errorWidget: (_, __, ___) => const Icon(
                         Icons.broken_image,
@@ -467,7 +468,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                     aspectRatio: _controller.value.aspectRatio,
                     child: VideoPlayer(_controller),
                   )
-                : const CircularProgressIndicator(color: Colors.white),
+                : const LoadingIndicator(),
           ),
           // Kontrol overlay
           if (_isInitialized && _showControls)
@@ -694,6 +695,7 @@ class _FileMedia extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final urls = message.mediaUrls ?? [];
+    final thumbnails = message.thumbnailUrls;
     final fileName = message.fileName;
     final totalSize = message.fileSizeBytes;
 
@@ -702,6 +704,7 @@ class _FileMedia extends StatelessWidget {
     if (urls.length == 1) {
       return _FileTile(
         url: urls.first,
+        thumbnailUrl: thumbnails?.firstOrNull,
         name: fileName ?? 'File',
         size: totalSize,
         isMe: isMe,
@@ -754,6 +757,7 @@ class _FileMedia extends StatelessWidget {
   }
 
   void _showMultipleFilesDialog(BuildContext context, List<dynamic> urls) {
+    final thumbnails = message.thumbnailUrls;
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -780,6 +784,7 @@ class _FileMedia extends StatelessWidget {
                   final originalName = extractFileNameFromUrl(fileUrl);
                   return _FileTile(
                     url: urls[index].toString(),
+                    thumbnailUrl: thumbnails?[index],
                     name: originalName,
                     isMe: false,
                   );
@@ -813,12 +818,14 @@ class _FileTile extends StatefulWidget {
   final String name;
   final int? size;
   final bool isMe;
+  final String? thumbnailUrl;
 
   const _FileTile({
     required this.url,
     required this.name,
     this.size,
     required this.isMe,
+    this.thumbnailUrl,
   });
 
   @override
@@ -955,7 +962,113 @@ class _FileTileState extends State<_FileTile> {
   }
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
+  Widget build(BuildContext context) {
+    if (widget.thumbnailUrl != null) {
+      return _buildThumbnailPreview();
+    }
+    return _buildIconTile();
+  }
+
+  Widget _buildThumbnailPreview() => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      GestureDetector(
+        onTap: _downloadAndOpen,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12.r),
+          child: Stack(
+            children: [
+              CachedNetworkImage(
+                imageUrl: widget.thumbnailUrl!,
+                height: 100.h,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                placeholder: (_, __) => Container(
+                  height: 100.h,
+                  color: Colors.grey[300],
+                  child: const Center(child: LoadingIndicator()),
+                ),
+                errorWidget: (_, __, ___) => Container(
+                  height: 100.h,
+                  color: Colors.grey[300],
+                  child: Icon(
+                    Icons.picture_as_pdf,
+                    size: 48.w,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ),
+              Positioned(
+                right: 8,
+                bottom: 8,
+                child: Container(
+                  padding: EdgeInsets.all(6.w),
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
+                  child: Icon(
+                    Icons.picture_as_pdf,
+                    color: Colors.white,
+                    size: 20.w,
+                  ),
+                ),
+              ),
+              if (_isDownloading)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: LinearProgressIndicator(
+                    value: _downloadProgress,
+                    color: AppColors.primary,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+      Gap(8.h),
+      GestureDetector(
+        onTap: _downloadAndOpen,
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.name,
+                    style: textTheme.subDescription2.copyWith(
+                      color: widget.isMe ? Colors.white : AppColors.black,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Gap(2.h),
+                  if (widget.size != null && !_isDownloading)
+                    Text(
+                      formatBytes(widget.size ?? 0),
+                      style: textTheme.subDescription3.copyWith(
+                        color: widget.isMe ? Colors.white : AppColors.grey,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            Icon(
+              _isDownloading ? Icons.hourglass_empty : Icons.download,
+              color: widget.isMe ? Colors.white70 : AppColors.grey,
+            ),
+          ],
+        ),
+      ),
+    ],
+  );
+
+  Widget _buildIconTile() => GestureDetector(
     onTap: _downloadAndOpen,
     child: Container(
       padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),

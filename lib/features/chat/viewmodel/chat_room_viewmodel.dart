@@ -467,6 +467,10 @@ final chatMessagesStreamProvider = StreamProvider.autoDispose
 
                 // Decode array jika ada
                 mediaUrls: m.mediaUrls ?? [],
+                fileSizeBytes: m.fileSizeBytes,
+                fileName: m.fileName,
+                mimeType: m.fileName,
+                mediaDuration: m.mediaDuration,
 
                 // Mapping Reply
                 replyTo: m.replyToId != null
