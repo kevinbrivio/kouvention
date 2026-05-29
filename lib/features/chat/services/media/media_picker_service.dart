@@ -8,7 +8,7 @@ final mediaPickerServiceProvider = Provider<MediaPickerService>(
 class MediaPickerService {
   final ImagePicker _imagePicker = ImagePicker();
 
-  Future<XFile?> pickImage({ bool fromGallery = true }) async {
+  Future<XFile?> pickImage({bool fromGallery = true}) async {
     final picked = await _imagePicker.pickImage(
       source: fromGallery ? ImageSource.gallery : ImageSource.camera,
       imageQuality: 70,
@@ -23,6 +23,13 @@ class MediaPickerService {
       limit: limit,
       imageQuality: 70,
     );
+    if (picked.isEmpty) return [];
+
+    return picked.whereType<XFile>().toList();
+  }
+
+  Future<List<XFile>> pickMultipleVideos({int limit = 5}) async {
+    final picked = await _imagePicker.pickMultiVideo(limit: limit);
     if (picked.isEmpty) return [];
 
     return picked.whereType<XFile>().toList();

@@ -8,6 +8,7 @@ class UploadResultModel {
   final MessageType messageType;
   final int? mediaDuration;
   final String? caption;
+  final String? localPath;
 
   const UploadResultModel({
     required this.url,
@@ -17,6 +18,7 @@ class UploadResultModel {
     required this.messageType,
     this.mediaDuration,
     this.caption,
+    this.localPath,
   });
 
   factory UploadResultModel.fromJson(Map<String, dynamic> json) =>
@@ -30,25 +32,28 @@ class UploadResultModel {
             : null,
         messageType: MessageType.fromString(json['resource_type']),
         caption: json['text'],
+        localPath: json['local_path'],
       );
 
-    UploadResultModel copyWith({
-      String?      url,
-      String?      fileName,
-      String?      mimeType,
-      int?         fileSizeBytes,
-      MessageType? messageType,
-      int?         mediaDuration,
-      String?      caption,
-    }) => UploadResultModel(
-      url:           url           ?? this.url,
-      fileName:      fileName      ?? this.fileName,
-      mimeType:      mimeType      ?? this.mimeType,
-      fileSizeBytes: fileSizeBytes ?? this.fileSizeBytes,
-      messageType:   messageType   ?? this.messageType,
-      mediaDuration: mediaDuration ?? this.mediaDuration,
-      caption:       caption       ?? this.caption,
-    );
+  UploadResultModel copyWith({
+    String? url,
+    String? fileName,
+    String? mimeType,
+    int? fileSizeBytes,
+    MessageType? messageType,
+    int? mediaDuration,
+    String? caption,
+    String? localPath,
+  }) => UploadResultModel(
+    url: url ?? this.url,
+    fileName: fileName ?? this.fileName,
+    mimeType: mimeType ?? this.mimeType,
+    fileSizeBytes: fileSizeBytes ?? this.fileSizeBytes,
+    messageType: messageType ?? this.messageType,
+    mediaDuration: mediaDuration ?? this.mediaDuration,
+    caption: caption ?? this.caption,
+    localPath: localPath ?? this.localPath,
+  );
 
   static String _buildMimeType(String? resourceType, String? format) {
     if (resourceType == null || format == null)

@@ -137,6 +137,15 @@ class ChatRoomVM extends BaseNotifier {
             )
           : null;
 
+      await _syncService.sendMessage(
+        chatRoomId: chat.id,
+        textContent: text,
+        senderName: chat.displayName(_currentUid),
+        memberUids: chat.members,
+        otherUserFcmTokens: otherUser?.fcmTokens,
+        replyTo: replyTo,
+      );
+
       onCancelReply();
     } catch (e) {
       _error = e.toString();
@@ -217,155 +226,6 @@ class ChatRoomVM extends BaseNotifier {
     ref.read(jumpToTargetProvider(chatId).notifier).state = null;
   }
 
-  Future<List<UploadResultModel>> uploadFiles({
-    required List<File> files,
-    required MessageType type,
-  }) async {
-    try {
-      final results = await Future.wait(
-        files.map(
-          (f) => _cloudMediaService.uploadFile(file: f, mediaType: type),
-        ),
-      );
-
-      return results.whereType<UploadResultModel>().toList();
-    } on CloudinaryUploadException catch (e) {
-      showToast(e.message);
-    } catch (e) {
-      showToast('Error uploading. Please try again.');
-    }
-
-    return [];
-  }
-
-  Future<List<File>> pickMultipleVideos({required bool fromCamera}) async {
-    final pickedList = await _imagePicker.pickMultiVideo(
-      limit: 5,
-      maxDuration: Duration(seconds: 180),
-    );
-    if (pickedList.isEmpty) return [];
-
-    final files = await Future.wait(
-      pickedList.map((xfile) => _toTempFile(xfile)),
-    );
-
-    return files.whereType<File>().toList();
-  }
-
-  Future<File?> pickImage({required bool fromCamera}) async {
-    final picked = await _imagePicker.pickImage(
-      source: fromCamera ? ImageSource.camera : ImageSource.gallery,
-      imageQuality: 70,
-    );
-    if (picked == null) return null;
-    return _toTempFile(picked);
-  }
-
-  Future<List<File>> pickMultipleImages() async {
-    final pickedList = await _imagePicker.pickMultiImage(
-      imageQuality: 70,
-      limit: 5,
-    );
-    if (pickedList.isEmpty) return [];
-
-    final files = await Future.wait(
-      pickedList.map((xfile) => _toTempFile(xfile)),
-    );
-
-    return files.whereType<File>().toList();
-  }
-
-  Future<File?> _toTempFile(XFile picked) async {
-    try {
-      final bytes = await picked.readAsBytes();
-      final tempDir = await getTemporaryDirectory();
-      final tempFile = File('${tempDir.path}/${picked.name}');
-      await tempFile.writeAsBytes(bytes);
-      return tempFile;
-    } catch (e) {
-      print('Failed to convert file: $e');
-      return null;
-    }
-  }
-
-  Future<File?> pickVideo({required bool fromCamera}) async {
-    final picked = await _imagePicker.pickVideo(
-      source: fromCamera ? ImageSource.camera : ImageSource.gallery,
-      maxDuration: const Duration(minutes: 3),
-    );
-    if (picked == null) return null;
-    return File(picked.path);
-  }
-
-  Future<File?> pickAudio() async {
-    final result = await FilePicker.pickFiles(
-      type: FileType.custom,
-      allowMultiple: false,
-      allowedExtensions: ['mp3', 'm4a'],
-      withData: false,
-      withReadStream: false,
-    );
-
-    if (result == null) return null;
-    return File(result.files.first.path!);
-  }
-
-  Future<File?> pickFile() async {
-    final result = await FilePicker.pickFiles(
-      type: FileType.custom,
-      allowMultiple: false,
-      allowedExtensions: [
-        'pdf',
-        'doc',
-        'docx',
-        'xls',
-        'xlsx',
-        'ppt',
-        'pptx',
-        'mp3',
-        'm4a',
-        'wav',
-      ],
-      withData: false,
-      withReadStream: false,
-    );
-
-    if (result == null) return null;
-    return File(result.files.first.path!);
-  }
-
-  Future<List<File>> pickMultipleFiles() async {
-    final result = await FilePicker.pickFiles(
-      type: FileType.custom,
-      allowMultiple: true,
-      allowedExtensions: [
-        'pdf',
-        'doc',
-        'docx',
-        'xls',
-        'xlsx',
-        'ppt',
-        'pptx',
-        'mp3',
-        'm4a',
-        'wav',
-      ],
-      withData: false, // Don't save the data into memory
-      withReadStream: false,
-    );
-
-    if (result == null || result.files.isEmpty) return [];
-
-    final path = result.files.first.path;
-    if (path == null) return [];
-
-    final files = await Future.wait(
-      result.xFiles.map((xfile) => _toTempFile(xfile)),
-    );
-
-    return files.whereType<File>().toList();
-  }
-
   Future<void> sendMediaMessage({
     required List<UploadResultModel> files,
   }) async {
@@ -415,7 +275,9 @@ class ChatRoomVM extends BaseNotifier {
     required String caption,
     required UploadResultModel file,
   }) async {
+    print('Preparing to send media message with file: ${file.localPath}');
     if (_currentUid == null) return;
+    if (file.localPath == null) return;
 
     final chat = ref.read(chatMetadataStreamProvider(chatId)).value;
     if (chat == null) {
@@ -430,7 +292,7 @@ class ChatRoomVM extends BaseNotifier {
       otherUser = ref.read(otherUserStreamProvider(otherUid)).value;
     }
 
-    final uploadedFile = File(file.fileName);
+    final uploadedFile = File(file.localPath!);
 
     try {
       _isSending = true;
@@ -445,16 +307,16 @@ class ChatRoomVM extends BaseNotifier {
         type: file.messageType,
         otherUserFcmTokens: otherUser?.fcmTokens,
         replyTo: _replyMessage != null
-          ? ReplyToModel(
-              messageId: _replyMessage!.id,
-              senderId: _replyMessage!.senderId,
-              senderName: _replyMessage!.senderName,
-              text: _replyMessage!.text,
-              sentAt: _replyMessage!.sentAt,
-              mediaUrl: _replyMessage!.mediaUrls?.firstOrNull,
-              mediaType: _replyMessage!.type.name,
-            )
-          : null,
+            ? ReplyToModel(
+                messageId: _replyMessage!.id,
+                senderId: _replyMessage!.senderId,
+                senderName: _replyMessage!.senderName,
+                text: _replyMessage!.text,
+                sentAt: _replyMessage!.sentAt,
+                mediaUrl: _replyMessage!.mediaUrls?.firstOrNull,
+                mediaType: _replyMessage!.type.name,
+              )
+            : null,
       );
 
       onCancelReply();
@@ -585,42 +447,42 @@ final chatMessagesStreamProvider = StreamProvider.autoDispose
           '🕵️‍♂️ [DEBUG CHAT] Jumlah pesan dari SQLite (Drift): ${localMsgs.length}',
         );
 
-        return localMsgs.map((m) => MessageModel(
-            id: m.id,
-            senderId: m.senderId,
-            senderName: m.senderName,
-            text: m.textContent,
-            type: MessageType.values.firstWhere(
-              (e) => e.name.toLowerCase() == m.type.toLowerCase(),
-              orElse: () => MessageType.text,
-            ),
-            sentAt: DateTime.fromMillisecondsSinceEpoch(m.sentAt),
-            updatedAt: DateTime.fromMillisecondsSinceEpoch(m.updatedAt),
-            isDeleted: m.isDeleted,
-            deletedFor: m.deletedFor,
+        return localMsgs
+            .map(
+              (m) => MessageModel(
+                id: m.id,
+                senderId: m.senderId,
+                senderName: m.senderName,
+                text: m.textContent,
+                type: MessageType.values.firstWhere(
+                  (e) => e.name.toLowerCase() == m.type.toLowerCase(),
+                  orElse: () => MessageType.text,
+                ),
+                sentAt: DateTime.fromMillisecondsSinceEpoch(m.sentAt),
+                updatedAt: DateTime.fromMillisecondsSinceEpoch(m.updatedAt),
+                isDeleted: m.isDeleted,
+                deletedFor: m.deletedFor,
 
-            syncStatus: m.syncStatus,
+                syncStatus: m.syncStatus,
 
-            // Decode array jika ada
-            mediaUrls: m.mediaUrls != null
-                ? List<String>.from(jsonDecode(m.mediaUrls!))
-                : null,
-            fileName: m.fileName,
+                // Decode array jika ada
+                mediaUrls: m.mediaUrls ?? [],
 
-            // Mapping Reply
-            replyTo: m.replyToId != null
-                ? ReplyToModel(
-                    messageId: m.replyToId!,
-                    senderId: '', // Sesuaikan jika lu butuh
-                    senderName: m.replyToSenderName ?? '',
-                    text: m.replyToText ?? '',
-                    sentAt: DateTime.now(),
-                    mediaType: m.replyToMediaType,
-                    mediaUrl: m.replyToMediaUrl,
-                  )
-                : null,
-          ),
-        ).toList();
+                // Mapping Reply
+                replyTo: m.replyToId != null
+                    ? ReplyToModel(
+                        messageId: m.replyToId!,
+                        senderId: '', // Sesuaikan jika lu butuh
+                        senderName: m.replyToSenderName ?? '',
+                        text: m.replyToText ?? '',
+                        sentAt: DateTime.now(),
+                        mediaType: m.replyToMediaType,
+                        mediaUrl: m.replyToMediaUrl,
+                      )
+                    : null,
+              ),
+            )
+            .toList();
       });
     });
 

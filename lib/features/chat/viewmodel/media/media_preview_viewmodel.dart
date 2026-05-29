@@ -9,8 +9,8 @@ import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/models/upload_result_model.dart';
-import 'package:kouvention/features/chat/services/media/cloud_media_service.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
+import 'package:kouvention/features/chat/viewmodel/media/media_picker_helper.dart';
 
 class MediaPreviewVM extends BaseNotifier {
   final String chatId;
@@ -80,26 +80,23 @@ class MediaPreviewVM extends BaseNotifier {
     _isSending = true;
     notifyListeners();
 
-    final mediaService = ref.read(cloudMediaServiceProvider);
+    final mediaHelper = ref.read(mediaPickerHelperProvider);
 
     try {
-      final rawResults = await Future.wait(
-        files.map(
-          (file) => mediaService.uploadFile(file: file, mediaType: type),
-        ),
+      final uploadedResults = await mediaHelper.uploadFiles(
+        files: files,
+        type: type,
       );
 
-      final results = <UploadResultModel>[];
-      for (int i = 0; i < files.length; i++) {
-        final result = rawResults[i];
-        if (result == null) continue;
+      if (uploadedResults.isEmpty) return;
 
-        final caption = _captions[files[i].path] ?? '';
-        results.add(result.copyWith(caption: caption));
-      }
-      if (results.isEmpty) return;
+      final finalResults = uploadedResults.map((result) {
+        final captionText = _captions[result.localPath] ?? '';
 
-      await onSend(results, _captions);
+        return result.copyWith(caption: captionText);
+      }).toList();
+
+      await onSend(finalResults, _captions);
       if (context.mounted) Navigator.pop(context);
     } on DioException catch (e) {
       print('Error send media message: $e');

@@ -78,7 +78,7 @@ class Messages extends Table {
 
   // Multimedia
   TextColumn get localPath => text().nullable()(); // Local path on phone
-  TextColumn get mediaUrls => text().nullable()(); // Saved url in cloud
+  TextColumn get mediaUrls => text().map(const StringListConverter()).nullable()(); // Saved url in cloud
   TextColumn get mediaGroupId => text().nullable()();
   IntColumn get mediaDuration => integer().nullable()();
   TextColumn get mimeType => text().nullable()();
@@ -339,7 +339,7 @@ class MessageDatabase extends _$MessageDatabase {
       (update(messages)..where((m) => m.id.equals(messageId))).write(
         MessagesCompanion(
           syncStatus: Value(SyncStatus.sent),
-          mediaUrls: Value(cloudUrl),
+          mediaUrls: Value([cloudUrl]),
         ),
       );
 

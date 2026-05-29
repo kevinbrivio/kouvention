@@ -21,7 +21,7 @@ class MessageModel {
   final SyncStatus syncStatus;
 
   // MEDIA
-  final List<dynamic>? mediaUrls;
+  final List<String>? mediaUrls;
   final String? fileName;
   final int? fileSizeBytes;
   final String? mediaGroupId;
@@ -32,7 +32,7 @@ class MessageModel {
   bool get isAudio => type == MessageType.audio;
   bool get isFile => type == MessageType.file;
 
-  List<dynamic> get allMediaUrls {
+  List<String> get allMediaUrls {
     if (mediaUrls != null && mediaUrls!.isNotEmpty) return mediaUrls!;
     return [];
   }
@@ -57,26 +57,27 @@ class MessageModel {
     this.mediaGroupId,
   });
 
-  factory MessageModel.fromMap(String docId, Map<String, dynamic> data) => MessageModel(
+  factory MessageModel.fromMap(String docId, Map<String, dynamic> data) =>
+      MessageModel(
         id: docId,
         senderId: data['senderId'] as String,
         senderName: data['senderName'] as String,
         text: data['text'] as String? ?? '',
         type: MessageType.fromString(data['type'] as String? ?? 'text'),
         sentAt: (data['sentAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-        updatedAt: data['updatedAt'] != null 
-            ? (data['updatedAt'] as Timestamp).toDate() 
+        updatedAt: data['updatedAt'] != null
+            ? (data['updatedAt'] as Timestamp).toDate()
             : (data['sentAt'] as Timestamp).toDate(),
         replyTo: (data['replyTo'] != null)
             ? ReplyToModel.fromMap(data['replyTo'])
             : null,
         syncStatus: data['sync_status'] != null
-          ? SyncStatus.values.firstWhere(
-            (e) => e.name == data['sync_status'],
-            orElse: () => SyncStatus.sent,
-          )
-          : SyncStatus.sent,
-        mediaUrls: data['mediaUrls'] as List<dynamic>?,
+            ? SyncStatus.values.firstWhere(
+                (e) => e.name == data['sync_status'],
+                orElse: () => SyncStatus.sent,
+              )
+            : SyncStatus.sent,
+        mediaUrls: (data['mediaUrls'] as List<dynamic>?)?.cast<String>(),
         fileName: data['fileName'] as String?,
         mimeType: data['mimeType'] as String?,
         mediaDuration: (data['mediaDuration'] as num?)?.toInt(),

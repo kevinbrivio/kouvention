@@ -52,7 +52,8 @@ class MediaBubble extends StatelessWidget {
     final bytesSizes = message.fileSizeBytes;
 
     if (isPdf) return _FileMedia(message: message, isMe: isMe);
-    if (isImage) return _ImageMedia(caption: message.text, urls: urls);
+    if (isImage)
+      return _ImageMedia(caption: message.text, urls: urls, isMe: isMe);
     if (isAudio)
       return _AudioMedia(urls: urls, isMe: isMe, byteSizes: bytesSizes);
     if (isVideo) return _VideoMedia(urls: urls, isMe: isMe);
@@ -66,7 +67,8 @@ class MediaBubble extends StatelessWidget {
 class _ImageMedia extends StatelessWidget {
   final String caption;
   final List<String> urls;
-  const _ImageMedia({required this.urls, required this.caption});
+  final bool isMe;
+  const _ImageMedia({required this.urls, required this.caption, required this.isMe});
 
   @override
   Widget build(BuildContext context) {
@@ -82,10 +84,10 @@ class _ImageMedia extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 6, left: 4),
             child: Text(
               '$count ${count == 1 ? "photo" : "photos"}',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
+              style: textTheme.senderName.copyWith(
+              color: isMe
+                ? Colors.white
+                : AppColors.grey 
               ),
             ),
           ),
@@ -101,31 +103,39 @@ class _ImageMedia extends StatelessWidget {
             ),
           ),
           Gap(4.h),
-          Text(caption),
+          Text(
+            caption,
+            style: textTheme.senderName.copyWith(
+              color: isMe
+                ? Colors.white
+                : AppColors.grey 
+            ),
+          ),
         ],
       );
     }
   }
 
-  Widget _buildSingleImage(BuildContext context, String url, String caption) => GestureDetector(
-    onTap: () => _openFullscreen(context, url, 0),
-    child: ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: CachedNetworkImage(
-        imageUrl: url,
-        fit: BoxFit.cover,
-        width: double.infinity,
-        height: 200,
-        placeholder: (_, __) =>
-            const Center(child: CircularProgressIndicator()),
-        errorWidget: (_, __, ___) => Container(
-          height: 200,
-          color: Colors.grey[300],
-          child: const Icon(Icons.broken_image),
+  Widget _buildSingleImage(BuildContext context, String url, String caption) =>
+      GestureDetector(
+        onTap: () => _openFullscreen(context, url, 0),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: CachedNetworkImage(
+            imageUrl: url,
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: 200,
+            placeholder: (_, __) =>
+                const Center(child: CircularProgressIndicator()),
+            errorWidget: (_, __, ___) => Container(
+              height: 200,
+              color: Colors.grey[300],
+              child: const Icon(Icons.broken_image),
+            ),
+          ),
         ),
-      ),
-    ),
-  );
+      );
 
   Widget _buildImageTile(BuildContext context, String url, int index) =>
       GestureDetector(

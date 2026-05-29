@@ -16,8 +16,6 @@ import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
 import 'package:kouvention/features/chat/models/message_status.dart';
-import 'package:kouvention/features/chat/models/message_type.dart';
-import 'package:kouvention/features/chat/models/reply_to_model.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_selection_viewmodel.dart';
 import 'package:kouvention/features/chat/viewmodel/media/media_picker_helper.dart';
@@ -569,8 +567,8 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
               child: Center(
                 child: InkWell(
                   onTap: () {
-                    HapticFeedback.selectionClick();
                     vm.onCancelReply();
+                    HapticFeedback.selectionClick();
                   },
                   child: Icon(Icons.close, size: 18.r, color: Colors.grey),
                 ),
@@ -581,25 +579,24 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
               Stack(
                 alignment: Alignment.center,
                 children: [
-                  CachedNetworkImage(
-                    imageUrl: message.isImage 
-                        ? message.allMediaUrls.first 
-                        : vm.getCloudinaryThumbnail(message.allMediaUrls.first), 
-                    width: 64.w,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(
-                      color: AppColors.grey.withValues(alpha: 0.2),
+                  if (message.isImage) ...[
+                    CachedNetworkImage(
+                      imageUrl: message.isImage 
+                          ? message.allMediaUrls.first 
+                          : vm.getCloudinaryThumbnail(message.allMediaUrls.first), 
                       width: 64.w,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => Container(
+                        color: AppColors.grey.withValues(alpha: 0.2),
+                        width: 64.w,
+                      ),
+                      errorWidget: (context, url, error) => Container(
+                        color: AppColors.grey.withValues(alpha: 0.2),
+                        width: 64.w,
+                        child: Icon(Icons.broken_image, size: 16.r, color: Colors.grey),
+                      ),
                     ),
-                    errorWidget: (context, url, error) => Container(
-                      color: AppColors.grey.withValues(alpha: 0.2),
-                      width: 64.w,
-                      child: Icon(Icons.broken_image, size: 16.r, color: Colors.grey),
-                    ),
-                  ),
-
-                  // 2. Overlay Ikon Play HANYA JIKA itu Video
-                  if (message.isVideo)
+                  ] else if (message.isVideo) ...[
                     Container(
                       padding: EdgeInsets.all(4.r),
                       decoration: BoxDecoration(
@@ -609,9 +606,10 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                       child: Icon(
                         Icons.play_arrow_rounded,
                         color: Colors.white,
-                        size: 20.r,
+                        size: 20.w,
                       ),
                     ),
+                  ],
                 ],
               ),
           ],

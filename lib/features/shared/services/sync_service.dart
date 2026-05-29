@@ -48,7 +48,7 @@ MessagesCompanion messageToCompanion(
   mediaDuration: Value(msg.mediaDuration),
   fileName: Value(msg.fileName),
   fileSizeBytes: Value(msg.fileSizeBytes),
-  mediaUrls: Value(msg.mediaUrls != null ? jsonEncode(msg.mediaUrls) : null),
+  mediaUrls: Value(msg.mediaUrls),
   localPath: Value(null), // Firestore doesn't know about local path at all
   mediaGroupId: Value(msg.mediaGroupId),
 );
@@ -116,7 +116,10 @@ class SyncService {
     sw.stop();
   }
 
-  static ChatsCompanion chatToCompanion(ChatModel chat, {int? lastSyncAt}) => ChatsCompanion(
+  static ChatsCompanion chatToCompanion(
+    ChatModel chat, {
+    int? lastSyncAt,
+  }) => ChatsCompanion(
     id: Value(chat.id),
     type: Value(chat.type),
     groupName: Value(chat.groupName),
@@ -274,6 +277,7 @@ class SyncService {
         textContent: Value(caption ?? ''), // Send empty string if media
         type: Value(type.name),
         sentAt: Value(DateTime.now().millisecondsSinceEpoch),
+        updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
         syncStatus: Value(SyncStatus.pending),
 
         localPath: Value(file.path),
@@ -348,8 +352,9 @@ class SyncService {
 
           // Update to SQLite
           await _db.updateMediaMessageSuccess(tempId, uploadResult.url);
-        } catch (e) {
+        } catch (e, s) {
           debugPrint('🚨 Failed media upload for $tempId: $e');
+          print(s);
           await _db.updateMessageStatus(tempId, SyncStatus.failed);
         }
       }());
