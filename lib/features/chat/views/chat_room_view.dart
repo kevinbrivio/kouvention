@@ -553,7 +553,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                       Text(
                         message.text,
                         style: textTheme.body2.copyWith(
-                          color: AppColors.errorLight.withValues(alpha: 0.9),
+                          color: isMe ? AppColors.grey : AppColors.black,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
