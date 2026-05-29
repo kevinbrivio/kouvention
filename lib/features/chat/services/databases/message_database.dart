@@ -381,6 +381,21 @@ class MessageDatabase extends _$MessageDatabase {
     );
   }
 
+  Future<void> markChatDeletedLocally(String chatId, String uid) async {
+    final existing = await (select(chats)..where((c) => c.id.equals(chatId))).getSingleOrNull();
+    if (existing == null) return;
+
+    Map<String, dynamic> deletedBy = {};
+    if (existing.deletedBy != null) {
+      deletedBy = jsonDecode(existing.deletedBy!) as Map<String, dynamic>;
+    }
+    deletedBy[uid] = DateTime.now().millisecondsSinceEpoch;
+
+    await (update(chats)..where((c) => c.id.equals(chatId))).write(
+      ChatsCompanion(deletedBy: Value(jsonEncode(deletedBy))),
+    );
+  }
+
   Future<void> deleteForMeLocal(String messageId, String currentUid) async {
     if (messageId.isEmpty) return;
 

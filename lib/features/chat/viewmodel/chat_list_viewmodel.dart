@@ -40,13 +40,15 @@ class ChatListVM extends BaseNotifier {
   bool isGroupType(ChatModel chat) => !chat.isDirect;
   Set<String> get selectedChatIds => _selectedChatIds;
   bool get isSelectionMode => _selectedChatIds.isNotEmpty;
-  bool get isSelectedChatsPinned =>
-      ref
-          .read(filteredChatListProvider)
-          .valueOrNull
-          ?.where((chat) => selectedChatIds.contains(chat.id))
-          .every((chat) => chat.isPinnedBy(currentId!)) ??
-      false;
+  bool get isSelectedChatsPinned {
+    final allChats = _currentChatFromStream;
+    final selected = allChats.where(
+      (chat) => selectedChatIds.contains(chat.id),
+    );
+    if (selected.isEmpty) return false;
+
+    return selected.every((chat) => chat.isPinnedBy(currentId!));
+  }
 
   @override
   FutureOr<void> init() {
@@ -103,6 +105,7 @@ class ChatListVM extends BaseNotifier {
   Future<void> deleteSelectedChat() async {
     if (_currentUid == null) return;
 
+    final db = ref.read(messageDatabaseProvider);
     final allChats = _currentChatFromStream;
     final selectedChats = allChats
         .where((c) => _selectedChatIds.contains(c.id))
@@ -110,6 +113,7 @@ class ChatListVM extends BaseNotifier {
 
     for (final chat in selectedChats) {
       await _chatService.deleteChat(_currentUid, chat.id);
+      await db.markChatDeletedLocally(chat.id, _currentUid!);
     }
     clearSelection();
   }
@@ -123,8 +127,11 @@ class ChatListVM extends BaseNotifier {
   }
 
   Future<void> deleteChat(String chatId) async {
-    if (_currentUid != null)
+    if (_currentUid != null) {
+      final db = ref.read(messageDatabaseProvider);
       await _chatService.deleteChat(_currentUid, chatId);
+      await db.markChatDeletedLocally(chatId, _currentUid!);
+    }
   }
 
   // ================================
@@ -182,30 +189,36 @@ final localChatListFromStreamProvider =
     StreamProvider.autoDispose<List<ChatModel>>((ref) {
       final db = ref.watch(messageDatabaseProvider);
 
-      return db.watchChatRooms().map((driftChats) => driftChats.map((c) => ChatModel(
-            id: c.id,
-            type: c.type,
-            members: c.members,
-            memberInfo: c.memberInfo,
-            groupName: c.groupName,
-            groupPhotoUrl: c.groupPhotoUrl,
-            pinnedBy: c.pinnedBy,
-            unreadCount: c.unreadCount,
-            lastReadAt: c.lastReadAt,
-            lastMessage: c.lastMessage,
+      return db.watchChatRooms().map(
+        (driftChats) => driftChats
+            .map(
+              (c) => ChatModel(
+                id: c.id,
+                type: c.type,
+                members: c.members,
+                memberInfo: c.memberInfo,
+                groupName: c.groupName,
+                groupPhotoUrl: c.groupPhotoUrl,
+                pinnedBy: c.pinnedBy,
+                unreadCount: c.unreadCount,
+                lastReadAt: c.lastReadAt,
+                lastMessage: c.lastMessage,
 
-            createdAt: DateTime.fromMillisecondsSinceEpoch(c.createdAt),
-            updatedAt: c.updatedAt != null
-                ? DateTime.fromMillisecondsSinceEpoch(c.updatedAt!)
-                : null,
+                createdAt: DateTime.fromMillisecondsSinceEpoch(c.createdAt),
+                updatedAt: c.updatedAt != null
+                    ? DateTime.fromMillisecondsSinceEpoch(c.updatedAt!)
+                    : null,
 
-            deletedBy: c.deletedBy != null ? jsonDecode(c.deletedBy!) : null,
-            createdBy: c.createdBy,
+                deletedBy: c.deletedBy != null
+                    ? jsonDecode(c.deletedBy!)
+                    : null,
+                createdBy: c.createdBy,
 
-            typingUsers: [],
-            memberHash: null,
-          )
-        ).toList()
+                typingUsers: [],
+                memberHash: null,
+              ),
+            )
+            .toList(),
       );
     });
 
@@ -217,13 +230,22 @@ final filteredChatListProvider =
 
       return chatAsyncValue.whenData((chats) {
         List<ChatModel> filtered = chats;
-        if (filter == ChatFilter.direct) {
-          filtered = chats.where((c) => c.type == 'direct').toList();
-        } else if (filter == ChatFilter.group) {
-          filtered = chats.where((c) => c.type == 'group').toList();
+
+        // 1. Filter out deleted chats
+        if (currentUid != null) {
+          filtered = filtered
+              .where((c) => !c.isDeletedBy(currentUid!))
+              .toList();
         }
 
-        // 2. Sorting
+        // 2. Type filter
+        if (filter == ChatFilter.direct) {
+          filtered = filtered.where((c) => c.type == 'direct').toList();
+        } else if (filter == ChatFilter.group) {
+          filtered = filtered.where((c) => c.type == 'group').toList();
+        }
+
+        // 3. Sorting
         if (currentUid != null) {
           filtered.sort((a, b) {
             final aPinned = a.isPinnedBy(currentUid) ? 0 : 1;

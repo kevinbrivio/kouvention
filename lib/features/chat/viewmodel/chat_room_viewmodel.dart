@@ -88,10 +88,16 @@ class ChatRoomVM extends BaseNotifier {
             .listen((_) {
               debugPrint('New messages arrived in Drift local database');
             });
-      });
 
-      await _chatService.resetUnreadCount(chatId, _currentUid);
-      await _chatService.markChatAsRead(chatId, _currentUid);
+        // Non-critical Firestore writes — won't block init() if offline
+        try {
+          await _chatService.resetUnreadCount(chatId, _currentUid);
+          await _chatService.markChatAsRead(chatId, _currentUid);
+        } catch (e) {
+          // networkAutoSyncProvider retries on reconnect
+          debugPrint('Offline: unread/read update skipped ($e)');
+        }
+      });
     }
   }
 

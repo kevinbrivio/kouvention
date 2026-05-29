@@ -8,13 +8,11 @@ import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_list_viewmodel.dart';
 import 'package:kouvention/features/search/viewmodel/search_viewmodel.dart';
 
-// Ini adalah kotak mainan baru kita khusus untuk Kepala layar!
 class ChatHeader extends ConsumerWidget {
   const ChatHeader({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Kepala ini cukup pintar untuk mengambil 2 otak yang dia butuhkan sendiri!
     final chatVM = ref.watch(chatListVM);
     final searchVM = ref.watch(searchVMProvider);
 
@@ -22,7 +20,6 @@ class ChatHeader extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // 1. Bagian Judul dan Kotak Pencarian
         Padding(
           padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
           child: Column(
@@ -38,7 +35,7 @@ class ChatHeader extends ConsumerWidget {
           ),
         ),
         
-        // 2. Bagian Tombol Filter (All, Direct, Groups)
+        // 2. Filter chips (All, Direct, Groups)
         _buildFilterButtons(chatVM),
         Gap(4.h),
       ],

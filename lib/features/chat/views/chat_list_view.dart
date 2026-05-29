@@ -128,48 +128,6 @@ class ChatListView extends ConsumerWidget {
   //   builder: (sheetContext) => SearchOverlay(chats: chatVM.,),
   // );
 
-  Widget _buildFilterChips(ChatListVM vm) => Padding(
-    padding: EdgeInsets.symmetric(horizontal: 16.w),
-    child: Row(
-      children: ChatFilter.values.map((filter) {
-        final isSelected = vm.filter == filter;
-        final label = switch (filter) {
-          ChatFilter.all => 'All',
-          ChatFilter.direct => 'Direct',
-          ChatFilter.group => 'Groups',
-        };
-
-        return Padding(
-          padding: EdgeInsets.only(right: 12.w),
-          child: GestureDetector(
-            onTap: () {
-              HapticFeedback.selectionClick();
-              vm.setFilter(filter);
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? AppColors.primary
-                    : AppColors.primary.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(20.r),
-              ),
-              child: Text(
-                label,
-                style: TextStyle(
-                  color: isSelected ? Colors.white : AppColors.primary,
-                  fontSize: 13.sp,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ),
-        );
-      }).toList(),
-    ),
-  );
-
   PreferredSizeWidget _buildSelectionAppBar(
     BuildContext context,
     ChatListVM vm,

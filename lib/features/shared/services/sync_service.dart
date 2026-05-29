@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:isolate';
 import 'dart:math';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -137,7 +138,12 @@ class SyncService {
 
     // Untuk Map yang kita biarkan nullable string di Drift, encode manual 1 kali:
     deletedBy: Value(
-      chat.deletedBy != null ? jsonEncode(chat.deletedBy) : null,
+      chat.deletedBy != null
+          ? jsonEncode(chat.deletedBy!.map((k, v) => MapEntry(
+              k,
+              v is Timestamp ? v.millisecondsSinceEpoch : v,
+            )))
+          : null,
     ),
     createdBy: Value(chat.createdBy),
 

@@ -53,7 +53,14 @@ class ChatModel {
     if (deletedBy == null || !deletedBy!.containsKey(uid)) return false;
     final rawVal = deletedBy![uid];
     if (rawVal == null) return true;
-    final deletedAt = (rawVal as Timestamp?)?.toDate();
+    DateTime? deletedAt;
+    if (rawVal is Timestamp) {
+      deletedAt = rawVal.toDate();
+    } else if (rawVal is DateTime) {
+      deletedAt = rawVal;
+    } else if (rawVal is int) {
+      deletedAt = DateTime.fromMillisecondsSinceEpoch(rawVal);
+    }
     if (deletedAt == null) return false;
     final lastSentAt = lastMessage?.sentAt;
     if (lastSentAt != null && lastSentAt.isAfter(deletedAt)) return false;
