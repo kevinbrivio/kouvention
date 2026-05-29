@@ -79,7 +79,24 @@ class _ImageMedia extends StatelessWidget {
   Widget build(BuildContext context) {
     final count = urls.length;
     if (count == 1) {
-      return _buildSingleImage(context, urls.first, caption);
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSingleImage(context, urls.first, caption),
+          if (caption.isNotEmpty) ...[
+            Gap(4.h),
+            Padding(
+              padding: EdgeInsets.only(left: 4.w),
+              child: Text(
+                caption,
+                style: textTheme.body2.copyWith(
+                  color: isMe ? Colors.white : AppColors.black,
+                ),
+              ),
+            ),
+          ],
+        ],
+      );
     } else {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
