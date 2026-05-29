@@ -529,22 +529,13 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                     if (message.allMediaUrls.isNotEmpty) ...[
                       Row(
                         children: [
-                          Icon(
-                            Icons.image_outlined,
-                            color: AppColors.grey,
-                            size: 16.r,
-                          ),
-                          Gap(4.w),
-                          Expanded(
-                            child: Text(
-                              message.text.isNotEmpty ? message.text : 'Photo',
-                              style: textTheme.senderName.copyWith(
-                                color: AppColors.grey,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                          Icon(_getReplyMediaIcon(message)),
+                          Text(
+                            _getReplyMediaLabel(message),
+                            style: textTheme.subDescription3.copyWith(
+                              color: AppColors.grey,
                             ),
-                          ),
+                          )
                         ],
                       ),
                     ] else ...[
@@ -596,6 +587,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                         child: Icon(Icons.broken_image, size: 16.r, color: Colors.grey),
                       ),
                     ),
+                  
                   ] else if (message.isVideo) ...[
                     Container(
                       padding: EdgeInsets.all(4.r),
@@ -616,6 +608,28 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
         ),
       ),
     );
+  }
+
+  IconData _getReplyMediaIcon(MessageModel message) {
+    if (message.isFile) {
+      final ext = (message.fileName ?? '').split('.').last.toLowerCase();
+      switch (ext) {
+        case 'pdf': return Icons.picture_as_pdf;
+        case 'doc': case 'docx': return Icons.description;
+        case 'xls': case 'xlsx': return Icons.table_chart;
+        case 'ppt': case 'pptx': return Icons.slideshow;
+        default: return Icons.insert_drive_file;
+      }
+    }
+    if (message.isVideo) return Icons.videocam_outlined;
+    return Icons.image_outlined;
+  }
+  String _getReplyMediaLabel(MessageModel message) {
+    if (message.text.isNotEmpty) return message.text;
+    if (message.isFile) return message.fileName ?? 'File';
+    if (message.isVideo) return 'Video';
+    if (message.isAudio) return 'Audio';
+    return 'Photo';
   }
 
   Future<void> _scrollToMessage(String messageId, {DateTime? sentAt}) async {

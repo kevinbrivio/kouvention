@@ -40,7 +40,13 @@ class MessageModel {
   List<String>? get thumbnailUrls {
     if (mediaUrls == null) return null;
     return mediaUrls!.map((url) {
-      if (url.endsWith('.pdf')) return url.replaceAll('.pdf', '.jpg');
+      final lower = url.toLowerCase();
+      if (lower.endsWith('.pdf') || lower.endsWith('.mp4') ||
+          lower.endsWith('.mov') || lower.endsWith('.avi') ||
+          lower.endsWith('.mkv') || lower.endsWith('.webm')) {
+        final dot = url.lastIndexOf('.');
+        return '${url.substring(0, dot)}.jpg';
+      }
       return url;
     }).toList();
   }

@@ -127,8 +127,7 @@ class _ImageMedia extends StatelessWidget {
             fit: BoxFit.cover,
             width: double.infinity,
             height: 200,
-            placeholder: (_, __) =>
-                const Center(child: LoadingIndicator()),
+            placeholder: (_, __) => const Center(child: LoadingIndicator()),
             errorWidget: (_, __, ___) => Container(
               height: 200,
               color: Colors.grey[300],
@@ -148,8 +147,7 @@ class _ImageMedia extends StatelessWidget {
             fit: BoxFit.cover,
             width: 180.w, // fixed width for horizontal list
             height: 200.h,
-            placeholder: (_, __) =>
-                const Center(child: LoadingIndicator()),
+            placeholder: (_, __) => const Center(child: LoadingIndicator()),
             errorWidget: (_, __, ___) => Container(
               width: 180.w,
               height: 200.h,
@@ -226,9 +224,8 @@ class _FullScreenViewerState extends State<FullScreenViewer> {
                     child: CachedNetworkImage(
                       imageUrl: widget.urls[index],
                       fit: BoxFit.contain,
-                      placeholder: (_, __) => const Center(
-                        child: LoadingIndicator(),
-                      ),
+                      placeholder: (_, __) =>
+                          const Center(child: LoadingIndicator()),
                       errorWidget: (_, __, ___) => const Icon(
                         Icons.broken_image,
                         color: Colors.white,
@@ -855,10 +852,6 @@ class _FileTileState extends State<_FileTile> {
       }
 
       final dio = Dio();
-      print('=============================================');
-      print('DOWNLOADING URL: ${widget.url}');
-      print('MIME TYPE: ${mimeType}');
-      print('=============================================');
       await dio.download(
         widget.url,
         file.path,
@@ -885,9 +878,6 @@ class _FileTileState extends State<_FileTile> {
 
   String _getMimeType(String fileName) {
     final ext = fileName.split('.').last.toLowerCase();
-    print(fileName);
-    print(ext);
-
     switch (ext) {
       // Dokumen
       case 'pdf':
