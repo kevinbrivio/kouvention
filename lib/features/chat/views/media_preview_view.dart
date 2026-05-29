@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
-import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
 import 'package:kouvention/features/chat/viewmodel/media/media_picker_helper.dart';
 import 'package:kouvention/features/chat/viewmodel/media/media_preview_viewmodel.dart';
 import 'package:kouvention/features/chat/widgets/preview/audio_preview.dart';
@@ -73,9 +72,7 @@ class _MediaPreviewViewState extends ConsumerState<MediaPreviewView> {
           if (vm.type == MessageType.image)
             IconButton(
               icon: const Icon(Icons.crop_rotate_rounded, color: Colors.white),
-              onPressed: () async {
-                await vm.cropImage(vm.currentFile.path);
-              },
+              onPressed: () => vm.cropImage(vm.currentIndex),
             ),
         ],
       );
@@ -147,7 +144,13 @@ class _MediaPreviewViewState extends ConsumerState<MediaPreviewView> {
         TextPosition(offset: _captionController.text.length),
       );
     },
-    itemBuilder: (_, index) => _buildPreviewItem(vm.files[index]),
+    itemBuilder: (_, index) {
+      final file = vm.files[index];
+      return KeyedSubtree(
+        key: ValueKey(file.path),
+        child: _buildPreviewItem(file),
+      );
+    },
   );
 
   // Tentukan widget preview berdasarkan ekstensi file

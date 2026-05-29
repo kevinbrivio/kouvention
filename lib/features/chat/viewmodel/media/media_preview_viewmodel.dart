@@ -106,9 +106,10 @@ class MediaPreviewVM extends BaseNotifier {
     }
   }
 
-  Future<File?> cropImage(String path) async {
+  Future<void> cropImage(int index) async {
+    final file = files[index];
     final cropped = await ImageCropper().cropImage(
-      sourcePath: path,
+      sourcePath: file.path,
       aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
       compressQuality: 80,
       uiSettings: [
@@ -126,10 +127,10 @@ class MediaPreviewVM extends BaseNotifier {
       ],
     );
 
-    if (cropped == null) return null;
+    if (cropped == null) return;
 
+    files[index] = File(cropped.path);
     notifyListeners();
-    return File(cropped.path);
   }
 }
 
