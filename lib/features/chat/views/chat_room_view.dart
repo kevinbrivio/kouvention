@@ -583,9 +583,11 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                 children: [
                   if (message.isImage) ...[
                     CachedNetworkImage(
-                      imageUrl: message.isImage 
-                          ? message.allMediaUrls.first 
-                          : vm.getCloudinaryThumbnail(message.allMediaUrls.first), 
+                      imageUrl: message.isImage
+                          ? message.allMediaUrls.first
+                          : vm.getCloudinaryThumbnail(
+                              message.allMediaUrls.first,
+                            ),
                       width: 64.w,
                       fit: BoxFit.cover,
                       placeholder: (context, url) => Container(
@@ -595,10 +597,13 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                       errorWidget: (context, url, error) => Container(
                         color: AppColors.grey.withValues(alpha: 0.2),
                         width: 64.w,
-                        child: Icon(Icons.broken_image, size: 16.r, color: Colors.grey),
+                        child: Icon(
+                          Icons.broken_image,
+                          size: 16.r,
+                          color: Colors.grey,
+                        ),
                       ),
                     ),
-                  
                   ] else if (message.isVideo) ...[
                     Container(
                       padding: EdgeInsets.all(4.r),
@@ -625,16 +630,25 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     if (message.isFile) {
       final ext = (message.fileName ?? '').split('.').last.toLowerCase();
       switch (ext) {
-        case 'pdf': return Icons.picture_as_pdf;
-        case 'doc': case 'docx': return Icons.description;
-        case 'xls': case 'xlsx': return Icons.table_chart;
-        case 'ppt': case 'pptx': return Icons.slideshow;
-        default: return Icons.insert_drive_file;
+        case 'pdf':
+          return Icons.picture_as_pdf;
+        case 'doc':
+        case 'docx':
+          return Icons.description;
+        case 'xls':
+        case 'xlsx':
+          return Icons.table_chart;
+        case 'ppt':
+        case 'pptx':
+          return Icons.slideshow;
+        default:
+          return Icons.insert_drive_file;
       }
     }
     if (message.isVideo) return Icons.videocam_outlined;
     return Icons.image_outlined;
   }
+
   String _getReplyMediaLabel(MessageModel message) {
     if (message.text.isNotEmpty) return message.text;
     if (message.isFile) return message.fileName ?? 'File';
@@ -683,8 +697,9 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     if (positions.isEmpty) return;
 
     final isAtBottom = positions.any((pos) => pos.index == 0);
-    if (_showScrollBottom != isAtBottom) {
-      setState(() => _showScrollBottom = isAtBottom);
+    final shouldShow = !isAtBottom;
+    if (_showScrollBottom != shouldShow) {
+      setState(() => _showScrollBottom = shouldShow);
     }
 
     // Pagination
