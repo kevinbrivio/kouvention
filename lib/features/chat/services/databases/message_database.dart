@@ -126,18 +126,18 @@ class MessageDatabase extends _$MessageDatabase {
         CREATE VIRTUAL TABLE messages_fts USING fts5(
           message_id UNINDEXED,
           text_content,
+          sender_name,
           tokenize='unicode61'
         );
       ''');
 
-      // Build the Trigger
+      // Trigger on insert
       await customStatement('''
         CREATE TRIGGER after_message_insert
         AFTER INSERT ON messages
-        WHEN new.type = 'text'
         BEGIN
-          INSERT INTO messages_fts(message_id, text_content)
-          VALUES (new.id, new.text_content);
+          INSERT INTO messages_fts(message_id, text_content, sender_name)
+          VALUES (new.id, new.text_content, new.sender_name);
         END;
       ''');
 
@@ -145,7 +145,6 @@ class MessageDatabase extends _$MessageDatabase {
       await customStatement('''
         CREATE TRIGGER after_message_update
         AFTER UPDATE OF text_content ON messages
-        WHEN new.type = 'text'
         BEGIN
           UPDATE messages_fts
           SET text_content = new.text_content
@@ -157,7 +156,6 @@ class MessageDatabase extends _$MessageDatabase {
       await customStatement('''
         CREATE TRIGGER after_message_delete
         AFTER DELETE ON messages
-        WHEN old.type = 'text'
         BEGIN
           DELETE FROM messages_fts
           WHERE message_id = old.id;
@@ -180,23 +178,31 @@ class MessageDatabase extends _$MessageDatabase {
   // ===========================
   // Search using FTS5
   // ===========================
-  Future<List<Message>> searchMessages(String keyword, {int limit = 50}) async {
-    final ftsKeyword = '$keyword*'; // Prefix wildcard
+  Future<List<Message>> searchMessages(String keyword, String currentUid, {int limit = 50}) async {
+    if (keyword.trim().isEmpty) return [];
 
-    final query = customSelect(
+    final cleaned = keyword.replaceAll(RegExp(r'["*^()~:+\[\]]'), ' ');
+    final tokens = cleaned.split(RegExp(r'\s+')).where((t) => t.isNotEmpty);
+    if (tokens.isEmpty) return [];
+    final ftsQuery = tokens.map((t) => '$t*').join(' ');
+
+    return customSelect(
       '''
         SELECT m.* FROM messages m
-        JOIN messages_fts f ON m.id = f.message_id
-        WHERE f.text_content MATCH ?
-        ORDER BY sent_at DESC
+        INNER JOIN messages_fts ON m.id = messages_fts.message_id
+        WHERE messages_fts MATCH ?
+        AND m.is_deleted = 0
+        AND m.deleted_for NOT LIKE ?
+        ORDER BY m.sent_at DESC
         LIMIT ?
       ''',
-      variables: [Variable.withString(ftsKeyword), Variable.withInt(limit)],
-      // Update the Message table, help Stream/Watch updates the data
+      variables: [
+        Variable.withString(ftsQuery),
+        Variable.withString('%"$currentUid"%'),
+        Variable.withInt(limit),
+      ],
       readsFrom: {messages},
-    );
-
-    return query.map((row) => messages.map(row.data)).get();
+    ).map((row) => messages.map(row.data)).get();
   }
 
   // ===========================
@@ -575,6 +581,7 @@ LazyDatabase _openConnection() => LazyDatabase(() async {
 
       // LOCK
       rawDb.execute("PRAGMA key = '$escapedKey';");
+      rawDb.execute('PRAGMA cache_size = -64000;'); // 64MB page cache for FTS5
     },
   );
 });

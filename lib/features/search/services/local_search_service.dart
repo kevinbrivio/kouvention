@@ -21,7 +21,26 @@ class LocalSearchService implements SearchService {
     required List<ChatModel> chatRooms,
     int limit = 50,
   }) async {
-    throw UnimplementedError("INI BELUM DIIMPLEMENT");
+    final messages = await _db.searchMessages(query, currentUid, limit: limit);
+    final chatMap = {for (final c in chatRooms) c.id: c};
+
+    return messages.map((msg) {
+      final chat = chatMap[msg.chatRoomId];
+      return SearchResultModel(
+        messageId: msg.id,
+        chatRoomId: msg.chatRoomId,
+        chatName: chat?.displayName(currentUid) ?? 'Unknown',
+        senderId: msg.senderId,
+        messageText: msg.textContent,
+        senderName: msg.senderName,
+        sentAt: DateTime.fromMillisecondsSinceEpoch(msg.sentAt),
+        messageType: msg.type,
+        mediaUrls: msg.mediaUrls,
+        mimeType: msg.mimeType,
+        fileName: msg.fileName,
+        fileSizeBytes: msg.fileSizeBytes,
+      );
+    }).toList();
   }
 
   @override

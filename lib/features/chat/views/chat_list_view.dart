@@ -22,16 +22,23 @@ class ChatListView extends ConsumerWidget {
     final searchVm = ref.watch(searchVMProvider);
 
     return PopScope(
-      canPop: !vm.isSelectionMode,
+      canPop: !vm.isSelectionMode && !searchVm.isActive,
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) {
-          vm.clearSelection();
+          if (searchVm.isActive) {
+            searchVm.clearSearch();
+          } else {
+            vm.clearSelection();
+          }
         }
       },
       child: BaseView(
         provider: chatListVM,
         useGradient: false,
         appBar: (_) {
+          if (searchVm.isActive) {
+            return HiddenAppBar();
+          }
           if (vm.isSelectionMode) {
             return _buildSelectionAppBar(context, vm);
           }
@@ -40,7 +47,12 @@ class ChatListView extends ConsumerWidget {
         builder: (context, _) => Stack(
         children: [
           if (searchVm.isActive)
-            SearchBody()
+            Column(
+              children: [
+                _buildSearchBar(context, searchVm, ref),
+                Expanded(child: SearchBody()),
+              ],
+            )
           else
             _buildScreen(context, vm, searchVm, ref),
 
@@ -90,7 +102,6 @@ class ChatListView extends ConsumerWidget {
                 ),
               ),
               data: (chats) {
-                // chats adalah List<Chat> (atau tipe sesuai provider)
                 if (chats.isEmpty) {
                   return Center(
                     child: Text(
@@ -108,6 +119,50 @@ class ChatListView extends ConsumerWidget {
               },
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBar(BuildContext context, SearchVM searchVM, WidgetRef ref) {
+    final chatRooms = ref.watch(localChatListFromStreamProvider).value ?? [];
+    return Container(
+      color: AppColors.white,
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top + 8.h,
+        bottom: 8.h,
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back, color: AppColors.primary),
+            onPressed: () => searchVM.clearSearch(),
+          ),
+          Expanded(
+            child: SizedBox(
+              height: 40.h,
+              child: TextField(
+                autofocus: true,
+                onChanged: (value) => searchVM.onTextChanged(value, chatRooms),
+                decoration: InputDecoration(
+                  hintText: 'Search...',
+                  hintStyle: TextStyle(color: AppColors.grey, fontSize: 14.sp),
+                  filled: true,
+                  fillColor: AppColors.grey.withValues(alpha: 0.1),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20.r),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                ),
+              ),
+            ),
+          ),
+          if (searchVM.query.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.close, color: AppColors.grey),
+              onPressed: () => searchVM.clearSearch(),
+            ),
         ],
       ),
     );

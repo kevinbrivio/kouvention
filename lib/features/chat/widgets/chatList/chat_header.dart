@@ -33,7 +33,7 @@ class ChatHeader extends ConsumerWidget {
                   style: textTheme.subheadline1.copyWith(color: AppColors.primary),
                 ),
               if (!compact) Gap(6.h),
-              _buildSearchBox(context, chatVM, searchVM),
+              _buildSearchBox(context, ref, chatVM, searchVM),
             ],
           ),
         ),
@@ -45,10 +45,11 @@ class ChatHeader extends ConsumerWidget {
     );
   }
 
-  Widget _buildSearchBox(BuildContext context, ChatListVM chatVM, SearchVM searchVM) => InkWell(
+  Widget _buildSearchBox(BuildContext context, WidgetRef ref, ChatListVM chatVM, SearchVM searchVM) => InkWell(
       onTap: () {
         HapticFeedback.selectionClick();
-        // _openSearchSheet(context, chatVM, searchVM);
+        final chatRooms = ref.read(localChatListFromStreamProvider).value ?? [];
+        searchVM.openSearch(chatRooms);
       },
       child: Container(
         decoration: BoxDecoration(
