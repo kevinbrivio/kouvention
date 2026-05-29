@@ -1,8 +1,6 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -20,15 +18,12 @@ import 'package:kouvention/features/notification/viewmodel/active_chat_id_provid
 import 'package:kouvention/features/shared/services/sync_service.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
 import 'package:kouvention/features/user/services/user_service.dart';
-import 'package:oktoast/oktoast.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
 
 class ChatRoomVM extends BaseNotifier {
   final ChatService _chatService;
   final SyncService _syncService;
-  final CloudMediaService _cloudMediaService;
   final String? _currentUid;
   final String chatId;
 
@@ -49,9 +44,7 @@ class ChatRoomVM extends BaseNotifier {
   MessageModel? _replyMessage;
 
   // Upload file
-  final _imagePicker = ImagePicker();
   bool _isUploading = false;
-  double _uploadProgress = 0.0;
   bool _showMediaPanel = false;
 
   // audio record
@@ -63,7 +56,6 @@ class ChatRoomVM extends BaseNotifier {
   ChatRoomVM(super.ref, {required this.chatId})
     : _chatService = ref.read(chatServiceProvider),
       _syncService = ref.read(syncServiceProvider),
-      _cloudMediaService = ref.read(cloudMediaServiceProvider),
       _currentUid = ref.read(authServiceProvider).currentUser?.uid;
 
   // --- GETTERS ------------------------------
@@ -370,28 +362,6 @@ class ChatRoomVM extends BaseNotifier {
   String getCloudinaryThumbnail(String videoUrl) {
     if (videoUrl.isEmpty) return '';
     return videoUrl.replaceAll(RegExp(r'\.[^.]+$'), '.jpg');
-  }
-
-  MessageType _resolveMessageType(List<UploadResultModel> results) {
-    final types = results.map((r) => r.messageType).toSet();
-    if (types.length == 1) return types.first; // semua sama
-    return MessageType.media; // campuran
-  }
-
-  String _mediaNotificationText(MessageType type, String caption) {
-    if (caption.isNotEmpty) return caption;
-    switch (type) {
-      case MessageType.image:
-        return '📷 Photo';
-      case MessageType.video:
-        return '🎥 Video';
-      case MessageType.audio:
-        return '🎵 Audio';
-      case MessageType.file:
-        return '📎 File';
-      default:
-        return '';
-    }
   }
 
   // --- CleanUp ----------------------------------

@@ -18,7 +18,6 @@ import 'package:kouvention/features/chat/models/message_model.dart';
 import 'package:kouvention/features/chat/models/message_status.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_selection_viewmodel.dart';
-import 'package:kouvention/features/chat/viewmodel/media/media_picker_helper.dart';
 import 'package:kouvention/features/chat/widgets/chat_room_appbar.dart';
 import 'package:kouvention/features/chat/widgets/media_sheet.dart';
 import 'package:kouvention/features/chat/widgets/message_bubble.dart';
@@ -124,8 +123,6 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
           vm.toggleMediaPanel(ctx);
         }
       }
-      final keyboardHeight = MediaQuery.of(ctx).viewInsets.bottom;
-      // vm.updateKeyboardHeight(keyboardHeight);
     });
 
     if (widget.scrollToMessageId != null && widget.scrollToSentAt != null) {
@@ -728,12 +725,10 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
   }
 
   Future<void> onClickMedia(MediaOptions options) async {
-    final mediaPickerProvider = ref.read(mediaPickerHelperProvider);
 
     // Switch every media options value
     switch (options) {
       case MediaOptions.image:
-        final files = await mediaPickerProvider.pickMultipleImages();
       case MediaOptions.camera:
       // await vm.openCamera();
       case MediaOptions.files:
