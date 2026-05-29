@@ -529,13 +529,24 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                     if (message.allMediaUrls.isNotEmpty) ...[
                       Row(
                         children: [
-                          Icon(_getReplyMediaIcon(message)),
-                          Text(
-                            _getReplyMediaLabel(message),
-                            style: textTheme.subDescription3.copyWith(
-                              color: AppColors.grey,
+                          Icon(
+                            _getReplyMediaIcon(message),
+                            color: AppColors.grey,
+                            size: 16.r,
+                          ),
+                          Gap(4.w),
+                          Expanded(
+                            child: Text(
+                              message.allMediaUrls.length > 1
+                                  ? _getReplyMediaCountLabel(message)
+                                  : _getReplyMediaLabel(message),
+                              style: textTheme.senderName.copyWith(
+                                color: AppColors.grey,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          )
+                          ),
                         ],
                       ),
                     ] else ...[
@@ -630,6 +641,14 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     if (message.isVideo) return 'Video';
     if (message.isAudio) return 'Audio';
     return 'Photo';
+  }
+
+  String _getReplyMediaCountLabel(MessageModel message) {
+    final count = message.allMediaUrls.length;
+    if (message.isFile) return '$count files';
+    if (message.isVideo) return '$count videos';
+    if (message.isAudio) return '$count audios';
+    return '$count photos';
   }
 
   Future<void> _scrollToMessage(String messageId, {DateTime? sentAt}) async {
