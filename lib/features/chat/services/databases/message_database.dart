@@ -186,23 +186,24 @@ class MessageDatabase extends _$MessageDatabase {
     if (tokens.isEmpty) return [];
     final ftsQuery = tokens.map((t) => '$t*').join(' ');
 
-    return customSelect(
-      '''
-        SELECT m.* FROM messages m
-        INNER JOIN messages_fts ON m.id = messages_fts.message_id
-        WHERE messages_fts MATCH ?
-        AND m.is_deleted = 0
-        AND m.deleted_for NOT LIKE ?
-        ORDER BY m.sent_at DESC
-        LIMIT ?
-      ''',
-      variables: [
-        Variable.withString(ftsQuery),
-        Variable.withString('%"$currentUid"%'),
-        Variable.withInt(limit),
-      ],
-      readsFrom: {messages},
-    ).map((row) => messages.map(row.data)).get();
+    // Query A: FTS5 only — proven instant
+    final ftsRows = await customSelect(
+      'SELECT message_id FROM messages_fts WHERE messages_fts MATCH ?',
+      variables: [Variable.withString(ftsQuery)],
+    ).get();
+    if (ftsRows.isEmpty) return [];
+
+    final ids = ftsRows.map((r) => r.data['message_id'] as String).toList();
+
+    // Query B: Simple PK lookup — no JOIN, no FTS5
+    final results = await (select(messages)
+        ..where((m) => m.id.isIn(ids))
+        ..where((m) => m.isDeleted.equals(false))
+        ..where((m) => m.deletedFor.like('%"$currentUid"%').not())
+    ).get();
+
+    results.sort((a, b) => b.sentAt.compareTo(a.sentAt));
+    return results.take(limit).toList();
   }
 
   // ===========================

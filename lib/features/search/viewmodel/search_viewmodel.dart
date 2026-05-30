@@ -89,15 +89,18 @@ class SearchVM extends ChangeNotifier {
           )
           .toList();
 
+      final t1 = sw.elapsedMilliseconds;
+      debugPrint('🥷 Chat filtering: ${t1}ms');
+
       final results = await _searchService.searchMessages(
         query: query,
         currentUid: _currentUid,
         chatRooms: chatRooms,
       );
 
-      sw.stop();
-      debugPrint('🥷 SQLite search took: ${sw.elapsedMilliseconds}ms');
-      debugPrint('🥷 Results found: ${results.length}');
+      final t2 = sw.elapsedMilliseconds;
+      debugPrint('🥷 SQL + mapping: ${t2 - t1}ms');
+      debugPrint('🥷 Total: ${t2}ms | Results: ${results.length}');
 
       if (_query != query) return;
 

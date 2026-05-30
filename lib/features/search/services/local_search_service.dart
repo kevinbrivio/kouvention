@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/services/databases/message_database.dart';
@@ -21,10 +22,16 @@ class LocalSearchService implements SearchService {
     required List<ChatModel> chatRooms,
     int limit = 50,
   }) async {
+    final s0 = DateTime.now();
     final messages = await _db.searchMessages(query, currentUid, limit: limit);
-    final chatMap = {for (final c in chatRooms) c.id: c};
+    final s1 = DateTime.now();
+    debugPrint('🥷 SQL query only: ${s1.difference(s0).inMilliseconds}ms');
 
-    return messages.map((msg) {
+    final chatMap = {for (final c in chatRooms) c.id: c};
+    final s2 = DateTime.now();
+    debugPrint('🥷 chatMap build: ${s2.difference(s1).inMilliseconds}ms');
+
+    final resultList = messages.map((msg) {
       final chat = chatMap[msg.chatRoomId];
       return SearchResultModel(
         messageId: msg.id,
@@ -41,6 +48,9 @@ class LocalSearchService implements SearchService {
         fileSizeBytes: msg.fileSizeBytes,
       );
     }).toList();
+    final s3 = DateTime.now();
+    debugPrint('🥷 model mapping: ${s3.difference(s2).inMilliseconds}ms');
+    return resultList;
   }
 
   @override
