@@ -9,8 +9,8 @@ import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/models/upload_result_model.dart';
-import 'package:kouvention/features/chat/services/media_service.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
+import 'package:kouvention/features/chat/viewmodel/media/media_picker_helper.dart';
 
 class MediaPreviewVM extends BaseNotifier {
   final String chatId;
@@ -43,7 +43,7 @@ class MediaPreviewVM extends BaseNotifier {
 
   @override
   FutureOr<void> init() {
-    ref.watch(chatRoomVM(chatId));
+    ref.watch(chatRoomVMProvider(chatId));
   }
 
   void selectFile(int index) {
@@ -80,26 +80,23 @@ class MediaPreviewVM extends BaseNotifier {
     _isSending = true;
     notifyListeners();
 
-    final mediaService = MediaService();
+    final mediaHelper = ref.read(mediaPickerHelperProvider);
 
     try {
-      final rawResults = await Future.wait(
-        files.map(
-          (file) => mediaService.uploadFile(file: file, mediaType: type),
-        ),
+      final uploadedResults = await mediaHelper.uploadFiles(
+        files: files,
+        type: type,
       );
 
-      final results = <UploadResultModel>[];
-      for (int i = 0; i < files.length; i++) {
-        final result = rawResults[i];
-        if (result == null) continue;
+      if (uploadedResults.isEmpty) return;
 
-        final caption = _captions[files[i].path] ?? '';
-        results.add(result.copyWith(caption: caption));
-      }
-      if (results.isEmpty) return;
+      final finalResults = uploadedResults.map((result) {
+        final captionText = _captions[result.localPath] ?? '';
 
-      await onSend(results, _captions);
+        return result.copyWith(caption: captionText);
+      }).toList();
+
+      await onSend(finalResults, _captions);
       if (context.mounted) Navigator.pop(context);
     } on DioException catch (e) {
       print('Error send media message: $e');
@@ -109,9 +106,10 @@ class MediaPreviewVM extends BaseNotifier {
     }
   }
 
-  Future<File?> cropImage(String path) async {
+  Future<void> cropImage(int index) async {
+    final file = files[index];
     final cropped = await ImageCropper().cropImage(
-      sourcePath: path,
+      sourcePath: file.path,
       aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
       compressQuality: 80,
       uiSettings: [
@@ -129,10 +127,10 @@ class MediaPreviewVM extends BaseNotifier {
       ],
     );
 
-    if (cropped == null) return null;
+    if (cropped == null) return;
 
+    files[index] = File(cropped.path);
     notifyListeners();
-    return File(cropped.path);
   }
 }
 

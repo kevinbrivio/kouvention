@@ -53,7 +53,14 @@ class ChatModel {
     if (deletedBy == null || !deletedBy!.containsKey(uid)) return false;
     final rawVal = deletedBy![uid];
     if (rawVal == null) return true;
-    final deletedAt = (rawVal as Timestamp?)?.toDate();
+    DateTime? deletedAt;
+    if (rawVal is Timestamp) {
+      deletedAt = rawVal.toDate();
+    } else if (rawVal is DateTime) {
+      deletedAt = rawVal;
+    } else if (rawVal is int) {
+      deletedAt = DateTime.fromMillisecondsSinceEpoch(rawVal);
+    }
     if (deletedAt == null) return false;
     final lastSentAt = lastMessage?.sentAt;
     if (lastSentAt != null && lastSentAt.isAfter(deletedAt)) return false;
@@ -127,11 +134,11 @@ class ChatModel {
       memberHash: data['memberHash'] as String?,
       groupName: data['groupName'] as String?,
       groupPhotoUrl: data['groupPhotoUrl'] as String?,
-      createdBy: (data['createdBy'] as Map<String, dynamic>?)?.map(
-        (key, value) => MapEntry(key, value as String),
-      ),
+      createdBy: data['createdBy'] != null 
+          ? Map<String, String>.from(data['createdBy']) 
+          : null,
       lastMessage: data['lastMessage'] != null
-          ? LastMessage.fromMap(data['lastMessage'] as Map<String, dynamic>)
+          ? LastMessage.fromFirestore(data['lastMessage'] as Map<String, dynamic>)
           : null,
       unreadCount: parsedUnread,
       typingUsers: List<String>.from(data['typingUsers'] ?? []),
@@ -232,17 +239,34 @@ class LastMessage {
     required this.sentAt,
     this.type = 'text',
   });
+  
+  factory LastMessage.fromJson(Map<String, dynamic> data) => LastMessage(
+    text: data['text'] as String? ?? '',
+    sentBy: data['sentBy'] as String? ?? '',
+    sentAt: data['sentAt'] != null 
+        ? DateTime.fromMillisecondsSinceEpoch(data['sentAt'] as int)
+        : DateTime.now(),
+    type: data['type'] as String? ?? 'text',
+  );
 
-  factory LastMessage.fromMap(Map<String, dynamic> data) {
-    return LastMessage(
-      text: data['text'] as String? ?? '',
-      sentBy: data['sentBy'] as String? ?? '',
-      sentAt: (data['sentAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      type: data['type'] as String? ?? 'text',
-    );
+  Map<String, dynamic> toJson() {
+    return {
+      'text': text,
+      'sentBy': sentBy,
+      'sentAt': sentAt.millisecondsSinceEpoch, 
+      'type': type,
+    };
   }
 
-  Map<String, dynamic> toMap() {
+  factory LastMessage.fromFirestore(Map<String, dynamic> data) => LastMessage(
+    text: data['text'] as String? ?? '',
+    sentBy: data['sentBy'] as String? ?? '',
+    sentAt: (data['sentAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+    type: data['type'] as String? ?? 'text',
+  );
+
+
+  Map<String, dynamic> toFirestore() {
     return {
       'text': text,
       'sentBy': sentBy,

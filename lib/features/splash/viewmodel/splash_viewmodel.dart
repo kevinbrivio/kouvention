@@ -37,25 +37,27 @@ class SplashVM extends BaseNotifier {
     _hasAcceptedPrivacyPolicy = await _prefsService.hasAcceptedPrivacyPolicy();
     _isLoggedIn = await _authService.isLoggedIn;
 
-    if (_isLoggedIn) {
-      // Register device id
-      try {
-        await _getDeviceInstanceId();
-
-        final fcmService = ref.read(fcmServiceProvider);
-        await fcmService.initialize();
-
-        // Listen to notification
-        final _notificationHandler = NotificationHandler(ref);
-        await _notificationHandler.initialize();
-      } catch (e, s) {
-        print(e);
-        print(s);
-      }
-    }
-
     _nextRoute = RouterRoutes.chatList.path;
     notifyListeners();
+
+    if (_isLoggedIn) {
+      _initNotificationOnBackground();
+    }
+  }
+
+  Future<void> _initNotificationOnBackground() async {
+    try {
+      await _getDeviceInstanceId();
+
+      final fcmService = ref.read(fcmServiceProvider);
+      await fcmService.initialize();
+
+      _notificationHandler = NotificationHandler(ref);
+      await _notificationHandler!.initialize();
+    } catch (e, s) {
+      print(e);
+      print(s);
+    }
   }
 
   Future<String> _getDeviceInstanceId() async {

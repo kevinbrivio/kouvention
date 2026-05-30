@@ -5,8 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
-import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
-import 'package:kouvention/features/chat/viewmodel/media_preview_viewmodel.dart';
+import 'package:kouvention/features/chat/viewmodel/media/media_picker_helper.dart';
+import 'package:kouvention/features/chat/viewmodel/media/media_preview_viewmodel.dart';
 import 'package:kouvention/features/chat/widgets/preview/audio_preview.dart';
 import 'package:kouvention/features/chat/widgets/preview/document_preview.dart';
 import 'package:kouvention/features/chat/widgets/preview/image_preview.dart';
@@ -72,9 +72,7 @@ class _MediaPreviewViewState extends ConsumerState<MediaPreviewView> {
           if (vm.type == MessageType.image)
             IconButton(
               icon: const Icon(Icons.crop_rotate_rounded, color: Colors.white),
-              onPressed: () async {
-                await vm.cropImage(vm.currentFile.path);
-              },
+              onPressed: () => vm.cropImage(vm.currentIndex),
             ),
         ],
       );
@@ -146,7 +144,13 @@ class _MediaPreviewViewState extends ConsumerState<MediaPreviewView> {
         TextPosition(offset: _captionController.text.length),
       );
     },
-    itemBuilder: (_, index) => _buildPreviewItem(vm.files[index]),
+    itemBuilder: (_, index) {
+      final file = vm.files[index];
+      return KeyedSubtree(
+        key: ValueKey(file.path),
+        child: _buildPreviewItem(file),
+      );
+    },
   );
 
   // Tentukan widget preview berdasarkan ekstensi file
@@ -240,10 +244,10 @@ class _MediaPreviewViewState extends ConsumerState<MediaPreviewView> {
 
   Widget _buildAddButton(MediaPreviewVM vm) => GestureDetector(
     onTap: () async {
-      final chatRoomProvider = ref.read(chatRoomVM(widget.chatId));
       switch (vm.type) {
         case MessageType.image:
-          final newImg = await chatRoomProvider.pickImage(fromCamera: false);
+          final mediaPickerHelper = ref.read(mediaPickerHelperProvider);
+          final newImg = await mediaPickerHelper.pickImage(fromGallery: true);
           if (newImg == null) return;
 
           vm.addFile(newImg);
@@ -253,16 +257,18 @@ class _MediaPreviewViewState extends ConsumerState<MediaPreviewView> {
         // if (newAudio == null) return;
         // vm.addFile(newAudio);
         case MessageType.video:
-          final newVideo = await chatRoomProvider.pickVideo(fromCamera: false);
+          final mediaPickerHelper = ref.read(mediaPickerHelperProvider);
+          final newVideo = await mediaPickerHelper.pickVideo(fromCamera: false);
           if (newVideo == null) return;
           vm.addFile(newVideo);
         case MessageType.file:
-          final newFile = await chatRoomProvider.pickFile();
+          final mediaPickerHelper = ref.read(mediaPickerHelperProvider);
+          final newFile = await mediaPickerHelper.pickFile();
           if (newFile == null) return;
           vm.addFile(newFile);
         case MessageType.text:
-          break;
-        case MessageType.media:
+            break;
+          case MessageType.media:
           break;
       }
     },

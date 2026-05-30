@@ -6,8 +6,8 @@ import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/cores/utils/date_time_helper.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
-import 'package:kouvention/features/chat/services/chat_service.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
+import 'package:kouvention/features/shared/services/sync_service.dart';
 
 class ChatSelectionState {
   final Set<String> selectedIds;
@@ -18,16 +18,18 @@ class ChatSelectionState {
       ChatSelectionState(selectedIds: selectedIds ?? this.selectedIds);
 }
 
-final chatSelectionVM = ChangeNotifierProvider.autoDispose<ChatSelectionVM>(
-  (ref) => ChatSelectionVM(ref),
-);
+final chatSelectionVM = ChangeNotifierProvider.autoDispose
+    .family<ChatSelectionVM, String>(
+      (ref, chatId) => ChatSelectionVM(ref, chatId: chatId),
+    );
 
 class ChatSelectionVM extends BaseNotifier {
-  final ChatService _chatService;
+  final SyncService _syncService;
   final String? _currentUid;
+  final String chatId;
 
-  ChatSelectionVM(super.ref)
-    : _chatService = ref.read(chatServiceProvider),
+  ChatSelectionVM(super.ref, {required this.chatId})
+    : _syncService = ref.read(syncServiceProvider),
       _currentUid = ref.read(authServiceProvider).currentUser?.uid;
 
   ChatSelectionState state = ChatSelectionState();
@@ -37,6 +39,9 @@ class ChatSelectionVM extends BaseNotifier {
   int get selectedCount => state.selectedIds.length;
 
   bool isSelected(String msgId) => state.selectedIds.contains(msgId);
+
+  List<MessageModel> get _currentMessages =>
+      ref.read(chatMessagesStreamProvider(chatId)).value ?? [];
 
   void startSelection(String msgId) {
     state = state.copyWith(selectedIds: {msgId});
@@ -62,30 +67,34 @@ class ChatSelectionVM extends BaseNotifier {
     notifyListeners();
   }
 
-  Future<void> deleteForMe(ChatRoomVM chatVM) async {
-    await _chatService.deleteMessageForMe(
-      uid: _currentUid!,
-      chatId: chatVM.chat!.id,
+  Future<void> deleteForMe() async {
+    if (_currentUid == null || state.selectedIds.isEmpty) return;
+
+    await _syncService.deleteMessageForMe(
+      chatId: chatId,
       messageIds: state.selectedIds.toList(),
     );
     clearSelection();
   }
 
-  Future<void> deleteForEveryone(ChatRoomVM chatVM) async {
-    await _chatService.deleteMessageForEveryone(
-      chatVM.chat!.id,
-      state.selectedIds.toList(),
+  Future<void> deleteForEveryone() async {
+    if (state.selectedIds.isEmpty) return;
+
+    await _syncService.deleteMessageForEveryone(
+      chatId: chatId,
+      messageIds: state.selectedIds.toList(),
     );
     clearSelection();
   }
 
-  List<MessageModel> getSelectedMessages(ChatRoomVM chatVM) =>
-      chatVM.messages.where((m) => state.selectedIds.contains(m.id)).toList();
+  List<MessageModel> getSelectedMessages() =>
+      _currentMessages.where((m) => state.selectedIds.contains(m)).toList();
 
-  void copyToClipboard(ChatRoomVM chatVM) async {
-    final selectedMessages =
-        chatVM.messages.where((m) => state.selectedIds.contains(m.id)).toList()
-          ..sort((a, b) => a.sentAt.compareTo(b.sentAt));
+  void copyToClipboard() async {
+    if (state.selectedIds.isEmpty) return;
+
+    final selectedMessages = getSelectedMessages()
+      ..sort((a, b) => a.sentAt.compareTo(b.sentAt));
 
     String clipboardText;
 

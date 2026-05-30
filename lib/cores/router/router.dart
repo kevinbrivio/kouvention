@@ -8,7 +8,7 @@ import 'package:kouvention/features/auth/views/add_name_view.dart';
 import 'package:kouvention/features/auth/views/email_sign_in_view.dart';
 import 'package:kouvention/features/auth/views/login_view.dart';
 import 'package:kouvention/features/auth/views/sign_up_view.dart';
-import 'package:kouvention/features/chat/viewmodel/media_preview_viewmodel.dart';
+import 'package:kouvention/features/chat/viewmodel/media/media_preview_viewmodel.dart';
 import 'package:kouvention/features/chat/views/chat_list_view.dart';
 import 'package:kouvention/features/chat/views/chat_profile_view.dart';
 import 'package:kouvention/features/chat/views/chat_room_view.dart';
@@ -23,7 +23,6 @@ import 'package:kouvention/features/profile/views/edit_status_view..dart';
 import 'package:kouvention/features/profile/views/profile_view.dart';
 import 'package:kouvention/features/splash/views/splash_view.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
-import 'package:path/path.dart';
 
 GoRouter? _router;
 GoRouter get router => _router!;
@@ -51,7 +50,6 @@ setupRouter({
     refreshListenable: routerGuard,
     observers: [routeObserver],
     redirect: (context, state) {
-      final isLoggedIn = authService.currentUser != null;
       final currentPath = state.matchedLocation;
       debugPrint('GUARD: path = $currentPath');
 

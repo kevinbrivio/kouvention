@@ -1,51 +1,49 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:kouvention/cores/constants/colors.dart';
-import 'package:kouvention/cores/constants/text_theme.dart';
-import 'package:kouvention/features/chat/viewmodel/chat_list_viewmodel.dart';
-import 'package:kouvention/features/search/viewmodel/search_viewmodel.dart';
+import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/search/widgets/search_body.dart';
 
-class SearchOverlay extends ConsumerStatefulWidget {
-  final SearchVM searchVm;
-  final ChatListVM chatVm;
+class SearchOverlay extends StatefulWidget {
+  final List<ChatModel> chats;
+  final Function(String) onSearchChanged;
+  final Function onOpenSearch;
 
   const SearchOverlay({
     super.key,
-    required this.searchVm,
-    required this.chatVm,
+    required this.onOpenSearch,
+    required this.onSearchChanged,
+    required this.chats,
   });
 
   @override
-  ConsumerState<SearchOverlay> createState() => _SearchOverlayState();
+  State<SearchOverlay> createState() => _SearchOverlayState();
 }
 
-class _SearchOverlayState extends ConsumerState<SearchOverlay> {
+class _SearchOverlayState extends State<SearchOverlay> {
   late final TextEditingController _controller;
-
-  // Access VMs through widget — available everywhere, no ref needed
-  SearchVM get _searchVm => widget.searchVm;
-  ChatListVM get _chatVm => widget.chatVm;
+  String _text = '';
 
   @override
   void initState() {
     super.initState();
     _controller = TextEditingController();
-    Future(() => _searchVm.openSearch(widget.chatVm.chats)); // ← no ref, no problem
   }
 
   @override
   void dispose() {
     _controller.dispose();
-    Future(() => _searchVm.clearSearch()); // ← no ref, no problem
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) => ListenableBuilder(
-    listenable: _searchVm,
-    builder: (context, _) => DraggableScrollableSheet(
+  Widget build(BuildContext context) => PopScope(
+    canPop: true,
+    onPopInvokedWithResult: (didPop, _) {
+      widget.onSearchChanged('');
+      _controller.clear();
+    },
+    child: DraggableScrollableSheet(
       initialChildSize: 1.0,
       minChildSize: 0.5,
       maxChildSize: 1.0,
@@ -54,7 +52,7 @@ class _SearchOverlayState extends ConsumerState<SearchOverlay> {
         children: [
           _buildDragHandle(),
           _buildSearchBar(),
-          Expanded(child: searchBody(context, _searchVm, ref)),
+          Expanded(child: SearchBody()),
         ],
       ),
     ),
@@ -78,33 +76,39 @@ class _SearchOverlayState extends ConsumerState<SearchOverlay> {
       children: [
         IconButton(
           icon: Icon(Icons.arrow_back, size: 20.sp, color: AppColors.grey),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () {
+            widget.onSearchChanged('');
+            _controller.clear();
+            Navigator.of(context).pop();
+          },
         ),
         Expanded(
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20.r),
-              border: BoxBorder.all(color: AppColors.primary, width: 2.w),
+              border: Border.all(color: AppColors.primary, width: 2.w),
             ),
             padding: EdgeInsets.symmetric(horizontal: 16.w),
             child: TextField(
+              onChanged: (query) {
+                setState(() => _text = query);
+                widget.onSearchChanged(query);
+              },
               controller: _controller,
-              autofocus: true,
-              onChanged: (query) =>
-                  _searchVm.onTextChanged(query, _chatVm.chats),
               decoration: InputDecoration(
-                hintText: 'Search messages...',
-                hintStyle: textTheme.subDescription3,
-                border: InputBorder.none,
-                suffixIcon: _controller.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () {
-                          _controller.clear();
-                          _searchVm.onTextChanged('', _chatVm.chats);
-                        },
-                      )
-                    : null,
+                suffixIcon: ListenableBuilder(
+                  listenable: _controller,
+                  builder: (context, _) => _controller.text.isEmpty
+                      ? SizedBox.shrink()
+                      : IconButton(
+                          icon: Icon(Icons.close),
+                          onPressed: () {
+                            setState(() => _text = '');
+                            _controller.clear();
+                            widget.onSearchChanged('');
+                          },
+                        ),
+                ),
               ),
             ),
           ),
