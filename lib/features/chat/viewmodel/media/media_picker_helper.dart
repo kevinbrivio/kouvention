@@ -30,15 +30,6 @@ class MediaPickerHelper extends BaseNotifier {
     required MessageType type,
   }) async {
     try {
-      print(
-        '==================================================================================',
-      );
-      print(files.map((f) => 'File: ${f.path}, Size: ${f.lengthSync()} bytes').join('\n'));
-      print(
-        '==================================================================================',
-      );
-      
-
       final results = await Future.wait(
         files.map((f) async {
           final result = await _cloudMediaService.uploadFile(
