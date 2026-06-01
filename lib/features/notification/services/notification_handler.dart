@@ -56,6 +56,18 @@ void onBackgroundNotificationResponse(NotificationResponse response) async {
 Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
 
+  final currentUser = FirebaseAuth.instance.currentUser;
+  if (currentUser != null) {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .get();
+      final enabled = doc.data()?['notificationsEnabled'] as bool? ?? true;
+      if (!enabled) return;
+    } catch (_) {}
+  }
+
   final plugin = FlutterLocalNotificationsPlugin();
 
   await plugin
@@ -209,14 +221,31 @@ class NotificationHandler {
     }
   }
 
-  void _handleForegroundMessage(RemoteMessage message) {
+  Future<void> _handleForegroundMessage(RemoteMessage message) async {
     final incomingChatId = message.data['chatId'];
     final activeChatId = _ref.read(activeChatIdProvider);
 
-    // User already read the chat -> No need to ring notifiation
     if (incomingChatId != null && incomingChatId == activeChatId) return;
 
+    final enabled = await _areNotificationsEnabled();
+    if (!enabled) return;
+
     _showLocalNotification(message);
+  }
+
+  Future<bool> _areNotificationsEnabled() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return false;
+
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .get();
+      return doc.data()?['notificationsEnabled'] as bool? ?? true;
+    } catch (_) {
+      return true;
+    }
   }
 
   void _showLocalNotification(RemoteMessage message) {

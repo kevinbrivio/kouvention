@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
+import 'package:kouvention/features/shared/services/fcm_service.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
 import 'package:kouvention/features/user/services/user_service.dart';
 
@@ -15,12 +16,14 @@ final notificationSettingsVM =
 class NotificationSettingsVM extends BaseNotifier {
   final UserService _userService;
   final AuthService _authService;
+  final FcmService _fcmService;
   StreamSubscription? _userSubscription;
   UserModel? _user;
 
   NotificationSettingsVM(super.ref)
     : _userService = ref.read(userServiceProvider),
-      _authService = ref.read(authServiceProvider);
+      _authService = ref.read(authServiceProvider),
+      _fcmService = ref.read(fcmServiceProvider);
 
   @override
   FutureOr<void> init() async {
@@ -54,6 +57,12 @@ class NotificationSettingsVM extends BaseNotifier {
 
     try {
       await _userService.updateNotificationsEnabled(_user!.uid, updated);
+
+      if (updated) {
+        await _fcmService.saveToken();
+      } else {
+        await _fcmService.removeToken();
+      }
     } catch (e) {
       _user = _user!.copyWith(notificationsEnabled: current);
       notifyListeners();
