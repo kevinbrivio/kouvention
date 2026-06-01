@@ -20,6 +20,8 @@ import 'package:kouvention/features/onboarding/views/onboarding_view.dart';
 import 'package:kouvention/features/privacy_policy/views/privacy_policy_view.dart';
 import 'package:kouvention/features/profile/views/edit_name_view.dart';
 import 'package:kouvention/features/profile/views/edit_status_view..dart';
+import 'package:kouvention/features/profile/views/notification_settings_view.dart';
+import 'package:kouvention/features/profile/views/privacy_settings_view.dart';
 import 'package:kouvention/features/profile/views/profile_view.dart';
 import 'package:kouvention/features/splash/views/splash_view.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
@@ -235,6 +237,16 @@ setupRouter({
         name: RouterRoutes.editStatus.name,
         builder: (_, state) =>
             EditStatusView(currentStatus: state.extra as String?),
+      ),
+      GoRoute(
+        path: RouterRoutes.privacySettings.path,
+        name: RouterRoutes.privacySettings.name,
+        builder: (_, _) => const PrivacySettingsView(),
+      ),
+      GoRoute(
+        path: RouterRoutes.notificationSettings.path,
+        name: RouterRoutes.notificationSettings.name,
+        builder: (_, _) => const NotificationSettingsView(),
       ),
     ],
   );

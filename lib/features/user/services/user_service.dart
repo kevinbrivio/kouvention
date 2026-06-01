@@ -133,7 +133,7 @@ class UserService {
   }
 
   Future<void> updateNotificationsEnabled(String uid, bool enabled) async {
-    await updateUser(uid, {'notificatonsEnabled': enabled});
+    await updateUser(uid, {'notificationsEnabled': enabled});
   }
 }
 

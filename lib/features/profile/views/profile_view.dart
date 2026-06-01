@@ -119,18 +119,14 @@ class _ProfileBody extends StatelessWidget {
                 iconColor: AppColors.primary,
                 title: 'Privacy & Security',
                 subtitle: 'Manage your data and visibility',
-                onTap: () {
-                  // TODO: Navigate to privacy settings
-                },
+                onTap: () => context.push(RouterRoutes.privacySettings.path),
               ),
               SettingsTile(
                 icon: Icons.notifications_outlined,
                 iconColor: AppColors.primary,
                 title: 'Notifications',
                 subtitle: 'Message alerts and sounds',
-                onTap: () {
-                  // TODO: Navigate to notification settings
-                },
+                onTap: () => context.push(RouterRoutes.notificationSettings.path),
               ),
 
               Gap(32.h),
