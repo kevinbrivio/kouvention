@@ -235,6 +235,8 @@ class ChatService {
         return '🎵 ${filename}';
       case MessageType.file:
         return '📎 ${filename}';
+      case MessageType.sticker:
+        return 'Sticker';
       default:
         return '';
     }

@@ -159,7 +159,7 @@ class MessageBubble extends ConsumerWidget {
                               onTap: onTapReply != null
                                   ? () {
                                       HapticFeedback.selectionClick();
-                                      onTapReply;
+                                      onTapReply!(replyMsg.messageId);
                                     }
                                   : null,
                               child: _buildInBubbleReplyPreview(replyMsg, currentUid),

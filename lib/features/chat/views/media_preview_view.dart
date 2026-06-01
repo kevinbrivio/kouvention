@@ -267,20 +267,12 @@ class _MediaPreviewViewState extends ConsumerState<MediaPreviewView> {
           if (newFile == null) return;
           vm.addFile(newFile);
         case MessageType.text:
-            break;
-          case MessageType.media:
+        case MessageType.sticker:
+          break;
+        case MessageType.media:
           break;
       }
     },
-    child: Container(
-      width: 52.w,
-      height: 52.w,
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.white38),
-        borderRadius: BorderRadius.circular(6.r),
-      ),
-      child: Icon(Icons.add, color: Colors.white, size: 20.w),
-    ),
   );
 
   String _titleFromType(MessageType type) {
@@ -295,6 +287,8 @@ class _MediaPreviewViewState extends ConsumerState<MediaPreviewView> {
         return 'Document';
       case MessageType.text:
         return 'Document';
+      case MessageType.sticker:
+        return 'Sticker';
       case MessageType.media:
         return 'Media';
     }

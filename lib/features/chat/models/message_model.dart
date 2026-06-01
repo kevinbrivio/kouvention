@@ -31,6 +31,7 @@ class MessageModel {
   bool get isVideo => type == MessageType.video;
   bool get isAudio => type == MessageType.audio;
   bool get isFile => type == MessageType.file;
+  bool get isSticker => type == MessageType.sticker;
 
   List<String> get allMediaUrls {
     if (mediaUrls != null && mediaUrls!.isNotEmpty) return mediaUrls!;

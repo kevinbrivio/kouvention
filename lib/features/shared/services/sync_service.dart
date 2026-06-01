@@ -150,6 +150,21 @@ class SyncService {
     lastSyncTimestamp: Value(lastSyncAt ?? 0),
   );
 
+  Future<void> fetchMessagesAround(String chatId, DateTime aroundTimestamp) async {
+    final messages = await _chatService.fetchMessageAround(
+      chatId,
+      aroundTimestamp: aroundTimestamp,
+      limit: 50,
+    );
+    if (messages.isEmpty) return;
+
+    final companions = messages
+        .map((m) => messageToCompanion(m, chatId, SyncStatus.sent))
+        .toList();
+
+    await _db.upsertMessages(companions);
+  }
+
   Future<void> fetchMessages(String chatId) async {
     final chatRoom = await _db.getChatById(chatId);
     final lastSyncAt = chatRoom?.lastSyncTimestamp ?? 0;
