@@ -181,13 +181,57 @@ class _ProfileBody extends StatelessWidget {
     );
   }
 
-  Widget _buildLogoutButton(BuildContext context) => Container(
-    decoration: BoxDecoration(borderRadius: BorderRadius.circular(24.r)),
-    child: Button(
-      text: 'Sign out',
-      loading: viewmodel.isButtonLoading,
-      onPressed: () => _showSignOutConfirmation(context),
-      isCancel: true,
+  Widget _buildLogoutButton(BuildContext context) => GestureDetector(
+    onTap: viewmodel.isButtonLoading ? null : () => _showSignOutConfirmation(context),
+    child: Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12.r),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: viewmodel.isButtonLoading
+          ? Center(
+              child: SizedBox(
+                width: 24.w, height: 24.w,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: Colors.red.shade400,
+                ),
+              ),
+            )
+          : Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(8.r),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
+                  child: Icon(
+                    Icons.logout_rounded,
+                    size: 24.sp,
+                    color: Colors.red.shade400,
+                  ),
+                ),
+                Gap(12.w),
+                Text(
+                  'Sign Out',
+                  style: TextStyle(
+                    fontSize: 15.sp,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.red.shade400,
+                  ),
+                ),
+              ],
+            ),
     ),
   );
 }
