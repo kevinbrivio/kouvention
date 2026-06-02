@@ -50,9 +50,8 @@ void main() async {
       // FLAVOR SETUP
       const flavor = String.fromEnvironment('ENV');
       setupConfig(flavor);
-      // Register Jailbreak Detector
-      await SecurityService.initialize(isProd: flavor != 'staging');
-      SecurityNotifier.instance.attachListeners();
+      // Check for rooted / jailbroken device
+      await SecurityNotifier.instance.checkDeviceSecurity();
 
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
@@ -147,7 +146,6 @@ class _KouventionAppState extends ConsumerState<KouventionApp>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    ref.read(securityNotifierProvider).attachListeners();
     ref.read(
       presenceNotifierProvider,
     ); // listen to presence notifier to check user presence throughout the use
