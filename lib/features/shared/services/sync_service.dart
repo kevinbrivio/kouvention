@@ -14,6 +14,7 @@ import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/models/reply_to_model.dart';
 import 'package:kouvention/features/chat/services/chat_service.dart';
 import 'package:kouvention/features/chat/services/databases/message_database.dart';
+import 'package:kouvention/features/chat/models/upload_result_model.dart';
 import 'package:kouvention/features/chat/services/media/cloud_media_service.dart';
 import 'package:kouvention/features/notification/services/notification_service.dart';
 
@@ -275,50 +276,31 @@ class SyncService {
     Map<String, dynamic>? otherUserFcmTokens,
     ReplyToModel? replyTo,
   }) async {
-    // Generate Temp ID / Group Media ID
-    final isAlbum = files.length > 1;
-    final albumGroupId = isAlbum
-        ? 'album_${DateTime.now().millisecondsSinceEpoch}'
-        : null;
+    final randomStr = generateRandomString(5);
+    final tempId = '${DateTime.now().millisecondsSinceEpoch}_$randomStr';
 
-    final List<MessagesCompanion> localMessages = [];
+    final localMsg = MessagesCompanion(
+      id: Value(tempId),
+      chatRoomId: Value(chatRoomId),
+      senderId: Value(_currentUid!),
+      senderName: Value(senderName),
+      textContent: Value(caption ?? ''),
+      type: Value(type.name),
+      sentAt: Value(DateTime.now().millisecondsSinceEpoch),
+      updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
+      syncStatus: Value(SyncStatus.pending),
+      localPath: Value(files.first.path),
+      mediaUrls: Value(null),
+      mediaGroupId: Value(null),
+      replyToId: Value(replyTo?.messageId),
+      replyToText: Value(replyTo?.text),
+      replyToSenderName: Value(replyTo?.senderName),
+    );
 
-    for (int i = 0; i < files.length; i++) {
-      final file = files[i];
-
-      final randomStr = generateRandomString(5);
-      final tempId = '${DateTime.now().millisecondsSinceEpoch}_$randomStr';
-
-      // Upsert to Local with status pending, null mediaURL, but existing localpath
-      final localMsg = MessagesCompanion(
-        id: Value(tempId),
-        chatRoomId: Value(chatRoomId),
-        senderId: Value(_currentUid!),
-        senderName: Value(senderName),
-        textContent: Value(caption ?? ''), // Send empty string if media
-        type: Value(type.name),
-        sentAt: Value(DateTime.now().millisecondsSinceEpoch),
-        updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
-        syncStatus: Value(SyncStatus.pending),
-
-        localPath: Value(file.path),
-        mediaUrls: Value(null), // no url yet
-        mediaGroupId: Value(albumGroupId),
-
-        replyToId: Value(replyTo?.messageId),
-        replyToText: Value(replyTo?.text),
-        replyToSenderName: Value(replyTo?.senderName),
-      );
-
-      localMessages.add(localMsg);
-    }
-
-    for (var msg in localMessages) {
-      await _db.upsertMessage(msg);
-    }
+    await _db.upsertMessage(localMsg);
 
     _processMediaUploadsInBackground(
-      localMessages: localMessages,
+      tempId: tempId,
       files: files,
       chatRoomId: chatRoomId,
       type: type,
@@ -330,7 +312,7 @@ class SyncService {
   }
 
   Future<void> _processMediaUploadsInBackground({
-    required List<MessagesCompanion> localMessages,
+    required String tempId,
     required List<File> files,
     required String chatRoomId,
     required MessageType type,
@@ -339,53 +321,46 @@ class SyncService {
     required List<String> memberUids,
     required ReplyToModel? replyTo,
   }) async {
-    final uploadTasks = <Future<void>>[];
+    try {
+      final results = await Future.wait(
+        files.map((file) => _mediaService.uploadFile(
+          file: file,
+          mediaType: type,
+        )),
+      );
 
-    for (int i = 0; i < files.length; i++) {
-      final file = files[i];
-      final tempId = localMessages[i].id.value;
+      final uploaded = results.whereType<UploadResultModel>().toList();
+      if (uploaded.isEmpty) throw Exception('All uploads failed');
 
-      uploadTasks.add(() async {
-        try {
-          final uploadResult = await _mediaService.uploadFile(
-            file: file,
-            mediaType: type,
-          );
-          if (uploadResult == null) throw Exception('Upload failed');
+      final allUrls = uploaded.map((r) => r.url).toList();
 
-          // Shoot to Firestore
-          await _chatService.sendMediaMessage(
-            chatId: chatRoomId,
-            messageId: tempId,
-            text: caption,
-            type: type,
-            senderId: _currentUid!,
-            senderName: senderName,
-            mediaUrls: [uploadResult.url],
-            mediaDuration: uploadResult.mediaDuration,
-            mimeType: uploadResult.mimeType,
-            fileSizeBytes: uploadResult.fileSizeBytes,
-            memberUids: memberUids,
-            replyTo: replyTo,
-            fileName: file.path.split('/').last, // king_emyu.jpeg
-          );
+      await _chatService.sendMediaMessage(
+        chatId: chatRoomId,
+        messageId: tempId,
+        text: caption,
+        type: type,
+        senderId: _currentUid!,
+        senderName: senderName,
+        mediaUrls: allUrls,
+        mediaDuration: uploaded.first.mediaDuration,
+        mimeType: uploaded.first.mimeType,
+        fileSizeBytes: uploaded.first.fileSizeBytes,
+        memberUids: memberUids,
+        replyTo: replyTo,
+        fileName: files.first.path.split('/').last,
+      );
 
-          // Update to SQLite
-          await _db.updateMediaMessageSuccess(
-            tempId, 
-            uploadResult.url,
-            fileName: file.path.split('/').last,
-            fileSizeBytes: uploadResult.fileSizeBytes,
-            mimeType: uploadResult.mimeType,
-          );
-        } catch (e) {
-          debugPrint('🚨 Failed media upload for $tempId: $e');
-          await _db.updateMessageStatus(tempId, SyncStatus.failed);
-        }
-      }());
+      await _db.updateMediaMessageSuccess(
+        tempId,
+        allUrls,
+        fileName: files.first.path.split('/').last,
+        fileSizeBytes: uploaded.first.fileSizeBytes,
+        mimeType: uploaded.first.mimeType,
+      );
+    } catch (e) {
+      debugPrint('🚨 Failed media upload for $tempId: $e');
+      await _db.updateMessageStatus(tempId, SyncStatus.failed);
     }
-
-    await Future.wait(uploadTasks);
   }
 
   Future<void> _sendMessageInBackground({
@@ -419,12 +394,8 @@ class SyncService {
     final stuckMessages = await _db.getStuckPendingMessages();
     if (stuckMessages.isEmpty) return;
 
-    for (final msg in stuckMessages) {
-      // if (msg.type == MessageType.text.name) {
-      //   _retryTextInBackground(msg);
-      // } else {
-      //   _retryMediaInBackground(msg);
-      // }
+    for (final _ in stuckMessages) {
+      // TODO: implement retry logic for text and media messages
     }
   }
 

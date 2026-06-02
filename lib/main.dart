@@ -19,7 +19,6 @@ import 'package:kouvention/cores/widgets/flavor_banner.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/notification/services/notification_handler.dart';
 import 'package:kouvention/features/shared/services/prefs_service.dart';
-import 'package:kouvention/features/shared/services/security_service.dart';
 import 'package:kouvention/features/shared/viewmodel/connectivity_viewmodel.dart';
 import 'package:kouvention/features/shared/viewmodel/security_notifier.dart';
 import 'package:kouvention/features/shared/views/device_blocked_view.dart';

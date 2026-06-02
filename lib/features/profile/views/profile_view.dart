@@ -1,11 +1,10 @@
-// lib/features/profile/views/profile_view.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/bases/base_view.dart';
 import 'package:kouvention/cores/constants/colors.dart';
+import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/cores/widgets/custom_button.dart';
 import 'package:kouvention/cores/widgets/loading_indicator.dart';
@@ -31,11 +30,7 @@ class ProfileView extends StatelessWidget {
       ),
       title: Text(
         'Profile',
-        style: TextStyle(
-          color: Colors.black87,
-          fontSize: 18.sp,
-          fontWeight: FontWeight.w600,
-        ),
+        style: textTheme.appBar
       ),
       centerTitle: false,
     ),

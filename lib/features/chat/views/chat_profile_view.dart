@@ -384,3 +384,4 @@ class _ChatProfileBodyState extends ConsumerState<_ChatProfileBody> {
     ),
   );
 }
+}
