@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
+import 'package:kouvention/features/shared/services/connectivity_service.dart';
 import 'package:kouvention/features/shared/services/fcm_service.dart';
 import 'package:kouvention/features/shared/viewmodel/notification_viewmodel.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
@@ -19,6 +20,7 @@ class NotificationSettingsVM extends BaseNotifier {
   final UserService _userService;
   final AuthService _authService;
   final FcmService _fcmService;
+  final ConnectivityService _connectivityService;
   final NotificationPermissionVM _permissionVM;
   StreamSubscription? _userSubscription;
   UserModel? _user;
@@ -31,6 +33,7 @@ class NotificationSettingsVM extends BaseNotifier {
     : _userService = ref.read(userServiceProvider),
       _authService = ref.read(authServiceProvider),
       _fcmService = ref.read(fcmServiceProvider),
+      _connectivityService = ref.read(connectivityServiceProvider),
       _permissionVM = ref.read(notificationPermissionProvider.notifier);
 
   @override
@@ -80,6 +83,12 @@ class NotificationSettingsVM extends BaseNotifier {
 
   Future<void> toggle() async {
     if (_user == null) return;
+
+    final connected = await _connectivityService.isConnected;
+    if (!connected) {
+      showToast('No internet connection. Please check your network and try again.');
+      return;
+    }
 
     // If toggling ON but OS permission denied — let the UI handle it
     final current = notificationsEnabled;
