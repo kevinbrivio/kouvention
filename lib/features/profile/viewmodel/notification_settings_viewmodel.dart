@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
@@ -82,6 +83,9 @@ class NotificationSettingsVM extends BaseNotifier {
 
   Future<void> setVibrationEnabled(bool value) async {
     await prefs.setNotificationVibrationEnabled(value);
+    if (value) {
+      HapticFeedback.mediumImpact();
+    }
     notifyListeners();
   }
 

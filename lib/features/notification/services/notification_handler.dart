@@ -91,6 +91,7 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
 
   // Resolve sound from SharedPreferences (background isolate — no Riverpod)
   AndroidNotificationSound? backgroundSound;
+  String? backgroundIosSound;
   bool backgroundVibration = true;
   try {
     final prefs = await SharedPreferences.getInstance();
@@ -101,6 +102,7 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
     } else {
       final sound = NotificationSound.fromId(soundId ?? 'default');
       backgroundSound = sound?.toAndroidNotificationSound();
+      backgroundIosSound = sound?.iosFilename;
     }
     backgroundVibration =
         prefs.getBool('notification_vibration_enabled') ?? true;
@@ -116,6 +118,7 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
     title: data['title'] ?? '',
     body: data['body'] ?? '',
     sound: backgroundSound,
+    iosSoundFilename: backgroundIosSound,
     enableVibration: backgroundVibration,
   );
 }
@@ -129,6 +132,7 @@ Future<void> _showChatNotification({
   required String body,
   String? senderImageUrl,
   AndroidNotificationSound? sound,
+  String? iosSoundFilename,
   bool enableVibration = true,
 }) async {
   final config = NotificationConfig.chatMessages;
@@ -174,6 +178,12 @@ Future<void> _showChatNotification({
         styleInformation: messageStyle,
         actions: [replyAction],
         enableVibration: enableVibration,
+      ),
+      iOS: DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+        sound: iosSoundFilename,
       ),
     ),
   );
@@ -253,17 +263,6 @@ class NotificationHandler {
     }
   }
 
-  AndroidNotificationSound? _resolveSound() {
-    final prefs = _ref.read(prefsServiceProvider);
-    final soundId = prefs.notificationSoundId;
-    final soundUri = prefs.notificationSoundUri;
-    if (soundId == NotificationSound.systemId && soundUri != null) {
-      return UriAndroidNotificationSound(soundUri);
-    }
-    final sound = NotificationSound.fromId(soundId ?? NotificationSound.defaultId);
-    return sound?.toAndroidNotificationSound();
-  }
-
   Future<void> _handleForegroundMessage(RemoteMessage message) async {
     final incomingChatId = message.data['chatId'];
     final activeChatId = _ref.read(activeChatIdProvider);
@@ -291,6 +290,17 @@ class NotificationHandler {
     }
   }
 
+  ({AndroidNotificationSound? sound, String? iosFilename}) _resolveSound() {
+    final prefs = _ref.read(prefsServiceProvider);
+    final soundId = prefs.notificationSoundId;
+    final soundUri = prefs.notificationSoundUri;
+    if (soundId == NotificationSound.systemId && soundUri != null) {
+      return (sound: UriAndroidNotificationSound(soundUri), iosFilename: null);
+    }
+    final sound = NotificationSound.fromId(soundId ?? NotificationSound.defaultId);
+    return (sound: sound?.toAndroidNotificationSound(), iosFilename: sound?.iosFilename);
+  }
+
   void _showLocalNotification(RemoteMessage message) {
     final data = message.data;
     final chatId = data['chatId'] ?? '';
@@ -300,10 +310,12 @@ class NotificationHandler {
     final title = data['title'] ?? 'New message';
     final senderImageUrl = data['senderImageUrl'];
 
-    AndroidNotificationSound? sound;
+    ({AndroidNotificationSound? sound, String? iosFilename}) resolved;
     try {
-      sound = _resolveSound();
-    } catch (_) {}
+      resolved = _resolveSound();
+    } catch (_) {
+      resolved = (sound: null, iosFilename: null);
+    }
 
     final vibration = _ref.read(prefsServiceProvider).notificationVibrationEnabled;
 
@@ -315,7 +327,8 @@ class NotificationHandler {
       senderImageUrl: senderImageUrl,
       title: title,
       body: body,
-      sound: sound,
+      sound: resolved.sound,
+      iosSoundFilename: resolved.iosFilename,
       enableVibration: vibration,
     );
   }

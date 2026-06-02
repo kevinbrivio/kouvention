@@ -137,9 +137,13 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
               child: SettingsToggleTile(
                 icon: Icons.vibration,
                 title: 'Vibration',
-                subtitle: 'Vibrate on new message',
+                subtitle: Platform.isAndroid
+                    ? 'Vibrate on new message'
+                    : 'Follows your device system settings',
                 value: widget.viewmodel.vibrationEnabled,
-                onChanged: (v) => widget.viewmodel.setVibrationEnabled(v),
+                onChanged: Platform.isAndroid
+                    ? (v) => widget.viewmodel.setVibrationEnabled(v)
+                    : (_) {},
               ),
             ),
           ),

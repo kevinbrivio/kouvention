@@ -77,6 +77,16 @@ class NotificationService {
         'android': {
           'priority': 'high',
         },
+        'apns': {
+          'headers': {
+            'apns-priority': '5',
+          },
+          'payload': {
+            'aps': {
+              'content-available': 1,
+            },
+          },
+        },
         if (data != null) 'data': data,
       },
     };
