@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -11,7 +12,9 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:kouvention/cores/router/router.dart';
 import 'package:kouvention/features/chat/services/chat_service.dart';
 import 'package:kouvention/features/notification/services/notification_config.dart';
+import 'package:kouvention/features/notification/services/notification_sound.dart';
 import 'package:kouvention/features/notification/viewmodel/active_chat_id_provider.dart';
+import 'package:kouvention/features/shared/services/prefs_service.dart';
 import 'package:kouvention/firebase_options.dart';
 
 @pragma('vm:entry-point')
@@ -36,11 +39,11 @@ void onBackgroundNotificationResponse(NotificationResponse response) async {
   if (chat == null) return;
 
   final docId = FirebaseFirestore.instance
-      .collection('chats')
-      .doc(chatId)
-      .collection('messages')
-      .doc()
-      .id;
+    .collection('chats')
+    .doc(chatId)
+    .collection('messages')
+    .doc()
+    .id;
 
   // Write to firestore
   await chatService.sendMessage(
@@ -86,6 +89,23 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
     ),
   );
 
+  // Resolve sound from SharedPreferences (background isolate — no Riverpod)
+  AndroidNotificationSound? backgroundSound;
+  bool backgroundVibration = true;
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final soundId = prefs.getString('notification_sound_chat');
+    final soundUri = prefs.getString('notification_sound_uri');
+    if (soundId == 'system' && soundUri != null) {
+      backgroundSound = UriAndroidNotificationSound(soundUri);
+    } else {
+      final sound = NotificationSound.fromId(soundId ?? 'default');
+      backgroundSound = sound?.toAndroidNotificationSound();
+    }
+    backgroundVibration =
+        prefs.getBool('notification_vibration_enabled') ?? true;
+  } catch (_) {}
+
   final data = message.data;
   await _showChatNotification(
     plugin: plugin,
@@ -95,6 +115,8 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
     senderImageUrl: data['senderImageUrl'] ?? '',
     title: data['title'] ?? '',
     body: data['body'] ?? '',
+    sound: backgroundSound,
+    enableVibration: backgroundVibration,
   );
 }
 
@@ -106,6 +128,8 @@ Future<void> _showChatNotification({
   required String title,
   required String body,
   String? senderImageUrl,
+  AndroidNotificationSound? sound,
+  bool enableVibration = true,
 }) async {
   final config = NotificationConfig.chatMessages;
 
@@ -144,10 +168,12 @@ Future<void> _showChatNotification({
         config.name,
         channelDescription: config.description,
         icon: config.iconDrawable,
+        sound: sound,
         importance: config.importance,
         priority: config.priority,
         styleInformation: messageStyle,
         actions: [replyAction],
+        enableVibration: enableVibration,
       ),
     ),
   );
@@ -227,6 +253,17 @@ class NotificationHandler {
     }
   }
 
+  AndroidNotificationSound? _resolveSound() {
+    final prefs = _ref.read(prefsServiceProvider);
+    final soundId = prefs.notificationSoundId;
+    final soundUri = prefs.notificationSoundUri;
+    if (soundId == NotificationSound.systemId && soundUri != null) {
+      return UriAndroidNotificationSound(soundUri);
+    }
+    final sound = NotificationSound.fromId(soundId ?? NotificationSound.defaultId);
+    return sound?.toAndroidNotificationSound();
+  }
+
   Future<void> _handleForegroundMessage(RemoteMessage message) async {
     final incomingChatId = message.data['chatId'];
     final activeChatId = _ref.read(activeChatIdProvider);
@@ -263,6 +300,13 @@ class NotificationHandler {
     final title = data['title'] ?? 'New message';
     final senderImageUrl = data['senderImageUrl'];
 
+    AndroidNotificationSound? sound;
+    try {
+      sound = _resolveSound();
+    } catch (_) {}
+
+    final vibration = _ref.read(prefsServiceProvider).notificationVibrationEnabled;
+
     _showChatNotification(
       plugin: _localNotifications,
       chatId: chatId,
@@ -271,6 +315,8 @@ class NotificationHandler {
       senderImageUrl: senderImageUrl,
       title: title,
       body: body,
+      sound: sound,
+      enableVibration: vibration,
     );
   }
 

@@ -4,8 +4,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
+import 'package:kouvention/features/notification/services/notification_sound.dart';
 import 'package:kouvention/features/shared/services/connectivity_service.dart';
 import 'package:kouvention/features/shared/services/fcm_service.dart';
+import 'package:kouvention/features/shared/services/prefs_service.dart';
 import 'package:kouvention/features/shared/viewmodel/connectivity_viewmodel.dart';
 import 'package:kouvention/features/shared/viewmodel/notification_viewmodel.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
@@ -29,7 +31,6 @@ class NotificationSettingsVM extends BaseNotifier {
   NotificationPermissionState _osPermission =
       NotificationPermissionState.notDetermined;
   bool _reconciled = false;
-  bool _reenableOnGrant = false;
 
   NotificationSettingsVM(super.ref)
     : _userService = ref.read(userServiceProvider),
@@ -66,6 +67,26 @@ class NotificationSettingsVM extends BaseNotifier {
   bool get osPermissionGranted =>
       _osPermission == NotificationPermissionState.granted;
 
+  String get currentSoundId => prefs.notificationSoundId ?? NotificationSound.defaultId;
+
+  String get currentSoundDisplayName {
+    final id = currentSoundId;
+    if (id == NotificationSound.systemId) {
+      return prefs.notificationSoundDisplayName ?? 'System Ringtone';
+    }
+    final sound = NotificationSound.fromId(id);
+    return sound?.displayName ?? 'Default';
+  }
+
+  bool get vibrationEnabled => prefs.notificationVibrationEnabled;
+
+  Future<void> setVibrationEnabled(bool value) async {
+    await prefs.setNotificationVibrationEnabled(value);
+    notifyListeners();
+  }
+
+  PrefsService get prefs => ref.read(prefsServiceProvider);
+
   Future<void> _checkOSPermission() async {
     await _permissionVM.checkPermission();
     _osPermission = _permissionVM.currentState;
@@ -77,7 +98,6 @@ class NotificationSettingsVM extends BaseNotifier {
       try {
         await _userService.updateNotificationsEnabled(_user!.uid, false);
         _user = _user!.copyWith(notificationsEnabled: false);
-        _reenableOnGrant = true;
       } catch (e) {
         debugPrint('Failed to reconcile notification permission: $e');
       }
@@ -86,7 +106,6 @@ class NotificationSettingsVM extends BaseNotifier {
 
   Future<void> toggle() async {
     if (_user == null) return;
-    _reenableOnGrant = false;
 
     final connected = await _connectivityService.isConnected;
     if (!connected) {
@@ -94,7 +113,6 @@ class NotificationSettingsVM extends BaseNotifier {
       return;
     }
 
-    // If toggling ON but OS permission denied — let the UI handle it
     final current = notificationsEnabled;
     final updated = !current;
     if (updated && !osPermissionGranted) return;
@@ -117,6 +135,26 @@ class NotificationSettingsVM extends BaseNotifier {
     }
   }
 
+  Future<void> selectSound(String soundId) async {
+    await prefs.setNotificationSoundId(soundId);
+    if (soundId != NotificationSound.systemId) {
+      await prefs.setNotificationSoundUri(null);
+      await prefs.setNotificationSoundDisplayName(null);
+    }
+    notifyListeners();
+  }
+
+  Future<void> pickSystemRingtone() async {
+    final currentUri = prefs.notificationSoundUri;
+    final result = await _permissionVM.pickSystemRingtone(currentUri);
+    if (result != null) {
+      await prefs.setNotificationSoundId(NotificationSound.systemId);
+      await prefs.setNotificationSoundUri(result['uri']);
+      await prefs.setNotificationSoundDisplayName(result['displayName']);
+      notifyListeners();
+    }
+  }
+
   Future<void> refreshPermission() async {
     await _checkOSPermission();
     if (!_reconciled && _user != null) {
@@ -127,18 +165,6 @@ class NotificationSettingsVM extends BaseNotifier {
         _user?.notificationsEnabled == true) {
       _reconcileOSPermission();
     }
-
-    if (osPermissionGranted && _reenableOnGrant && _user != null && !_user!.notificationsEnabled) {
-      try {
-        await _userService.updateNotificationsEnabled(_user!.uid, true);
-        _user = _user!.copyWith(notificationsEnabled: true);
-        await _fcmService.saveToken();
-        _reenableOnGrant = false;
-      } catch (e) {
-        debugPrint('Failed to restore notification permission: $e');
-      }
-    }
-
     notifyListeners();
   }
 

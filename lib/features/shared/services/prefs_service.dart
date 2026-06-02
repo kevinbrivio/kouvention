@@ -20,6 +20,7 @@ class PrefsService {
   static const String _deviceIdKey = 'device_id';
   static const String _notificationDeniedKey = 'notification_permission_denied';
   static const String _notificationSoundKey = 'notification_sound_chat';
+  static const String _notificationVibrationKey = 'notification_vibration_enabled';
 
   // --- ONBOARDING
   Future<bool> hasSeenOnboarding() async =>
@@ -69,9 +70,41 @@ class PrefsService {
   Future<void> setNotificationPermissionDenied(bool value) async =>
       _prefs.setBool(_notificationDeniedKey, value);
 
-  // --- NOTIFICATION SOUND (for future per-type settings)
-  String? get notificationSound => _prefs.getString(_notificationSoundKey);
+  // --- NOTIFICATION SOUND
+  String? get notificationSoundId => _prefs.getString(_notificationSoundKey);
 
-  Future<void> setNotificationSound(String value) async =>
+  Future<void> setNotificationSoundId(String value) async =>
       _prefs.setString(_notificationSoundKey, value);
+
+  static const String _notificationSoundUriKey = 'notification_sound_uri';
+  static const String _notificationSoundNameKey = 'notification_sound_name';
+
+  String? get notificationSoundUri =>
+      _prefs.getString(_notificationSoundUriKey);
+
+  Future<void> setNotificationSoundUri(String? value) async {
+    if (value != null) {
+      await _prefs.setString(_notificationSoundUriKey, value);
+    } else {
+      await _prefs.remove(_notificationSoundUriKey);
+    }
+  }
+
+  String? get notificationSoundDisplayName =>
+      _prefs.getString(_notificationSoundNameKey);
+
+  Future<void> setNotificationSoundDisplayName(String? value) async {
+    if (value != null) {
+      await _prefs.setString(_notificationSoundNameKey, value);
+    } else {
+      await _prefs.remove(_notificationSoundNameKey);
+    }
+  }
+
+  // --- NOTIFICATION VIBRATION
+  bool get notificationVibrationEnabled =>
+      _prefs.getBool(_notificationVibrationKey) ?? true;
+
+  Future<void> setNotificationVibrationEnabled(bool value) async =>
+      _prefs.setBool(_notificationVibrationKey, value);
 }
