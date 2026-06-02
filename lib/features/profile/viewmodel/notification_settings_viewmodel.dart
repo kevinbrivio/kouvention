@@ -29,6 +29,7 @@ class NotificationSettingsVM extends BaseNotifier {
   NotificationPermissionState _osPermission =
       NotificationPermissionState.notDetermined;
   bool _reconciled = false;
+  bool _reenableOnGrant = false;
 
   NotificationSettingsVM(super.ref)
     : _userService = ref.read(userServiceProvider),
@@ -76,6 +77,7 @@ class NotificationSettingsVM extends BaseNotifier {
       try {
         await _userService.updateNotificationsEnabled(_user!.uid, false);
         _user = _user!.copyWith(notificationsEnabled: false);
+        _reenableOnGrant = true;
       } catch (e) {
         debugPrint('Failed to reconcile notification permission: $e');
       }
@@ -84,6 +86,7 @@ class NotificationSettingsVM extends BaseNotifier {
 
   Future<void> toggle() async {
     if (_user == null) return;
+    _reenableOnGrant = false;
 
     final connected = await _connectivityService.isConnected;
     if (!connected) {
@@ -124,6 +127,18 @@ class NotificationSettingsVM extends BaseNotifier {
         _user?.notificationsEnabled == true) {
       _reconcileOSPermission();
     }
+
+    if (osPermissionGranted && _reenableOnGrant && _user != null && !_user!.notificationsEnabled) {
+      try {
+        await _userService.updateNotificationsEnabled(_user!.uid, true);
+        _user = _user!.copyWith(notificationsEnabled: true);
+        await _fcmService.saveToken();
+        _reenableOnGrant = false;
+      } catch (e) {
+        debugPrint('Failed to restore notification permission: $e');
+      }
+    }
+
     notifyListeners();
   }
 
