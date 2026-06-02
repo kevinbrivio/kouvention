@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -95,7 +96,12 @@ class ProfileVM extends BaseNotifier {
       isLoading = true;
       _isButtonLoading = true;
 
-      // Remove FCM Token
+      // Remove FCM Token — invalidate SDK token first, then clean Firestore
+      try {
+        await FirebaseMessaging.instance.deleteToken();
+      } catch (e) {
+        debugPrint('FCM deleteToken on sign out failed: $e');
+      }
       final fcmService = ref.read(fcmServiceProvider);
       await fcmService.removeToken();
 
@@ -196,7 +202,9 @@ class ProfileVM extends BaseNotifier {
 
     final connected = await _connectivityService.isConnected;
     if (!connected) {
-      showToast('No internet connection. Please check your network and try again.');
+      showToast(
+        'No internet connection. Please check your network and try again.',
+      );
       return;
     }
 

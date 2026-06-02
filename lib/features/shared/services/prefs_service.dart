@@ -18,6 +18,8 @@ class PrefsService {
   static const String _fcmTokenKey = 'fcm_tokens';
   static const String _lastSyncedKey = 'search_last_sync_time';
   static const String _deviceIdKey = 'device_id';
+  static const String _notificationDeniedKey = 'notification_permission_denied';
+  static const String _notificationSoundKey = 'notification_sound_chat';
 
   // --- ONBOARDING
   Future<bool> hasSeenOnboarding() async =>
@@ -59,4 +61,17 @@ class PrefsService {
   // --- DEVICE ID
   Future<bool> setDeviceId(String val) => _prefs.setString(_deviceIdKey, val);
   String? deviceId() => _prefs.getString(_deviceIdKey);
+
+  // --- NOTIFICATION PERMISSION
+  bool get notificationPermissionDenied =>
+      _prefs.getBool(_notificationDeniedKey) ?? false;
+
+  Future<void> setNotificationPermissionDenied(bool value) async =>
+      _prefs.setBool(_notificationDeniedKey, value);
+
+  // --- NOTIFICATION SOUND (for future per-type settings)
+  String? get notificationSound => _prefs.getString(_notificationSoundKey);
+
+  Future<void> setNotificationSound(String value) async =>
+      _prefs.setString(_notificationSoundKey, value);
 }

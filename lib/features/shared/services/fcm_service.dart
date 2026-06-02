@@ -27,7 +27,7 @@ class FcmService {
   FcmService(this._prefs);
   Future<void> initialize() async {
     final deviceId = _prefs.deviceId() ?? '_unknown_device_id_';
-    
+
     _deviceId = deviceId;
     final granted = await requestPermission();
     if (!granted) return;
@@ -48,7 +48,10 @@ class FcmService {
       sound: true,
       provisional: false, // Show the original dialog
     );
-    return settings.authorizationStatus == AuthorizationStatus.authorized;
+    final granted =
+        settings.authorizationStatus == AuthorizationStatus.authorized;
+    await _prefs.setNotificationPermissionDenied(!granted);
+    return granted;
   }
 
   Future<void> saveToken() async {
@@ -152,6 +155,14 @@ class FcmService {
 
     final token = await _messaging.getToken();
     if (token == null) return;
+
+    // Invalidate SDK-level token so a new user on this device
+    // doesn't inherit the previous user's notification stream.
+    try {
+      await _messaging.deleteToken();
+    } catch (e) {
+      debugPrint('FCM deleteToken failed: $e');
+    }
 
     await _firestore.doc('users/$uid').update({
       'fcmTokens.$token': FieldValue.delete(), // Remove device-uid only token.
