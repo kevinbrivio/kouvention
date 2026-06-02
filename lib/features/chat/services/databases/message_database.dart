@@ -307,9 +307,9 @@ class MessageDatabase extends _$MessageDatabase {
             ..limit(limit))
           .watch();
 
-  Stream<List<Chat>> watchChatRooms({int limit = 20}) =>
+  Stream<List<Chat>> watchChatRooms({int limit = 100}) =>
       (select(chats)
-            ..orderBy([(c) => OrderingTerm.asc(c.createdAt)])
+            ..orderBy([(c) => OrderingTerm.desc(c.updatedAt)])
             ..limit(limit))
           .watch();
 
@@ -363,6 +363,14 @@ class MessageDatabase extends _$MessageDatabase {
   Future<void> updateChatLastSync(String chatId, int timestamp) =>
       (update(chats)..where((c) => c.id.equals(chatId))).write(
         ChatsCompanion(lastSyncTimestamp: Value(timestamp)),
+      );
+
+  Future<void> updateChatLastMessage(String chatId, LastMessage lastMessage) =>
+      (update(chats)..where((c) => c.id.equals(chatId))).write(
+        ChatsCompanion(
+          lastMessage: Value(lastMessage),
+          updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
+        ),
       );
 
   // ===========================

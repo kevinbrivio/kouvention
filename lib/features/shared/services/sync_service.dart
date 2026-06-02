@@ -119,7 +119,19 @@ class SyncService {
     sw.stop();
   }
 
-  static ChatsCompanion chatToCompanion(
+  static String _lastMessageLabel(String text, MessageType type, String fileName) {
+  if (text.isNotEmpty) return text;
+  switch (type) {
+    case MessageType.image: return '📷 Photo';
+    case MessageType.video: return '🎥 $fileName';
+    case MessageType.audio: return '🎵 $fileName';
+    case MessageType.file: return '📎 $fileName';
+    case MessageType.sticker: return 'Sticker';
+    default: return '';
+  }
+}
+
+static ChatsCompanion chatToCompanion(
     ChatModel chat, {
     int? lastSyncAt,
   }) => ChatsCompanion(
@@ -383,6 +395,16 @@ class SyncService {
       mimeType: first.mimeType,
     );
 
+    await _db.updateChatLastMessage(
+      chatRoomId,
+      LastMessage(
+        text: _lastMessageLabel(caption, type, first.fileName),
+        sentBy: _currentUid!,
+        sentAt: DateTime.now(),
+        type: type.name,
+      ),
+    );
+
     await _sendFcmToRecipients(
       otherUserFcmTokens: otherUserFcmTokens,
       chatRoomId: chatRoomId,
@@ -431,12 +453,23 @@ class SyncService {
         fileName: files.first.path.split('/').last,
       );
 
+      final fileName = files.first.path.split('/').last;
       await _db.updateMediaMessageSuccess(
         tempId,
         allUrls,
-        fileName: files.first.path.split('/').last,
+        fileName: fileName,
         fileSizeBytes: uploaded.first.fileSizeBytes,
         mimeType: uploaded.first.mimeType,
+      );
+
+      await _db.updateChatLastMessage(
+        chatRoomId,
+        LastMessage(
+          text: _lastMessageLabel(caption, type, fileName),
+          sentBy: _currentUid!,
+          sentAt: DateTime.now(),
+          type: type.name,
+        ),
       );
 
       await _sendFcmToRecipients(
@@ -471,6 +504,16 @@ class SyncService {
 
       // Update status in local
       await _db.updateMessageStatus(localMessage.id, SyncStatus.sent);
+
+      await _db.updateChatLastMessage(
+        chatRoomId,
+        LastMessage(
+          text: localMessage.text,
+          sentBy: localMessage.senderId,
+          sentAt: DateTime.now(),
+          type: MessageType.text.name,
+        ),
+      );
 
       await _sendFcmToRecipients(
         otherUserFcmTokens: otherUserFcmTokens,

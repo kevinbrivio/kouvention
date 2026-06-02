@@ -196,6 +196,17 @@ final chatListVM = ChangeNotifierProvider.autoDispose<ChatListVM>(
   (ref) => ChatListVM(ref),
 );
 
+final typingUsersProvider =
+    StreamProvider.autoDispose<Map<String, List<String>>>((ref) {
+      final chatService = ref.watch(chatServiceProvider);
+      final currentUid = ref.watch(authServiceProvider).currentUser?.uid;
+      if (currentUid == null) return Stream.value({});
+
+      return chatService.streamChatList(currentUid).map(
+        (chats) => {for (final chat in chats) chat.id: chat.typingUsers},
+      );
+    });
+
 final localChatListFromStreamProvider =
     StreamProvider.autoDispose<List<ChatModel>>((ref) {
       final db = ref.watch(messageDatabaseProvider);
@@ -236,11 +247,16 @@ final localChatListFromStreamProvider =
 final filteredChatListProvider =
     Provider.autoDispose<AsyncValue<List<ChatModel>>>((ref) {
       final chatAsyncValue = ref.watch(localChatListFromStreamProvider);
+      final typingUsersMap = ref.watch(typingUsersProvider).valueOrNull ?? {};
       final filter = ref.watch(chatListVM).filter;
       final currentUid = ref.watch(authServiceProvider).currentUser?.uid;
 
       return chatAsyncValue.whenData((chats) {
-        List<ChatModel> filtered = chats;
+        List<ChatModel> filtered = chats.map((chat) {
+          final typing = typingUsersMap[chat.id];
+          if (typing == null) return chat;
+          return chat.copyWith(typingUsers: typing);
+        }).toList();
 
         // 1. Filter out deleted chats
         if (currentUid != null) {

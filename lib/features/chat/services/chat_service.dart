@@ -205,24 +205,28 @@ class ChatService {
       text: text.isNotEmpty ? text : _mediaLabel(type, fileName),
       type: type,
       replyTo: replyTo,
-    );
+     );
 
-    // Sama seperti sendMessage — write ke Firestore
     final batch = FirebaseFirestore.instance.batch();
+    final chatRef = FirebaseFirestore.instance.collection('chats').doc(chatId);
 
     batch.set(
-      FirebaseFirestore.instance
-          .collection('chats')
-          .doc(chatId)
-          .collection('messages')
-          .doc(messageId),
+      chatRef.collection('messages').doc(messageId),
       messageMap,
     );
 
-    batch.update(
-      FirebaseFirestore.instance.collection('chats').doc(chatId),
-      lastMessageMap,
-    );
+    batch.update(chatRef, {
+      ...lastMessageMap,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+
+    final unreadUpdates = <String, dynamic>{};
+    for (final uid in memberUids) {
+      if (uid != senderId) {
+        unreadUpdates['unreadCount.$uid'] = FieldValue.increment(1);
+      }
+    }
+    batch.update(chatRef, unreadUpdates);
 
     await batch.commit();
   }
