@@ -40,6 +40,7 @@ class MediaBubble extends StatelessWidget {
         mimeType == 'image/pdf' ||
         fileName.toLowerCase().endsWith('.pdf');
 
+    final isSticker = type == MessageType.sticker;
     final isImage =
         !isPdf && (type == MessageType.image || mimeType.startsWith('image/'));
     final isVideo = type == MessageType.video || fileName.endsWith('.mp4');
@@ -52,6 +53,7 @@ class MediaBubble extends StatelessWidget {
 
     final bytesSizes = message.fileSizeBytes;
 
+    if (isSticker) return _StickerMedia(urls: urls, isMe: isMe);
     if (isPdf) return _FileMedia(message: message, isMe: isMe);
     if (isImage)
       return _ImageMedia(caption: message.text, urls: urls, isMe: isMe);
@@ -555,6 +557,35 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       ),
     ),
   );
+}
+
+class _StickerMedia extends StatelessWidget {
+  final List<String> urls;
+  final bool isMe;
+  const _StickerMedia({required this.urls, required this.isMe});
+
+  @override
+  Widget build(BuildContext context) {
+    final url = urls.first;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16.r),
+      child: SizedBox(
+        width: 160.r,
+        height: 160.r,
+        child: CachedNetworkImage(
+          imageUrl: url,
+          fit: BoxFit.cover,
+          placeholder: (_, __) => Container(
+            color: Colors.grey.shade100,
+          ),
+          errorWidget: (_, __, ___) => Container(
+            color: Colors.grey.shade100,
+            child: Icon(Icons.sticky_note_2_outlined, color: Colors.grey.shade400),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _AudioMedia extends StatelessWidget {

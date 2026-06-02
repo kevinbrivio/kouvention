@@ -26,6 +26,14 @@ class RouterRoutes {
     path: '/profile/edit-status',
     name: 'editStatus',
   );
+  static const privacySettings = RouterRoute(
+    path: '/profile/privacy',
+    name: 'privacySettings',
+  );
+  static const notificationSettings = RouterRoute(
+    path: '/profile/notifications',
+    name: 'notificationSettings',
+  );
   static const login = RouterRoute(path: '/login', name: 'login');
   static const signUp = RouterRoute(path: '/sign-up', name: 'signup');
   static const emailSignIn = RouterRoute(path: '/email', name: 'emailSignIn');

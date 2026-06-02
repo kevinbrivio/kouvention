@@ -264,7 +264,7 @@ class MessageDatabase extends _$MessageDatabase {
     return customSelect(
       '''
         SELECT * FROM messages m
-        WHERE m.chatRoomId = ?
+        WHERE m.chat_room_id = ?
         AND (
           id IN (
             SELECT id FROM messages

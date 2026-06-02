@@ -11,6 +11,7 @@ import 'package:kouvention/features/chat/models/message_model.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/models/reply_to_model.dart';
 import 'package:kouvention/features/chat/models/upload_result_model.dart';
+import 'package:kouvention/features/chat/models/sticker_model.dart';
 import 'package:kouvention/features/chat/services/chat_service.dart';
 import 'package:kouvention/features/chat/services/databases/message_database.dart';
 import 'package:kouvention/features/chat/services/media/cloud_media_service.dart';
@@ -47,6 +48,9 @@ class ChatRoomVM extends BaseNotifier {
   bool _isUploading = false;
   bool _showMediaPanel = false;
 
+  // Stickers
+  bool _showStickerPanel = false;
+
   // audio record
   final AudioRecorder _audioRecorder = AudioRecorder();
   bool _isRecording = false;
@@ -67,6 +71,7 @@ class ChatRoomVM extends BaseNotifier {
   String? get highlightedMessageId => _highlightedMessageId;
   bool get isUploading => _isUploading;
   bool get showMediaPanel => _showMediaPanel;
+  bool get showStickerPanel => _showStickerPanel;
   bool get isRecording => _isRecording;
 
   @override
@@ -160,9 +165,77 @@ class ChatRoomVM extends BaseNotifier {
   void toggleMediaPanel(BuildContext context) {
     _showMediaPanel = !_showMediaPanel;
     if (_showMediaPanel) {
+      _showStickerPanel = false;
       FocusScope.of(context).unfocus();
     }
     notifyListeners();
+  }
+
+  void toggleStickerPanel(BuildContext context) {
+    _showStickerPanel = !_showStickerPanel;
+    if (_showStickerPanel) {
+      _showMediaPanel = false;
+      FocusScope.of(context).unfocus();
+    }
+    notifyListeners();
+  }
+
+  Future<void> sendSticker(StickerModel sticker) async {
+    if (_currentUid == null) return;
+
+    final chat = ref.read(chatMetadataStreamProvider(chatId)).value;
+    if (chat == null) return;
+
+    final messageId = 'sticker_${DateTime.now().millisecondsSinceEpoch}';
+
+    try {
+      _isSending = true;
+      notifyListeners();
+
+      final db = ref.read(messageDatabaseProvider);
+
+      final msg = MessageModel(
+        id: messageId,
+        senderId: _currentUid!,
+        senderName: chat.displayName(_currentUid),
+        text: '',
+        type: MessageType.sticker,
+        sentAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        mediaUrls: [sticker.url],
+        mimeType: 'image/gif',
+        fileName: 'sticker.gif',
+        fileSizeBytes: 0,
+        syncStatus: SyncStatus.sent,
+      );
+
+      await db.upsertMessage(messageToCompanion(msg, chatId, SyncStatus.sent));
+
+      UserModel? otherUser;
+      if (chat.type == 'direct') {
+        final otherUid = chat.otherMemberUid(_currentUid);
+        otherUser = ref.read(otherUserStreamProvider(otherUid)).value;
+      }
+
+      await _chatService.sendMediaMessage(
+        chatId: chatId,
+        messageId: messageId,
+        senderId: _currentUid!,
+        senderName: chat.displayName(_currentUid),
+        text: '',
+        type: MessageType.sticker,
+        mediaUrls: [sticker.url],
+        fileName: 'sticker.gif',
+        fileSizeBytes: 0,
+        mimeType: 'image/gif',
+        memberUids: chat.members,
+      );
+    } catch (e, s) {
+      print('Error sending sticker: $e $s');
+    } finally {
+      _isSending = false;
+      notifyListeners();
+    }
   }
 
   // --- Typing Indicator --------------------
@@ -222,6 +295,10 @@ class ChatRoomVM extends BaseNotifier {
 
   void switchToNormalMode() {
     ref.read(jumpToTargetProvider(chatId).notifier).state = null;
+  }
+
+  Future<void> fetchMessagesAround(DateTime sentAt) async {
+    await _syncService.fetchMessagesAround(chatId, sentAt);
   }
 
   Future<void> sendMediaMessage({

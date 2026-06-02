@@ -15,15 +15,17 @@ import 'package:kouvention/cores/widgets/loading_indicator.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
+import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/models/message_status.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_selection_viewmodel.dart';
-import 'package:kouvention/features/chat/widgets/chat_room_appbar.dart';
 import 'package:kouvention/features/chat/widgets/media_sheet.dart';
 import 'package:kouvention/features/chat/widgets/message_bubble.dart';
+import 'package:kouvention/features/chat/widgets/sticker_picker.dart';
 import 'package:kouvention/features/chat/widgets/selection_app_bar.dart';
 import 'package:kouvention/features/chat/widgets/typing_dots.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
+import 'package:kouvention/features/chat/widgets/chat_room_appbar.dart';
 
 class ChatRoomView extends ConsumerWidget {
   final String chatId;
@@ -52,7 +54,7 @@ class ChatRoomView extends ConsumerWidget {
         backgroundColor: Colors.white,
         appBar: (vm) => selectionVM.isSelecting
             ? SelectionAppBar(chatId: chatId, currentUid: currentUid!)
-            : ChatRoomAppBar(chatId: chatId),
+            : ChatRoomAppBar(chatId: chatId,),
         builder: (context, vm) {
           final queryParams = GoRouterState.of(context).uri.queryParameters;
           return _ChatRoomBody(
@@ -224,6 +226,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
 
         _buildInputBar(chatAsync.value, currentUid),
         _buildMediaPanel(),
+        _buildStickerPanel(),
       ],
     );
   }
@@ -396,6 +399,13 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
         icon: Icon(Icons.add, color: AppColors.primary),
         onPressed: () => vm.toggleMediaPanel(context),
       ),
+      IconButton(
+        icon: Icon(Icons.emoji_emotions_outlined, color: AppColors.primary),
+        onPressed: () {
+          vm.toggleStickerPanel(context);
+          _focusNode.unfocus();
+        },
+      ),
 
       Flexible(
         child: Container(
@@ -488,6 +498,19 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     child: SingleChildScrollView(child: MediaSheet(vm: vm)),
   );
 
+  Widget _buildStickerPanel() => AnimatedContainer(
+    duration: const Duration(milliseconds: 250),
+    curve: Curves.easeOut,
+    height: vm.showStickerPanel ? 280.h : 0,
+    child: StickerPicker(
+      onStickerSelected: (sticker) {
+        vm.sendSticker(sticker);
+        setState(() => _showScrollBottom = true);
+        _scrollToBottom();
+      },
+    ),
+  );
+
   Widget _buildReplyPreview(MessageModel message) {
     final isMe = vm.isMyMessage(message);
 
@@ -578,7 +601,8 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
               Stack(
                 alignment: Alignment.center,
                 children: [
-                  if (message.isImage) ...[
+                  if (message.isImage ||
+                      message.type == MessageType.sticker) ...[
                     CachedNetworkImage(
                       imageUrl: message.isImage
                           ? message.allMediaUrls.first
@@ -643,11 +667,14 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
       }
     }
     if (message.isVideo) return Icons.videocam_outlined;
+    if (message.type == MessageType.sticker)
+      return Icons.emoji_emotions_outlined;
     return Icons.image_outlined;
   }
 
   String _getReplyMediaLabel(MessageModel message) {
     if (message.text.isNotEmpty) return message.text;
+    if (message.type == MessageType.sticker) return 'Sticker';
     if (message.isFile) return message.fileName ?? 'File';
     if (message.isVideo) return 'Video';
     if (message.isAudio) return 'Audio';
@@ -663,17 +690,24 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
   }
 
   Future<void> _scrollToMessage(String messageId, {DateTime? sentAt}) async {
-    if (sentAt != null) vm.setJumpTarget(sentAt.millisecondsSinceEpoch);
+    if (sentAt != null) {
+      vm.setJumpTarget(sentAt.millisecondsSinceEpoch);
+      await vm.fetchMessagesAround(sentAt);
+    }
 
-    final sw = Stopwatch()..start();
-    await Future.delayed(const Duration(milliseconds: 300));
+    int? index;
+    for (int i = 0; i < 5; i++) {
+      index = _currentMessagesList.indexWhere((m) => m.id == messageId);
+      if (index != -1) break;
+      await Future.delayed(const Duration(milliseconds: 50));
+    }
 
-    final index = _currentMessagesList.indexWhere((m) => m.id == messageId);
-
-    if (index == -1 && mounted) {
-      ScaffoldMessenger.of(
-        ctx,
-      ).showSnackBar(const SnackBar(content: Text('Message not found')));
+    if (index == null || index == -1) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          ctx,
+        ).showSnackBar(const SnackBar(content: Text('Message not found')));
+      }
       return;
     }
 
@@ -682,11 +716,6 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     }
 
     vm.highlightMessage(messageId);
-
-    sw.stop();
-    debugPrint('=== SCROLL-TO-MESSAGE ===');
-    debugPrint('Target index: $index');
-    debugPrint('Time: ${sw.elapsedMilliseconds}ms');
   }
 
   void _onPositionChanged() {
@@ -725,7 +754,6 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
   }
 
   Future<void> onClickMedia(MediaOptions options) async {
-
     // Switch every media options value
     switch (options) {
       case MediaOptions.image:

@@ -119,23 +119,19 @@ class _ProfileBody extends StatelessWidget {
                 iconColor: AppColors.primary,
                 title: 'Privacy & Security',
                 subtitle: 'Manage your data and visibility',
-                onTap: () {
-                  // TODO: Navigate to privacy settings
-                },
+                onTap: () => context.push(RouterRoutes.privacySettings.path),
               ),
               SettingsTile(
                 icon: Icons.notifications_outlined,
                 iconColor: AppColors.primary,
                 title: 'Notifications',
                 subtitle: 'Message alerts and sounds',
-                onTap: () {
-                  // TODO: Navigate to notification settings
-                },
+                onTap: () => context.push(RouterRoutes.notificationSettings.path),
               ),
 
               Gap(32.h),
 
-              _buildLogoutButton(),
+              _buildLogoutButton(context),
               Gap(32.h),
             ],
           ),
@@ -144,11 +140,58 @@ class _ProfileBody extends StatelessWidget {
     );
   }
 
-  Widget _buildLogoutButton() => Container(
+  void _showSignOutConfirmation(BuildContext context) {
+    if (viewmodel.isButtonLoading) return;
+
+    showModalBottomSheet(
+      context: context,
+      useRootNavigator: true,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12.r),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: EdgeInsets.all(24.r),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Sign Out',
+                style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w600),
+              ),
+              Gap(8.h),
+              Text(
+                'Are you sure you want to sign out?',
+                style: TextStyle(fontSize: 14.sp, color: Colors.grey.shade600),
+              ),
+              Gap(24.h),
+              Button(
+                text: 'Sign Out',
+                onPressed: () {
+                  Navigator.pop(sheetContext);
+                  viewmodel.signOut();
+                },
+                isCancel: true,
+              ),
+              Gap(8.h),
+              Button(
+                text: 'Cancel',
+                onPressed: () => Navigator.pop(sheetContext),
+                isWhiteBackground: true,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLogoutButton(BuildContext context) => Container(
     decoration: BoxDecoration(borderRadius: BorderRadius.circular(24.r)),
     child: Button(
       text: 'Sign out',
-      onPressed: viewmodel.isButtonLoading ? () {} : viewmodel.signOut,
+      loading: viewmodel.isButtonLoading,
+      onPressed: () => _showSignOutConfirmation(context),
       isCancel: true,
     ),
   );

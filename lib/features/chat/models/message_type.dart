@@ -4,7 +4,8 @@ enum MessageType {
   video,
   audio,
   file, // pdf, docx, xlxs, etc.
-  media;
+  media,
+  sticker;
 
   static MessageType fromString(String value) => MessageType.values.firstWhere(
     (e) => e.name == value,
