@@ -22,6 +22,7 @@ class MessageModel {
 
   // MEDIA
   final List<String>? mediaUrls;
+  final List<String>? mediaCaptions;
   final String? fileName;
   final int? fileSizeBytes;
   final String? mediaGroupId;
@@ -64,6 +65,7 @@ class MessageModel {
     this.mimeType,
     this.mediaDuration,
     this.mediaUrls = const [],
+    this.mediaCaptions,
     this.fileName,
     this.fileSizeBytes,
     this.isDeleted = false,
@@ -93,6 +95,7 @@ class MessageModel {
               )
             : SyncStatus.sent,
         mediaUrls: (data['mediaUrls'] as List<dynamic>?)?.cast<String>(),
+        mediaCaptions: (data['mediaCaptions'] as List<dynamic>?)?.cast<String>(),
         fileName: data['fileName'] as String?,
         mimeType: data['mimeType'] as String?,
         mediaDuration: (data['mediaDuration'] as num?)?.toInt(),
@@ -109,6 +112,7 @@ class MessageModel {
     ReplyToModel? replyTo,
     // Media files
     List<String>? mediaUrls,
+    List<String>? mediaCaptions,
     String? fileName,
     int? fileSizeBytes,
     String? mimeType,
@@ -121,6 +125,7 @@ class MessageModel {
       'type': type.name,
       if (replyTo != null) 'replyTo': replyTo.toMap(),
       if (mediaUrls != null) 'mediaUrls': mediaUrls,
+      if (mediaCaptions != null) 'mediaCaptions': mediaCaptions,
       if (fileName != null) 'fileName': fileName,
       if (fileSizeBytes != null) 'fileSizeBytes': fileSizeBytes,
       if (mimeType != null) 'mimeType': mimeType,

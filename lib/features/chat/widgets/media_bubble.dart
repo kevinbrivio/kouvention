@@ -56,7 +56,7 @@ class MediaBubble extends StatelessWidget {
     if (isSticker) return _StickerMedia(urls: urls, isMe: isMe);
     if (isPdf) return _FileMedia(message: message, isMe: isMe);
     if (isImage)
-      return _ImageMedia(caption: message.text, urls: urls, isMe: isMe);
+      return _ImageMedia(caption: message.text, captions: message.mediaCaptions, urls: urls, isMe: isMe);
     if (isAudio)
       return _AudioMedia(urls: urls, isMe: isMe, byteSizes: bytesSizes);
     if (isVideo) return _VideoMedia(urls: urls, isMe: isMe);
@@ -69,11 +69,13 @@ class MediaBubble extends StatelessWidget {
 // ------------------------------------------------------------
 class _ImageMedia extends StatelessWidget {
   final String caption;
+  final List<String>? captions;
   final List<String> urls;
   final bool isMe;
   const _ImageMedia({
     required this.urls,
     required this.caption,
+    this.captions,
     required this.isMe,
   });
 
@@ -81,54 +83,139 @@ class _ImageMedia extends StatelessWidget {
   Widget build(BuildContext context) {
     final count = urls.length;
     if (count == 1) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSingleImage(context, urls.first, caption),
-          if (caption.isNotEmpty) ...[
-            Gap(4.h),
-            Padding(
-              padding: EdgeInsets.only(left: 4.w),
-              child: Text(
-                caption,
-                style: textTheme.body2.copyWith(
-                  color: isMe ? Colors.white : AppColors.black,
+      final c = captions?.isNotEmpty == true ? captions![0] : caption;
+      return _buildSingleImage(context, urls.first, 0, caption: c);
+    } else {
+      final nonEmptyCaptions = captions?.where((c) => c.isNotEmpty).toList() ?? [];
+      final effectiveCaption = nonEmptyCaptions.isNotEmpty ? nonEmptyCaptions.first : caption;
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Stack(
+          children: [
+            _buildCollage(context, urls),
+            if (effectiveCaption.isNotEmpty)
+              Positioned(
+                bottom: 0, left: 0, right: 0,
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Colors.transparent, Colors.black54],
+                    ),
+                  ),
+                  child: Text(
+                    effectiveCaption,
+                    style: TextStyle(color: Colors.white, fontSize: 14.sp),
+                    textAlign: TextAlign.center,
+                  ),
                 ),
               ),
-            ),
           ],
+        ),
+      );
+    }
+  }
+
+  Widget _buildSingleImage(BuildContext context, String url, int index, {String caption = ''}) =>
+      GestureDetector(
+        onTap: () => _openFullscreen(context, index),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Stack(
+            children: [
+              CachedNetworkImage(
+                imageUrl: url,
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: 200.h,
+                placeholder: (_, __) => const Center(child: LoadingIndicator()),
+                errorWidget: (_, __, ___) => Container(
+                  height: 200.h,
+                  color: AppColors.grey,
+                  child: const Icon(Icons.broken_image),
+                ),
+              ),
+              if (caption.isNotEmpty)
+                Positioned(
+                  bottom: 0, left: 0, right: 0,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Colors.transparent, Colors.black54],
+                      ),
+                    ),
+                    child: Text(
+                      caption,
+                      style: TextStyle(color: Colors.white, fontSize: 14.sp),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
+
+  Widget _buildCollage(BuildContext context, List<String> urls) {
+    final count = urls.length;
+    if (count == 2) {
+      return SizedBox(
+        height: 150.h,
+        child: Row(
+          children: [
+            Expanded(child: _buildCollageTile(context, urls[0], 0)),
+            Gap(2.w),
+            Expanded(child: _buildCollageTile(context, urls[1], 1)),
+          ],
+        ),
+      );
+    } else if (count == 3) {
+      return Column(
+        children: [
+          SizedBox(
+            height: 120.h,
+            child: _buildCollageTile(context, urls[0], 0, fullWidth: true),
+          ),
+          Gap(2.h),
+          SizedBox(
+            height: 120.h,
+            child: Row(
+              children: [
+                Expanded(child: _buildCollageTile(context, urls[1], 1)),
+                Gap(2.w),
+                Expanded(child: _buildCollageTile(context, urls[2], 2)),
+              ],
+            ),
+          ),
         ],
       );
     } else {
       return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header: show image count
-          Padding(
-            padding: const EdgeInsets.only(bottom: 6, left: 4),
-            child: Text(
-              '$count ${count == 1 ? "photo" : "photos"}',
-              style: textTheme.senderName.copyWith(
-                color: isMe ? Colors.white : AppColors.grey,
-              ),
-            ),
-          ),
           SizedBox(
-            height: 200.h,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: count,
-              separatorBuilder: (_, __) => SizedBox(width: 6.h),
-              itemBuilder: (context, index) {
-                return _buildImageTile(context, urls[index], index);
-              },
+            height: 100.h,
+            child: Row(
+              children: [
+                Expanded(child: _buildCollageTile(context, urls[0], 0)),
+                Gap(2.w),
+                Expanded(child: _buildCollageTile(context, urls[1], 1)),
+              ],
             ),
           ),
-          Gap(4.h),
-          Text(
-            caption,
-            style: textTheme.senderName.copyWith(
-              color: isMe ? Colors.white : AppColors.black,
+          Gap(2.h),
+          SizedBox(
+            height: 100.h,
+            child: Row(
+              children: [
+                Expanded(child: _buildCollageTile(context, urls[2], 2)),
+                Gap(2.w),
+                Expanded(child: _buildCollageTile(context, urls[3], 3, last: count > 4)),
+              ],
             ),
           ),
         ],
@@ -136,54 +223,51 @@ class _ImageMedia extends StatelessWidget {
     }
   }
 
-  Widget _buildSingleImage(BuildContext context, String url, String caption) =>
+  Widget _buildCollageTile(BuildContext context, String url, int index, {bool fullWidth = false, bool last = false}) =>
       GestureDetector(
-        onTap: () => _openFullscreen(context, url, 0),
+        onTap: () => _openFullscreen(context, index),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: CachedNetworkImage(
-            imageUrl: url,
-            fit: BoxFit.cover,
-            width: double.infinity,
-            height: 200,
-            placeholder: (_, __) => const Center(child: LoadingIndicator()),
-            errorWidget: (_, __, ___) => Container(
-              height: 200,
-              color: Colors.grey[300],
-              child: const Icon(Icons.broken_image),
-            ),
+          borderRadius: BorderRadius.circular(6.r),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              CachedNetworkImage(
+                imageUrl: url,
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: double.infinity,
+                placeholder: (_, __) => const Center(child: LoadingIndicator()),
+                errorWidget: (_, __, ___) => Container(
+                  color: Colors.grey[300],
+                  child: const Icon(Icons.broken_image),
+                ),
+              ),
+              if (last)
+                Container(
+                  color: Colors.black45,
+                  child: const Center(
+                    child: Text(
+                      '+N',
+                      style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
       );
 
-  Widget _buildImageTile(BuildContext context, String url, int index) =>
-      GestureDetector(
-        onTap: () => _openFullscreen(context, url, index),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: CachedNetworkImage(
-            imageUrl: url,
-            fit: BoxFit.cover,
-            width: 180.w, // fixed width for horizontal list
-            height: 200.h,
-            placeholder: (_, __) => const Center(child: LoadingIndicator()),
-            errorWidget: (_, __, ___) => Container(
-              width: 180.w,
-              height: 200.h,
-              color: Colors.grey[300],
-              child: const Icon(Icons.broken_image),
-            ),
-          ),
-        ),
-      );
-
-  void _openFullscreen(BuildContext context, String url, int initialIndex) {
+  void _openFullscreen(BuildContext context, int initialIndex) {
     Navigator.push(
       context,
       PageRouteBuilder(
         opaque: false,
         pageBuilder: (_, __, ___) =>
-            FullScreenViewer(urls: urls, initialIndex: initialIndex),
+            FullScreenViewer(
+              urls: urls,
+              initialIndex: initialIndex,
+              captions: captions ?? [caption],
+            ),
       ),
     );
   }
@@ -193,10 +277,12 @@ class _ImageMedia extends StatelessWidget {
 class FullScreenViewer extends StatefulWidget {
   final List<String> urls;
   final int initialIndex;
+  final List<String> captions;
   const FullScreenViewer({
     super.key,
     required this.urls,
     required this.initialIndex,
+    required this.captions,
   });
 
   @override
@@ -206,6 +292,7 @@ class FullScreenViewer extends StatefulWidget {
 class _FullScreenViewerState extends State<FullScreenViewer> {
   late PageController _pageController;
   late int _currentIndex;
+  bool _showControls = true;
 
   @override
   void initState() {
@@ -220,75 +307,99 @@ class _FullScreenViewerState extends State<FullScreenViewer> {
     super.dispose();
   }
 
+  void _toggleControls() {
+    setState(() => _showControls = !_showControls);
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: Colors.black,
     body: Stack(
       children: [
-        PageView.builder(
-          controller: _pageController,
-          itemCount: widget.urls.length,
-          onPageChanged: (index) => setState(() => _currentIndex = index),
-          itemBuilder: (context, index) {
-            final isCurrent = _currentIndex == index;
-            return Center(
-              child: Hero(
-                tag: 'image_$index', // unique tag per image
-                child: GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: InteractiveViewer(
-                    panEnabled: true,
-                    minScale: 0.8,
-                    maxScale: 4.0,
-                    child: CachedNetworkImage(
-                      imageUrl: widget.urls[index],
-                      fit: BoxFit.contain,
-                      placeholder: (_, __) =>
-                          const Center(child: LoadingIndicator()),
-                      errorWidget: (_, __, ___) => const Icon(
-                        Icons.broken_image,
-                        color: Colors.white,
-                        size: 50,
-                      ),
+        GestureDetector(
+          onTap: _toggleControls,
+          child: PageView.builder(
+            scrollDirection: Axis.vertical,
+            controller: _pageController,
+            itemCount: widget.urls.length,
+            onPageChanged: (index) => setState(() => _currentIndex = index),
+            itemBuilder: (context, index) => Center(
+                child: InteractiveViewer(
+                  panEnabled: true,
+                  minScale: 0.8,
+                  maxScale: 4.0,
+                  child: CachedNetworkImage(
+                    imageUrl: widget.urls[index],
+                    fit: BoxFit.contain,
+                    placeholder: (_, __) =>
+                        const Center(child: LoadingIndicator()),
+                    errorWidget: (_, __, ___) => const Icon(
+                      Icons.broken_image,
+                      color: Colors.white,
+                      size: 50,
                     ),
                   ),
                 ),
               ),
-            );
-          },
+          ),
         ),
-        Positioned(
-          top: 40,
-          left: 0,
-          right: 0,
-          child: SafeArea(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.close, color: Colors.white),
-                  onPressed: () => Navigator.pop(context),
-                ),
-                if (widget.urls.length > 1)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
+        if (_showControls) ...[
+          Positioned(
+            top: 40,
+            left: 0,
+            right: 0,
+            child: SafeArea(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  if (widget.urls.length > 1)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        '${_currentIndex + 1} / ${widget.urls.length}',
+                        style: const TextStyle(color: Colors.white, fontSize: 14),
+                      ),
                     ),
+                  const SizedBox(width: 48),
+                ],
+              ),
+            ),
+          ),
+          if (widget.captions.length > _currentIndex && widget.captions[_currentIndex].isNotEmpty)
+            Positioned(
+              bottom: 40,
+              left: 0,
+              right: 0,
+              child: SafeArea(
+                child: Center(
+                  child: Container(
+                    constraints: BoxConstraints(maxWidth: 300.w),
+                    padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
                     decoration: BoxDecoration(
                       color: Colors.black54,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      '${_currentIndex + 1} / ${widget.urls.length}',
+                      widget.captions[_currentIndex],
                       style: const TextStyle(color: Colors.white, fontSize: 14),
+                      textAlign: TextAlign.center,
                     ),
                   ),
-                const SizedBox(width: 48), // placeholder for symmetry
-              ],
+                ),
+              ),
             ),
-          ),
-        ),
+        ],
       ],
     ),
   );

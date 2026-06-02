@@ -5,6 +5,7 @@ import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:drift/drift.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
@@ -140,10 +141,12 @@ class SyncService {
     // Untuk Map yang kita biarkan nullable string di Drift, encode manual 1 kali:
     deletedBy: Value(
       chat.deletedBy != null
-          ? jsonEncode(chat.deletedBy!.map((k, v) => MapEntry(
-              k,
-              v is Timestamp ? v.millisecondsSinceEpoch : v,
-            )))
+          ? jsonEncode(
+              chat.deletedBy!.map(
+                (k, v) =>
+                    MapEntry(k, v is Timestamp ? v.millisecondsSinceEpoch : v),
+              ),
+            )
           : null,
     ),
     createdBy: Value(chat.createdBy),
@@ -151,7 +154,10 @@ class SyncService {
     lastSyncTimestamp: Value(lastSyncAt ?? 0),
   );
 
-  Future<void> fetchMessagesAround(String chatId, DateTime aroundTimestamp) async {
+  Future<void> fetchMessagesAround(
+    String chatId,
+    DateTime aroundTimestamp,
+  ) async {
     final messages = await _chatService.fetchMessageAround(
       chatId,
       aroundTimestamp: aroundTimestamp,
@@ -260,6 +266,7 @@ class SyncService {
       localMessage: localMessage,
       chatRoomId: chatRoomId,
       memberUids: memberUids,
+      otherUserFcmTokens: otherUserFcmTokens,
     );
   }
 
@@ -307,7 +314,81 @@ class SyncService {
       caption: caption ?? '',
       senderName: senderName,
       memberUids: memberUids,
+      otherUserFcmTokens: otherUserFcmTokens,
       replyTo: replyTo,
+    );
+  }
+
+  Future<void> sendMediaMessageDirect({
+    required String chatRoomId,
+    required List<UploadResultModel> uploadResults,
+    required MessageType type,
+    required String caption,
+    required String senderName,
+    required List<String> memberUids,
+    List<String>? mediaCaptions,
+    Map<String, dynamic>? otherUserFcmTokens,
+    ReplyToModel? replyTo,
+  }) async {
+    final randomStr = generateRandomString(5);
+    final tempId = '${DateTime.now().millisecondsSinceEpoch}_$randomStr';
+
+    final allUrls = uploadResults.map((r) => r.url).toList();
+    final allCaptions = mediaCaptions ?? uploadResults.map((r) => r.caption ?? '').toList();
+    final first = uploadResults.first;
+
+    final localMsg = MessagesCompanion(
+      id: Value(tempId),
+      chatRoomId: Value(chatRoomId),
+      senderId: Value(_currentUid!),
+      senderName: Value(senderName),
+      textContent: Value(caption),
+      type: Value(type.name),
+      sentAt: Value(DateTime.now().millisecondsSinceEpoch),
+      updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
+      syncStatus: Value(SyncStatus.sent),
+      localPath: Value(first.localPath),
+      mediaUrls: Value(allUrls),
+      mediaCaptions: Value(allCaptions),
+      mediaGroupId: Value(null),
+      replyToId: Value(replyTo?.messageId),
+      replyToText: Value(replyTo?.text),
+      replyToSenderName: Value(replyTo?.senderName),
+    );
+
+    await _db.upsertMessage(localMsg);
+
+    await _chatService.sendMediaMessage(
+      chatId: chatRoomId,
+      messageId: tempId,
+      text: caption,
+      type: type,
+      senderId: _currentUid!,
+      senderName: senderName,
+      mediaUrls: allUrls,
+      mediaCaptions: allCaptions,
+      mediaDuration: first.mediaDuration,
+      mimeType: first.mimeType,
+      fileSizeBytes: first.fileSizeBytes,
+      memberUids: memberUids,
+      replyTo: replyTo,
+      fileName: first.fileName,
+    );
+
+    await _db.updateMediaMessageSuccess(
+      tempId,
+      allUrls,
+      fileName: first.fileName,
+      fileSizeBytes: first.fileSizeBytes,
+      mimeType: first.mimeType,
+    );
+
+    await _sendFcmToRecipients(
+      otherUserFcmTokens: otherUserFcmTokens,
+      chatRoomId: chatRoomId,
+      senderId: _currentUid!,
+      senderName: senderName,
+      messageText: caption,
     );
   }
 
@@ -319,14 +400,14 @@ class SyncService {
     required String caption,
     required String senderName,
     required List<String> memberUids,
+    Map<String, dynamic>? otherUserFcmTokens,
     required ReplyToModel? replyTo,
   }) async {
     try {
       final results = await Future.wait(
-        files.map((file) => _mediaService.uploadFile(
-          file: file,
-          mediaType: type,
-        )),
+        files.map(
+          (file) => _mediaService.uploadFile(file: file, mediaType: type),
+        ),
       );
 
       final uploaded = results.whereType<UploadResultModel>().toList();
@@ -357,6 +438,14 @@ class SyncService {
         fileSizeBytes: uploaded.first.fileSizeBytes,
         mimeType: uploaded.first.mimeType,
       );
+
+      await _sendFcmToRecipients(
+        otherUserFcmTokens: otherUserFcmTokens,
+        chatRoomId: chatRoomId,
+        senderId: _currentUid!,
+        senderName: senderName,
+        messageText: caption,
+      );
     } catch (e) {
       debugPrint('🚨 Failed media upload for $tempId: $e');
       await _db.updateMessageStatus(tempId, SyncStatus.failed);
@@ -367,6 +456,7 @@ class SyncService {
     required MessageModel localMessage,
     required String chatRoomId,
     required List<String> memberUids,
+    Map<String, dynamic>? otherUserFcmTokens,
   }) async {
     try {
       await _chatService.sendMessage(
@@ -381,9 +471,41 @@ class SyncService {
 
       // Update status in local
       await _db.updateMessageStatus(localMessage.id, SyncStatus.sent);
+
+      await _sendFcmToRecipients(
+        otherUserFcmTokens: otherUserFcmTokens,
+        chatRoomId: chatRoomId,
+        senderId: localMessage.senderId,
+        senderName: localMessage.senderName,
+        messageText: localMessage.text,
+      );
     } catch (e) {
       await _db.updateMessageStatus(localMessage.id, SyncStatus.failed);
       debugPrint('Failed sending message: $e');
+    }
+  }
+
+  Future<void> _sendFcmToRecipients({
+    required Map<String, dynamic>? otherUserFcmTokens,
+    required String chatRoomId,
+    required String senderId,
+    required String senderName,
+    required String messageText,
+  }) async {
+    if (otherUserFcmTokens == null || otherUserFcmTokens.isEmpty) return;
+
+    final senderPhotoUrl = FirebaseAuth.instance.currentUser?.photoURL;
+
+    for (final entry in otherUserFcmTokens.entries) {
+      final token = entry.key;
+      _notificationService.sendChatNotification(
+        targetToken: token,
+        messageText: messageText,
+        chatId: chatRoomId,
+        senderId: senderId,
+        senderName: senderName,
+        senderImageUrl: senderPhotoUrl,
+      );
     }
   }
 

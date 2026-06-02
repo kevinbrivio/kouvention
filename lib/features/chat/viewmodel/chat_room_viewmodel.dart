@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,7 +12,6 @@ import 'package:kouvention/features/chat/models/upload_result_model.dart';
 import 'package:kouvention/features/chat/models/sticker_model.dart';
 import 'package:kouvention/features/chat/services/chat_service.dart';
 import 'package:kouvention/features/chat/services/databases/message_database.dart';
-import 'package:kouvention/features/chat/services/media/cloud_media_service.dart';
 import 'package:kouvention/features/notification/viewmodel/active_chat_id_provider.dart';
 import 'package:kouvention/features/shared/services/sync_service.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
@@ -311,19 +309,31 @@ class ChatRoomVM extends BaseNotifier {
           .where((f) => f.caption != null && f.caption!.isNotEmpty)
           .toList();
 
+      final mediaCaptions = files.map((f) => f.caption ?? '').toList();
+
       if (captionedFiles.length <= 1) {
-        final caption = captionedFiles.isNotEmpty ? captionedFiles.first.caption! : '';
-        await _sendSingleBubble(caption: caption, files: files);
+        await _sendSingleBubble(
+          caption: captionedFiles.isNotEmpty ? captionedFiles.first.caption! : '',
+          files: files,
+          mediaCaptions: mediaCaptions,
+        );
       } else {
         for (final file in files) {
-          await _sendSingleBubble(caption: file.caption ?? '', files: [file]);
+          try {
+            await _sendSingleBubble(
+              caption: file.caption ?? '',
+              files: [file],
+              mediaCaptions: [file.caption ?? ''],
+            );
+          } catch (_) {
+            break;
+          }
         }
       }
-    } on CloudinaryUploadException catch (e) {
-      _error = e.message;
-      notifyListeners();
+
+      onCancelReply();
     } catch (e) {
-      _error = 'Failed to upload file';
+      _error = 'Failed to send media message';
       notifyListeners();
     } finally {
       _isUploading = false;
@@ -334,6 +344,7 @@ class ChatRoomVM extends BaseNotifier {
   Future<void> _sendSingleBubble({
     required String caption,
     required List<UploadResultModel> files,
+    List<String>? mediaCaptions,
   }) async {
     if (_currentUid == null) return;
     if (files.isEmpty) return;
@@ -352,18 +363,16 @@ class ChatRoomVM extends BaseNotifier {
       otherUser = ref.read(otherUserStreamProvider(otherUid)).value;
     }
 
-    final uploadedFiles = files.map((f) => File(f.localPath!)).toList();
+    final captions = mediaCaptions ?? files.map((f) => f.caption ?? '').toList();
 
     try {
-      _isSending = true;
-      notifyListeners();
-
-      await _syncService.sendMediaMessage(
+      await _syncService.sendMediaMessageDirect(
         chatRoomId: chatId,
         senderName: chat.displayName(_currentUid),
         memberUids: chat.members,
         caption: caption,
-        files: uploadedFiles,
+        uploadResults: files,
+        mediaCaptions: captions,
         type: files.first.messageType,
         otherUserFcmTokens: otherUser?.fcmTokens,
         replyTo: _replyMessage != null
@@ -378,14 +387,10 @@ class ChatRoomVM extends BaseNotifier {
               )
             : null,
       );
-
-      onCancelReply();
     } catch (e) {
       _error = e.toString();
       notifyListeners();
-    } finally {
-      _isSending = false;
-      notifyListeners();
+      rethrow;
     }
   }
 
@@ -505,9 +510,10 @@ final chatMessagesStreamProvider = StreamProvider.autoDispose
 
                 // Decode array jika ada
                 mediaUrls: m.mediaUrls ?? [],
+                mediaCaptions: m.mediaCaptions,
                 fileSizeBytes: m.fileSizeBytes,
                 fileName: m.fileName,
-                mimeType: m.fileName,
+                mimeType: m.mimeType ?? '',
                 mediaDuration: m.mediaDuration,
 
                 // Mapping Reply
