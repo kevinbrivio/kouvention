@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:io';
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
@@ -40,6 +42,8 @@ class _Body extends StatefulWidget {
 }
 
 class _BodyState extends State<_Body> with WidgetsBindingObserver {
+  final _previewPlayer = AudioPlayer();
+
   @override
   void initState() {
     super.initState();
@@ -48,8 +52,18 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _previewPlayer.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  void _playSound(NotificationSound sound) async {
+    await _previewPlayer.stop();
+    if (sound.isSystemRingtone && sound.androidUri != null) {
+      unawaited(_previewPlayer.play(UrlSource(sound.androidUri!)));
+    } else if (sound.assetPath != null) {
+      unawaited(_previewPlayer.play(AssetSource(sound.assetPath!)));
+    }
   }
 
   @override
@@ -153,64 +167,104 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
   );
 
   void _showSoundPicker(BuildContext context) {
-    final currentId = widget.viewmodel.currentSoundId;
-
     showModalBottomSheet(
       context: context,
       useRootNavigator: true,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
       ),
-      builder: (sheetContext) => SafeArea(
-        child: Padding(
-          padding: EdgeInsets.symmetric(vertical: 16.h),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20.w),
-                child: Text(
-                  'Notification Sound',
-                  style: TextStyle(
-                    fontSize: 16.sp,
-                    fontWeight: FontWeight.w600,
+      builder: (sheetContext) {
+        final initialId = widget.viewmodel.currentSoundId;
+        var selectedId = initialId;
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) => SafeArea(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 16.h),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20.w),
+                    child: Text(
+                      'Notification Sound',
+                      style: TextStyle(
+                        fontSize: 16.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
-                ),
+                  Gap(8.h),
+                  ...NotificationSound.bundled.map(
+                    (sound) => _SoundTile(
+                      label: sound.displayName,
+                      isSelected: selectedId == sound.id,
+                      onTap: () {
+                        _playSound(sound);
+                        setDialogState(() => selectedId = sound.id);
+                      },
+                    ),
+                  ),
+                  if (Platform.isAndroid) ...[
+                    Divider(height: 24.h, indent: 20.w, endIndent: 20.w),
+                    ListTile(
+                      leading: Icon(Icons.audiotrack, color: AppColors.primary),
+                      title: Text(
+                        'Pick from system ringtones',
+                        style: TextStyle(fontSize: 14.sp),
+                      ),
+                      trailing: Icon(
+                        Icons.chevron_right,
+                        color: Colors.grey.shade400,
+                      ),
+                      onTap: () async {
+                        Navigator.pop(sheetContext);
+                        await widget.viewmodel.pickSystemRingtone();
+                        final uri = widget.viewmodel.prefs.notificationSoundUri;
+                        final name = widget.viewmodel.prefs.notificationSoundDisplayName;
+                        if (uri != null) {
+                          _playSound(NotificationSound.systemRingtone(uri: uri, name: name ?? ''));
+                        }
+                      },
+                    ),
+                  ],
+                  Gap(16.h),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20.w),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          if (selectedId != initialId) {
+                            widget.viewmodel.selectSound(selectedId);
+                          }
+                          Navigator.pop(sheetContext);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(vertical: 14.h),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12.r),
+                          ),
+                        ),
+                        child: Text(
+                          'Done',
+                          style: TextStyle(
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              Gap(8.h),
-              ...NotificationSound.bundled.map(
-                (sound) => _SoundTile(
-                  label: sound.displayName,
-                  isSelected: currentId == sound.id,
-                  onTap: () {
-                    widget.viewmodel.selectSound(sound.id);
-                    Navigator.pop(sheetContext);
-                  },
-                ),
-              ),
-              if (Platform.isAndroid) ...[
-                Divider(height: 24.h, indent: 20.w, endIndent: 20.w),
-                ListTile(
-                  leading: Icon(Icons.audiotrack, color: AppColors.primary),
-                  title: Text(
-                    'Pick from system ringtones',
-                    style: TextStyle(fontSize: 14.sp),
-                  ),
-                  trailing: Icon(
-                    Icons.chevron_right,
-                    color: Colors.grey.shade400,
-                  ),
-                  onTap: () async {
-                    Navigator.pop(sheetContext);
-                    await widget.viewmodel.pickSystemRingtone();
-                  },
-                ),
-              ],
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 

@@ -86,6 +86,7 @@ flutter:
   assets:
     - assets/icons/
     - assets/images/
+    - assets/sounds/
 
   fonts:
     - family: Asap
