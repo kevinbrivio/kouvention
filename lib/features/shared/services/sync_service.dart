@@ -326,6 +326,7 @@ class SyncService {
     required String caption,
     required String senderName,
     required List<String> memberUids,
+    List<String>? mediaCaptions,
     Map<String, dynamic>? otherUserFcmTokens,
     ReplyToModel? replyTo,
   }) async {
@@ -333,6 +334,7 @@ class SyncService {
     final tempId = '${DateTime.now().millisecondsSinceEpoch}_$randomStr';
 
     final allUrls = uploadResults.map((r) => r.url).toList();
+    final allCaptions = mediaCaptions ?? uploadResults.map((r) => r.caption ?? '').toList();
     final first = uploadResults.first;
 
     final localMsg = MessagesCompanion(
@@ -347,6 +349,7 @@ class SyncService {
       syncStatus: Value(SyncStatus.sent),
       localPath: Value(first.localPath),
       mediaUrls: Value(allUrls),
+      mediaCaptions: Value(allCaptions),
       mediaGroupId: Value(null),
       replyToId: Value(replyTo?.messageId),
       replyToText: Value(replyTo?.text),
@@ -363,6 +366,7 @@ class SyncService {
       senderId: _currentUid!,
       senderName: senderName,
       mediaUrls: allUrls,
+      mediaCaptions: allCaptions,
       mediaDuration: first.mediaDuration,
       mimeType: first.mimeType,
       fileSizeBytes: first.fileSizeBytes,

@@ -309,15 +309,22 @@ class ChatRoomVM extends BaseNotifier {
           .where((f) => f.caption != null && f.caption!.isNotEmpty)
           .toList();
 
+      final mediaCaptions = files.map((f) => f.caption ?? '').toList();
+
       if (captionedFiles.length <= 1) {
         await _sendSingleBubble(
           caption: captionedFiles.isNotEmpty ? captionedFiles.first.caption! : '',
           files: files,
+          mediaCaptions: mediaCaptions,
         );
       } else {
         for (final file in files) {
           try {
-            await _sendSingleBubble(caption: file.caption ?? '', files: [file]);
+            await _sendSingleBubble(
+              caption: file.caption ?? '',
+              files: [file],
+              mediaCaptions: [file.caption ?? ''],
+            );
           } catch (_) {
             break;
           }
@@ -337,6 +344,7 @@ class ChatRoomVM extends BaseNotifier {
   Future<void> _sendSingleBubble({
     required String caption,
     required List<UploadResultModel> files,
+    List<String>? mediaCaptions,
   }) async {
     if (_currentUid == null) return;
     if (files.isEmpty) return;
@@ -355,6 +363,8 @@ class ChatRoomVM extends BaseNotifier {
       otherUser = ref.read(otherUserStreamProvider(otherUid)).value;
     }
 
+    final captions = mediaCaptions ?? files.map((f) => f.caption ?? '').toList();
+
     try {
       await _syncService.sendMediaMessageDirect(
         chatRoomId: chatId,
@@ -362,6 +372,7 @@ class ChatRoomVM extends BaseNotifier {
         memberUids: chat.members,
         caption: caption,
         uploadResults: files,
+        mediaCaptions: captions,
         type: files.first.messageType,
         otherUserFcmTokens: otherUser?.fcmTokens,
         replyTo: _replyMessage != null
@@ -499,6 +510,7 @@ final chatMessagesStreamProvider = StreamProvider.autoDispose
 
                 // Decode array jika ada
                 mediaUrls: m.mediaUrls ?? [],
+                mediaCaptions: m.mediaCaptions,
                 fileSizeBytes: m.fileSizeBytes,
                 fileName: m.fileName,
                 mimeType: m.mimeType ?? '',

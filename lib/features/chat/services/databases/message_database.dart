@@ -79,6 +79,7 @@ class Messages extends Table {
   // Multimedia
   TextColumn get localPath => text().nullable()(); // Local path on phone
   TextColumn get mediaUrls => text().map(const StringListConverter()).nullable()(); // Saved url in cloud
+  TextColumn get mediaCaptions => text().map(const StringListConverter()).nullable()();
   TextColumn get mediaGroupId => text().nullable()();
   IntColumn get mediaDuration => integer().nullable()();
   TextColumn get mimeType => text().nullable()();
