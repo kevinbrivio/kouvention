@@ -6,6 +6,7 @@ import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/shared/services/connectivity_service.dart';
 import 'package:kouvention/features/shared/services/fcm_service.dart';
+import 'package:kouvention/features/shared/viewmodel/connectivity_viewmodel.dart';
 import 'package:kouvention/features/shared/viewmodel/notification_viewmodel.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
 import 'package:kouvention/features/user/services/user_service.dart';
