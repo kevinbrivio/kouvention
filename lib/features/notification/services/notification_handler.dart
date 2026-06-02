@@ -201,6 +201,11 @@ class NotificationHandler {
         android: AndroidInitializationSettings(
           NotificationConfig.chatMessages.iconDrawable ?? 'ic_notification',
         ),
+        iOS: DarwinInitializationSettings(
+          requestAlertPermission: false,
+          requestBadgePermission: false,
+          requestSoundPermission: false,
+        ),
       ),
       onDidReceiveNotificationResponse: _onNotificationTapped,
       onDidReceiveBackgroundNotificationResponse:
