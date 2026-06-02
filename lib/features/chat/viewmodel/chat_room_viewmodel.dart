@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
@@ -196,7 +195,7 @@ class ChatRoomVM extends BaseNotifier {
 
       final msg = MessageModel(
         id: messageId,
-        senderId: _currentUid!,
+        senderId: _currentUid,
         senderName: chat.displayName(_currentUid),
         text: '',
         type: MessageType.sticker,
@@ -220,7 +219,7 @@ class ChatRoomVM extends BaseNotifier {
       await _chatService.sendMediaMessage(
         chatId: chatId,
         messageId: messageId,
-        senderId: _currentUid!,
+        senderId: _currentUid,
         senderName: chat.displayName(_currentUid),
         text: '',
         type: MessageType.sticker,
@@ -308,29 +307,16 @@ class ChatRoomVM extends BaseNotifier {
       _isUploading = true;
       notifyListeners();
 
-      final filesWithCaption = files
-          .where((f) => f.caption != null && f.caption != '')
+      final captionedFiles = files
+          .where((f) => f.caption != null && f.caption!.isNotEmpty)
           .toList();
-      final allUrls = files.map((f) => f.url).toList();
 
-      /// Only create within single bubble if only one caption was found.
-      if (filesWithCaption.length <= 1) {
-        final singleCaption = filesWithCaption.isNotEmpty
-            ? filesWithCaption.first.caption!
-            : '';
-
-        await _sendSingleBubble(
-          urls: allUrls,
-          caption: singleCaption,
-          file: files.first,
-        );
+      if (captionedFiles.length <= 1) {
+        final caption = captionedFiles.isNotEmpty ? captionedFiles.first.caption! : '';
+        await _sendSingleBubble(caption: caption, files: files);
       } else {
         for (final file in files) {
-          await _sendSingleBubble(
-            urls: [file.url],
-            caption: file.caption ?? '',
-            file: file,
-          );
+          await _sendSingleBubble(caption: file.caption ?? '', files: [file]);
         }
       }
     } on CloudinaryUploadException catch (e) {
@@ -346,13 +332,12 @@ class ChatRoomVM extends BaseNotifier {
   }
 
   Future<void> _sendSingleBubble({
-    required List<dynamic> urls,
     required String caption,
-    required UploadResultModel file,
+    required List<UploadResultModel> files,
   }) async {
-    print('Preparing to send media message with file: ${file.localPath}');
     if (_currentUid == null) return;
-    if (file.localPath == null) return;
+    if (files.isEmpty) return;
+    if (files.any((f) => f.localPath == null)) return;
 
     final chat = ref.read(chatMetadataStreamProvider(chatId)).value;
     if (chat == null) {
@@ -367,7 +352,7 @@ class ChatRoomVM extends BaseNotifier {
       otherUser = ref.read(otherUserStreamProvider(otherUid)).value;
     }
 
-    final uploadedFile = File(file.localPath!);
+    final uploadedFiles = files.map((f) => File(f.localPath!)).toList();
 
     try {
       _isSending = true;
@@ -377,9 +362,9 @@ class ChatRoomVM extends BaseNotifier {
         chatRoomId: chatId,
         senderName: chat.displayName(_currentUid),
         memberUids: chat.members,
-        caption: file.caption,
-        files: [uploadedFile],
-        type: file.messageType,
+        caption: caption,
+        files: uploadedFiles,
+        type: files.first.messageType,
         otherUserFcmTokens: otherUser?.fcmTokens,
         replyTo: _replyMessage != null
             ? ReplyToModel(

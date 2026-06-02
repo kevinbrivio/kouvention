@@ -18,7 +18,7 @@ class DeviceBlockedView extends StatelessWidget {
   String get _threatMessage {
     switch (threatType) {
       case 'rooted':
-        return 'Your device have been detected root or jailbreak.';
+        return 'Your device has been detected as rooted or jailbroken.';
       case 'hooks':
         return 'Detected some apps might misuse your phone';
       case 'tampered':

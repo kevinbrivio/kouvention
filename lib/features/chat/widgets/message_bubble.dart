@@ -59,6 +59,10 @@ class MessageBubble extends ConsumerWidget {
     
     final status = message.getUIStatus(chat, currentUid); 
 
+    final sender = ref.watch(otherUserStreamProvider(message.senderId)).value;
+    final showSenderPhoto = isGroup && !isMe && senderPhotoUrl != null &&
+        (sender?.privacy.showProfilePhoto ?? true);
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       color: isSelected
@@ -85,6 +89,7 @@ class MessageBubble extends ConsumerWidget {
             time: time,
             senderName: senderName,
             senderPhotoUrl: senderPhotoUrl,
+            showSenderPhoto: showSenderPhoto,
             replyMsg: replyMsg,
             currentUid: currentUid,
             status: status, // Oper status ke bawah
@@ -99,6 +104,7 @@ class MessageBubble extends ConsumerWidget {
     required String time,
     required String senderName,
     required String? senderPhotoUrl,
+    required bool showSenderPhoto,
     required ReplyToModel? replyMsg,
     required String currentUid,
     required MessageStatus status,
@@ -115,15 +121,17 @@ class MessageBubble extends ConsumerWidget {
                 if (isGroup && isFirstSequence)
                   CircleAvatar(
                     radius: 14.r,
-                    backgroundColor: AppColors.senderNameColor(message.senderId)
-                        .withValues(alpha: 0.25),
-                    backgroundImage: senderPhotoUrl != null && senderPhotoUrl.isNotEmpty
-                        ? NetworkImage(senderPhotoUrl)
+                    backgroundColor: showSenderPhoto
+                        ? AppColors.senderNameColor(message.senderId)
+                            .withValues(alpha: 0.25)
                         : null,
-                    onBackgroundImageError: senderPhotoUrl != null && senderPhotoUrl.isNotEmpty
+                    backgroundImage: showSenderPhoto
+                        ? NetworkImage(senderPhotoUrl!)
+                        : null,
+                    onBackgroundImageError: showSenderPhoto
                         ? (_, __) {}
                         : null,
-                    child: senderPhotoUrl == null || senderPhotoUrl.isEmpty
+                    child: !showSenderPhoto
                         ? Text(
                             senderName.isNotEmpty ? senderName[0].toUpperCase() : '?',
                             style: textTheme.senderName.copyWith(

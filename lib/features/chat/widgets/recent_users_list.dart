@@ -98,13 +98,17 @@ class RecentUsersList extends ConsumerWidget {
           children: [
             CircleAvatar(
               radius: 22.r,
-              backgroundColor: AppColors.senderNameColor(
-                user.uid,
-              ).withValues(alpha: 0.2),
-              backgroundImage: user.photoUrl != null
+              backgroundColor:
+                  user.photoUrl != null && user.privacy.showProfilePhoto
+                      ? null
+                      : AppColors.senderNameColor(
+                          user.uid,
+                        ).withValues(alpha: 0.2),
+              backgroundImage: user.photoUrl != null &&
+                      user.privacy.showProfilePhoto
                   ? NetworkImage(user.photoUrl!)
                   : null,
-              child: user.photoUrl == null
+              child: user.photoUrl == null || !user.privacy.showProfilePhoto
                   ? Text(
                       user.displayName.isNotEmpty
                           ? user.displayName[0].toUpperCase()

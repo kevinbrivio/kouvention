@@ -8,6 +8,7 @@ import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
+import 'package:kouvention/features/user/models/user_model.dart';
 
 class ChatRoomAppBar extends ConsumerWidget implements PreferredSizeWidget {
   final String chatId;
@@ -51,9 +52,10 @@ class ChatRoomAppBar extends ConsumerWidget implements PreferredSizeWidget {
         final chatPhotoUrl = chat.displayPhotoUrl(currentUid);
 
         String? onlineStatusText;
+        UserModel? otherUser;
         if (isDirect) {
           final otherUid = chat.otherMemberUid(currentUid);
-          final otherUser = ref.watch(otherUserStreamProvider(otherUid)).value;
+          otherUser = ref.watch(otherUserStreamProvider(otherUid)).value;
 
           if (otherUser != null && otherUser.privacy.showOnlineStatus) {
             if (otherUser.isOnline) {
@@ -64,6 +66,10 @@ class ChatRoomAppBar extends ConsumerWidget implements PreferredSizeWidget {
             }
           }
         }
+
+        final showPhoto = isDirect
+            ? (otherUser?.privacy.showProfilePhoto ?? true) && chatPhotoUrl != null
+            : chatPhotoUrl != null;
 
         // =====================================
         // RENDER UI APPBAR
@@ -88,7 +94,7 @@ class ChatRoomAppBar extends ConsumerWidget implements PreferredSizeWidget {
                     width: 36.r, // Diameter (2 * radius 18)
                     height: 36.r,
                     color: AppColors.primary.withValues(alpha: 0.2),
-                    child: chatPhotoUrl != null
+                    child: showPhoto
                         ? CachedNetworkImage(
                             imageUrl: chatPhotoUrl,
                             fit: BoxFit.cover,
@@ -106,7 +112,6 @@ class ChatRoomAppBar extends ConsumerWidget implements PreferredSizeWidget {
                               ),
                             ),
                           )
-                        // Kalau dari awal memang tidak ada foto url-nya
                         : Center(
                             child: Text(
                               chatDisplayName.isNotEmpty

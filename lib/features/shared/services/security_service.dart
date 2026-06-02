@@ -1,26 +1,49 @@
-import 'package:freerasp/freerasp.dart';
-import 'package:kouvention/cores/configs/env.dart';
+import 'dart:io';
 
 class SecurityService {
-  bool isProd;
+  static const _androidRootPaths = [
+    '/sbin/su',
+    '/system/bin/su',
+    '/system/xbin/su',
+    '/data/local/xbin/su',
+    '/data/local/bin/su',
+    '/system/sd/xbin/su',
+    '/system/bin/failsafe/su',
+    '/data/local/su',
+    '/su/bin/su',
+    '/system/app/Superuser.apk',
+    '/data/data/com.topjohnwu.magisk',
+    '/data/data/com.noshufou.android.su',
+  ];
+  static const _iosJailbreakPaths = [
+    '/Applications/Cydia.app',
+    '/Applications/Sileo.app',
+    '/Library/MobileSubstrate/MobileSubstrate.dylib',
+    '/bin/bash',
+    '/usr/sbin/sshd',
+    '/etc/apt',
+    '/private/var/lib/apt/',
+  ];
 
-  SecurityService({required this.isProd});
+  static Future<bool> isDeviceRooted() async {
+    try {
+      if (Platform.isAndroid) {
+        return await _checkPaths(_androidRootPaths);
+      } else if (Platform.isIOS) {
+        return await _checkPaths(_iosJailbreakPaths);
+      }
+    } catch (_) {}
 
-  static Future<void> initialize({required bool isProd}) async {
-    final config = TalsecConfig(
-      androidConfig: AndroidConfig(
-        packageName: 'com.example.kouvention',
-        signingCertHashes: [isProd ? EnvProd.sha256 : EnvStaging.sha256],
-        supportedStores: ['com.android.vending'],
-      ),
-      iosConfig: IOSConfig(
-        bundleIds: ['com.example.kouvention'],
-        teamId: '[PLACEHOLDER]', // Change to iOS teamID
-      ),
-      watcherMail: 'kenkenku6@gmail.com',
-      isProd: isProd,
-    );
+    return false;
+  }
 
-    await Talsec.instance.start(config);
+  static Future<bool> _checkPaths(List<String> paths) async {
+    for (final path in paths) {
+      if (await File(path).exists() || await Directory(path).exists()) {
+        return true;
+      }
+    }
+    
+    return false;
   }
 }

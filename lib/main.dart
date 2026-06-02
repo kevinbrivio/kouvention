@@ -19,7 +19,6 @@ import 'package:kouvention/cores/widgets/flavor_banner.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/notification/services/notification_handler.dart';
 import 'package:kouvention/features/shared/services/prefs_service.dart';
-import 'package:kouvention/features/shared/services/security_service.dart';
 import 'package:kouvention/features/shared/viewmodel/connectivity_viewmodel.dart';
 import 'package:kouvention/features/shared/viewmodel/security_notifier.dart';
 import 'package:kouvention/features/shared/views/device_blocked_view.dart';
@@ -50,9 +49,8 @@ void main() async {
       // FLAVOR SETUP
       const flavor = String.fromEnvironment('ENV');
       setupConfig(flavor);
-      // Register Jailbreak Detector
-      await SecurityService.initialize(isProd: flavor != 'staging');
-      SecurityNotifier.instance.attachListeners();
+      // Check for rooted / jailbroken device
+      await SecurityNotifier.instance.checkDeviceSecurity();
 
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
@@ -147,7 +145,6 @@ class _KouventionAppState extends ConsumerState<KouventionApp>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    ref.read(securityNotifierProvider).attachListeners();
     ref.read(
       presenceNotifierProvider,
     ); // listen to presence notifier to check user presence throughout the use

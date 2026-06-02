@@ -79,7 +79,7 @@ class ChatListVM extends BaseNotifier {
     if (unpinned.isEmpty) {
       for (final chat in selectedChats) {
         await _chatService.unpinChat(_currentUid, chat.id);
-        await db.unpinChatLocally(chat.id, _currentUid!);
+        await db.unpinChatLocally(chat.id, _currentUid);
       }
       clearSelection();
       return;
@@ -100,7 +100,7 @@ class ChatListVM extends BaseNotifier {
 
     for (final chat in unpinned) {
       await _chatService.pinChat(_currentUid, chat.id);
-      await db.pinChatLocally(chat.id, _currentUid!);
+      await db.pinChatLocally(chat.id, _currentUid);
     }
     clearSelection();
   }
@@ -109,7 +109,7 @@ class ChatListVM extends BaseNotifier {
     if (_currentUid != null) {
       final db = ref.read(messageDatabaseProvider);
       await _chatService.pinChat(_currentUid, chatId);
-      await db.pinChatLocally(chatId, _currentUid!);
+      await db.pinChatLocally(chatId, _currentUid);
     }
   }
 
@@ -117,7 +117,7 @@ class ChatListVM extends BaseNotifier {
     if (_currentUid != null) {
       final db = ref.read(messageDatabaseProvider);
       await _chatService.unpinChat(_currentUid, chatId);
-      await db.unpinChatLocally(chatId, _currentUid!);
+      await db.unpinChatLocally(chatId, _currentUid);
     }
   }
 
@@ -132,7 +132,7 @@ class ChatListVM extends BaseNotifier {
 
     for (final chat in selectedChats) {
       await _chatService.deleteChat(_currentUid, chat.id);
-      await db.markChatDeletedLocally(chat.id, _currentUid!);
+      await db.markChatDeletedLocally(chat.id, _currentUid);
     }
     clearSelection();
   }
@@ -141,7 +141,7 @@ class ChatListVM extends BaseNotifier {
     if (_currentUid != null) {
       final db = ref.read(messageDatabaseProvider);
       await _chatService.deleteChat(_currentUid, chatId);
-      await db.markChatDeletedLocally(chatId, _currentUid!);
+      await db.markChatDeletedLocally(chatId, _currentUid);
     }
   }
 
@@ -245,7 +245,7 @@ final filteredChatListProvider =
         // 1. Filter out deleted chats
         if (currentUid != null) {
           filtered = filtered
-              .where((c) => !c.isDeletedBy(currentUid!))
+              .where((c) => !c.isDeletedBy(currentUid))
               .toList();
         }
 
