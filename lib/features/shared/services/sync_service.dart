@@ -311,6 +311,59 @@ class SyncService {
     );
   }
 
+  Future<void> sendMediaMessageDirect({
+    required String chatRoomId,
+    required List<UploadResultModel> uploadResults,
+    required MessageType type,
+    required String caption,
+    required String senderName,
+    required List<String> memberUids,
+    Map<String, dynamic>? otherUserFcmTokens,
+    ReplyToModel? replyTo,
+  }) async {
+    final randomStr = generateRandomString(5);
+    final tempId = '${DateTime.now().millisecondsSinceEpoch}_$randomStr';
+
+    final allUrls = uploadResults.map((r) => r.url).toList();
+    final first = uploadResults.first;
+
+    final localMsg = MessagesCompanion(
+      id: Value(tempId),
+      chatRoomId: Value(chatRoomId),
+      senderId: Value(_currentUid!),
+      senderName: Value(senderName),
+      textContent: Value(caption),
+      type: Value(type.name),
+      sentAt: Value(DateTime.now().millisecondsSinceEpoch),
+      updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
+      syncStatus: Value(SyncStatus.sent),
+      localPath: Value(first.localPath),
+      mediaUrls: Value(allUrls),
+      mediaGroupId: Value(null),
+      replyToId: Value(replyTo?.messageId),
+      replyToText: Value(replyTo?.text),
+      replyToSenderName: Value(replyTo?.senderName),
+    );
+
+    await _db.upsertMessage(localMsg);
+
+    await _chatService.sendMediaMessage(
+      chatId: chatRoomId,
+      messageId: tempId,
+      text: caption,
+      type: type,
+      senderId: _currentUid!,
+      senderName: senderName,
+      mediaUrls: allUrls,
+      mediaDuration: first.mediaDuration,
+      mimeType: first.mimeType,
+      fileSizeBytes: first.fileSizeBytes,
+      memberUids: memberUids,
+      replyTo: replyTo,
+      fileName: first.fileName,
+    );
+  }
+
   Future<void> _processMediaUploadsInBackground({
     required String tempId,
     required List<File> files,
