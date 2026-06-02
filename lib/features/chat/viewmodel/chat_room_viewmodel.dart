@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
@@ -196,7 +195,7 @@ class ChatRoomVM extends BaseNotifier {
 
       final msg = MessageModel(
         id: messageId,
-        senderId: _currentUid!,
+        senderId: _currentUid,
         senderName: chat.displayName(_currentUid),
         text: '',
         type: MessageType.sticker,
@@ -220,7 +219,7 @@ class ChatRoomVM extends BaseNotifier {
       await _chatService.sendMediaMessage(
         chatId: chatId,
         messageId: messageId,
-        senderId: _currentUid!,
+        senderId: _currentUid,
         senderName: chat.displayName(_currentUid),
         text: '',
         type: MessageType.sticker,

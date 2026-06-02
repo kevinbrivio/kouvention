@@ -13,7 +13,6 @@ import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/models/reply_to_model.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_selection_viewmodel.dart';
-import 'package:kouvention/features/user/models/user_model.dart';
 import 'package:kouvention/features/chat/widgets/bubble_tail_painter.dart';
 import 'package:kouvention/features/chat/widgets/media_bubble.dart';
 import 'package:swipe_to/swipe_to.dart';

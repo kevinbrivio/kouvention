@@ -10,7 +10,6 @@ import 'package:kouvention/cores/utils/date_time_helper.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_list_viewmodel.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
-import 'package:kouvention/features/user/models/user_model.dart';
 
 class ChatListItem extends ConsumerWidget {
   final ChatModel chat;

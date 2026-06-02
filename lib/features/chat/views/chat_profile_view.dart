@@ -200,7 +200,7 @@ class _ChatProfileBodyState extends ConsumerState<_ChatProfileBody> {
               backgroundColor: showPhoto
                   ? AppColors.senderNameColor(uid).withValues(alpha: 0.25)
                   : null,
-              backgroundImage: showPhoto ? NetworkImage(photoUrl!) : null,
+              backgroundImage: showPhoto ? NetworkImage(photoUrl) : null,
               child: !showPhoto
                   ? Text(
                       name[0].toUpperCase(),

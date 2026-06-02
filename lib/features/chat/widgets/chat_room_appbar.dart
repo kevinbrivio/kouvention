@@ -96,7 +96,7 @@ class ChatRoomAppBar extends ConsumerWidget implements PreferredSizeWidget {
                     color: AppColors.primary.withValues(alpha: 0.2),
                     child: showPhoto
                         ? CachedNetworkImage(
-                            imageUrl: chatPhotoUrl!,
+                            imageUrl: chatPhotoUrl,
                             fit: BoxFit.cover,
                             placeholder: (context, url) => const SizedBox(),
                             errorWidget: (context, url, error) => Center(
