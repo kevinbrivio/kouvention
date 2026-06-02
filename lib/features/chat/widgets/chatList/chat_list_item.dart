@@ -9,6 +9,8 @@ import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/cores/utils/date_time_helper.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_list_viewmodel.dart';
+import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
+import 'package:kouvention/features/user/models/user_model.dart';
 
 class ChatListItem extends ConsumerWidget {
   final ChatModel chat;
@@ -30,6 +32,15 @@ class ChatListItem extends ConsumerWidget {
     final initialLetter = displayName.isNotEmpty
         ? displayName[0].toUpperCase()
         : '?';
+
+    bool showAvatarPhoto;
+    if (chat.isDirect) {
+      final otherUid = chat.otherMemberUid(vm.currentId!);
+      final otherUser = ref.watch(otherUserStreamProvider(otherUid)).value;
+      showAvatarPhoto = otherUser?.privacy.showProfilePhoto ?? true;
+    } else {
+      showAvatarPhoto = true;
+    }
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -53,7 +64,7 @@ class ChatListItem extends ConsumerWidget {
             padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
             child: Row(
               children: [
-                _buildAvatar(vm, initialLetter),
+                _buildAvatar(vm, initialLetter, showAvatarPhoto),
                 Gap(12.w),
                 _buildMessagePreview(displayName, lastMessage, typing),
                 Gap(4.w),
@@ -75,17 +86,17 @@ class ChatListItem extends ConsumerWidget {
     );
   }
 
-  Widget _buildAvatar(vm, String initialLetter) => Stack(
+  Widget _buildAvatar(vm, String initialLetter, bool showAvatarPhoto) => Stack(
     children: [
       CircleAvatar(
         radius: 24.r,
         backgroundColor: AppColors.senderNameColor(
           chat.id,
         ).withValues(alpha: 0.25),
-        backgroundImage: vm.chatPhotoURL(chat) != null
+        backgroundImage: vm.chatPhotoURL(chat) != null && showAvatarPhoto
             ? NetworkImage(vm.chatPhotoURL(chat)!)
             : null,
-        child: vm.chatPhotoURL(chat) == null
+        child: vm.chatPhotoURL(chat) == null || !showAvatarPhoto
             ? (vm.isGroupType(chat)
                   ? Icon(
                       Icons.people_alt_rounded,

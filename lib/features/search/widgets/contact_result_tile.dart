@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
+import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
+import 'package:kouvention/features/user/models/user_model.dart';
 
-class ContactResultTile extends StatelessWidget {
+class ContactResultTile extends ConsumerWidget {
   final ChatModel chat;
   final String currentUid;
   final String query;
@@ -19,9 +22,18 @@ class ContactResultTile extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final name = chat.displayName(currentUid);
     final photoUrl = chat.displayPhotoUrl(currentUid);
+
+    bool showPhoto;
+    if (chat.isDirect && photoUrl != null) {
+      final otherUid = chat.otherMemberUid(currentUid);
+      final otherUser = ref.watch(otherUserStreamProvider(otherUid)).value;
+      showPhoto = otherUser?.privacy.showProfilePhoto ?? true;
+    } else {
+      showPhoto = photoUrl != null;
+    }
 
     return ListTile(
       contentPadding: EdgeInsetsGeometry.symmetric(
@@ -30,11 +42,11 @@ class ContactResultTile extends StatelessWidget {
       ),
       leading: CircleAvatar(
         radius: 24.r,
-        backgroundColor: photoUrl == null
-            ? AppColors.senderNameColor(chat.id).withValues(alpha: 0.3)
-            : null,
-        backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
-        child: photoUrl == null
+        backgroundColor: showPhoto
+            ? null
+            : AppColors.senderNameColor(chat.id).withValues(alpha: 0.3),
+        backgroundImage: showPhoto ? NetworkImage(photoUrl!) : null,
+        child: !showPhoto
             ? Text(
                 name[0].toUpperCase(),
                 style: textTheme.senderName.copyWith(

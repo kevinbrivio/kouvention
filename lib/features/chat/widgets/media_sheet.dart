@@ -123,7 +123,6 @@ class MediaSheet extends ConsumerWidget {
             mediaType: MessageType.image,
             chatId: vm.chatId,
             onSend: (result, caption) {
-              Navigator.pop(context);
               return vm.sendMediaMessage(files: result);
             },
           ),
@@ -239,7 +238,6 @@ class MediaSheet extends ConsumerWidget {
       circleColor: const Color(0xFFE8F5E9),
       iconColor: const Color(0xFF43A047),
       onTap: () {
-        Navigator.pop(context);
         // TODO: location
       },
     ),

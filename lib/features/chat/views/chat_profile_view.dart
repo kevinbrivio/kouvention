@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
@@ -12,6 +13,7 @@ import 'package:kouvention/cores/widgets/loading_indicator.dart';
 import 'package:kouvention/cores/widgets/transparent_box.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_profile_viewmodel.dart';
+import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
 import 'package:kouvention/cores/utils/date_time_helper.dart';
 
 class ChatProfileView extends StatelessWidget {
@@ -44,14 +46,14 @@ class ChatProfileView extends StatelessWidget {
   );
 }
 
-class _ChatProfileBody extends StatefulWidget {
+class _ChatProfileBody extends ConsumerStatefulWidget {
   final ChatProfileVM vm;
   _ChatProfileBody({required this.vm});
   @override
-  State<_ChatProfileBody> createState() => _ChatProfileBodyState();
+  ConsumerState<_ChatProfileBody> createState() => _ChatProfileBodyState();
 }
 
-class _ChatProfileBodyState extends State<_ChatProfileBody> {
+class _ChatProfileBodyState extends ConsumerState<_ChatProfileBody> {
   ChatProfileVM get vm => widget.vm;
 
   @override
@@ -184,6 +186,9 @@ class _ChatProfileBodyState extends State<_ChatProfileBody> {
       final member = vm.members[index].value;
       final name = member.displayName;
       final photoUrl = member.photoUrl;
+      final memberUser = ref.read(otherUserStreamProvider(uid)).value;
+      final showPhoto = photoUrl != null &&
+          (memberUser?.privacy.showProfilePhoto ?? true);
 
       return InkWell(
         onTap: () => _showMemberSheet(context, vm.members[index]),
@@ -192,11 +197,11 @@ class _ChatProfileBodyState extends State<_ChatProfileBody> {
           children: [
             CircleAvatar(
               radius: 24.r,
-              backgroundColor: AppColors.senderNameColor(
-                uid,
-              ).withValues(alpha: 0.25),
-              backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
-              child: photoUrl == null
+              backgroundColor: showPhoto
+                  ? AppColors.senderNameColor(uid).withValues(alpha: 0.25)
+                  : null,
+              backgroundImage: showPhoto ? NetworkImage(photoUrl!) : null,
+              child: !showPhoto
                   ? Text(
                       name[0].toUpperCase(),
                       style: textTheme.senderName.copyWith(
@@ -291,7 +296,12 @@ class _ChatProfileBodyState extends State<_ChatProfileBody> {
   void _showMemberSheet(
     BuildContext context,
     MapEntry<String, MemberInfo> member,
-  ) => showModalBottomSheet(
+  ) {
+    final memberUser = ref.read(otherUserStreamProvider(member.key)).value;
+    final showPhoto = member.value.photoUrl != null &&
+        (memberUser?.privacy.showProfilePhoto ?? true);
+
+    showModalBottomSheet(
     context: context,
     showDragHandle: true,
     shape: RoundedRectangleBorder(
@@ -306,13 +316,13 @@ class _ChatProfileBodyState extends State<_ChatProfileBody> {
           children: [
             CircleAvatar(
               radius: 56.r,
-              backgroundColor: AppColors.senderNameColor(
-                member.key,
-              ).withValues(alpha: 0.25),
-              backgroundImage: member.value.photoUrl != null
+              backgroundColor: showPhoto
+                  ? AppColors.senderNameColor(member.key).withValues(alpha: 0.25)
+                  : null,
+              backgroundImage: showPhoto
                   ? NetworkImage(member.value.photoUrl!)
                   : null,
-              child: member.value.photoUrl == null
+              child: !showPhoto
                   ? Text(
                       member.value.displayName[0].toUpperCase(),
                       style: TextStyle(fontSize: 24.sp),

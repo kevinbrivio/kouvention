@@ -11,10 +11,13 @@ import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
+import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_list_viewmodel.dart';
+import 'package:kouvention/features/chat/viewmodel/media/media_picker_helper.dart';
+import 'package:kouvention/features/shared/services/connectivity_service.dart';
 import 'package:kouvention/features/shared/services/fcm_service.dart';
-import 'package:kouvention/features/shared/services/storage_service.dart';
 import 'package:kouvention/features/shared/services/sync_service.dart';
+import 'package:kouvention/features/shared/viewmodel/connectivity_viewmodel.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
 import 'package:kouvention/features/user/services/user_service.dart';
 import 'package:kouvention/features/user/viewmodel/presence_notifier.dart';
@@ -27,7 +30,8 @@ final profileVM = ChangeNotifierProvider.autoDispose<ProfileVM>(
 class ProfileVM extends BaseNotifier {
   final UserService _userService;
   final AuthService _authService;
-  final StorageService _storageService;
+  final MediaPickerHelper _mediaPickerHelper;
+  final ConnectivityService _connectivityService;
 
   UserModel? _user;
   StreamSubscription? _userSubscription;
@@ -35,7 +39,8 @@ class ProfileVM extends BaseNotifier {
   ProfileVM(super.ref)
     : _userService = ref.read(userServiceProvider),
       _authService = ref.read(authServiceProvider),
-      _storageService = ref.read(storageServiceProvider);
+      _mediaPickerHelper = ref.read(mediaPickerHelperProvider),
+      _connectivityService = ref.read(connectivityServiceProvider);
 
   bool _isButtonLoading = false;
 
@@ -189,15 +194,26 @@ class ProfileVM extends BaseNotifier {
     final uid = _authService.currentUser?.uid;
     if (uid == null) return;
 
+    final connected = await _connectivityService.isConnected;
+    if (!connected) {
+      showToast('No internet connection. Please check your network and try again.');
+      return;
+    }
+
     isLoading = true;
 
     try {
-      final downloadUrl = await _storageService.uploadFile(
-        path: 'users/$uid/profile.jpg',
-        file: file,
+      final results = await _mediaPickerHelper.uploadFiles(
+        files: [file],
+        type: MessageType.image,
       );
 
-      await _userService.updateProfile(uid: uid, photoURL: downloadUrl);
+      if (results.isEmpty) {
+        showToast('Failed to upload photo. Please try again.');
+        return;
+      }
+
+      await _userService.updateProfile(uid: uid, photoURL: results.first.url);
     } catch (e) {
       debugPrint('Profile photo upload failed: $e');
       showToast('Failed to update photo. Please try again.');
