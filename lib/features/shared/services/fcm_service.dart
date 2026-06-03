@@ -6,7 +6,6 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/features/shared/services/prefs_service.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:uuid/uuid.dart';
 
 final fcmServiceProvider = Provider<FcmService>((ref) {
@@ -38,18 +37,6 @@ class FcmService {
     }
     _deviceId = deviceId;
     debugPrint('[FcmService] initialize() called, deviceId=$deviceId');
-
-    // Android 13+ requires explicit POST_NOTIFICATIONS runtime permission.
-    // FirebaseMessaging.requestPermission() should handle this internally,
-    // but we explicitly check + request as a fallback.
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      final osNotification = await Permission.notification.status;
-      debugPrint('[FcmService] Android POST_NOTIFICATIONS status: $osNotification');
-      if (osNotification.isDenied) {
-        final result = await Permission.notification.request();
-        debugPrint('[FcmService] POST_NOTIFICATIONS request result: $result');
-      }
-    }
 
     final granted = await requestPermission();
     debugPrint('[FcmService] requestPermission() returned granted=$granted');

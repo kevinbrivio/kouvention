@@ -326,8 +326,12 @@ class NotificationHandler {
       return;
     }
 
-    _showLocalNotification(message);
-    debugPrint('[ForegroundHandler] Local notification displayed');
+    try {
+      await _showLocalNotification(message);
+      debugPrint('[ForegroundHandler] Local notification displayed');
+    } catch (e) {
+      debugPrint('[ForegroundHandler] Failed to show notification: $e');
+    }
 
     // Sync missed messages into the local DB so they appear in the chat list
     if (incomingChatId != null && incomingChatId.isNotEmpty) {
@@ -366,7 +370,7 @@ class NotificationHandler {
     return (sound: sound?.toAndroidNotificationSound(), iosFilename: sound?.iosFilename);
   }
 
-  void _showLocalNotification(RemoteMessage message) {
+  Future<void> _showLocalNotification(RemoteMessage message) async {
     final data = message.data;
     final chatId = data['chatId'] ?? '';
     final senderName = data['senderName'] ?? 'Someone';
@@ -384,7 +388,7 @@ class NotificationHandler {
 
     final vibration = _ref.read(prefsServiceProvider).notificationVibrationEnabled;
 
-    _showChatNotification(
+    await _showChatNotification(
       plugin: _localNotifications,
       chatId: chatId,
       senderId: senderId,

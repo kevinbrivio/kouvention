@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:googleapis_auth/auth_io.dart';
 import 'package:http/http.dart' as http;
-import 'package:kouvention/features/notification/services/notification_config.dart';
 
 final notificationServiceProvider = Provider<NotificationService>(
   (ref) => NotificationService(),
@@ -86,22 +85,11 @@ class NotificationService {
       'https://fcm.googleapis.com/v1/projects/$_projectId/messages:send',
     );
 
-    final config = NotificationConfig.chatMessages;
-
     final message = {
       'message': {
         'token': targetToken,
-        'notification': {
-          'title': title,
-          'body': body,
-        },
         'android': {
           'priority': 'high',
-          'notification': {
-            'channel_id': config.id,
-            'icon': config.iconDrawable,
-            'sound': config.soundFilename
-          }
         },
         'apns': {
           'headers': {
@@ -111,11 +99,14 @@ class NotificationService {
           'payload': {
             'aps': {
               'content-available': 1,
-              'sound': '${config.soundFilename}.caf'
             },
           },
         },
-        if (data != null) 'data': data,
+        'data': {
+          'title': title,
+          'body': body,
+          if (data != null) ...data,
+        },
       },
     };
 
