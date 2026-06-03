@@ -9,16 +9,18 @@ class OnboardingPage1 extends StatelessWidget {
   OnboardingPage1({super.key});
 
   @override
-  Widget build(BuildContext context) => Center(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Gap(48.h),
-        FloatingWidget(
-          child: SizedBox(
-            width: 320.w,
-            height: 320.w,
-            child: Image.asset(images.onboarding1, fit: BoxFit.cover,),
+  Widget build(BuildContext context) => SingleChildScrollView(
+    child: Center(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Gap(48.h),
+          FloatingWidget(
+            child: SizedBox(
+              width: 320.w,
+              height: 320.w,
+              child: Image.asset(images.onboarding1, fit: BoxFit.cover),
+            ),
           ),
         ),
         Gap(12.h),
