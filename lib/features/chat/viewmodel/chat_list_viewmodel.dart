@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
@@ -14,7 +15,6 @@ enum ChatFilter { all, direct, group }
 
 class ChatListVM extends BaseNotifier {
   final ChatService _chatService;
-  final SyncService _syncService;
   final String? _currentUid;
 
   // Filter chats
@@ -26,17 +26,20 @@ class ChatListVM extends BaseNotifier {
   // Selected chat
   final Set<String> _selectedChatIds = {};
 
+  // Pagination
+  bool _isLoadingMore = false;
+
   String? _error;
 
   ChatListVM(super.ref)
     : _chatService = ref.read(chatServiceProvider),
-      _syncService = ref.read(syncServiceProvider),
       _currentUid = ref.read(authServiceProvider).currentUser?.uid;
 
   // --- GETTERS ----------------------
   String? get error => _error;
   String? get currentId => _currentUid;
   ChatFilter get filter => _filter;
+  bool get isLoadingMore => _isLoadingMore;
   bool isGroupType(ChatModel chat) => !chat.isDirect;
   Set<String> get selectedChatIds => _selectedChatIds;
   bool get isSelectionMode => _selectedChatIds.isNotEmpty;
@@ -143,6 +146,54 @@ class ChatListVM extends BaseNotifier {
   }
 
   // ================================
+  // PAGINATION
+  // ================================
+  Future<void> fetchOlderChats() async {
+    if (_currentUid == null || _isLoadingMore) return;
+
+    final cursor = ref.read(chatCursorProvider);
+    if (cursor == null) return;
+
+    _isLoadingMore = true;
+    notifyListeners();
+
+    try {
+      final fetched = await _chatService.fetchChatRooms(
+        _currentUid,
+        limit: 20,
+        startAfter: cursor,
+      );
+
+      if (fetched.isNotEmpty) {
+        final db = ref.read(messageDatabaseProvider);
+        final companions = <ChatsCompanion>[];
+        for (final c in fetched) {
+          final existing = await db.getChatById(c.id);
+          companions.add(
+            SyncService.chatToCompanion(
+              c,
+              lastSyncAt: existing?.lastSyncTimestamp,
+            ),
+          );
+        }
+        await db.upsertChatRooms(companions);
+
+        if (fetched.length < 20) {
+          ref.read(chatCursorProvider.notifier).state = null;
+        } else {
+          final sentAt = fetched.last.lastMessage?.sentAt ?? fetched.last.createdAt;
+          ref.read(chatCursorProvider.notifier).state = sentAt;
+        }
+      }
+    } catch (e) {
+      debugPrint('fetchOlderChats failed: $e');
+    } finally {
+      _isLoadingMore = false;
+      notifyListeners();
+    }
+  }
+
+  // ================================
   // HELPER
   // ================================
 
@@ -193,23 +244,28 @@ final chatListVM = ChangeNotifierProvider.autoDispose<ChatListVM>(
   (ref) => ChatListVM(ref),
 );
 
+final chatCursorProvider =
+    StateProvider.autoDispose<DateTime?>((ref) => null);
+
 final typingUsersProvider =
     StreamProvider.autoDispose<Map<String, List<String>>>((ref) {
       final chatService = ref.watch(chatServiceProvider);
       final currentUid = ref.watch(authServiceProvider).currentUser?.uid;
       if (currentUid == null) return Stream.value({});
 
-      return chatService.streamChatList(currentUid).map(
+      return chatService.streamChatList(currentUid, limit: 20).map(
         (chats) => {for (final chat in chats) chat.id: chat.typingUsers},
       );
     });
 
 /// Keeps the local Drift [Chats] table in sync with Firestore.
 ///
-/// 1. Performs an initial bulk fetch of all user chats (for offline/startup).
-/// 2. Subscribes to a real-time snapshot of the **top 30** most recently
-///    updated chats — any chat that pushes its [updatedAt] forward naturally
-///    enters the watched set.
+/// Subscribes to a real-time snapshot of the **top 20** most recently
+/// updated chats — any chat that pushes its [updatedAt] forward naturally
+/// enters the watched set.
+///
+/// On the first stream emission, initializes the pagination cursor from
+/// the 20th chat so [ChatListVM.fetchOlderChats] can load more.
 ///
 /// Lives as long as the [MainShell] is mounted (i.e. while the user is
 /// authenticated). Cancels the subscription on dispose.
@@ -219,12 +275,7 @@ final realtimeChatSyncProvider = Provider.autoDispose<void>((ref) {
 
   final db = ref.read(messageDatabaseProvider);
   final chatService = ref.read(chatServiceProvider);
-  final syncService = ref.read(syncServiceProvider);
 
-  // 1. Initial bulk sync — populate Drift with all chats
-  unawaited(syncService.syncInitialChatRooms(uid));
-
-  // 2. Real-time stream — only the 30 most recently updated chats
   final sub = chatService
       .streamChatList(uid, limit: 20)
       .listen((chats) async {
@@ -239,6 +290,12 @@ final realtimeChatSyncProvider = Provider.autoDispose<void>((ref) {
           );
         }
         unawaited(db.upsertChatRooms(companions));
+
+        // Initialize cursor from the 20th chat on first emission
+        if (chats.isNotEmpty && ref.read(chatCursorProvider) == null) {
+          final sentAt = chats.last.lastMessage?.sentAt ?? chats.last.createdAt;
+          ref.read(chatCursorProvider.notifier).state = sentAt;
+        }
       });
 
   ref.onDispose(() => sub.cancel());

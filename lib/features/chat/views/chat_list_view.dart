@@ -15,9 +15,36 @@ import 'package:kouvention/features/chat/widgets/chatList/chat_list_item.dart';
 import 'package:kouvention/features/search/viewmodel/search_viewmodel.dart';
 import 'package:kouvention/features/search/widgets/search_body.dart';
 
-class ChatListView extends ConsumerWidget {
+class ChatListView extends ConsumerStatefulWidget {
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ChatListView> createState() => _ChatListViewState();
+}
+
+class _ChatListViewState extends ConsumerState<ChatListView> {
+  final _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >
+        _scrollController.position.maxScrollExtent * 0.8) {
+      ref.read(chatListVM).fetchOlderChats();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final vm = ref.watch(chatListVM);
     final searchVm = ref.watch(searchVMProvider);
 
@@ -112,9 +139,24 @@ class ChatListView extends ConsumerWidget {
                 }
 
                 return ListView.builder(
+                  controller: _scrollController,
                   padding: EdgeInsets.zero,
-                  itemCount: chats.length,
-                  itemBuilder: (context, index) => ChatListItem(chat: chats[index], isLastItem: index == chats.length + 1),
+                  itemCount: chats.length + (vm.isLoadingMore ? 1 : 0),
+                  itemBuilder: (context, index) {
+                    if (index == chats.length) {
+                      return Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16.h),
+                        child: const Center(child: SizedBox(
+                          width: 20, height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )),
+                      );
+                    }
+                    return ChatListItem(
+                      chat: chats[index],
+                      isLastItem: index == chats.length - 1,
+                    );
+                  },
                 );
               },
             ),

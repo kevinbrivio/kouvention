@@ -1,7 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
-import 'dart:math';
+
+import 'package:kouvention/cores/utils/id_generator.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:drift/drift.dart';
@@ -282,9 +283,8 @@ static ChatsCompanion chatToCompanion(
     ReplyToModel? replyTo,
   }) async {
     // Generate Temp ID
-    final random = generateRandomString(5);
+    final tempId = IdGenerator.generateId();
     final now = DateTime.now();
-    final tempId = '${now.millisecondsSinceEpoch}_$random';
 
     // Wrap in MessageModel
     final localMessage = MessageModel(
@@ -326,8 +326,7 @@ static ChatsCompanion chatToCompanion(
     Map<String, dynamic>? otherUserFcmTokens,
     ReplyToModel? replyTo,
   }) async {
-    final randomStr = generateRandomString(5);
-    final tempId = '${DateTime.now().millisecondsSinceEpoch}_$randomStr';
+    final tempId = IdGenerator.generateId();
 
     final localMsg = MessagesCompanion(
       id: Value(tempId),
@@ -373,8 +372,7 @@ static ChatsCompanion chatToCompanion(
     Map<String, dynamic>? otherUserFcmTokens,
     ReplyToModel? replyTo,
   }) async {
-    final randomStr = generateRandomString(5);
-    final tempId = '${DateTime.now().millisecondsSinceEpoch}_$randomStr';
+    final tempId = IdGenerator.generateId();
 
     final allUrls = uploadResults.map((r) => r.url).toList();
     final allCaptions = mediaCaptions ?? uploadResults.map((r) => r.caption ?? '').toList();
@@ -637,18 +635,6 @@ static ChatsCompanion chatToCompanion(
     // 2. Delete all cache temporary medias
   }
 
-  // ==========================================
-  // HELPER
-  // ==========================================
-  String generateRandomString(int len) {
-    var r = Random();
-    const _chars =
-        'AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz1234567890';
-    return List.generate(
-      len,
-      (index) => _chars[r.nextInt(_chars.length)],
-    ).join();
-  }
 }
 
 final syncServiceProvider = Provider<SyncService>(

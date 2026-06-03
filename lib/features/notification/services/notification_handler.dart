@@ -10,11 +10,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:kouvention/cores/router/router.dart';
-import 'package:kouvention/features/chat/models/chat_model.dart';
-import 'package:kouvention/features/chat/models/message_model.dart';
-import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/services/chat_service.dart';
-import 'package:kouvention/features/chat/services/databases/message_database.dart' hide Message;
 import 'package:kouvention/features/notification/services/notification_config.dart';
 import 'package:kouvention/features/notification/services/notification_sound.dart';
 import 'package:kouvention/features/notification/viewmodel/active_chat_id_provider.dart';
@@ -127,42 +123,6 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
     enableVibration: backgroundVibration,
   );
 
-  // Sync missed messages into local DB for chat list to pick up
-  final chatId = data['chatId'] as String?;
-  if (chatId != null && chatId.isNotEmpty && currentUser != null) {
-    try {
-      final db = MessageDatabase();
-      final chatService = ChatService();
-      final chatRoom = await db.getChatById(chatId);
-      final lastSyncAt = chatRoom?.lastSyncTimestamp ?? 0;
-      final missedMessages = await chatService.fetchMessages(
-        chatId,
-        lastSyncTimestamp: DateTime.fromMillisecondsSinceEpoch(lastSyncAt),
-        limit: 20,
-      );
-      if (missedMessages.isNotEmpty) {
-        final companions = missedMessages
-            .map((m) => messageToCompanion(m, chatId, SyncStatus.sent))
-            .toList();
-        await db.upsertMessages(companions);
-        final newest = missedMessages.first;
-        final latestMsgTime = newest.sentAt.millisecondsSinceEpoch;
-        await db.updateChatLastSync(chatId, latestMsgTime);
-        final label = newMessageLabel(newest);
-        await db.updateChatLastMessage(
-          chatId,
-          LastMessage(
-            text: label,
-            sentBy: newest.senderId,
-            sentAt: newest.sentAt,
-            type: newest.type.name,
-          ),
-        );
-      }
-    } catch (e) {
-      debugPrint('Background FCM sync failed for $chatId: $e');
-    }
-  }
 }
 
 Future<void> _showChatNotification({
@@ -232,18 +192,6 @@ Future<void> _showChatNotification({
 }
 
 // ----- HELPERS ---------------------
-String newMessageLabel(MessageModel msg) {
-  if (msg.text.isNotEmpty) return msg.text;
-  switch (msg.type) {
-    case MessageType.image: return '📷 Photo';
-    case MessageType.video: return '🎥 ${msg.fileName ?? "Video"}';
-    case MessageType.audio: return '🎵 ${msg.fileName ?? "Audio"}';
-    case MessageType.file: return '📎 ${msg.fileName ?? "File"}';
-    case MessageType.sticker: return 'Sticker';
-    default: return '';
-  }
-}
-
 Future<ByteArrayAndroidIcon?> _downloadIcon(String? imageUrl) async {
   if (imageUrl == null || imageUrl.isEmpty) return null;
 

@@ -14,6 +14,7 @@ import 'package:kouvention/features/chat/services/chat_service.dart';
 import 'package:kouvention/features/chat/services/databases/message_database.dart';
 import 'package:kouvention/features/notification/viewmodel/active_chat_id_provider.dart';
 import 'package:kouvention/features/shared/services/sync_service.dart';
+import 'package:kouvention/cores/utils/id_generator.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
 import 'package:kouvention/features/user/services/user_service.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -200,7 +201,7 @@ class ChatRoomVM extends BaseNotifier {
     final chat = ref.read(chatMetadataStreamProvider(chatId)).value;
     if (chat == null) return;
 
-    final messageId = 'sticker_${DateTime.now().millisecondsSinceEpoch}';
+    final messageId = IdGenerator.generateId();
 
     try {
       _isSending = true;

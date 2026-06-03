@@ -307,10 +307,9 @@ class MessageDatabase extends _$MessageDatabase {
             ..limit(limit))
           .watch();
 
-  Stream<List<Chat>> watchChatRooms({int limit = 100}) =>
+  Stream<List<Chat>> watchChatRooms() =>
       (select(chats)
-            ..orderBy([(c) => OrderingTerm.desc(c.updatedAt)])
-            ..limit(limit))
+            ..orderBy([(c) => OrderingTerm.desc(c.updatedAt)]))
           .watch();
 
   // ============================

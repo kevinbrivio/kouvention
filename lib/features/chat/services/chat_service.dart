@@ -69,12 +69,17 @@ class ChatService {
   Future<List<ChatModel>> fetchChatRooms(
     String currentUid, {
     int limit = 20,
+    DateTime? startAfter,
   }) async {
-    final snapshot = await _chatsRef
-        .where('members', arrayContains: currentUid)
-        .limit(limit)
-        .get();
-        
+    var query = _chatsRef
+      .where('members', arrayContains: currentUid)
+      .orderBy('lastMessage.sentAt', descending: true);
+
+    if (startAfter != null) {
+      query = query.startAfter([Timestamp.fromDate(startAfter)]);
+    }
+
+    final snapshot = await query.limit(limit).get();
     return snapshot.docs
         .map((doc) => ChatModel.fromMap(doc.id, doc.data()))
         .toList();
