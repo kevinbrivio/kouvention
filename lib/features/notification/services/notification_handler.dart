@@ -20,24 +20,37 @@ import 'package:kouvention/firebase_options.dart';
 
 @pragma('vm:entry-point')
 void onBackgroundNotificationResponse(NotificationResponse response) async {
+  debugPrint('[BackgroundReply] Notification response: action=${response.actionId}, payload=${response.payload}');
+
   // User typed reply
   final String? replyText = response.input;
   final String? chatId = response.payload;
   final senderName = response.data['senderName'];
 
-  if (replyText == null || chatId == null) return;
+  if (replyText == null || chatId == null) {
+    debugPrint('[BackgroundReply] Missing replyText or chatId');
+    return;
+  }
+  debugPrint('[BackgroundReply] Direct reply text: "$replyText" for chat: $chatId');
+
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   // Refresh the firebase
   final currentUser = FirebaseAuth.instance.currentUser;
-  if (currentUser == null) return;
+  if (currentUser == null) {
+    debugPrint('[BackgroundReply] No user signed in');
+    return;
+  }
 
   await currentUser.getIdToken(true);
 
   // Inject Chat Service
   final chatService = ChatService();
   final chat = await chatService.getChat(chatId);
-  if (chat == null) return;
+  if (chat == null) {
+    debugPrint('[BackgroundReply] Chat not found: $chatId');
+    return;
+  }
 
   final docId = FirebaseFirestore.instance
     .collection('chats')
@@ -55,10 +68,12 @@ void onBackgroundNotificationResponse(NotificationResponse response) async {
     text: replyText,
     memberUids: chat.members,
   );
+  debugPrint('[BackgroundReply] Reply sent successfully, messageId=$docId');
 }
 
 @pragma('vm:entry-point')
 Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
+  debugPrint('[BackgroundHandler] Received FCM data: ${message.data}');
   await Firebase.initializeApp();
 
   final currentUser = FirebaseAuth.instance.currentUser;
@@ -69,23 +84,36 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
           .doc(currentUser.uid)
           .get();
       final enabled = doc.data()?['notificationsEnabled'] as bool? ?? true;
-      if (!enabled) return;
-    } catch (_) {}
+      if (!enabled) {
+        debugPrint('[BackgroundHandler] Notifications disabled for user');
+        return;
+      }
+    } catch (e) {
+      debugPrint('[BackgroundHandler] Firestore check failed: $e');
+    }
+  } else {
+    debugPrint('[BackgroundHandler] No user signed in — skipping notification');
+    return;
   }
 
   final plugin = FlutterLocalNotificationsPlugin();
-  final chatConfig = NotificationConfig.chatMessages;
 
-  await plugin
+  // Create all notification channels
+  final androidImpl = plugin
       .resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin
-      >()
-      ?.createNotificationChannel(chatConfig.toAndroidChannel());
+      >();
+  if (androidImpl != null) {
+    for (final channel in NotificationConfig.all) {
+      await androidImpl.createNotificationChannel(channel.toAndroidChannel());
+    }
+    debugPrint('[BackgroundHandler] All notification channels created');
+  }
 
   await plugin.initialize(
     settings: InitializationSettings(
       android: AndroidInitializationSettings(
-        chatConfig.iconDrawable ?? 'ic_notification',
+        NotificationConfig.chatMessages.iconDrawable ?? 'ic_notification',
       ),
     ),
   );
@@ -107,9 +135,14 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
     }
     backgroundVibration =
         prefs.getBool('notification_vibration_enabled') ?? true;
-  } catch (_) {}
+  } catch (e) {
+    debugPrint('[BackgroundHandler] SharedPreferences error: $e');
+  }
 
   final data = message.data;
+  final sentBy = data['sentBy'] ?? 'unknown';
+  debugPrint('[BackgroundHandler] Notification sent by: $sentBy');
+
   await _showChatNotification(
     plugin: plugin,
     chatId: data['chatId'] ?? '',
@@ -122,7 +155,7 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
     iosSoundFilename: backgroundIosSound,
     enableVibration: backgroundVibration,
   );
-
+  debugPrint('[BackgroundHandler] Local notification shown successfully');
 }
 
 Future<void> _showChatNotification({
@@ -221,6 +254,8 @@ class NotificationHandler {
   }
 
   Future<void> initialize() async {
+    debugPrint('[NotificationHandler] Initializing...');
+
     // 1. Create all notification channels
     final androidImpl = _localNotifications
         .resolvePlatformSpecificImplementation<
@@ -231,6 +266,7 @@ class NotificationHandler {
       for (final channel in NotificationConfig.all) {
         await androidImpl.createNotificationChannel(channel.toAndroidChannel());
       }
+      debugPrint('[NotificationHandler] All notification channels created');
     }
 
     // 2. setup the local notification plugin
@@ -249,40 +285,57 @@ class NotificationHandler {
       onDidReceiveBackgroundNotificationResponse:
           onBackgroundNotificationResponse,
     );
+    debugPrint('[NotificationHandler] Local notifications plugin initialized');
 
     // 3. Listen for foreground message
     _onMessageSub = FirebaseMessaging.onMessage.listen(
       _handleForegroundMessage,
     );
+    debugPrint('[NotificationHandler] Foreground message listener registered');
 
     // 4. Listen for background tap
     FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTapped);
+    debugPrint('[NotificationHandler] Background tap listener registered');
 
     // 5. Check if the app is opened via notification (from killed state)
     final initialMsg = await FirebaseMessaging.instance.getInitialMessage();
     if (initialMsg != null) {
+      debugPrint('[NotificationHandler] App opened from killed state via notification');
       _handleNotificationTapped(initialMsg);
+    } else {
+      debugPrint('[NotificationHandler] No initial notification message');
     }
   }
 
   Future<void> _handleForegroundMessage(RemoteMessage message) async {
+    debugPrint('[ForegroundHandler] Received FCM data: ${message.data}');
+    final sentBy = message.data['sentBy'] ?? 'unknown';
+    debugPrint('[ForegroundHandler] Notification sent by: $sentBy');
+
     final incomingChatId = message.data['chatId'];
     final activeChatId = _ref.read(activeChatIdProvider);
 
-    if (incomingChatId != null && incomingChatId == activeChatId) return;
+    if (incomingChatId != null && incomingChatId == activeChatId) {
+      debugPrint('[ForegroundHandler] Suppressed — chat is currently active');
+      return;
+    }
 
     final enabled = await _areNotificationsEnabled();
-    if (!enabled) return;
+    if (!enabled) {
+      debugPrint('[ForegroundHandler] Notifications disabled');
+      return;
+    }
 
     _showLocalNotification(message);
+    debugPrint('[ForegroundHandler] Local notification displayed');
 
     // Sync missed messages into the local DB so they appear in the chat list
     if (incomingChatId != null && incomingChatId.isNotEmpty) {
       try {
         await _ref.read(syncServiceProvider).fetchMessages(incomingChatId);
-        debugPrint('Foreground FCM: synced messages for $incomingChatId');
+        debugPrint('[ForegroundHandler] Synced messages for $incomingChatId');
       } catch (e) {
-        debugPrint('Foreground FCM sync failed for $incomingChatId: $e');
+        debugPrint('[ForegroundHandler] Sync failed for $incomingChatId: $e');
       }
     }
   }
@@ -348,6 +401,7 @@ class NotificationHandler {
   // Tap in a local notification (foreground)
   void _onNotificationTapped(NotificationResponse response) {
     final chatId = response.payload;
+    debugPrint('[NotificationHandler] Foreground notification tapped, chatId=$chatId');
     if (chatId == null || chatId.isEmpty) return;
     _navigateToChat(chatId);
   }
@@ -355,6 +409,8 @@ class NotificationHandler {
   // Tap a system notification (background/terminated)
   void _handleNotificationTapped(RemoteMessage message) {
     final chatId = message.data['chatId'];
+    final sentBy = message.data['sentBy'] ?? 'unknown';
+    debugPrint('[NotificationHandler] Background notification tapped, chatId=$chatId, sentBy=$sentBy');
     if (chatId != null) {
       _navigateToChat(chatId);
     }

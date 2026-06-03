@@ -8,6 +8,7 @@ import 'package:kouvention/cores/services/db_key_manager.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
+import 'package:sqlite3/sqlite3.dart' as sqlite3;
 
 part 'message_database.g.dart';
 
@@ -173,6 +174,7 @@ class MessageDatabase extends _$MessageDatabase {
 
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
+      await customStatement('PRAGMA cache_size = -64000;');
     },
   );
 
@@ -566,31 +568,17 @@ LazyDatabase _openConnection() => LazyDatabase(() async {
   final dbFolder = await getApplicationDocumentsDirectory();
   final file = File(p.join(dbFolder.path, 'kouvention.db'));
 
+  // Delete old unencrypted database from sqflite era.
+  // sqlite3mc cannot read unencrypted files, so we start fresh.
+  if (await file.exists()) {
+    await file.delete();
+  }
+
   final key = await DbKeyManager.getOrCreateKey();
-  final escapedKey = key.replaceAll("'", "''");
-
-  return NativeDatabase.createInBackground(
+  return NativeDatabase(
     file,
-    logStatements: true,
-    isolateSetup: () async {
-      final marker = File('${file.path}.encrypted');
-      // Check if marker exist, then repalce it with encrypted one
-      if (await file.exists() && !await marker.exists()) {
-        await file.delete();
-        await marker.create();
-      }
-    },
-    setup: (rawDb) {
-      assert(() {
-        if (rawDb.select('PRAGMA cipher;').isEmpty) {
-          throw StateError('SQLite3MultiCiphers not loaded!');
-        }
-        return true;
-      }());
-
-      // LOCK
-      rawDb.execute("PRAGMA key = '$escapedKey';");
-      rawDb.execute('PRAGMA cache_size = -64000;'); // 64MB page cache for FTS5
+    setup: (sqlite3.Database db) {
+      db.execute("PRAGMA key = '$key';");
     },
   );
 });

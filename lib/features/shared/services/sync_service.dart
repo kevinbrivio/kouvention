@@ -564,20 +564,30 @@ static ChatsCompanion chatToCompanion(
     required String senderName,
     required String messageText,
   }) async {
-    if (otherUserFcmTokens == null || otherUserFcmTokens.isEmpty) return;
+    if (otherUserFcmTokens == null || otherUserFcmTokens.isEmpty) {
+      debugPrint('[SyncService] _sendFcmToRecipients: no tokens to send to');
+      return;
+    }
+
+    debugPrint('[SyncService] Sending FCM to ${otherUserFcmTokens.length} token(s)');
 
     final senderPhotoUrl = FirebaseAuth.instance.currentUser?.photoURL;
 
     for (final entry in otherUserFcmTokens.entries) {
       final token = entry.key;
-      _notificationService.sendChatNotification(
-        targetToken: token,
-        messageText: messageText,
-        chatId: chatRoomId,
-        senderId: senderId,
-        senderName: senderName,
-        senderImageUrl: senderPhotoUrl,
-      );
+      try {
+        await _notificationService.sendChatNotification(
+          targetToken: token,
+          messageText: messageText,
+          chatId: chatRoomId,
+          senderId: senderId,
+          senderName: senderName,
+          senderImageUrl: senderPhotoUrl,
+        );
+        debugPrint('[SyncService] FCM sent to token: ${token.substring(0, 20)}...');
+      } catch (e) {
+        debugPrint('[SyncService] FCM send failed for token: $e');
+      }
     }
   }
 

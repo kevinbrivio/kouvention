@@ -18,6 +18,7 @@ class NotificationService {
   Future<http.Client> _getClient() async {
     if (_authenticationClient != null) return _authenticationClient!;
 
+    debugPrint('[NotificationService] Authenticating with Firebase Admin SDK...');
     final jsonString = await rootBundle.loadString('service-account.json');
     final accountCredentials = ServiceAccountCredentials.fromJson(
       jsonDecode(jsonString),
@@ -26,6 +27,7 @@ class NotificationService {
     _authenticationClient = await clientViaServiceAccount(accountCredentials, [
       'https://www.googleapis.com/auth/firebase.messaging',
     ]);
+    debugPrint('[NotificationService] Admin SDK authenticated successfully');
 
     return _authenticationClient!;
   }
@@ -36,27 +38,30 @@ class NotificationService {
     required String body,
     Map<String, String>? data,
   }) async {
+    debugPrint('[NotificationService] Sending FCM to ${targetToken.substring(0, 20)}...');
     try {
       final response = await _trySend(targetToken, title, body, data);
 
-      if (response.statusCode != 200) {
-        debugPrint('FCM send failed: ${response.statusCode} ${response.body}');
+      if (response.statusCode == 200) {
+        debugPrint('[NotificationService] FCM sent successfully');
+      } else {
+        debugPrint('[NotificationService] FCM send failed: ${response.statusCode} ${response.body}');
       }
     } on http.ClientException {
       // Stale connection — reset client and retry once
-      debugPrint('FCM connection reset, retrying 3s...');
+      debugPrint('[NotificationService] Connection reset, retrying in 3s...');
       _authenticationClient = null;
 
       await Future.delayed(const Duration(seconds: 3));
 
       try {
         final response = await _trySend(targetToken, title, body, data);
-        debugPrint('FCM retry response: ${response.statusCode}');
+        debugPrint('[NotificationService] Retry response: ${response.statusCode}');
       } catch (e) {
-        debugPrint('FCM retry also failed: $e');
+        debugPrint('[NotificationService] Retry also failed: $e');
       }
     } catch (e) {
-      debugPrint('FCM send error: $e');
+      debugPrint('[NotificationService] Send error: $e');
     }
   }
 
@@ -118,6 +123,7 @@ class NotificationService {
         'senderImageUrl': senderImageUrl ?? '',
         'title': senderName,
         'body': messageText,
+        'sentBy': 'client',
       },
     );
   }

@@ -7,14 +7,6 @@ version: 1.1.0+1
 environment:
   sdk: ^3.11.4
 
-# ========================================
-# Compile SQLite with encryption
-# ========================================
-hooks:
-  user_defines:
-    sqlite3:
-      source: sqlite3mc
-
 dependencies:
   flutter:
     sdk: flutter
@@ -56,6 +48,7 @@ dependencies:
   swipe_to: ^1.0.6
   scrollable_positioned_list: ^0.3.8
   drift: ^2.32.0
+  sqlite3: ^3.3.1
   path_provider: ^2.1.0
   path: ^1.9.0
   uuid: ^4.5.3
@@ -75,6 +68,11 @@ dev_dependencies:
 
   flutter_lints: ^6.0.0
   
+hooks:
+  user_defines:
+    sqlite3:
+      source: sqlite3mc
+
 flutter_launcher_icons:
   android: true
   ios: true
