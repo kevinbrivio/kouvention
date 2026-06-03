@@ -79,6 +79,18 @@ class NotificationSettingsVM extends BaseNotifier {
     return sound?.displayName ?? 'Default';
   }
 
+  String? get currentGroupSoundId => prefs.notificationSoundGroupId;
+
+  String get currentGroupSoundDisplayName {
+    final id = currentGroupSoundId;
+    if (id == null) return 'Default (same as direct)';
+    if (id == NotificationSound.systemId) {
+      return prefs.notificationSoundDisplayName ?? 'System Ringtone';
+    }
+    final sound = NotificationSound.fromId(id);
+    return sound?.displayName ?? 'Default';
+  }
+
   bool get vibrationEnabled => prefs.notificationVibrationEnabled;
 
   Future<void> setVibrationEnabled(bool value) async {
@@ -141,9 +153,14 @@ class NotificationSettingsVM extends BaseNotifier {
 
   Future<void> selectSound(String soundId) async {
     await prefs.setNotificationSoundId(soundId);
-    if (soundId != NotificationSound.systemId) {
-      await prefs.setNotificationSoundUri(null);
-      await prefs.setNotificationSoundDisplayName(null);
+    notifyListeners();
+  }
+
+  Future<void> selectGroupSound(String soundId) async {
+    if (soundId.isEmpty) {
+      await prefs.setNotificationSoundGroupId(null);
+    } else {
+      await prefs.setNotificationSoundGroupId(soundId);
     }
     notifyListeners();
   }
@@ -153,6 +170,17 @@ class NotificationSettingsVM extends BaseNotifier {
     final result = await _permissionVM.pickSystemRingtone(currentUri);
     if (result != null) {
       await prefs.setNotificationSoundId(NotificationSound.systemId);
+      await prefs.setNotificationSoundUri(result['uri']);
+      await prefs.setNotificationSoundDisplayName(result['displayName']);
+      notifyListeners();
+    }
+  }
+
+  Future<void> pickGroupSystemRingtone() async {
+    final currentUri = prefs.notificationSoundUri;
+    final result = await _permissionVM.pickSystemRingtone(currentUri);
+    if (result != null) {
+      await prefs.setNotificationSoundGroupId(NotificationSound.systemId);
       await prefs.setNotificationSoundUri(result['uri']);
       await prefs.setNotificationSoundDisplayName(result['displayName']);
       notifyListeners();

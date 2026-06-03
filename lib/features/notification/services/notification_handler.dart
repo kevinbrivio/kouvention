@@ -118,14 +118,27 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
     ),
   );
 
+  final data = message.data;
+  final sentBy = data['sentBy'] ?? 'unknown';
+  final isGroup = data['chatType'] == 'group';
+  debugPrint('[BackgroundHandler] Notification sent by: $sentBy, isGroup=$isGroup');
+
   // Resolve sound from SharedPreferences (background isolate — no Riverpod)
   AndroidNotificationSound? backgroundSound;
   String? backgroundIosSound;
   bool backgroundVibration = true;
   try {
     final prefs = await SharedPreferences.getInstance();
-    final soundId = prefs.getString('notification_sound_chat');
     final soundUri = prefs.getString('notification_sound_uri');
+
+    String? soundId;
+    if (isGroup) {
+      soundId = prefs.getString('notification_sound_group');
+    }
+    if (soundId == null) {
+      soundId = prefs.getString('notification_sound_chat');
+    }
+
     if (soundId == 'system' && soundUri != null) {
       backgroundSound = UriAndroidNotificationSound(soundUri);
     } else {
@@ -138,10 +151,6 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
   } catch (e) {
     debugPrint('[BackgroundHandler] SharedPreferences error: $e');
   }
-
-  final data = message.data;
-  final sentBy = data['sentBy'] ?? 'unknown';
-  debugPrint('[BackgroundHandler] Notification sent by: $sentBy');
 
   await _showChatNotification(
     plugin: plugin,
@@ -359,10 +368,21 @@ class NotificationHandler {
     }
   }
 
-  ({AndroidNotificationSound? sound, String? iosFilename}) _resolveSound() {
+  ({AndroidNotificationSound? sound, String? iosFilename}) _resolveSound({bool isGroup = false}) {
     final prefs = _ref.read(prefsServiceProvider);
-    final soundId = prefs.notificationSoundId;
-    final soundUri = prefs.notificationSoundUri;
+    String? soundId;
+    String? soundUri;
+
+    if (isGroup) {
+      soundId = prefs.notificationSoundGroupId;
+      soundUri = prefs.notificationSoundUri;
+    }
+
+    if (soundId == null) {
+      soundId = prefs.notificationSoundId;
+      soundUri = prefs.notificationSoundUri;
+    }
+
     if (soundId == NotificationSound.systemId && soundUri != null) {
       return (sound: UriAndroidNotificationSound(soundUri), iosFilename: null);
     }
@@ -378,10 +398,11 @@ class NotificationHandler {
     final body = data['body'] ?? '';
     final title = data['title'] ?? 'New message';
     final senderImageUrl = data['senderImageUrl'];
+    final isGroup = data['chatType'] == 'group';
 
     ({AndroidNotificationSound? sound, String? iosFilename}) resolved;
     try {
-      resolved = _resolveSound();
+      resolved = _resolveSound(isGroup: isGroup);
     } catch (_) {
       resolved = (sound: null, iosFilename: null);
     }

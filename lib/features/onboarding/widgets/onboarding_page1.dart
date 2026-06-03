@@ -22,24 +22,23 @@ class OnboardingPage1 extends StatelessWidget {
               child: Image.asset(images.onboarding1, fit: BoxFit.cover),
             ),
           ),
-        ),
-        Gap(12.h),
-        Padding(
-          padding: EdgeInsetsGeometry.symmetric(horizontal: 4.w),
-          child: Text('Fast & Secure', style: textTheme.subheadline1),
-        ),
-        Gap(12.h),
-
-        Padding(
-          padding: EdgeInsetsGeometry.symmetric(horizontal: 36.w),
-          child: Text(
-            'Experience lightning-fast messaging with end-to-end encryption. Your privacy is our priority',
-            style: textTheme.subDescription,
-            textAlign: TextAlign.center,
+          Gap(12.h),
+          Padding(
+            padding: EdgeInsetsGeometry.symmetric(horizontal: 4.w),
+            child: Text('Fast & Secure', style: textTheme.subheadline1),
           ),
-        ),
-        
-      ],
+          Gap(12.h),
+
+          Padding(
+            padding: EdgeInsetsGeometry.symmetric(horizontal: 36.w),
+            child: Text(
+              'Experience lightning-fast messaging with end-to-end encryption. Your privacy is our priority',
+              style: textTheme.subDescription,
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
+      ),
     ),
   );
 }

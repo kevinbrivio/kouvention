@@ -76,6 +76,18 @@ class PrefsService {
   Future<void> setNotificationSoundId(String value) async =>
       _prefs.setString(_notificationSoundKey, value);
 
+  static const String _notificationSoundGroupKey = 'notification_sound_group';
+
+  String? get notificationSoundGroupId => _prefs.getString(_notificationSoundGroupKey);
+
+  Future<void> setNotificationSoundGroupId(String? value) async {
+    if (value != null) {
+      await _prefs.setString(_notificationSoundGroupKey, value);
+    } else {
+      await _prefs.remove(_notificationSoundGroupKey);
+    }
+  }
+
   static const String _notificationSoundUriKey = 'notification_sound_uri';
   static const String _notificationSoundNameKey = 'notification_sound_name';
 

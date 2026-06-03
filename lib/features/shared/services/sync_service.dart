@@ -432,6 +432,7 @@ static ChatsCompanion chatToCompanion(
       senderId: _currentUid!,
       senderName: senderName,
       messageText: caption,
+      isGroup: memberUids.length > 2,
     );
   }
 
@@ -499,6 +500,7 @@ static ChatsCompanion chatToCompanion(
         senderId: _currentUid!,
         senderName: senderName,
         messageText: caption,
+        isGroup: memberUids.length > 2,
       );
     } catch (e) {
       debugPrint('🚨 Failed media upload for $tempId: $e');
@@ -542,6 +544,7 @@ static ChatsCompanion chatToCompanion(
         senderId: localMessage.senderId,
         senderName: localMessage.senderName,
         messageText: localMessage.text,
+        isGroup: memberUids.length > 2,
       );
     } catch (e) {
       await _db.updateMessageStatus(localMessage.id, SyncStatus.failed);
@@ -555,6 +558,7 @@ static ChatsCompanion chatToCompanion(
     required String senderId,
     required String senderName,
     required String messageText,
+    bool isGroup = false,
   }) async {
     if (otherUserFcmTokens == null || otherUserFcmTokens.isEmpty) {
       debugPrint('[SyncService] _sendFcmToRecipients: no tokens to send to');
@@ -575,6 +579,7 @@ static ChatsCompanion chatToCompanion(
           senderId: senderId,
           senderName: senderName,
           senderImageUrl: senderPhotoUrl,
+          isGroup: isGroup,
         );
         debugPrint('[SyncService] FCM sent to token: ${token.substring(0, 20)}...');
       } catch (e) {

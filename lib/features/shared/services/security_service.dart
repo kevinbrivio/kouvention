@@ -16,13 +16,14 @@ class SecurityService {
     '/data/data/com.noshufou.android.su',
   ];
   static const _iosJailbreakPaths = [
-    '/Applications/Cydia.app',
-    '/Applications/Sileo.app',
-    '/Library/MobileSubstrate/MobileSubstrate.dylib',
-    '/bin/bash',
-    '/usr/sbin/sshd',
-    '/etc/apt',
-    '/private/var/lib/apt/',
+    // '/Applications/Cydia.app',
+    // '/Applications/Sileo.app',
+    // '/Library/MobileSubstrate/MobileSubstrate.dylib',
+    // '/bin/bash',
+    // '/usr/sbin/sshd',
+    // '/etc/apt',
+    // '/private/var/lib/apt/',
+    ''
   ];
 
   static Future<bool> isDeviceRooted() async {

@@ -134,6 +134,22 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
             opacity: widget.viewmodel.osPermissionGranted ? 1.0 : 0.5,
             child: AbsorbPointer(
               absorbing: !widget.viewmodel.osPermissionGranted,
+              child: SettingsTile(
+                icon: Icons.groups_outlined,
+                iconColor: AppColors.primary,
+                title: 'Group Sound',
+                subtitle: widget.viewmodel.currentGroupSoundDisplayName,
+                onTap: () => _showGroupSoundPicker(context),
+              ),
+            ),
+          ),
+
+          Gap(4.h),
+
+          Opacity(
+            opacity: widget.viewmodel.osPermissionGranted ? 1.0 : 0.5,
+            child: AbsorbPointer(
+              absorbing: !widget.viewmodel.osPermissionGranted,
               child: SettingsToggleTile(
                 icon: Icons.vibration,
                 title: 'Vibration',
@@ -141,9 +157,7 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
                     ? 'Vibrate on new message'
                     : 'Follows your device system settings',
                 value: widget.viewmodel.vibrationEnabled,
-                onChanged: Platform.isAndroid
-                    ? (v) => widget.viewmodel.setVibrationEnabled(v)
-                    : (_) {},
+                onChanged: (v) => widget.viewmodel.setVibrationEnabled(v),
               ),
             ),
           ),
@@ -245,6 +259,129 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
                               widget.viewmodel.selectSound(selectedId);
                             }
                             Navigator.pop(sheetContext);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(vertical: 14.h),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                            ),
+                          ),
+                          child: Text(
+                            'Done',
+                            style: TextStyle(
+                              fontSize: 16.sp,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showGroupSoundPicker(BuildContext context) {
+    final initialId = widget.viewmodel.currentGroupSoundId;
+    var selectedId = initialId;
+
+    showModalBottomSheet(
+      context: context,
+      useRootNavigator: true,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
+      ),
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) => SafeArea(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 16.h),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20.w),
+                      child: Text(
+                        'Group Notification Sound',
+                        style: TextStyle(
+                          fontSize: 16.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    Gap(8.h),
+                    ListTile(
+                      leading: Icon(
+                        selectedId == null
+                            ? Icons.radio_button_checked
+                            : Icons.radio_button_unchecked,
+                        color: selectedId == null
+                            ? AppColors.primary
+                            : Colors.grey.shade400,
+                      ),
+                      title: Text(
+                        'Default (same as direct)',
+                        style: TextStyle(fontSize: 14.sp),
+                      ),
+                      onTap: () => setDialogState(() => selectedId = null),
+                    ),
+                    ...NotificationSound.bundled.map(
+                      (sound) => _SoundTile(
+                        label: sound.displayName,
+                        isSelected: selectedId == sound.id,
+                        onTap: () {
+                          _playSound(sound);
+                          setDialogState(() => selectedId = sound.id);
+                        },
+                      ),
+                    ),
+                    if (Platform.isAndroid) ...[
+                      Divider(height: 24.h, indent: 20.w, endIndent: 20.w),
+                      ListTile(
+                        leading: Icon(Icons.audiotrack, color: AppColors.primary),
+                        title: Text(
+                          'Pick from system ringtones',
+                          style: TextStyle(fontSize: 14.sp),
+                        ),
+                        trailing: Icon(
+                          Icons.chevron_right,
+                          color: Colors.grey.shade400,
+                        ),
+                        onTap: () async {
+                          Navigator.pop(sheetContext);
+                          await widget.viewmodel.pickGroupSystemRingtone();
+                          final uri = widget.viewmodel.prefs.notificationSoundUri;
+                          final name = widget.viewmodel.prefs.notificationSoundDisplayName;
+                          if (uri != null) {
+                            _playSound(NotificationSound.systemRingtone(uri: uri, name: name ?? ''));
+                          }
+                        },
+                      ),
+                    ],
+                    Gap(16.h),
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20.w),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            if (selectedId != initialId) {
+                              if (selectedId == null) {
+                                await widget.viewmodel.selectGroupSound('');
+                              } else {
+                                await widget.viewmodel.selectGroupSound(selectedId!);
+                              }
+                            }
+                            if (sheetContext.mounted) Navigator.pop(sheetContext);
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,

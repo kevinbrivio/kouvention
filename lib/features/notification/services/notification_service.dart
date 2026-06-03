@@ -124,6 +124,7 @@ class NotificationService {
     required String senderId,
     required String senderName,
     required String? senderImageUrl,
+    bool isGroup = false,
   }) async {
     await sendNotification(
       targetToken: targetToken,
@@ -138,6 +139,7 @@ class NotificationService {
         'title': senderName,
         'body': messageText,
         'sentBy': 'client',
+        'chatType': isGroup ? 'group' : 'direct',
       },
     );
   }
