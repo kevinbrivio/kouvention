@@ -319,7 +319,7 @@ class _FullScreenViewerState extends State<FullScreenViewer> {
         GestureDetector(
           onTap: _toggleControls,
           child: PageView.builder(
-            scrollDirection: Axis.vertical,
+            scrollDirection: Axis.horizontal,
             controller: _pageController,
             itemCount: widget.urls.length,
             onPageChanged: (index) => setState(() => _currentIndex = index),
