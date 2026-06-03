@@ -5,10 +5,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:googleapis_auth/auth_io.dart';
 import 'package:http/http.dart' as http;
+import 'package:kouvention/features/notification/services/notification_config.dart';
 
 final notificationServiceProvider = Provider<NotificationService>(
   (ref) => NotificationService(),
 );
+
+enum FCMResult { success, unregistered, failed }
 
 class NotificationService {
   static const _projectId = 'kouvention';
@@ -32,7 +35,7 @@ class NotificationService {
     return _authenticationClient!;
   }
 
-  Future<void> sendNotification({
+  Future<FCMResult> sendNotification({
     required String targetToken,
     required String title,
     required String body,
@@ -44,9 +47,19 @@ class NotificationService {
 
       if (response.statusCode == 200) {
         debugPrint('[NotificationService] FCM sent successfully');
-      } else {
-        debugPrint('[NotificationService] FCM send failed: ${response.statusCode} ${response.body}');
+        return FCMResult.success;
+      } 
+      if (response.statusCode == 404) {
+          final json = jsonDecode(response.body);
+          final errorCode = json['error']?['details']?[0]?['errorCode'];
+          if (errorCode == 'UNREGISTERED') {
+            debugPrint('[NotificationService] Token is dead: $targetToken');
+            return FCMResult.unregistered;
+          }
       }
+      
+      debugPrint('[NotificationService] FCM send failed: ${response.statusCode} ${response.body}');
+      return FCMResult.failed;
     } on http.ClientException {
       // Stale connection — reset client and retry once
       debugPrint('[NotificationService] Connection reset, retrying in 3s...');
@@ -54,14 +67,11 @@ class NotificationService {
 
       await Future.delayed(const Duration(seconds: 3));
 
-      try {
-        final response = await _trySend(targetToken, title, body, data);
-        debugPrint('[NotificationService] Retry response: ${response.statusCode}');
-      } catch (e) {
-        debugPrint('[NotificationService] Retry also failed: $e');
-      }
-    } catch (e) {
-      debugPrint('[NotificationService] Send error: $e');
+      final response = await _trySend(targetToken, title, body, data);
+      debugPrint('[NotificationService] Retry response: ${response.statusCode}');
+      return response.statusCode == 200 
+            ? FCMResult.success 
+            : FCMResult.failed;
     }
   }
 
@@ -76,19 +86,32 @@ class NotificationService {
       'https://fcm.googleapis.com/v1/projects/$_projectId/messages:send',
     );
 
+    final config = NotificationConfig.chatMessages;
+
     final message = {
       'message': {
         'token': targetToken,
+        'notification': {
+          'title': title,
+          'body': body,
+        },
         'android': {
           'priority': 'high',
+          'notification': {
+            'channel_id': config.id,
+            'icon': config.iconDrawable,
+            'sound': config.soundFilename
+          }
         },
         'apns': {
           'headers': {
-            'apns-priority': '5',
+            'apns-priority': '10',
+            'apns-push-type': 'alert',
           },
           'payload': {
             'aps': {
               'content-available': 1,
+              'sound': '${config.soundFilename}.caf'
             },
           },
         },

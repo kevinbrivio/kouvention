@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:isolate';
 
 import 'package:kouvention/cores/utils/id_generator.dart';
 
@@ -104,10 +103,7 @@ class SyncService {
         return chatToCompanion(chat, lastSyncAt: lastSyncAtMap[chat.id]);
       }).toList();
     } else {
-      // Only use Isolate when plenty chats
-      companions = await Isolate.run(
-        () => chatRooms.map(chatToCompanion).toList(),
-      );
+      companions = chatRooms.map(chatToCompanion).toList();
     }
 
     await _db.upsertChatRooms(companions);
@@ -200,11 +196,9 @@ static ChatsCompanion chatToCompanion(
       return;
     }
 
-    final companions = await Isolate.run(() {
-      return missedMessages
-          .map((m) => messageToCompanion(m, chatId, SyncStatus.sent))
-          .toList();
-    });
+    final companions = missedMessages
+        .map((m) => messageToCompanion(m, chatId, SyncStatus.sent))
+        .toList();
 
     await _db.upsertMessages(companions);
 
@@ -231,11 +225,9 @@ static ChatsCompanion chatToCompanion(
             .asyncMap((newMessages) async {
               if (newMessages.isEmpty) return;
 
-              final companions = await Isolate.run(() {
-                return newMessages
-                    .map((m) => messageToCompanion(m, chatId, SyncStatus.sent))
-                    .toList();
-              });
+              final companions = newMessages
+                  .map((m) => messageToCompanion(m, chatId, SyncStatus.sent))
+                  .toList();
 
               await _db.upsertMessages(companions);
 

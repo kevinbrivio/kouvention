@@ -85,6 +85,7 @@ flutter:
     - assets/icons/
     - assets/images/
     - assets/sounds/
+    - service-account.json
 
   fonts:
     - family: Asap
