@@ -84,6 +84,23 @@ class ChatRoomVM extends BaseNotifier {
         // Fetch from local
         await syncProvider.fetchMessages(chatId);
 
+        // Sync this chat's metadata into Drift so the chat list shows it
+        try {
+          final room = await _chatService.getChat(chatId);
+          if (room != null) {
+            final db = ref.read(messageDatabaseProvider);
+            final existing = await db.getChatById(chatId);
+            await db.upsertChatRooms([
+              SyncService.chatToCompanion(
+                room,
+                lastSyncAt: existing?.lastSyncTimestamp,
+              ),
+            ]);
+          }
+        } catch (e) {
+          debugPrint('Chat metadata sync skipped ($e)');
+        }
+
         // Also listen to Firestore updates
         _firestoreSubscription = await syncProvider
             .streamFirestoreMessages(chatId)

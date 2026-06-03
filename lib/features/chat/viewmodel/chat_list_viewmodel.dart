@@ -55,9 +55,6 @@ class ChatListVM extends BaseNotifier {
     if (_currentUid == null) {
       _error = 'Not authenticated';
     }
-
-    // Sync all chat rooms from Firestore -> Local
-    _syncService.syncInitialChatRooms(currentId!);
   }
 
   List<ChatModel> get _currentChatFromStream =>
@@ -206,6 +203,46 @@ final typingUsersProvider =
         (chats) => {for (final chat in chats) chat.id: chat.typingUsers},
       );
     });
+
+/// Keeps the local Drift [Chats] table in sync with Firestore.
+///
+/// 1. Performs an initial bulk fetch of all user chats (for offline/startup).
+/// 2. Subscribes to a real-time snapshot of the **top 30** most recently
+///    updated chats — any chat that pushes its [updatedAt] forward naturally
+///    enters the watched set.
+///
+/// Lives as long as the [MainShell] is mounted (i.e. while the user is
+/// authenticated). Cancels the subscription on dispose.
+final realtimeChatSyncProvider = Provider.autoDispose<void>((ref) {
+  final uid = ref.watch(authServiceProvider).currentUser?.uid;
+  if (uid == null) return;
+
+  final db = ref.read(messageDatabaseProvider);
+  final chatService = ref.read(chatServiceProvider);
+  final syncService = ref.read(syncServiceProvider);
+
+  // 1. Initial bulk sync — populate Drift with all chats
+  unawaited(syncService.syncInitialChatRooms(uid));
+
+  // 2. Real-time stream — only the 30 most recently updated chats
+  final sub = chatService
+      .streamChatList(uid, limit: 20)
+      .listen((chats) async {
+        final companions = <ChatsCompanion>[];
+        for (final c in chats) {
+          final existing = await db.getChatById(c.id);
+          companions.add(
+            SyncService.chatToCompanion(
+              c,
+              lastSyncAt: existing?.lastSyncTimestamp,
+            ),
+          );
+        }
+        unawaited(db.upsertChatRooms(companions));
+      });
+
+  ref.onDispose(() => sub.cancel());
+});
 
 final localChatListFromStreamProvider =
     StreamProvider.autoDispose<List<ChatModel>>((ref) {

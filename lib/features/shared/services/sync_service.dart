@@ -215,28 +215,59 @@ static ChatsCompanion chatToCompanion(
   }
 
   Stream<void> streamFirestoreMessages(String chatId) async* {
-    final chatRoom = await _db.getChatById(chatId);
-    final lastSyncAt = chatRoom?.lastSyncTimestamp ?? 0;
+    var retryDelay = 1;
 
-    // Yield the new message stream from Firestore value into Drift stream
-    yield* _chatService
-        .streamMessagesSince(
-          chatId,
-          DateTime.fromMillisecondsSinceEpoch(lastSyncAt),
-        )
-        .asyncMap((newMessages) async {
-          if (newMessages.isEmpty) return;
+    while (true) {
+      try {
+        final chatRoom = await _db.getChatById(chatId);
+        final lastSyncAt = chatRoom?.lastSyncTimestamp ?? 0;
 
-          final companions = await Isolate.run(() {
-            return newMessages
-                .map((m) => messageToCompanion(m, chatId, SyncStatus.sent))
-                .toList();
-          });
+        yield* _chatService
+            .streamMessagesSince(
+              chatId,
+              DateTime.fromMillisecondsSinceEpoch(lastSyncAt),
+            )
+            .asyncMap((newMessages) async {
+              if (newMessages.isEmpty) return;
 
-          await _db.upsertMessages(companions);
-          final latestMsgTime = newMessages.first.sentAt.millisecondsSinceEpoch;
-          await _db.updateChatLastSync(chatId, latestMsgTime);
-        });
+              final companions = await Isolate.run(() {
+                return newMessages
+                    .map((m) => messageToCompanion(m, chatId, SyncStatus.sent))
+                    .toList();
+              });
+
+              await _db.upsertMessages(companions);
+
+              final newest = newMessages.first;
+              final latestMsgTime = newest.sentAt.millisecondsSinceEpoch;
+              await _db.updateChatLastSync(chatId, latestMsgTime);
+
+              // Also update chat metadata so the chat list reflects the new message
+              final label = _lastMessageLabel(
+                newest.text, newest.type, newest.fileName ?? '',
+              );
+              await _db.updateChatLastMessage(
+                chatId,
+                LastMessage(
+                  text: label,
+                  sentBy: newest.senderId,
+                  sentAt: newest.sentAt,
+                  type: newest.type.name,
+                ),
+              );
+            });
+
+        // Stream completed normally — exit retry loop
+        break;
+      } catch (e) {
+        debugPrint(
+          '⚠️ streamFirestoreMessages error for $chatId: $e, '
+          'retrying in ${retryDelay}s',
+        );
+        await Future.delayed(Duration(seconds: retryDelay));
+        retryDelay = (retryDelay * 2).clamp(1, 30);
+      }
+    }
   }
 
   // ==========================================

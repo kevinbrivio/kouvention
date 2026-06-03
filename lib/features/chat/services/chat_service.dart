@@ -26,12 +26,12 @@ class ChatService {
   /// - a new chat is created
   /// - a chat is updated (e.g. a new message is added)
   /// unreadCount changes, typingUsers changes
-  Stream<List<ChatModel>> streamChatList(String currentUid) {
-    return _chatsRef
+  Stream<List<ChatModel>> streamChatList(String currentUid, {int? limit}) {
+    var query = _chatsRef
         .where('members', arrayContains: currentUid)
-        .orderBy('lastMessage.sentAt', descending: true)
-        .snapshots()
-        .map(
+        .orderBy('lastMessage.sentAt', descending: true);
+    if (limit != null) query = query.limit(limit);
+    return query.snapshots().map(
           (snapshot) => snapshot.docs
               .map((doc) => ChatModel.fromMap(doc.id, doc.data()))
               .where((chat) => !chat.isDeletedBy(currentUid))

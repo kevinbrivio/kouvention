@@ -24,11 +24,8 @@ final networkAutoSyncProvider = Provider<void>((ref) {
       final currentUid = ref.read(authServiceProvider).currentUser?.uid;
 
       if (currentUid != null) {
-        debugPrint('🌍 Building network provider');
+        debugPrint('🌍 Back online — retrying stuck messages');
         final syncService = ref.read(syncServiceProvider);
-
-        syncService.syncInitialChatRooms(currentUid);
-        debugPrint('🧹 Pushing stuck pending messages to Firestore...');
         syncService.retryStuckMessages();
       }
     } else if (!isOnline && wasOnline) {
