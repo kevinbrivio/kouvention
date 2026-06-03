@@ -42,7 +42,7 @@ class NotificationConfig {
   NotificationConfig._();
 
   static const chatMessages = NotificationChannelConfig(
-    id: 'chat_messages',
+    id: 'chat_messages_v2',
     name: 'Chat Messages',
     description: 'New message notifications',
     importance: Importance.high,
