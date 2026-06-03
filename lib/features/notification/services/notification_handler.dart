@@ -14,7 +14,6 @@ import 'package:kouvention/features/chat/services/chat_service.dart';
 import 'package:kouvention/features/notification/services/notification_config.dart';
 import 'package:kouvention/features/notification/services/notification_sound.dart';
 import 'package:kouvention/features/notification/viewmodel/active_chat_id_provider.dart';
-import 'package:kouvention/features/shared/services/fcm_service.dart';
 import 'package:kouvention/features/shared/services/sync_service.dart';
 import 'package:kouvention/features/shared/services/prefs_service.dart';
 import 'package:kouvention/firebase_options.dart';
@@ -23,7 +22,6 @@ import 'package:kouvention/firebase_options.dart';
 void onBackgroundNotificationResponse(NotificationResponse response) async {
   debugPrint('[BackgroundReply] Notification response: action=${response.actionId}, payload=${response.payload}');
 
-  // User typed reply
   final String? replyText = response.input;
   final String? chatId = response.payload;
   final senderName = response.data['senderName'];
@@ -36,7 +34,6 @@ void onBackgroundNotificationResponse(NotificationResponse response) async {
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  // Refresh the firebase
   final currentUser = FirebaseAuth.instance.currentUser;
   if (currentUser == null) {
     debugPrint('[BackgroundReply] No user signed in');
@@ -45,7 +42,6 @@ void onBackgroundNotificationResponse(NotificationResponse response) async {
 
   await currentUser.getIdToken(true);
 
-  // Inject Chat Service
   final chatService = ChatService();
   final chat = await chatService.getChat(chatId);
   if (chat == null) {
@@ -60,7 +56,6 @@ void onBackgroundNotificationResponse(NotificationResponse response) async {
     .doc()
     .id;
 
-  // Write to firestore
   await chatService.sendMessage(
     chatId: chatId,
     messageId: docId,
@@ -113,9 +108,7 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
 
   await plugin.initialize(
     settings: InitializationSettings(
-      android: AndroidInitializationSettings(
-        NotificationConfig.chatMessages.iconDrawable ?? 'ic_notification',
-      ),
+      android: AndroidInitializationSettings('ic_chat_message'),
     ),
   );
 
@@ -124,36 +117,30 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
   final isGroup = data['chatType'] == 'group';
   debugPrint('[BackgroundHandler] Notification sent by: $sentBy, isGroup=$isGroup');
 
-  // Resolve sound from SharedPreferences (background isolate — no Riverpod)
-  AndroidNotificationSound? backgroundSound;
-  String? backgroundIosSound;
+  String channelId;
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    String? groupChannel;
+    if (isGroup) {
+      groupChannel = prefs.getString('pref_group_channel');
+    }
+    if (groupChannel != null) {
+      channelId = groupChannel;
+    } else {
+      channelId = prefs.getString('pref_dm_channel') ?? 'dm_default';
+    }
+  } catch (e) {
+    debugPrint('[BackgroundHandler] SharedPreferences error: $e');
+    channelId = isGroup ? 'group_default' : 'dm_default';
+  }
+
+  final iosSoundFilename = NotificationSound.iosSoundForChannel(channelId);
   bool backgroundVibration = true;
   try {
     final prefs = await SharedPreferences.getInstance();
-    String? soundUri;
-    String? soundId;
-
-    if (isGroup) {
-      soundId = prefs.getString('notification_sound_group');
-      soundUri = prefs.getString('notification_sound_group_uri');
-    }
-    if (soundId == null) {
-      soundId = prefs.getString('notification_sound_chat');
-      soundUri = prefs.getString('notification_sound_uri');
-    }
-
-    if (soundId == 'system' && soundUri != null) {
-      backgroundSound = UriAndroidNotificationSound(soundUri);
-    } else {
-      final sound = NotificationSound.fromId(soundId ?? 'default');
-      backgroundSound = sound?.toAndroidNotificationSound();
-      backgroundIosSound = sound?.iosFilename;
-    }
     backgroundVibration =
         prefs.getBool('notification_vibration_enabled') ?? true;
-  } catch (e) {
-    debugPrint('[BackgroundHandler] SharedPreferences error: $e');
-  }
+  } catch (_) {}
 
   await _showChatNotification(
     plugin: plugin,
@@ -163,8 +150,9 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
     senderImageUrl: data['senderImageUrl'] ?? '',
     title: data['title'] ?? '',
     body: data['body'] ?? '',
-    sound: backgroundSound,
-    iosSoundFilename: backgroundIosSound,
+    channelId: channelId,
+    isGroup: isGroup,
+    iosSoundFilename: iosSoundFilename,
     enableVibration: backgroundVibration,
   );
   debugPrint('[BackgroundHandler] Local notification shown successfully');
@@ -177,17 +165,19 @@ Future<void> _showChatNotification({
   required String senderName,
   required String title,
   required String body,
+  required String channelId,
+  required bool isGroup,
   String? senderImageUrl,
-  AndroidNotificationSound? sound,
   String? iosSoundFilename,
   bool enableVibration = true,
 }) async {
-  final config = NotificationConfig.chatMessages;
+  final channelName = isGroup ? 'Group Messages' : 'Direct Messages';
+  final channelDescription = isGroup
+      ? 'New group message notifications'
+      : 'New direct message notifications';
 
-  // Get the user creds
   final currentUserUid = FirebaseAuth.instance.currentUser?.uid ?? 'Unknown_id';
 
-  // Download sender's profile image
   final senderIcon = await _downloadIcon(senderImageUrl);
 
   final MessagingStyleInformation messageStyle = MessagingStyleInformation(
@@ -215,13 +205,12 @@ Future<void> _showChatNotification({
     payload: chatId,
     notificationDetails: NotificationDetails(
       android: AndroidNotificationDetails(
-        config.id,
-        config.name,
-        channelDescription: config.description,
-        icon: config.iconDrawable,
-        sound: sound,
-        importance: config.importance,
-        priority: config.priority,
+        channelId,
+        channelName,
+        channelDescription: channelDescription,
+        icon: 'ic_chat_message',
+        importance: Importance.high,
+        priority: Priority.high,
         styleInformation: messageStyle,
         actions: [replyAction],
         enableVibration: enableVibration,
@@ -284,9 +273,7 @@ class NotificationHandler {
     // 2. setup the local notification plugin
     await _localNotifications.initialize(
       settings: InitializationSettings(
-        android: AndroidInitializationSettings(
-          NotificationConfig.chatMessages.iconDrawable ?? 'ic_notification',
-        ),
+        android: AndroidInitializationSettings('ic_chat_message'),
         iOS: DarwinInitializationSettings(
           requestAlertPermission: false,
           requestBadgePermission: false,
@@ -345,7 +332,6 @@ class NotificationHandler {
       debugPrint('[ForegroundHandler] Failed to show notification: $e');
     }
 
-    // Sync missed messages into the local DB so they appear in the chat list
     if (incomingChatId != null && incomingChatId.isNotEmpty) {
       try {
         await _ref.read(syncServiceProvider).fetchMessages(incomingChatId);
@@ -371,26 +357,13 @@ class NotificationHandler {
     }
   }
 
-  ({AndroidNotificationSound? sound, String? iosFilename}) _resolveSound({bool isGroup = false}) {
+  String _resolveChannel({bool isGroup = false}) {
     final prefs = _ref.read(prefsServiceProvider);
-    String? soundId;
-    String? soundUri;
-
     if (isGroup) {
-      soundId = prefs.notificationSoundGroupId;
-      soundUri = prefs.notificationSoundGroupUri;
+      final groupId = prefs.groupChannelId;
+      if (groupId != null) return groupId;
     }
-
-    if (soundId == null) {
-      soundId = prefs.notificationSoundId;
-      soundUri = prefs.notificationSoundUri;
-    }
-
-    if (soundId == NotificationSound.systemId && soundUri != null) {
-      return (sound: UriAndroidNotificationSound(soundUri), iosFilename: null);
-    }
-    final sound = NotificationSound.fromId(soundId ?? NotificationSound.defaultId);
-    return (sound: sound?.toAndroidNotificationSound(), iosFilename: sound?.iosFilename);
+    return prefs.dmChannelId;
   }
 
   Future<void> _showLocalNotification(RemoteMessage message) async {
@@ -403,13 +376,14 @@ class NotificationHandler {
     final senderImageUrl = data['senderImageUrl'];
     final isGroup = data['chatType'] == 'group';
 
-    ({AndroidNotificationSound? sound, String? iosFilename}) resolved;
+    String channelId;
     try {
-      resolved = _resolveSound(isGroup: isGroup);
+      channelId = _resolveChannel(isGroup: isGroup);
     } catch (_) {
-      resolved = (sound: null, iosFilename: null);
+      channelId = isGroup ? 'group_default' : 'dm_default';
     }
 
+    final iosSoundFilename = NotificationSound.iosSoundForChannel(channelId);
     final vibration = _ref.read(prefsServiceProvider).notificationVibrationEnabled;
 
     await _showChatNotification(
@@ -420,8 +394,9 @@ class NotificationHandler {
       senderImageUrl: senderImageUrl,
       title: title,
       body: body,
-      sound: resolved.sound,
-      iosSoundFilename: resolved.iosFilename,
+      channelId: channelId,
+      isGroup: isGroup,
+      iosSoundFilename: iosSoundFilename,
       enableVibration: vibration,
     );
   }
@@ -448,13 +423,3 @@ class NotificationHandler {
     router.push('/chats/$chatId');
   }
 }
-
-final notificationHandlerProvider = Provider<NotificationHandler>((ref) {
-  final fcmService = ref.read(fcmServiceProvider);
-  fcmService.initialize();
-
-  final handler = NotificationHandler(ref);
-  handler.initialize();
-  ref.onDispose(handler.dispose);
-  return handler;
-});

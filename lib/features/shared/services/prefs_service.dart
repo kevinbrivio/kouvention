@@ -19,7 +19,6 @@ class PrefsService {
   static const String _lastSyncedKey = 'search_last_sync_time';
   static const String _deviceIdKey = 'device_id';
   static const String _notificationDeniedKey = 'notification_permission_denied';
-  static const String _notificationSoundKey = 'notification_sound_chat';
   static const String _notificationVibrationKey = 'notification_vibration_enabled';
 
   // --- ONBOARDING
@@ -70,70 +69,22 @@ class PrefsService {
   Future<void> setNotificationPermissionDenied(bool value) async =>
       _prefs.setBool(_notificationDeniedKey, value);
 
-  // --- NOTIFICATION SOUND
-  String? get notificationSoundId => _prefs.getString(_notificationSoundKey);
+  // --- NOTIFICATION CHANNEL — DM
+  static const String _dmChannelKey = 'pref_dm_channel';
+  static const String _groupChannelKey = 'pref_group_channel';
 
-  Future<void> setNotificationSoundId(String value) async =>
-      _prefs.setString(_notificationSoundKey, value);
+  String get dmChannelId => _prefs.getString(_dmChannelKey) ?? 'dm_default';
 
-  static const String _notificationSoundGroupKey = 'notification_sound_group';
+  Future<void> setDmChannelId(String value) async =>
+      _prefs.setString(_dmChannelKey, value);
 
-  String? get notificationSoundGroupId => _prefs.getString(_notificationSoundGroupKey);
+  String? get groupChannelId => _prefs.getString(_groupChannelKey);
 
-  Future<void> setNotificationSoundGroupId(String? value) async {
+  Future<void> setGroupChannelId(String? value) async {
     if (value != null) {
-      await _prefs.setString(_notificationSoundGroupKey, value);
+      await _prefs.setString(_groupChannelKey, value);
     } else {
-      await _prefs.remove(_notificationSoundGroupKey);
-    }
-  }
-
-  static const String _notificationSoundUriKey = 'notification_sound_uri';
-  static const String _notificationSoundNameKey = 'notification_sound_name';
-  static const String _notificationSoundGroupUriKey = 'notification_sound_group_uri';
-  static const String _notificationSoundGroupNameKey = 'notification_sound_group_name';
-
-  String? get notificationSoundUri =>
-      _prefs.getString(_notificationSoundUriKey);
-
-  Future<void> setNotificationSoundUri(String? value) async {
-    if (value != null) {
-      await _prefs.setString(_notificationSoundUriKey, value);
-    } else {
-      await _prefs.remove(_notificationSoundUriKey);
-    }
-  }
-
-  String? get notificationSoundDisplayName =>
-      _prefs.getString(_notificationSoundNameKey);
-
-  Future<void> setNotificationSoundDisplayName(String? value) async {
-    if (value != null) {
-      await _prefs.setString(_notificationSoundNameKey, value);
-    } else {
-      await _prefs.remove(_notificationSoundNameKey);
-    }
-  }
-
-  String? get notificationSoundGroupUri =>
-      _prefs.getString(_notificationSoundGroupUriKey);
-
-  Future<void> setNotificationSoundGroupUri(String? value) async {
-    if (value != null) {
-      await _prefs.setString(_notificationSoundGroupUriKey, value);
-    } else {
-      await _prefs.remove(_notificationSoundGroupUriKey);
-    }
-  }
-
-  String? get notificationSoundGroupDisplayName =>
-      _prefs.getString(_notificationSoundGroupNameKey);
-
-  Future<void> setNotificationSoundGroupDisplayName(String? value) async {
-    if (value != null) {
-      await _prefs.setString(_notificationSoundGroupNameKey, value);
-    } else {
-      await _prefs.remove(_notificationSoundGroupNameKey);
+      await _prefs.remove(_groupChannelKey);
     }
   }
 

@@ -59,9 +59,7 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
 
   void _playSound(NotificationSound sound) async {
     await _previewPlayer.stop();
-    if (sound.isSystemRingtone && sound.androidUri != null) {
-      unawaited(_previewPlayer.play(UrlSource(sound.androidUri!)));
-    } else if (sound.assetPath != null) {
+    if (sound.assetPath != null) {
       unawaited(_previewPlayer.play(AssetSource(sound.assetPath!)));
     }
   }
@@ -225,29 +223,13 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
                         },
                       ),
                     ),
-                    if (Platform.isAndroid) ...[
-                      Divider(height: 24.h, indent: 20.w, endIndent: 20.w),
-                      ListTile(
-                        leading: Icon(Icons.audiotrack, color: AppColors.primary),
-                        title: Text(
-                          'Pick from system ringtones',
-                          style: TextStyle(fontSize: 14.sp),
-                        ),
-                        trailing: Icon(
-                          Icons.chevron_right,
-                          color: Colors.grey.shade400,
-                        ),
-                        onTap: () async {
-                          Navigator.pop(sheetContext);
-                          await widget.viewmodel.pickSystemRingtone();
-                          final uri = widget.viewmodel.prefs.notificationSoundUri;
-                          final name = widget.viewmodel.prefs.notificationSoundDisplayName;
-                          if (uri != null) {
-                            _playSound(NotificationSound.systemRingtone(uri: uri, name: name ?? ''));
-                          }
-                        },
+                    _SoundTile(
+                      label: 'System Ringtone',
+                      isSelected: selectedId == NotificationSound.systemId,
+                      onTap: () => setDialogState(
+                        () => selectedId = NotificationSound.systemId,
                       ),
-                    ],
+                    ),
                     Gap(16.h),
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: 20.w),
@@ -344,29 +326,13 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
                         },
                       ),
                     ),
-                    if (Platform.isAndroid) ...[
-                      Divider(height: 24.h, indent: 20.w, endIndent: 20.w),
-                      ListTile(
-                        leading: Icon(Icons.audiotrack, color: AppColors.primary),
-                        title: Text(
-                          'Pick from system ringtones',
-                          style: TextStyle(fontSize: 14.sp),
-                        ),
-                        trailing: Icon(
-                          Icons.chevron_right,
-                          color: Colors.grey.shade400,
-                        ),
-                        onTap: () async {
-                          Navigator.pop(sheetContext);
-                          await widget.viewmodel.pickGroupSystemRingtone();
-                          final uri = widget.viewmodel.prefs.notificationSoundUri;
-                          final name = widget.viewmodel.prefs.notificationSoundDisplayName;
-                          if (uri != null) {
-                            _playSound(NotificationSound.systemRingtone(uri: uri, name: name ?? ''));
-                          }
-                        },
+                    _SoundTile(
+                      label: 'System Ringtone',
+                      isSelected: selectedId == NotificationSound.systemId,
+                      onTap: () => setDialogState(
+                        () => selectedId = NotificationSound.systemId,
                       ),
-                    ],
+                    ),
                     Gap(16.h),
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: 20.w),

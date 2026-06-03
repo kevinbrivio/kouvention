@@ -1,35 +1,17 @@
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-
 class NotificationSound {
   final String id;
   final String displayName;
-  final bool isSystemRingtone;
   final String? androidResource;
-  final String? androidUri;
   final String? iosFilename;
   final String? assetPath;
 
   const NotificationSound({
     required this.id,
     required this.displayName,
-    this.isSystemRingtone = false,
     this.androidResource,
-    this.androidUri,
     this.iosFilename,
     this.assetPath,
   });
-
-  factory NotificationSound.systemRingtone({
-    required String uri,
-    required String name,
-  }) {
-    return NotificationSound(
-      id: 'system',
-      displayName: name,
-      isSystemRingtone: true,
-      androidUri: uri,
-    );
-  }
 
   static const defaultSound = NotificationSound(
     id: 'default',
@@ -70,11 +52,9 @@ class NotificationSound {
     carLock,
   ];
 
-  static const String defaultId = 'default';
   static const String systemId = 'system';
 
   static NotificationSound? fromId(String id) {
-    if (id == systemId) return null;
     try {
       return bundled.firstWhere((s) => s.id == id);
     } catch (_) {
@@ -82,13 +62,28 @@ class NotificationSound {
     }
   }
 
-  AndroidNotificationSound? toAndroidNotificationSound() {
-    if (isSystemRingtone && androidUri != null) {
-      return UriAndroidNotificationSound(androidUri!);
-    }
-    if (androidResource != null) {
-      return RawResourceAndroidNotificationSound(androidResource!);
-    }
-    return null;
+  static String channelIdForSound(String soundId, {required bool isGroup}) {
+    final prefix = isGroup ? 'group_' : 'dm_';
+    if (soundId == systemId) return '${prefix}custom_system';
+    return '$prefix$soundId';
+  }
+
+  static String displayNameForChannel(String channelId) {
+    if (channelId.endsWith('_custom_system')) return 'System Ringtone';
+    final soundId = channelId.replaceFirst(RegExp(r'^(dm|group)_'), '');
+    final sound = NotificationSound.fromId(soundId);
+    return sound?.displayName ?? 'Default';
+  }
+
+  static String? iosSoundForChannel(String channelId) {
+    if (channelId.endsWith('_custom_system')) return null;
+    final soundId = channelId.replaceFirst(RegExp(r'^(dm|group)_'), '');
+    final sound = NotificationSound.fromId(soundId);
+    return sound?.iosFilename;
+  }
+
+  static String soundIdFromChannelId(String channelId) {
+    if (channelId.endsWith('_custom_system')) return systemId;
+    return channelId.replaceFirst(RegExp(r'^(dm|group)_'), '');
   }
 }

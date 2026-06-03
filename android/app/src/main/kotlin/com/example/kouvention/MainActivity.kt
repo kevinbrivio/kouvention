@@ -4,13 +4,15 @@ import android.app.Activity
 import android.content.Intent
 import android.media.RingtoneManager
 import android.net.Uri
+import android.provider.Settings
 import androidx.activity.result.contract.ActivityResultContracts
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterFragmentActivity() {
-    private val CHANNEL = "kouvention/ringtone_picker"
+    private val CHANNEL_RINGTONE = "kouvention/ringtone_picker"
+    private val CHANNEL_SETTINGS = "kouvention/notification_settings"
     private var pendingResult: MethodChannel.Result? = null
 
     private val ringtoneLauncher = registerForActivityResult(
@@ -36,7 +38,8 @@ class MainActivity : FlutterFragmentActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL_RINGTONE).setMethodCallHandler { call, result ->
             when (call.method) {
                 "pickRingtone" -> {
                     pendingResult = result
@@ -49,6 +52,21 @@ class MainActivity : FlutterFragmentActivity() {
                         }
                     }
                     ringtoneLauncher.launch(intent)
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL_SETTINGS).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "openChannelSettings" -> {
+                    val channelId = call.argument<String>("channelId") ?: ""
+                    val intent = Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS).apply {
+                        putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+                        putExtra(Settings.EXTRA_CHANNEL_ID, channelId)
+                    }
+                    startActivity(intent)
+                    result.success(null)
                 }
                 else -> result.notImplemented()
             }
