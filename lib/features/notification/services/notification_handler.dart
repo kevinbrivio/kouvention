@@ -14,6 +14,7 @@ import 'package:kouvention/features/chat/services/chat_service.dart';
 import 'package:kouvention/features/notification/services/notification_config.dart';
 import 'package:kouvention/features/notification/services/notification_sound.dart';
 import 'package:kouvention/features/notification/viewmodel/active_chat_id_provider.dart';
+import 'package:kouvention/features/shared/services/fcm_service.dart';
 import 'package:kouvention/features/shared/services/sync_service.dart';
 import 'package:kouvention/features/shared/services/prefs_service.dart';
 import 'package:kouvention/firebase_options.dart';
@@ -447,3 +448,13 @@ class NotificationHandler {
     router.push('/chats/$chatId');
   }
 }
+
+final notificationHandlerProvider = Provider<NotificationHandler>((ref) {
+  final fcmService = ref.read(fcmServiceProvider);
+  fcmService.initialize();
+
+  final handler = NotificationHandler(ref);
+  handler.initialize();
+  ref.onDispose(handler.dispose);
+  return handler;
+});

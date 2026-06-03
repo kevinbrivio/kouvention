@@ -148,6 +148,7 @@ class _KouventionAppState extends ConsumerState<KouventionApp>
     ref.read(
       presenceNotifierProvider,
     ); // listen to presence notifier to check user presence throughout the use
+    ref.read(notificationHandlerProvider);
   }
 
   @override
