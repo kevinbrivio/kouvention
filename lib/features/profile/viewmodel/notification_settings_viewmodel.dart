@@ -85,7 +85,7 @@ class NotificationSettingsVM extends BaseNotifier {
     final id = currentGroupSoundId;
     if (id == null) return 'Default (same as direct)';
     if (id == NotificationSound.systemId) {
-      return prefs.notificationSoundDisplayName ?? 'System Ringtone';
+      return prefs.notificationSoundGroupDisplayName ?? 'System Ringtone';
     }
     final sound = NotificationSound.fromId(id);
     return sound?.displayName ?? 'Default';
@@ -177,12 +177,12 @@ class NotificationSettingsVM extends BaseNotifier {
   }
 
   Future<void> pickGroupSystemRingtone() async {
-    final currentUri = prefs.notificationSoundUri;
+    final currentUri = prefs.notificationSoundGroupUri;
     final result = await _permissionVM.pickSystemRingtone(currentUri);
     if (result != null) {
       await prefs.setNotificationSoundGroupId(NotificationSound.systemId);
-      await prefs.setNotificationSoundUri(result['uri']);
-      await prefs.setNotificationSoundDisplayName(result['displayName']);
+      await prefs.setNotificationSoundGroupUri(result['uri']);
+      await prefs.setNotificationSoundGroupDisplayName(result['displayName']);
       notifyListeners();
     }
   }

@@ -47,7 +47,6 @@ class NotificationConfig {
     description: 'New message notifications',
     importance: Importance.high,
     priority: Priority.high,
-    soundFilename: 'chat_message_sound',
     iconDrawable: 'ic_chat_message',
   );
 

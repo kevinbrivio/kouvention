@@ -129,14 +129,16 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
   bool backgroundVibration = true;
   try {
     final prefs = await SharedPreferences.getInstance();
-    final soundUri = prefs.getString('notification_sound_uri');
-
+    String? soundUri;
     String? soundId;
+
     if (isGroup) {
       soundId = prefs.getString('notification_sound_group');
+      soundUri = prefs.getString('notification_sound_group_uri');
     }
     if (soundId == null) {
       soundId = prefs.getString('notification_sound_chat');
+      soundUri = prefs.getString('notification_sound_uri');
     }
 
     if (soundId == 'system' && soundUri != null) {
@@ -375,7 +377,7 @@ class NotificationHandler {
 
     if (isGroup) {
       soundId = prefs.notificationSoundGroupId;
-      soundUri = prefs.notificationSoundUri;
+      soundUri = prefs.notificationSoundGroupUri;
     }
 
     if (soundId == null) {

@@ -90,6 +90,8 @@ class PrefsService {
 
   static const String _notificationSoundUriKey = 'notification_sound_uri';
   static const String _notificationSoundNameKey = 'notification_sound_name';
+  static const String _notificationSoundGroupUriKey = 'notification_sound_group_uri';
+  static const String _notificationSoundGroupNameKey = 'notification_sound_group_name';
 
   String? get notificationSoundUri =>
       _prefs.getString(_notificationSoundUriKey);
@@ -110,6 +112,28 @@ class PrefsService {
       await _prefs.setString(_notificationSoundNameKey, value);
     } else {
       await _prefs.remove(_notificationSoundNameKey);
+    }
+  }
+
+  String? get notificationSoundGroupUri =>
+      _prefs.getString(_notificationSoundGroupUriKey);
+
+  Future<void> setNotificationSoundGroupUri(String? value) async {
+    if (value != null) {
+      await _prefs.setString(_notificationSoundGroupUriKey, value);
+    } else {
+      await _prefs.remove(_notificationSoundGroupUriKey);
+    }
+  }
+
+  String? get notificationSoundGroupDisplayName =>
+      _prefs.getString(_notificationSoundGroupNameKey);
+
+  Future<void> setNotificationSoundGroupDisplayName(String? value) async {
+    if (value != null) {
+      await _prefs.setString(_notificationSoundGroupNameKey, value);
+    } else {
+      await _prefs.remove(_notificationSoundGroupNameKey);
     }
   }
 
