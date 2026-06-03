@@ -199,7 +199,7 @@ Future<void> _showChatNotification({
   await plugin.show(
     id: chatId.hashCode,
     title: title,
-    body: body,
+    body: '',
     payload: chatId,
     notificationDetails: NotificationDetails(
       android: AndroidNotificationDetails(
