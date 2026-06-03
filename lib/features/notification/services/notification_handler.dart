@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
+import 'package:kouvention/features/shared/services/fcm_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
@@ -423,3 +424,12 @@ class NotificationHandler {
     router.push('/chats/$chatId');
   }
 }
+
+final notificationHandlerProvider = Provider<NotificationHandler>((ref) {
+  final fcmService = ref.read(fcmServiceProvider);
+  fcmService.initialize();
+  final handler = NotificationHandler(ref);
+  handler.initialize();
+  ref.onDispose(handler.dispose);
+  return handler;
+});
