@@ -65,7 +65,12 @@ void main() async {
       );
 
       // Background handler for notification
-      FirebaseMessaging.onBackgroundMessage(firebaseBackgroundHandler);
+      try {
+        FirebaseMessaging.onBackgroundMessage(firebaseBackgroundHandler);
+        debugPrint('[main] firebaseBackgroundHandler registered');
+      } catch (e, s) {
+        debugPrint('[main] firebaseBackgroundHandler registration FAILED: $e\n$s');
+      }
 
       // Pass all uncuaught errors from Flutter to Crashlytics
       FlutterError.onError =
@@ -145,10 +150,16 @@ class _KouventionAppState extends ConsumerState<KouventionApp>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    debugPrint('[App] initState — reading providers...');
     ref.read(
       presenceNotifierProvider,
     ); // listen to presence notifier to check user presence throughout the use
-    ref.read(notificationHandlerProvider);
+    try {
+      ref.read(notificationHandlerProvider);
+      debugPrint('[App] notificationHandlerProvider read OK');
+    } catch (e, s) {
+      debugPrint('[App] notificationHandlerProvider read FAILED: $e\n$s');
+    }
   }
 
   @override

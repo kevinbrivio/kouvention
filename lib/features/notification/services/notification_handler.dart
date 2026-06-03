@@ -70,8 +70,14 @@ void onBackgroundNotificationResponse(NotificationResponse response) async {
 
 @pragma('vm:entry-point')
 Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
-  debugPrint('[BackgroundHandler] Received FCM data: ${message.data}');
-  await Firebase.initializeApp();
+  debugPrint('[BackgroundHandler] ENTERED — Received FCM data: ${message.data}');
+  try {
+    await Firebase.initializeApp();
+    debugPrint('[BackgroundHandler] Firebase.initializeApp() OK');
+  } catch (e, s) {
+    debugPrint('[BackgroundHandler] Firebase.initializeApp() FAILED: $e\n$s');
+    return;
+  }
 
   final currentUser = FirebaseAuth.instance.currentUser;
   if (currentUser != null) {
@@ -426,10 +432,22 @@ class NotificationHandler {
 }
 
 final notificationHandlerProvider = Provider<NotificationHandler>((ref) {
-  final fcmService = ref.read(fcmServiceProvider);
-  fcmService.initialize();
-  final handler = NotificationHandler(ref);
-  handler.initialize();
-  ref.onDispose(handler.dispose);
-  return handler;
+  debugPrint('[Provider] notificationHandlerProvider creating...');
+  try {
+    final fcmService = ref.read(fcmServiceProvider);
+    fcmService.initialize();
+    debugPrint('[Provider] fcmService.initialize() called');
+  } catch (e, s) {
+    debugPrint('[Provider] fcmService.initialize() FAILED: $e\n$s');
+  }
+  try {
+    final handler = NotificationHandler(ref);
+    handler.initialize();
+    debugPrint('[Provider] NotificationHandler.initialize() called');
+    ref.onDispose(handler.dispose);
+    return handler;
+  } catch (e, s) {
+    debugPrint('[Provider] NotificationHandler creation FAILED: $e\n$s');
+    rethrow;
+  }
 });
