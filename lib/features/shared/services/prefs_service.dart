@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -19,7 +20,9 @@ class PrefsService {
   static const String _lastSyncedKey = 'search_last_sync_time';
   static const String _deviceIdKey = 'device_id';
   static const String _notificationDeniedKey = 'notification_permission_denied';
-  static const String _notificationVibrationKey = 'notification_vibration_enabled';
+  static const String _notificationVibrationKey =
+      'notification_vibration_enabled';
+  static const String _themeModeKey = 'theme_mode';
 
   // --- ONBOARDING
   Future<bool> hasSeenOnboarding() async =>
@@ -94,4 +97,26 @@ class PrefsService {
 
   Future<void> setNotificationVibrationEnabled(bool value) async =>
       _prefs.setBool(_notificationVibrationKey, value);
+
+  // --- THEME MODE
+  ThemeMode getThemeMode() {
+    final val = _prefs.getString(_themeModeKey);
+    switch (val) {
+      case 'dark':
+        return ThemeMode.dark;
+      case 'light':
+        return ThemeMode.light;
+      default:
+        return ThemeMode.system;
+    }
+  }
+  
+  Future<void> setThemeMode(ThemeMode mode) async {
+    final val = switch (mode) {
+      ThemeMode.dark => 'dark',
+      ThemeMode.light => 'light',
+      _ => 'system',
+    };
+    await _prefs.setString(_themeModeKey, val);
+  }
 }
