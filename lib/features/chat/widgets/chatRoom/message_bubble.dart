@@ -7,12 +7,14 @@ import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
+import 'package:kouvention/features/chat/models/bubble_color_scheme.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
 import 'package:kouvention/features/chat/models/message_status.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/models/reply_to_model.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_selection_viewmodel.dart';
+import 'package:kouvention/features/chat/viewmodel/bubble_scheme_provider.dart';
 import 'package:kouvention/features/chat/widgets/chatRoom/bubble_tail_painter.dart';
 import 'package:kouvention/features/chat/widgets/chatRoom/media_bubble.dart';
 import 'package:swipe_to/swipe_to.dart';
@@ -56,8 +58,8 @@ class MessageBubble extends ConsumerWidget {
 
     final time = _formatTime(message.sentAt);
     final replyMsg = message.replyTo;
-    
-    final status = message.getUIStatus(chat, currentUid); 
+
+    final status = message.getUIStatus(chat, currentUid);
 
     final sender = ref.watch(otherUserStreamProvider(message.senderId)).value;
     final showSenderPhoto = isGroup && !isMe && senderPhotoUrl != null &&
@@ -86,6 +88,7 @@ class MessageBubble extends ConsumerWidget {
           onTap: isSelecting ? () => selectionVM.toggleSelection(message.id) : null,
           child: _buildBubbleContent(
             context,
+            scheme: ref.watch(bubbleSchemeProvider),
             time: time,
             senderName: senderName,
             senderPhotoUrl: senderPhotoUrl,
@@ -101,6 +104,7 @@ class MessageBubble extends ConsumerWidget {
 
   Widget _buildBubbleContent(
     BuildContext context, {
+    required BubbleColorScheme scheme,
     required String time,
     required String senderName,
     required String? senderPhotoUrl,
@@ -109,10 +113,9 @@ class MessageBubble extends ConsumerWidget {
     required String currentUid,
     required MessageStatus status,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final otherBubbleColor = isDark
-        ? AppColors.darkOtherUserBubble
-        : AppColors.otherUserBubble;
+    final sentBubbleColor = scheme.sentBubble;
+    final receivedBubbleColor = scheme.receivedBubble;
+    final isLightReceived = receivedBubbleColor.computeLuminance() > 0.5;
     return Column(
       crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
       children: [
@@ -156,7 +159,7 @@ class MessageBubble extends ConsumerWidget {
                       constraints: BoxConstraints(maxWidth: 260.w),
                       padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
                       decoration: BoxDecoration(
-                        color: isMe ? AppColors.primary2 : otherBubbleColor,
+                        color: isMe ? sentBubbleColor : receivedBubbleColor,
                         borderRadius: BorderRadius.only(
                           topLeft: Radius.circular(isMe ? 16.r : 4.r),
                           topRight: Radius.circular(isMe ? 4.r : 16.r),
@@ -200,7 +203,7 @@ class MessageBubble extends ConsumerWidget {
                                     ? message.isDeleted ? AppColors.grey : Colors.white
                                     : message.isDeleted
                                         ? AppColors.grey
-                                        : (isDark ? Colors.white : Colors.black87),
+                                        : (isLightReceived ? Colors.black87 : Colors.white),
                                 fontStyle: message.isDeleted ? FontStyle.italic : FontStyle.normal,
                               ),
                             ),
@@ -214,7 +217,11 @@ class MessageBubble extends ConsumerWidget {
                               Text(
                                 time,
                                 style: TextStyle(
-                                  color: isMe ? Colors.white70 : (isDark ? Colors.white60 : Colors.grey[500]),
+                                  color: isMe
+                                      ? Colors.white70
+                                      : (isLightReceived
+                                          ? Colors.grey[500]
+                                          : Colors.white60),
                                   fontSize: 11.sp,
                                 ),
                               ),
@@ -235,7 +242,7 @@ class MessageBubble extends ConsumerWidget {
                         child: CustomPaint(
                           size: Size(8.w, 12.h),
                           painter: BubbleTailPainter(
-                            color: isMe ? AppColors.primary2 : otherBubbleColor,
+                            color: isMe ? sentBubbleColor : receivedBubbleColor,
                             isMe: isMe,
                           ),
                         ),

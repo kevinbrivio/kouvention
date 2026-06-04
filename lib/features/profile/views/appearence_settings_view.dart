@@ -106,6 +106,10 @@ class _BubbleStyleSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentScheme = ref.watch(bubbleSchemeProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final filteredPresets = BubbleColorScheme.presets
+        .where((s) => s.isDark == isDark)
+        .toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -117,7 +121,7 @@ class _BubbleStyleSection extends ConsumerWidget {
         Wrap(
           spacing: 8.w,
           runSpacing: 8.h,
-          children: BubbleColorScheme.presets.map((scheme) =>
+          children: filteredPresets.map((scheme) =>
             _ColorSchemeCard(
               scheme: scheme,
               isSelected: scheme.id == currentScheme.id,

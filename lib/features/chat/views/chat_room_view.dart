@@ -18,6 +18,7 @@ import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/models/message_status.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_selection_viewmodel.dart';
+import 'package:kouvention/features/chat/viewmodel/bubble_scheme_provider.dart';
 import 'package:kouvention/features/chat/widgets/chatRoom/chat_room_skeleton.dart';
 import 'package:kouvention/features/chat/widgets/chatRoom/media_sheet.dart';
 import 'package:kouvention/features/chat/widgets/chatRoom/message_bubble.dart';
@@ -349,7 +350,9 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
 
     final isGroup = chat.type == 'group';
     final chatName = chat.displayName(currentUid);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = ref.watch(bubbleSchemeProvider);
+    final receivedColor = scheme.receivedBubble;
+    final isLightReceived = receivedColor.computeLuminance() > 0.5;
 
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
@@ -359,14 +362,12 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
           if (isGroup)
             CircleAvatar(
               radius: 14.r,
-              backgroundColor: isDark
-                  ? AppColors.darkOtherUserBubble
-                  : Colors.grey[300],
+              backgroundColor: receivedColor,
               child: Text(
                 chatName.isNotEmpty ? chatName[0] : '?',
                 style: TextStyle(
                   fontSize: 10.sp,
-                  color: isDark ? AppColors.white : Colors.grey[700],
+                  color: isLightReceived ? Colors.grey[700] : Colors.white,
                 ),
               ),
             ),
@@ -374,9 +375,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
           Container(
             padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
             decoration: BoxDecoration(
-              color: isDark
-                  ? AppColors.darkOtherUserBubble
-                  : Colors.grey[100],
+              color: receivedColor,
               borderRadius: BorderRadius.circular(16.r),
             ),
             child: TypingDots(),
