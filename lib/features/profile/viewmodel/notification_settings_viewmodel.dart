@@ -95,7 +95,7 @@ class NotificationSettingsVM extends BaseNotifier {
   Future<void> setVibrationEnabled(bool value) async {
     await prefs.setNotificationVibrationEnabled(value);
     if (value) {
-      HapticFeedback.mediumImpact();
+      HapticFeedback.heavyImpact();
     }
     notifyListeners();
   }
