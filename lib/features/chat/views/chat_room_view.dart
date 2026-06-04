@@ -374,7 +374,10 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
       left: 8.w,
       right: 8.w,
       top: 8.h,
-      bottom: MediaQuery.of(context).padding.bottom + 8.h,
+      bottom:
+          MediaQuery.of(context).viewInsets.bottom +
+          MediaQuery.of(context).padding.bottom +
+          8.h,
     ),
     decoration: BoxDecoration(
       color: Colors.transparent,
@@ -394,19 +397,8 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     ChatModel? chat,
     String? currentUid,
   ) => Row(
+    crossAxisAlignment: CrossAxisAlignment.end,
     children: [
-      IconButton(
-        icon: Icon(Icons.add, color: AppColors.primary),
-        onPressed: () => vm.toggleMediaPanel(context),
-      ),
-      IconButton(
-        icon: Icon(Icons.emoji_emotions_outlined, color: AppColors.primary),
-        onPressed: () {
-          vm.toggleStickerPanel(context);
-          _focusNode.unfocus();
-        },
-      ),
-
       Flexible(
         child: Container(
           padding: EdgeInsets.symmetric(
@@ -427,30 +419,51 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
               children: [
                 if (vm.replyMessage != null)
                   _buildReplyPreview(vm.replyMessage!),
-
-                TextField(
-                  focusNode: _focusNode,
-                  controller: _textController,
-                  minLines: 1,
-                  maxLines: 5,
-                  onChanged: vm.onTextChanged,
-                  decoration: InputDecoration(
-                    hintText: 'Type a message...',
-                    hintStyle: textTheme.typeMessage.copyWith(
-                      color: AppColors.grey,
+                Row(
+                  children: [
+                    IconButton(
+                      icon: Icon(
+                        Icons.emoji_emotions_outlined,
+                        color: AppColors.primary,
+                      ),
+                      onPressed: () {
+                        vm.toggleStickerPanel(context);
+                        _focusNode.unfocus();
+                      },
                     ),
-                    isDense: true,
-                    filled: false,
-                    border: OutlineInputBorder(borderSide: BorderSide.none),
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 4.w,
-                      vertical: 10.h,
+                    Flexible(
+                      child: TextField(
+                        focusNode: _focusNode,
+                        controller: _textController,
+                        minLines: 1,
+                        maxLines: 5,
+                        onChanged: vm.onTextChanged,
+                        decoration: InputDecoration(
+                          hintText: 'Type a message...',
+                          hintStyle: textTheme.typeMessage.copyWith(
+                            color: AppColors.grey,
+                          ),
+                          isDense: true,
+                          filled: false,
+                          border: OutlineInputBorder(
+                            borderSide: BorderSide.none,
+                          ),
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 4.w,
+                            vertical: 10.h,
+                          ),
+                        ),
+                        style: textTheme.typeMessage,
+                        textCapitalization: TextCapitalization.sentences,
+                      ),
                     ),
-                  ),
-                  style: textTheme.typeMessage,
-                  textCapitalization: TextCapitalization.sentences,
+                    IconButton(
+                      icon: Icon(Icons.add, color: AppColors.primary),
+                      onPressed: () => vm.toggleMediaPanel(context),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -470,12 +483,12 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
         },
 
         child: CircleAvatar(
-          radius: 20.r,
+          radius: 28.r,
           backgroundColor: vm.isSending ? AppColors.grey : AppColors.primary,
           child: vm.isSending
               ? SizedBox(
-                  width: 18.sp,
-                  height: 18.sp,
+                  width: 24.w,
+                  height: 24.w,
                   child: const CircularProgressIndicator(
                     strokeWidth: 2,
                     color: Colors.white,
@@ -484,7 +497,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
               : Icon(
                   vm.isTyping ? Icons.send : Icons.mic,
                   color: Colors.white,
-                  size: 18.sp,
+                  size: 24.w,
                 ),
         ),
       ),
@@ -603,13 +616,16 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                 alignment: Alignment.center,
                 children: [
                   if (message.isImage ||
-                      message.type == MessageType.sticker || message.isVideo) ...[
+                      message.type == MessageType.sticker ||
+                      message.isVideo) ...[
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8.r),
                       child: CachedNetworkImage(
-                          imageUrl: message.isVideo
-                          ? vm.getCloudinaryThumbnail(message.allMediaUrls.first)
-                          : message.allMediaUrls.first,
+                        imageUrl: message.isVideo
+                            ? vm.getCloudinaryThumbnail(
+                                message.allMediaUrls.first,
+                              )
+                            : message.allMediaUrls.first,
                         width: 76.h,
                         height: 76.h,
                         fit: BoxFit.cover,
