@@ -26,7 +26,7 @@ class ProfileView extends StatelessWidget {
       elevation: 0,
       scrolledUnderElevation: 0,
       leading: IconButton(
-        icon: Icon(Icons.arrow_back),
+        icon: Icon(Icons.arrow_back, color: AppColors.primary,),
         onPressed: () => context.go(RouterRoutes.chatList.path),
       ),
       title: Text('Profile', style: AppTextTheme.of(context).appBar),

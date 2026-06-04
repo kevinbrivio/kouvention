@@ -112,7 +112,7 @@ class PrefsService {
         return ThemeMode.system;
     }
   }
-  
+
   Future<void> setThemeMode(ThemeMode mode) async {
     final val = switch (mode) {
       ThemeMode.dark => 'dark',
@@ -134,6 +134,11 @@ class PrefsService {
   }
 
   // --- CHAT WALLPAPER
+  // Stored value uses a prefix scheme so PrefsService stays format-agnostic:
+  //   `null`         → no wallpaper / removed
+  //   `'asset:path'` → bundled asset (e.g. default wallpaper)
+  //   `'file:path'`  → user-picked file in app documents directory
+  // Decoding lives in `wallpaper_provider.dart` (`_decode`).
   String? getWallpaperPath() => _prefs.getString(_wallpaperPathKey);
 
   Future<void> setWallpaperPath(String? path) async {
@@ -141,6 +146,20 @@ class PrefsService {
       await _prefs.setString(_wallpaperPathKey, path);
     } else {
       await _prefs.remove(_wallpaperPathKey);
+    }
+  }
+
+  /// Per-chat wallpaper overrides, keyed by chatId.
+  /// Value follows the same prefix scheme as [getWallpaperPath].
+  String? getChatWallpaperPath(String chatId) =>
+      _prefs.getString('$_wallpaperPathKey:$chatId');
+
+  Future<void> setChatWallpaperPath(String chatId, String? path) async {
+    final key = '$_wallpaperPathKey:$chatId';
+    if (path != null) {
+      await _prefs.setString(key, path);
+    } else {
+      await _prefs.remove(key);
     }
   }
 }

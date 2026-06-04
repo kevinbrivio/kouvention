@@ -8,7 +8,6 @@ import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/bases/base_view.dart';
 import 'package:kouvention/cores/constants/colors.dart';
-import 'package:kouvention/cores/constants/image_paths.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
@@ -19,6 +18,7 @@ import 'package:kouvention/features/chat/models/message_status.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_selection_viewmodel.dart';
 import 'package:kouvention/features/chat/viewmodel/bubble_scheme_provider.dart';
+import 'package:kouvention/features/chat/viewmodel/wallpaper_provider.dart';
 import 'package:kouvention/features/chat/widgets/chatRoom/chat_room_skeleton.dart';
 import 'package:kouvention/features/chat/widgets/chatRoom/media_sheet.dart';
 import 'package:kouvention/features/chat/widgets/chatRoom/message_bubble.dart';
@@ -38,6 +38,8 @@ class ChatRoomView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final selectionVM = ref.watch(chatSelectionVM(chatId));
     final currentUid = ref.read(currentUidProvider);
+    final wallpaper = ref.watch(chatWallpaperProvider(chatId));
+    final wallpaperImage = wallpaper.image;
 
     return PopScope(
       canPop: false,
@@ -72,13 +74,15 @@ class ChatRoomView extends ConsumerWidget {
             scrollToSentAt: queryParams['sentAt'],
           );
         },
-        backgroundImage: DecorationImage(
-          image: AssetImage(images.chatWallpaper),
-          fit: BoxFit.cover,
-          onError: (error, stackTrace) {
-            debugPrint('Background image error: $error');
-          },
-        ),
+        backgroundImage: wallpaperImage == null
+            ? null
+            : DecorationImage(
+                image: wallpaperImage,
+                fit: BoxFit.cover,
+                onError: (error, stackTrace) {
+                  debugPrint('Background image error: $error');
+                },
+              ),
       ),
     );
   }
@@ -418,114 +422,114 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
   ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Row(
-    crossAxisAlignment: CrossAxisAlignment.end,
-    children: [
-      Flexible(
-        child: Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: vm.replyMessage != null ? 6.w : 12.w,
-            vertical: 4.h,
-          ),
-          decoration: BoxDecoration(
-            color: isDark
-                ? AppColors.darkInputBarSurface
-                : AppColors.white.withValues(alpha: 0.85),
-            borderRadius: BorderRadius.circular(
-              vm.replyMessage != null ? 12.r : 24.r,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Flexible(
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: vm.replyMessage != null ? 6.w : 12.w,
+              vertical: 4.h,
             ),
-          ),
-          child: AnimatedSize(
-            duration: const Duration(milliseconds: 400),
-            curve: Curves.easeOut,
-            alignment: Alignment.bottomCenter,
-            child: Column(
-              children: [
-                if (vm.replyMessage != null)
-                  _buildReplyPreview(vm.replyMessage!),
-                Row(
-                  children: [
-                    IconButton(
-                      icon: Icon(
-                        Icons.emoji_emotions_outlined,
-                        color: AppColors.primary,
-                      ),
-                      onPressed: () {
-                        vm.toggleStickerPanel(context);
-                        _focusNode.unfocus();
-                      },
-                    ),
-                    Flexible(
-                      child: TextField(
-                        focusNode: _focusNode,
-                        controller: _textController,
-                        minLines: 1,
-                        maxLines: 5,
-                        onChanged: vm.onTextChanged,
-                        decoration: InputDecoration(
-                          hintText: 'Type a message...',
-                          hintStyle: AppTextTheme.of(context).typeMessage.copyWith(
-                            color: AppColors.grey,
-                          ),
-                          isDense: true,
-                          filled: false,
-                          border: OutlineInputBorder(
-                            borderSide: BorderSide.none,
-                          ),
-                          enabledBorder: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 4.w,
-                            vertical: 10.h,
-                          ),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? AppColors.darkInputBarSurface
+                  : AppColors.white.withValues(alpha: 0.85),
+              borderRadius: BorderRadius.circular(
+                vm.replyMessage != null ? 12.r : 24.r,
+              ),
+            ),
+            child: AnimatedSize(
+              duration: const Duration(milliseconds: 400),
+              curve: Curves.easeOut,
+              alignment: Alignment.bottomCenter,
+              child: Column(
+                children: [
+                  if (vm.replyMessage != null)
+                    _buildReplyPreview(vm.replyMessage!),
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          Icons.emoji_emotions_outlined,
+                          color: AppColors.primary,
                         ),
-                        style: AppTextTheme.of(context).typeMessage,
-                        textCapitalization: TextCapitalization.sentences,
+                        onPressed: () {
+                          vm.toggleStickerPanel(context);
+                          _focusNode.unfocus();
+                        },
                       ),
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.add, color: AppColors.primary),
-                      onPressed: () => vm.toggleMediaPanel(context),
-                    ),
-                  ],
-                ),
-              ],
+                      Flexible(
+                        child: TextField(
+                          focusNode: _focusNode,
+                          controller: _textController,
+                          minLines: 1,
+                          maxLines: 5,
+                          onChanged: vm.onTextChanged,
+                          decoration: InputDecoration(
+                            hintText: 'Type a message...',
+                            hintStyle: AppTextTheme.of(
+                              context,
+                            ).typeMessage.copyWith(color: AppColors.grey),
+                            isDense: true,
+                            filled: false,
+                            border: OutlineInputBorder(
+                              borderSide: BorderSide.none,
+                            ),
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 4.w,
+                              vertical: 10.h,
+                            ),
+                          ),
+                          style: AppTextTheme.of(context).typeMessage,
+                          textCapitalization: TextCapitalization.sentences,
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.add, color: AppColors.primary),
+                        onPressed: () => vm.toggleMediaPanel(context),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
-      ),
-      Gap(8.w),
-      GestureDetector(
-        onTap: () {
-          if (_textController.text.trim().isNotEmpty) {
-            vm.sendMessage(_textController.text);
-            _textController.clear();
-            _scrollToBottom();
-          } else {
-            vm.startRecording();
-          }
-        },
+        Gap(8.w),
+        GestureDetector(
+          onTap: () {
+            if (_textController.text.trim().isNotEmpty) {
+              vm.sendMessage(_textController.text);
+              _textController.clear();
+              _scrollToBottom();
+            } else {
+              vm.startRecording();
+            }
+          },
 
-        child: CircleAvatar(
-          radius: 28.r,
-          backgroundColor: vm.isSending ? AppColors.grey : AppColors.primary,
-          child: vm.isSending
-              ? SizedBox(
-                  width: 24.w,
-                  height: 24.w,
-                  child: const CircularProgressIndicator(
-                    strokeWidth: 2,
+          child: CircleAvatar(
+            radius: 28.r,
+            backgroundColor: vm.isSending ? AppColors.grey : AppColors.primary,
+            child: vm.isSending
+                ? SizedBox(
+                    width: 24.w,
+                    height: 24.w,
+                    child: const CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : Icon(
+                    vm.isTyping ? Icons.send : Icons.mic,
                     color: Colors.white,
+                    size: 24.w,
                   ),
-                )
-              : Icon(
-                  vm.isTyping ? Icons.send : Icons.mic,
-                  color: Colors.white,
-                  size: 24.w,
-                ),
+          ),
         ),
-      ),
-    ],
-  );
+      ],
+    );
   }
 
   Widget _buildMediaPanel() => AnimatedSize(
@@ -605,9 +609,9 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                               message.allMediaUrls.length > 1
                                   ? _getReplyMediaCountLabel(message)
                                   : _getReplyMediaLabel(message),
-                              style: AppTextTheme.of(context).senderName.copyWith(
-                                color: AppColors.grey,
-                              ),
+                              style: AppTextTheme.of(
+                                context,
+                              ).senderName.copyWith(color: AppColors.grey),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),

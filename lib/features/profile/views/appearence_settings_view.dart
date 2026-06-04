@@ -38,12 +38,19 @@ class AppearanceSettingsView extends ConsumerWidget {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.brightness_6, color: AppColors.primary, size: 24),
+                      Icon(
+                        Icons.brightness_6,
+                        color: AppColors.primary,
+                        size: 24.w,
+                      ),
                       Gap(16.w),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Theme', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+                          Text(
+                            'Theme',
+                            style: AppTextTheme.of(context).subDescription2
+                          ),
                           Gap(2.h),
                           Text(
                             switch (themeMode) {
@@ -51,7 +58,7 @@ class AppearanceSettingsView extends ConsumerWidget {
                               ThemeMode.light => 'Light',
                               ThemeMode.dark => 'Dark',
                             },
-                            style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                            style: AppTextTheme.of(context).subDescription3
                           ),
                         ],
                       ),
@@ -62,13 +69,23 @@ class AppearanceSettingsView extends ConsumerWidget {
                     width: double.infinity,
                     child: SegmentedButton<ThemeMode>(
                       segments: const [
-                        ButtonSegment(value: ThemeMode.system, label: Text('System')),
-                        ButtonSegment(value: ThemeMode.light, label: Text('Light')),
-                        ButtonSegment(value: ThemeMode.dark, label: Text('Dark')),
+                        ButtonSegment(
+                          value: ThemeMode.system,
+                          label: Text('System'),
+                        ),
+                        ButtonSegment(
+                          value: ThemeMode.light,
+                          label: Text('Light'),
+                        ),
+                        ButtonSegment(
+                          value: ThemeMode.dark,
+                          label: Text('Dark'),
+                        ),
                       ],
                       selected: {themeMode},
-                      onSelectionChanged: (set) =>
-                        ref.read(themeModeProvider.notifier).setThemeMode(set.first),
+                      onSelectionChanged: (set) => ref
+                          .read(themeModeProvider.notifier)
+                          .setThemeMode(set.first),
                     ),
                   ),
                 ],
@@ -121,14 +138,16 @@ class _BubbleStyleSection extends ConsumerWidget {
         Wrap(
           spacing: 8.w,
           runSpacing: 8.h,
-          children: filteredPresets.map((scheme) =>
-            _ColorSchemeCard(
-              scheme: scheme,
-              isSelected: scheme.id == currentScheme.id,
-              onTap: () =>
-                ref.read(bubbleSchemeProvider.notifier).select(scheme),
-            ),
-          ).toList(),
+          children: filteredPresets
+              .map(
+                (scheme) => _ColorSchemeCard(
+                  scheme: scheme,
+                  isSelected: scheme.id == currentScheme.id,
+                  onTap: () =>
+                      ref.read(bubbleSchemeProvider.notifier).select(scheme),
+                ),
+              )
+              .toList(),
         ),
       ],
     );
@@ -245,7 +264,8 @@ class _ColorSchemeCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width: 20.w, height: 20.w,
+                width: 20.w,
+                height: 20.w,
                 decoration: BoxDecoration(
                   color: scheme.sentBubble,
                   borderRadius: BorderRadius.circular(4.r),
@@ -253,7 +273,8 @@ class _ColorSchemeCard extends StatelessWidget {
               ),
               Gap(4.w),
               Container(
-                width: 20.w, height: 20.w,
+                width: 20.w,
+                height: 20.w,
                 decoration: BoxDecoration(
                   color: scheme.receivedBubble,
                   borderRadius: BorderRadius.circular(4.r),
@@ -280,61 +301,76 @@ class _WallpaperSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final wallpaper = ref.watch(wallpaperProvider);
+    final hasUserFile = wallpaper.isFile;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _SectionHeader(title: 'CUSTOMIZE CHAT WALLPAPER'),
         Gap(12.h),
-        Container(
-          width: double.infinity,
-          height: 140.h,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12.r),
-            image: wallpaper.image is AssetImage
-                ? DecorationImage(
-                    image: wallpaper.image,
-                    fit: BoxFit.cover,
-                  )
-                : null,
-            color: Colors.grey.shade200,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: wallpaper.image is! AssetImage
-              ? Center(
-                  child: Icon(
-                    Icons.wallpaper,
-                    size: 40.sp,
-                    color: Colors.grey.shade400,
-                  ),
-                )
-              : null,
-        ),
+        _WallpaperPreview(wallpaper: wallpaper),
         Gap(12.h),
         SettingsTile(
           icon: Icons.photo_library_outlined,
           iconColor: AppColors.primary,
           title: 'Pick from Gallery',
           subtitle: 'Choose an image from your device',
-          onTap: () {
-            // TODO: integrate image_picker
-          },
+          onTap: () =>
+              ref.read(wallpaperProvider.notifier).pickAndSetFromGallery(),
         ),
         SettingsTile(
           icon: Icons.restart_alt,
           iconColor: AppColors.primary,
           title: 'Use Default',
           subtitle: 'Reset to the default wallpaper',
-          onTap: () =>
-            ref.read(wallpaperProvider.notifier).setWallpaper(null),
+          onTap: () => ref.read(wallpaperProvider.notifier).setDefault(),
         ),
+        if (hasUserFile)
+          SettingsTile(
+            icon: Icons.delete_outline,
+            iconColor: Colors.red.shade400,
+            title: 'Remove Wallpaper',
+            subtitle: 'Hide the wallpaper in all chats',
+            onTap: () => ref.read(wallpaperProvider.notifier).setRemoved(),
+          ),
       ],
+    );
+  }
+}
+
+class _WallpaperPreview extends StatelessWidget {
+  final WallpaperConfig wallpaper;
+  const _WallpaperPreview({required this.wallpaper});
+
+  @override
+  Widget build(BuildContext context) {
+    final image = wallpaper.image;
+    return Container(
+      width: double.infinity,
+      height: 140.h,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12.r),
+        image: image == null
+            ? null
+            : DecorationImage(image: image, fit: BoxFit.cover),
+        color: image == null ? Colors.grey.shade200 : null,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: image == null
+          ? Center(
+              child: Icon(
+                Icons.wallpaper,
+                size: 40.sp,
+                color: Colors.grey.shade400,
+              ),
+            )
+          : null,
     );
   }
 }
