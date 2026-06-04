@@ -53,9 +53,6 @@ class _ProfileBody extends ConsumerWidget {
       );
     }
 
-    final cuaca = Theme.of(context).brightness;
-    print('🚨 LAPORAN CUACA SAAT INI: $cuaca');
-
     return SafeArea(
       child: SingleChildScrollView(
         padding: EdgeInsets.symmetric(horizontal: 20.w),
