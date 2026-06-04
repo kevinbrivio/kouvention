@@ -502,23 +502,28 @@ class _PreviewInputBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      height: 40.h,
-      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 6.h),
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
       decoration: BoxDecoration(
-        // color: AppColors.white.withValues(alpha: 0.85),
-        // border: Border(
-        //   top: BorderSide(color: Colors.grey.shade300, width: 0.5),
-        // ),
+        color: Colors.transparent,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.05),
+            offset: const Offset(0, -1),
+            blurRadius: 4,
+          ),
+        ],
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Expanded(
+          Flexible(
             child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 8.w),
+              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
               decoration: BoxDecoration(
-                color: isDark ? AppColors.darkInputBarSurface : Colors.white,
-                borderRadius: BorderRadius.circular(20.r),
-                border: Border.all(color: Colors.grey.shade300),
+                color: isDark
+                    ? AppColors.darkInputBarSurface
+                    : AppColors.white.withValues(alpha: 0.85),
+                borderRadius: BorderRadius.circular(24.r),
               ),
               child: Row(
                 children: [
@@ -527,14 +532,15 @@ class _PreviewInputBar extends StatelessWidget {
                     size: 14.sp,
                     color: AppColors.primary,
                   ),
-                  Gap(6.w),
+                  Gap(8.w),
                   Expanded(
                     child: Text(
                       'Type a message...',
-                      style: TextStyle(
-                        color: Colors.grey.shade500,
+                      style: AppTextTheme.of(context).typeMessage.copyWith(
+                        color: AppColors.grey,
                         fontSize: 11.sp,
                       ),
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -543,8 +549,12 @@ class _PreviewInputBar extends StatelessWidget {
               ),
             ),
           ),
-
-          Icon(Icons.send, size: 20.sp, color: AppColors.primary),
+          Gap(8.w),
+          CircleAvatar(
+            radius: 12.r,
+            backgroundColor: AppColors.primary,
+            child: Icon(Icons.mic, size: 12.sp, color: Colors.white),
+          ),
         ],
       ),
     );
