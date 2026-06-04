@@ -11,7 +11,6 @@ import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/image_paths.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
-import 'package:kouvention/cores/widgets/loading_indicator.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
@@ -19,13 +18,15 @@ import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/models/message_status.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_selection_viewmodel.dart';
-import 'package:kouvention/features/chat/widgets/media_sheet.dart';
-import 'package:kouvention/features/chat/widgets/message_bubble.dart';
+import 'package:kouvention/features/chat/widgets/chatRoom/chat_room_skeleton.dart';
+import 'package:kouvention/features/chat/widgets/chatRoom/media_sheet.dart';
+import 'package:kouvention/features/chat/widgets/chatRoom/message_bubble.dart';
 import 'package:kouvention/features/chat/widgets/sticker_picker.dart';
 import 'package:kouvention/features/chat/widgets/selection_app_bar.dart';
-import 'package:kouvention/features/chat/widgets/typing_dots.dart';
+import 'package:kouvention/features/chat/widgets/chatRoom/typing_dots.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
-import 'package:kouvention/features/chat/widgets/chat_room_appbar.dart';
+import 'package:kouvention/features/chat/widgets/chatRoom/chat_room_appbar.dart';
+import 'package:kouvention/features/chat/widgets/chatRoom/chat_room_appbar_skeleton.dart';
 
 class ChatRoomView extends ConsumerWidget {
   final String chatId;
@@ -52,9 +53,16 @@ class ChatRoomView extends ConsumerWidget {
         provider: chatRoomVMProvider(chatId),
         useGradient: false,
         backgroundColor: Colors.white,
-        appBar: (vm) => selectionVM.isSelecting
-            ? SelectionAppBar(chatId: chatId, currentUid: currentUid!)
-            : ChatRoomAppBar(chatId: chatId),
+        appBar: (vm) {
+          if (selectionVM.isSelecting) {
+            return SelectionAppBar(chatId: chatId, currentUid: currentUid!);
+          }
+          final chatAsync = ref.watch(chatMetadataStreamProvider(chatId));
+          if (chatAsync.isLoading) {
+            return const ChatRoomAppBarSkeleton();
+          }
+          return ChatRoomAppBar(chatId: chatId);
+        },
         builder: (context, vm) {
           final queryParams = GoRouterState.of(context).uri.queryParameters;
           return _ChatRoomBody(
@@ -121,9 +129,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     // Update keyboard height after init screen
     _focusNode.addListener(() {
       if (_focusNode.hasFocus) {
-        if (vm.showMediaPanel) {
-          vm.toggleMediaPanel(ctx);
-        }
+        vm.dismissPanels();
       }
     });
 
@@ -160,23 +166,27 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     final messagesAsync = ref.watch(chatMessagesStreamProvider(widget.chatId));
     final chatAsync = ref.watch(chatMetadataStreamProvider(widget.chatId));
     final currentUid = ref.watch(authServiceProvider).currentUser?.uid;
+    final isChatReady = chatAsync.hasValue && chatAsync.value != null;
 
     return Column(
       children: [
         Expanded(
           child: messagesAsync.when(
-            loading: () => const LoadingIndicator(),
+            loading: () => const ChatRoomSkeleton(),
             error: (err, s) => Center(child: Text('Error: $err')),
             data: (messages) {
               _currentMessagesCount = messages.length;
               _currentMessagesList = messages;
 
+              if (messages.isEmpty && !isChatReady) {
+                return const ChatRoomSkeleton();
+              }
               if (messages.isEmpty) {
                 return const Center(child: Text('No messages yet. Say hi!'));
               }
 
               return GestureDetector(
-                onTap: () => vm.toggleMediaPanel(context),
+                onTap: () => vm.dismissPanels(),
                 child: Stack(
                   children: [
                     vm.error != null
@@ -504,11 +514,16 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     ],
   );
 
-  Widget _buildMediaPanel() => AnimatedContainer(
+  Widget _buildMediaPanel() => AnimatedSize(
     duration: const Duration(milliseconds: 250),
     curve: Curves.easeOut,
-    height: vm.showMediaPanel ? 280.h : 0,
-    child: SingleChildScrollView(child: MediaSheet(vm: vm)),
+    alignment: Alignment.topCenter,
+    child: vm.showMediaPanel
+        ? SizedBox(
+            width: double.infinity,
+            child: MediaSheet(vm: vm),
+          )
+        : const SizedBox.shrink(),
   );
 
   Widget _buildStickerPanel() => AnimatedContainer(
@@ -787,21 +802,6 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
         duration: const Duration(milliseconds: 100),
         curve: Curves.easeOut,
       );
-    }
-  }
-
-  Future<void> onClickMedia(MediaOptions options) async {
-    // Switch every media options value
-    switch (options) {
-      case MediaOptions.image:
-      case MediaOptions.camera:
-      // await vm.openCamera();
-      case MediaOptions.files:
-      // await vm.pickFiles();
-      case MediaOptions.audio:
-      //TODO: Add audio
-      case MediaOptions.location:
-      // TODO: Add Location Picker
     }
   }
 }

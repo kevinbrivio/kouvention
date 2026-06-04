@@ -185,6 +185,11 @@ class ChatRoomVM extends BaseNotifier {
     notifyListeners();
   }
 
+  void closeMediaPanel() {
+    _showMediaPanel = false;
+    notifyListeners();
+  }
+
   void toggleStickerPanel(BuildContext context) {
     _showStickerPanel = !_showStickerPanel;
     if (_showStickerPanel) {
@@ -192,6 +197,19 @@ class ChatRoomVM extends BaseNotifier {
       FocusScope.of(context).unfocus();
     }
     notifyListeners();
+  }
+
+  void closeStickerPanel() {
+    _showStickerPanel = false;
+    notifyListeners();
+  }
+
+  void dismissPanels() {
+    if (_showMediaPanel || _showStickerPanel) {
+      _showMediaPanel = false;
+      _showStickerPanel = false;
+      notifyListeners();
+    }
   }
 
   Future<void> sendSticker(StickerModel sticker) async {

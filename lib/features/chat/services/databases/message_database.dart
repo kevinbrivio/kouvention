@@ -6,6 +6,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/cores/services/db_key_manager.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
+import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqlite3/sqlite3.dart' as sqlite3;
@@ -79,8 +80,11 @@ class Messages extends Table {
 
   // Multimedia
   TextColumn get localPath => text().nullable()(); // Local path on phone
-  TextColumn get mediaUrls => text().map(const StringListConverter()).nullable()(); // Saved url in cloud
-  TextColumn get mediaCaptions => text().map(const StringListConverter()).nullable()();
+  TextColumn get mediaUrls => text()
+      .map(const StringListConverter())
+      .nullable()(); // Saved url in cloud
+  TextColumn get mediaCaptions =>
+      text().map(const StringListConverter()).nullable()();
   TextColumn get mediaGroupId => text().nullable()();
   IntColumn get mediaDuration => integer().nullable()();
   TextColumn get mimeType => text().nullable()();
@@ -181,7 +185,11 @@ class MessageDatabase extends _$MessageDatabase {
   // ===========================
   // Search using FTS5
   // ===========================
-  Future<List<Message>> searchMessages(String keyword, String currentUid, {int limit = 50}) async {
+  Future<List<Message>> searchMessages(
+    String keyword,
+    String currentUid, {
+    int limit = 50,
+  }) async {
     if (keyword.trim().isEmpty) return [];
 
     final cleaned = keyword.replaceAll(RegExp(r'["*^()~:+\[\]]'), ' ');
@@ -199,11 +207,12 @@ class MessageDatabase extends _$MessageDatabase {
     final ids = ftsRows.map((r) => r.data['message_id'] as String).toList();
 
     // Query B: Simple PK lookup — no JOIN, no FTS5
-    final results = await (select(messages)
-        ..where((m) => m.id.isIn(ids))
-        ..where((m) => m.isDeleted.equals(false))
-        ..where((m) => m.deletedFor.like('%"$currentUid"%').not())
-    ).get();
+    final results =
+        await (select(messages)
+              ..where((m) => m.id.isIn(ids))
+              ..where((m) => m.isDeleted.equals(false))
+              ..where((m) => m.deletedFor.like('%"$currentUid"%').not()))
+            .get();
 
     results.sort((a, b) => b.sentAt.compareTo(a.sentAt));
     return results.take(limit).toList();
@@ -301,7 +310,11 @@ class MessageDatabase extends _$MessageDatabase {
   // WATCH CHAT ROOM MESSAGES
   // ==============================
   /// Only watch messages limited in chat room
-  Stream<List<Message>> watchMessages(String chatRoomId, String currentUid, {int limit = 50}) =>
+  Stream<List<Message>> watchMessages(
+    String chatRoomId,
+    String currentUid, {
+    int limit = 50,
+  }) =>
       (select(messages)
             ..where((m) => m.chatRoomId.equals(chatRoomId))
             ..where((m) => m.deletedFor.like('%"$currentUid"%').not())
@@ -310,9 +323,7 @@ class MessageDatabase extends _$MessageDatabase {
           .watch();
 
   Stream<List<Chat>> watchChatRooms() =>
-      (select(chats)
-            ..orderBy([(c) => OrderingTerm.desc(c.updatedAt)]))
-          .watch();
+      (select(chats)..orderBy([(c) => OrderingTerm.desc(c.updatedAt)])).watch();
 
   // ============================
   // Upsert
@@ -350,16 +361,15 @@ class MessageDatabase extends _$MessageDatabase {
     int? fileSizeBytes,
     String? mimeType,
     String? fileName,
-  }) =>
-      (update(messages)..where((m) => m.id.equals(messageId))).write(
-        MessagesCompanion(
-          syncStatus: Value(SyncStatus.sent),
-          mediaUrls: Value(cloudUrls),
-          fileSizeBytes: Value(fileSizeBytes),
-          mimeType: Value(mimeType),
-          fileName: Value(fileName)
-        ),
-      );
+  }) => (update(messages)..where((m) => m.id.equals(messageId))).write(
+    MessagesCompanion(
+      syncStatus: Value(SyncStatus.sent),
+      mediaUrls: Value(cloudUrls),
+      fileSizeBytes: Value(fileSizeBytes),
+      mimeType: Value(mimeType),
+      fileName: Value(fileName),
+    ),
+  );
 
   Future<void> updateChatLastSync(String chatId, int timestamp) =>
       (update(chats)..where((c) => c.id.equals(chatId))).write(
@@ -399,7 +409,9 @@ class MessageDatabase extends _$MessageDatabase {
   }
 
   Future<void> markChatDeletedLocally(String chatId, String uid) async {
-    final existing = await (select(chats)..where((c) => c.id.equals(chatId))).getSingleOrNull();
+    final existing = await (select(
+      chats,
+    )..where((c) => c.id.equals(chatId))).getSingleOrNull();
     if (existing == null) return;
 
     Map<String, dynamic> deletedBy = {};
@@ -414,7 +426,9 @@ class MessageDatabase extends _$MessageDatabase {
   }
 
   Future<void> pinChatLocally(String chatId, String uid) async {
-    final existing = await (select(chats)..where((c) => c.id.equals(chatId))).getSingleOrNull();
+    final existing = await (select(
+      chats,
+    )..where((c) => c.id.equals(chatId))).getSingleOrNull();
     if (existing == null) return;
 
     final current = List<String>.from(existing.pinnedBy);
@@ -428,7 +442,9 @@ class MessageDatabase extends _$MessageDatabase {
   }
 
   Future<void> unpinChatLocally(String chatId, String uid) async {
-    final existing = await (select(chats)..where((c) => c.id.equals(chatId))).getSingleOrNull();
+    final existing = await (select(
+      chats,
+    )..where((c) => c.id.equals(chatId))).getSingleOrNull();
     if (existing == null) return;
 
     final current = List<String>.from(existing.pinnedBy);
@@ -487,6 +503,17 @@ class MessageDatabase extends _$MessageDatabase {
 
   Future<List<Chat>> getAllChatRooms(String currentUid) =>
       (select(chats)..where((c) => c.memberInfo.contains(currentUid))).get();
+
+  Future<List<Message>> getRecentMediaMessages({int limit = 10}) async {
+    final imageType = MessageType.image.name;
+    final videoType = MessageType.video.name;
+    return (select(messages)
+          ..where((m) => m.type.isIn([imageType, videoType]))
+          ..where((m) => m.mediaUrls.isNotNull())
+          ..orderBy([(m) => OrderingTerm.desc(m.sentAt)])
+          ..limit(limit))
+        .get();
+  }
 }
 
 class StringListConverter extends TypeConverter<List<String>, String> {

@@ -12,6 +12,7 @@ import 'package:kouvention/cores/widgets/loading_indicator.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_list_viewmodel.dart';
 import 'package:kouvention/features/chat/widgets/chatList/chat_header.dart';
 import 'package:kouvention/features/chat/widgets/chatList/chat_list_item.dart';
+import 'package:kouvention/features/chat/widgets/chatList/chat_list_skeleton.dart';
 import 'package:kouvention/features/search/viewmodel/search_viewmodel.dart';
 import 'package:kouvention/features/search/widgets/search_body.dart';
 
@@ -72,32 +73,32 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
           return HiddenAppBar();
         },
         builder: (context, _) => Stack(
-        children: [
-          if (searchVm.isActive)
-            Column(
-              children: [
-                _buildSearchBar(context, searchVm, ref),
-                Expanded(child: SearchBody()),
-              ],
-            )
-          else
-            _buildScreen(context, vm, searchVm, ref),
+          children: [
+            if (searchVm.isActive)
+              Column(
+                children: [
+                  _buildSearchBar(context, searchVm, ref),
+                  Expanded(child: SearchBody()),
+                ],
+              )
+            else
+              _buildScreen(context, vm, searchVm, ref),
 
-          if (!searchVm.isActive)
-            Positioned(
-              right: 16.w,
-              bottom: MediaQuery.of(context).padding.bottom + 12.h,
-              child: FloatingActionButton(
-                backgroundColor: AppColors.primary,
-                onPressed: () {
-                  context.push(RouterRoutes.newChat.path);
-                },
-                child: Icon(Icons.edit, color: Colors.white, size: 20.sp),
+            if (!searchVm.isActive)
+              Positioned(
+                right: 16.w,
+                bottom: MediaQuery.of(context).padding.bottom + 12.h,
+                child: FloatingActionButton(
+                  backgroundColor: AppColors.primary,
+                  onPressed: () {
+                    context.push(RouterRoutes.newChat.path);
+                  },
+                  child: Icon(Icons.edit, color: Colors.white, size: 20.sp),
+                ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
-    ),
     );
   }
 
@@ -121,22 +122,12 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
 
           Expanded(
             child: filteredChatAsync.when(
-              loading: () => const Center(child: LoadingIndicator()),
+              loading: () => const Center(child: ChatListSkeleton()),
               error: (err, stack) => Center(
-                child: Text(
-                  'Error loading chats: $err',
-                  style: const TextStyle(color: Colors.red),
-                ),
+                child: ChatListSkeleton(),
               ),
               data: (chats) {
-                if (chats.isEmpty) {
-                  return Center(
-                    child: Text(
-                      'No ${vm.filter == ChatFilter.direct ? 'direct' : 'group'} chats yet.',
-                      style: const TextStyle(color: Colors.grey),
-                    ),
-                  );
-                }
+                if (chats.isEmpty) return ChatListSkeleton();
 
                 return ListView.builder(
                   controller: _scrollController,
@@ -146,10 +137,13 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
                     if (index == chats.length) {
                       return Padding(
                         padding: EdgeInsets.symmetric(vertical: 16.h),
-                        child: const Center(child: SizedBox(
-                          width: 20, height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )),
+                        child: const Center(
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
                       );
                     }
                     return ChatListItem(
@@ -166,7 +160,11 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
     );
   }
 
-  Widget _buildSearchBar(BuildContext context, SearchVM searchVM, WidgetRef ref) {
+  Widget _buildSearchBar(
+    BuildContext context,
+    SearchVM searchVM,
+    WidgetRef ref,
+  ) {
     final chatRooms = ref.watch(localChatListFromStreamProvider).value ?? [];
     return Container(
       color: AppColors.white,
@@ -195,7 +193,10 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
                     borderRadius: BorderRadius.circular(20.r),
                     borderSide: BorderSide.none,
                   ),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 16.w,
+                    vertical: 8.h,
+                  ),
                 ),
               ),
             ),
