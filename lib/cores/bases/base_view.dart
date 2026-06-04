@@ -8,7 +8,7 @@ class BaseView<T extends BaseNotifier> extends ConsumerWidget {
   final AutoDisposeChangeNotifierProvider<T> provider;
   final Widget Function(BuildContext, T) builder;
   final Widget Function(BuildContext, T)? showOverlay;
-  final PreferredSizeWidget Function(T)? appBar;
+  final PreferredSizeWidget Function(T)? appBar
   final Color? backgroundColor;
   final bool useGradient;
   final DecorationImage? backgroundImage;
@@ -38,6 +38,7 @@ class BaseView<T extends BaseNotifier> extends ConsumerWidget {
         },
         child: Scaffold(
           extendBodyBehindAppBar: true,
+          resizeToAvoidBottomInset: false,
           appBar: appBar != null ? appBar!(viewmodel) : null,
           backgroundColor: backgroundColor,
           body: (!viewmodel.isInitialized)
