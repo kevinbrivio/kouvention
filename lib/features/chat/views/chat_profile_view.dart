@@ -471,11 +471,7 @@ class _WallpaperRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final image = wallpaper.image;
-    final status = !hasOverride
-        ? 'Using global'
-        : wallpaper.isRemoved
-            ? 'Removed'
-            : 'Custom';
+    final status = hasOverride ? 'Custom' : 'Using global';
 
     return InkWell(
       borderRadius: BorderRadius.circular(12.r),

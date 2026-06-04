@@ -162,4 +162,14 @@ class PrefsService {
       await _prefs.remove(key);
     }
   }
+
+  /// All chatIds that have a per-chat wallpaper override stored.
+  Set<String> getChatWallpaperKeys() {
+    final prefix = '$_wallpaperPathKey:';
+    return _prefs
+        .getKeys()
+        .where((k) => k.startsWith(prefix))
+        .map((k) => k.substring(prefix.length))
+        .toSet();
+  }
 }
