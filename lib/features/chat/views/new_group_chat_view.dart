@@ -76,7 +76,7 @@ class _NewGroupChatBodyState extends State<_NewGroupChatBody> {
               )
             : _searchController.text.isNotEmpty && vm.searchResults.isEmpty
             ? Center(
-                child: Text('No users found', style: textTheme.subDescription3),
+                child: Text('No users found', style: AppTextTheme.of(context).subDescription3),
               )
             : _searchController.text.isEmpty
             ? RecentUsersList(
@@ -122,7 +122,7 @@ class _NewGroupChatBodyState extends State<_NewGroupChatBody> {
                               user.displayName.isNotEmpty
                                   ? user.displayName[0].toUpperCase()
                                   : '?',
-                              style: textTheme.subDescription2.copyWith(
+                              style: AppTextTheme.of(context).subDescription2.copyWith(
                                 color: AppColors.senderNameColor(user.uid).withValues(alpha: 0.7)
                               ),
                             )
@@ -148,7 +148,7 @@ class _NewGroupChatBodyState extends State<_NewGroupChatBody> {
                   width: 50.w,
                   child: Text(
                     user.displayName,
-                    style: textTheme.subDescription3.copyWith(
+                    style: AppTextTheme.of(context).subDescription3.copyWith(
                       color: AppColors.black,
                     ),
                     overflow: TextOverflow.ellipsis,
@@ -176,12 +176,12 @@ class _NewGroupChatBodyState extends State<_NewGroupChatBody> {
         onChanged: vm.onSearchChanged,
         decoration: InputDecoration(
           hintText: 'Search people by name',
-          hintStyle: textTheme.subDescription3,
+          hintStyle: AppTextTheme.of(context).subDescription3,
           border: InputBorder.none,
           icon: Icon(Icons.search, color: AppColors.primary, size: 22.sp),
           contentPadding: EdgeInsets.symmetric(vertical: 12.h),
         ),
-        style: textTheme.subDescription3.copyWith(color: AppColors.black),
+        style: AppTextTheme.of(context).subDescription3.copyWith(color: AppColors.black),
       ),
     ),
   );
@@ -215,7 +215,7 @@ class _NewGroupChatBodyState extends State<_NewGroupChatBody> {
                       user.displayName.isNotEmpty
                           ? user.displayName[0].toUpperCase()
                           : '?',
-                      style: textTheme.body2.copyWith(
+                      style: AppTextTheme.of(context).body2.copyWith(
                         color: AppColors.primary,
                         fontWeight: FontWeight.w600,
                       ),
@@ -232,10 +232,10 @@ class _NewGroupChatBodyState extends State<_NewGroupChatBody> {
                 children: [
                   Text(
                     user.displayName,
-                    style: textTheme.body2.copyWith(color: AppColors.black),
+                    style: AppTextTheme.of(context).body2.copyWith(color: AppColors.black),
                   ),
                   Gap(2.h),
-                  Text(user.email, style: textTheme.subDescription3),
+                  Text(user.email, style: AppTextTheme.of(context).subDescription3),
                 ],
               ),
             ),

@@ -79,7 +79,7 @@ class ChatRoomAppBar extends ConsumerWidget implements PreferredSizeWidget {
           elevation: 0.5,
           scrolledUnderElevation: 0,
           leading: IconButton(
-            icon: Icon(Icons.arrow_back, color: AppColors.primary),
+            icon: Icon(Icons.arrow_back, color: AppColors.primary, size: 36.w,),
             onPressed: () => context.go(RouterRoutes.chatList.path),
           ),
           title: InkWell(
@@ -160,11 +160,11 @@ class ChatRoomAppBar extends ConsumerWidget implements PreferredSizeWidget {
           ),
           actions: [
             IconButton(
-              icon: Icon(Icons.phone, color: AppColors.primary),
+              icon: Icon(Icons.phone, color: AppColors.primary, size: 24.w,),
               onPressed: () {},
             ),
             IconButton(
-              icon: Icon(Icons.info_outline, color: AppColors.primary),
+              icon: Icon(Icons.info_outline, color: AppColors.primary, size: 24.w,),
               onPressed: () {},
             ),
           ],

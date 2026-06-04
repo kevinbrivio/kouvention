@@ -37,7 +37,7 @@ class OnboardingPage3 extends StatelessWidget {
                 Gap(12.h),
                 Text(
                   'Your Privacy, Guaranteed',
-                  style: textTheme.subheadline1.copyWith(
+                  style: AppTextTheme.of(context).subheadline1.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
                   textAlign: TextAlign.center,
@@ -45,7 +45,7 @@ class OnboardingPage3 extends StatelessWidget {
                 Gap(12.h),
                 Text(
                   'End-to-end encryption and secure Google Oauth sign-in keeps your chats and data fully protected.',
-                  style: textTheme.subDescription2,
+                  style: AppTextTheme.of(context).subDescription2,
                   textAlign: TextAlign.center,
                   softWrap: true,
                 ),
@@ -56,7 +56,7 @@ class OnboardingPage3 extends StatelessWidget {
                   },
                   child: Text(
                     'Read our Privacy Policy',
-                    style: textTheme.subDescription3.copyWith(
+                    style: AppTextTheme.of(context).subDescription3.copyWith(
                       color: AppColors.white.withValues(alpha: 0.5),
                       decoration: TextDecoration.underline,
                       decorationColor: AppColors.white.withValues(alpha: 0.5),

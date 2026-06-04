@@ -72,7 +72,7 @@ class ProfileHeader extends StatelessWidget {
                 child: BubbleContainer(
                   child: Text(
                     bio!,
-                    style: textTheme.body2.copyWith(
+                    style: AppTextTheme.of(context).body2.copyWith(
                       color: AppColors.black
                     ),
                   ),
@@ -125,7 +125,7 @@ class ProfileHeader extends StatelessWidget {
               ],
               Text(
                 authProviderLabel,
-                style: textTheme.subDescription3.copyWith(
+                style: AppTextTheme.of(context).subDescription3.copyWith(
                   color: isGoogleLinked
                       ? AppColors.primary
                       : Colors.grey.shade700,

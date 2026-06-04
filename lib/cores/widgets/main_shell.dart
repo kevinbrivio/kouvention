@@ -1,26 +1,33 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/constants/colors.dart';
+import 'package:kouvention/features/chat/viewmodel/chat_list_viewmodel.dart';
 
-class MainShell extends StatefulWidget {
+class MainShell extends ConsumerStatefulWidget {
   final StatefulNavigationShell navigationShell;
 
   const MainShell({super.key, required this.navigationShell});
 
   @override
-  State<MainShell> createState() => _MainShellState();
+  ConsumerState<MainShell> createState() => _MainShellState();
 }
 
-class _MainShellState extends State<MainShell> {
+class _MainShellState extends ConsumerState<MainShell> {
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    extendBody: true,
-    body:  widget.navigationShell,
-    bottomNavigationBar: _buildFloatingNav(context),
-  );
+  Widget build(BuildContext context) {
+    // Keep the realtime sync alive for the entire authenticated session
+    ref.watch(realtimeChatSyncProvider);
+
+    return Scaffold(
+      extendBody: true,
+      body: widget.navigationShell,
+      bottomNavigationBar: _buildFloatingNav(context),
+    );
+  }
 
   Widget _buildFloatingNav(BuildContext context) {
     final currentIndex = widget.navigationShell.currentIndex;
@@ -34,7 +41,6 @@ class _MainShellState extends State<MainShell> {
       child: Container(
         // height: 56.h,
         decoration: BoxDecoration(
-          color: Colors.white,
           borderRadius: BorderRadius.circular(48.r),
           boxShadow: [
             BoxShadow(

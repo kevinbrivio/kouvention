@@ -8,16 +8,43 @@ import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/cores/widgets/hidden_app_bar.dart';
-import 'package:kouvention/cores/widgets/loading_indicator.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_list_viewmodel.dart';
 import 'package:kouvention/features/chat/widgets/chatList/chat_header.dart';
 import 'package:kouvention/features/chat/widgets/chatList/chat_list_item.dart';
+import 'package:kouvention/features/chat/widgets/chatList/chat_list_skeleton.dart';
 import 'package:kouvention/features/search/viewmodel/search_viewmodel.dart';
 import 'package:kouvention/features/search/widgets/search_body.dart';
 
-class ChatListView extends ConsumerWidget {
+class ChatListView extends ConsumerStatefulWidget {
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ChatListView> createState() => _ChatListViewState();
+}
+
+class _ChatListViewState extends ConsumerState<ChatListView> {
+  final _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >
+        _scrollController.position.maxScrollExtent * 0.8) {
+      ref.read(chatListVM).fetchOlderChats();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final vm = ref.watch(chatListVM);
     final searchVm = ref.watch(searchVMProvider);
 
@@ -45,32 +72,32 @@ class ChatListView extends ConsumerWidget {
           return HiddenAppBar();
         },
         builder: (context, _) => Stack(
-        children: [
-          if (searchVm.isActive)
-            Column(
-              children: [
-                _buildSearchBar(context, searchVm, ref),
-                Expanded(child: SearchBody()),
-              ],
-            )
-          else
-            _buildScreen(context, vm, searchVm, ref),
+          children: [
+            if (searchVm.isActive)
+              Column(
+                children: [
+                  _buildSearchBar(context, searchVm, ref),
+                  Expanded(child: SearchBody()),
+                ],
+              )
+            else
+              _buildScreen(context, vm, searchVm, ref),
 
-          if (!searchVm.isActive)
-            Positioned(
-              right: 16.w,
-              bottom: MediaQuery.of(context).padding.bottom + 12.h,
-              child: FloatingActionButton(
-                backgroundColor: AppColors.primary,
-                onPressed: () {
-                  context.push(RouterRoutes.newChat.path);
-                },
-                child: Icon(Icons.edit, color: Colors.white, size: 20.sp),
+            if (!searchVm.isActive)
+              Positioned(
+                right: 16.w,
+                bottom: MediaQuery.of(context).padding.bottom + 12.h,
+                child: FloatingActionButton(
+                  backgroundColor: AppColors.primary,
+                  onPressed: () {
+                    context.push(RouterRoutes.newChat.path);
+                  },
+                  child: Icon(Icons.edit, color: Colors.white, size: 20.sp),
+                ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
-    ),
     );
   }
 
@@ -94,27 +121,35 @@ class ChatListView extends ConsumerWidget {
 
           Expanded(
             child: filteredChatAsync.when(
-              loading: () => const Center(child: LoadingIndicator()),
+              loading: () => const Center(child: ChatListSkeleton()),
               error: (err, stack) => Center(
-                child: Text(
-                  'Error loading chats: $err',
-                  style: const TextStyle(color: Colors.red),
-                ),
+                child: ChatListSkeleton(),
               ),
               data: (chats) {
-                if (chats.isEmpty) {
-                  return Center(
-                    child: Text(
-                      'No ${vm.filter == ChatFilter.direct ? 'direct' : 'group'} chats yet.',
-                      style: const TextStyle(color: Colors.grey),
-                    ),
-                  );
-                }
+                if (chats.isEmpty) return ChatListSkeleton();
 
                 return ListView.builder(
+                  controller: _scrollController,
                   padding: EdgeInsets.zero,
-                  itemCount: chats.length,
-                  itemBuilder: (context, index) => ChatListItem(chat: chats[index], isLastItem: index == chats.length + 1),
+                  itemCount: chats.length + (vm.isLoadingMore ? 1 : 0),
+                  itemBuilder: (context, index) {
+                    if (index == chats.length) {
+                      return Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16.h),
+                        child: const Center(
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
+                      );
+                    }
+                    return ChatListItem(
+                      chat: chats[index],
+                      isLastItem: index == chats.length - 1,
+                    );
+                  },
                 );
               },
             ),
@@ -124,7 +159,11 @@ class ChatListView extends ConsumerWidget {
     );
   }
 
-  Widget _buildSearchBar(BuildContext context, SearchVM searchVM, WidgetRef ref) {
+  Widget _buildSearchBar(
+    BuildContext context,
+    SearchVM searchVM,
+    WidgetRef ref,
+  ) {
     final chatRooms = ref.watch(localChatListFromStreamProvider).value ?? [];
     return Container(
       color: AppColors.white,
@@ -153,7 +192,10 @@ class ChatListView extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(20.r),
                     borderSide: BorderSide.none,
                   ),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 16.w,
+                    vertical: 8.h,
+                  ),
                 ),
               ),
             ),
@@ -175,7 +217,6 @@ class ChatListView extends ConsumerWidget {
     final allPinned = vm.isSelectedChatsPinned;
 
     return AppBar(
-      backgroundColor: AppColors.backdrop,
       leading: IconButton(
         icon: const Icon(Icons.close, color: AppColors.primary),
         onPressed: () => vm.clearSelection(),
@@ -206,11 +247,11 @@ class ChatListView extends ConsumerWidget {
       builder: (context) => AlertDialog(
         title: Text(
           'Delete this chat?',
-          style: textTheme.subheadline1.copyWith(color: AppColors.black),
+          style: AppTextTheme.of(context).subheadline1,
         ),
         content: Text(
           'This chat will be removed from your list. It will reappear if someone sends a new message.',
-          style: textTheme.subDescription3,
+          style: AppTextTheme.of(context).subDescription3,
         ),
         actionsPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
         actions: [
@@ -221,9 +262,7 @@ class ChatListView extends ConsumerWidget {
                 onPressed: () => Navigator.pop(context),
                 child: Text(
                   'Cancel',
-                  style: textTheme.subDescription3.copyWith(
-                    color: AppColors.primary,
-                  ),
+                  style: AppTextTheme.of(context).subDescription3,
                 ),
               ),
               Gap(12.w),
@@ -234,9 +273,7 @@ class ChatListView extends ConsumerWidget {
                 },
                 child: Text(
                   'Delete chat',
-                  style: textTheme.subDescription3.copyWith(
-                    color: AppColors.primary,
-                  ),
+                  style: AppTextTheme.of(context).subDescription3,
                 ),
               ),
             ],

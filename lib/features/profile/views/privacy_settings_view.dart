@@ -16,10 +16,9 @@ class PrivacySettingsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) => BaseView(
     provider: privacySettingsVM,
-    backgroundColor: AppColors.backdrop,
     useGradient: false,
     appBar: (_) => CustomAppBar(
-      body: Text('Privacy', style: textTheme.appBar),
+      body: Text('Privacy', style: AppTextTheme.of(context).appBar),
       onBack: () => context.go(RouterRoutes.profile.path),
     ),
     builder: (context, vm) => _Body(viewmodel: vm),
@@ -46,12 +45,7 @@ class _Body extends StatelessWidget {
 
             Text(
               'PRIVACY',
-              style: TextStyle(
-                fontSize: 12.sp,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey.shade500,
-                letterSpacing: 1.0,
-              ),
+              style: AppTextTheme.of(context).subDescription
             ),
             Gap(12.h),
 

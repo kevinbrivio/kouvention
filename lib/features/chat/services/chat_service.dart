@@ -5,6 +5,7 @@ import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/models/reply_to_model.dart';
+import 'package:kouvention/features/chat/utils/message_label.dart';
 
 class ChatService {
   final FirebaseFirestore _firestore;
@@ -26,12 +27,12 @@ class ChatService {
   /// - a new chat is created
   /// - a chat is updated (e.g. a new message is added)
   /// unreadCount changes, typingUsers changes
-  Stream<List<ChatModel>> streamChatList(String currentUid) {
-    return _chatsRef
+  Stream<List<ChatModel>> streamChatList(String currentUid, {int? limit}) {
+    var query = _chatsRef
         .where('members', arrayContains: currentUid)
-        .orderBy('lastMessage.sentAt', descending: true)
-        .snapshots()
-        .map(
+        .orderBy('lastMessage.sentAt', descending: true);
+    if (limit != null) query = query.limit(limit);
+    return query.snapshots().map(
           (snapshot) => snapshot.docs
               .map((doc) => ChatModel.fromMap(doc.id, doc.data()))
               .where((chat) => !chat.isDeletedBy(currentUid))
@@ -69,12 +70,17 @@ class ChatService {
   Future<List<ChatModel>> fetchChatRooms(
     String currentUid, {
     int limit = 20,
+    DateTime? startAfter,
   }) async {
-    final snapshot = await _chatsRef
-        .where('members', arrayContains: currentUid)
-        .limit(limit)
-        .get();
-        
+    var query = _chatsRef
+      .where('members', arrayContains: currentUid)
+      .orderBy('lastMessage.sentAt', descending: true);
+
+    if (startAfter != null) {
+      query = query.startAfter([Timestamp.fromDate(startAfter)]);
+    }
+
+    final snapshot = await query.limit(limit).get();
     return snapshot.docs
         .map((doc) => ChatModel.fromMap(doc.id, doc.data()))
         .toList();
@@ -202,46 +208,33 @@ class ChatService {
     final lastMessageMap = MessageModel.toLastMessageMap(
       senderId: senderId,
       senderName: senderName,
-      text: text.isNotEmpty ? text : _mediaLabel(type, fileName),
+      text: text.isNotEmpty ? text : lastMessageLabel(text, type, fileName),
       type: type,
       replyTo: replyTo,
-    );
+     );
 
-    // Sama seperti sendMessage — write ke Firestore
     final batch = FirebaseFirestore.instance.batch();
+    final chatRef = FirebaseFirestore.instance.collection('chats').doc(chatId);
 
     batch.set(
-      FirebaseFirestore.instance
-          .collection('chats')
-          .doc(chatId)
-          .collection('messages')
-          .doc(messageId),
+      chatRef.collection('messages').doc(messageId),
       messageMap,
     );
 
-    batch.update(
-      FirebaseFirestore.instance.collection('chats').doc(chatId),
-      lastMessageMap,
-    );
+    batch.update(chatRef, {
+      ...lastMessageMap,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+
+    final unreadUpdates = <String, dynamic>{};
+    for (final uid in memberUids) {
+      if (uid != senderId) {
+        unreadUpdates['unreadCount.$uid'] = FieldValue.increment(1);
+      }
+    }
+    batch.update(chatRef, unreadUpdates);
 
     await batch.commit();
-  }
-
-  String _mediaLabel(MessageType type, String filename) {
-    switch (type) {
-      case MessageType.image:
-        return '📷 Photo';
-      case MessageType.video:
-        return '🎥 ${filename}';
-      case MessageType.audio:
-        return '🎵 ${filename}';
-      case MessageType.file:
-        return '📎 ${filename}';
-      case MessageType.sticker:
-        return 'Sticker';
-      default:
-        return '';
-    }
   }
 
   // --- GET CHATS --------------------------------

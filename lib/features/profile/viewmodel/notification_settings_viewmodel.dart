@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
@@ -31,6 +32,8 @@ class NotificationSettingsVM extends BaseNotifier {
   NotificationPermissionState _osPermission =
       NotificationPermissionState.notDetermined;
   bool _reconciled = false;
+
+  static const _settingsChannel = MethodChannel('kouvention/notification_settings');
 
   NotificationSettingsVM(super.ref)
     : _userService = ref.read(userServiceProvider),
@@ -67,21 +70,33 @@ class NotificationSettingsVM extends BaseNotifier {
   bool get osPermissionGranted =>
       _osPermission == NotificationPermissionState.granted;
 
-  String get currentSoundId => prefs.notificationSoundId ?? NotificationSound.defaultId;
+  String get currentSoundId {
+    return NotificationSound.soundIdFromChannelId(prefs.dmChannelId);
+  }
 
   String get currentSoundDisplayName {
-    final id = currentSoundId;
-    if (id == NotificationSound.systemId) {
-      return prefs.notificationSoundDisplayName ?? 'System Ringtone';
-    }
-    final sound = NotificationSound.fromId(id);
-    return sound?.displayName ?? 'Default';
+    return NotificationSound.displayNameForChannel(prefs.dmChannelId);
+  }
+
+  String? get currentGroupSoundId {
+    final id = prefs.groupChannelId;
+    if (id == null) return null;
+    return NotificationSound.soundIdFromChannelId(id);
+  }
+
+  String get currentGroupSoundDisplayName {
+    final id = prefs.groupChannelId;
+    if (id == null) return 'Default (same as direct)';
+    return NotificationSound.displayNameForChannel(id);
   }
 
   bool get vibrationEnabled => prefs.notificationVibrationEnabled;
 
   Future<void> setVibrationEnabled(bool value) async {
     await prefs.setNotificationVibrationEnabled(value);
+    if (value) {
+      HapticFeedback.heavyImpact();
+    }
     notifyListeners();
   }
 
@@ -136,22 +151,34 @@ class NotificationSettingsVM extends BaseNotifier {
   }
 
   Future<void> selectSound(String soundId) async {
-    await prefs.setNotificationSoundId(soundId);
-    if (soundId != NotificationSound.systemId) {
-      await prefs.setNotificationSoundUri(null);
-      await prefs.setNotificationSoundDisplayName(null);
+    final channelId = NotificationSound.channelIdForSound(soundId, isGroup: false);
+    await prefs.setDmChannelId(channelId);
+    if (soundId == NotificationSound.systemId) {
+      await openNativeNotificationChannelSettings(channelId);
     }
     notifyListeners();
   }
 
-  Future<void> pickSystemRingtone() async {
-    final currentUri = prefs.notificationSoundUri;
-    final result = await _permissionVM.pickSystemRingtone(currentUri);
-    if (result != null) {
-      await prefs.setNotificationSoundId(NotificationSound.systemId);
-      await prefs.setNotificationSoundUri(result['uri']);
-      await prefs.setNotificationSoundDisplayName(result['displayName']);
-      notifyListeners();
+  Future<void> selectGroupSound(String? soundId) async {
+    if (soundId == null) {
+      await prefs.setGroupChannelId(null);
+    } else {
+      final channelId = NotificationSound.channelIdForSound(soundId, isGroup: true);
+      await prefs.setGroupChannelId(channelId);
+      if (soundId == NotificationSound.systemId) {
+        await openNativeNotificationChannelSettings(channelId);
+      }
+    }
+    notifyListeners();
+  }
+
+  Future<void> openNativeNotificationChannelSettings(String channelId) async {
+    try {
+      await _settingsChannel.invokeMethod('openChannelSettings', {
+        'channelId': channelId,
+      });
+    } catch (e) {
+      debugPrint('Failed to open channel settings: $e');
     }
   }
 

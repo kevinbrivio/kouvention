@@ -93,7 +93,7 @@ class _ChatProfileBodyState extends ConsumerState<_ChatProfileBody> {
                               vm.chatDisplayName.isNotEmpty
                                   ? vm.chatDisplayName[0].toUpperCase()
                                   : '?',
-                              style: textTheme.senderName.copyWith(
+                              style: AppTextTheme.of(context).senderName.copyWith(
                                 fontSize: 48.sp,
                                 color: AppColors.senderNameColor(
                                   chat.id,
@@ -109,9 +109,7 @@ class _ChatProfileBodyState extends ConsumerState<_ChatProfileBody> {
             Center(
               child: Text(
                 vm.chatDisplayName,
-                style: textTheme.subheadline1.copyWith(
-                  color: AppColors.primary,
-                ),
+                style: AppTextTheme.of(context).subheadline1,
               ),
             ),
             Gap(4.h),
@@ -120,13 +118,11 @@ class _ChatProfileBodyState extends ConsumerState<_ChatProfileBody> {
                 child: Text.rich(
                   TextSpan(
                     text: 'Group · ',
-                    style: textTheme.senderName.copyWith(color: AppColors.grey),
+                    style: AppTextTheme.of(context).senderName,
                     children: [
                       TextSpan(
                         text: '${vm.members.length} members',
-                        style: textTheme.senderName.copyWith(
-                          color: AppColors.primary,
-                        ),
+                        style: AppTextTheme.of(context).senderName,
                       ),
                     ],
                   ),
@@ -135,14 +131,14 @@ class _ChatProfileBodyState extends ConsumerState<_ChatProfileBody> {
               Gap(12.h),
               Text(
                 'Created by ${vm.chat?.createdBy?['name']}, ${DateTimeHelper.formatDateMonthYear(vm.chat?.createdAt ?? DateTime.now())}',
-                style: textTheme.senderName.copyWith(color: AppColors.grey),
+                style: AppTextTheme.of(context).senderName
               ),
               Gap(12.h),
               CustomDivider(),
               Gap(12.h),
               Text(
                 '${vm.members.length} members',
-                style: textTheme.senderName.copyWith(color: AppColors.grey),
+                style: AppTextTheme.of(context).senderName,
               ),
               Gap(6.h),
 
@@ -151,9 +147,7 @@ class _ChatProfileBodyState extends ConsumerState<_ChatProfileBody> {
               Center(
                 child: Text(
                   vm.otherUserEmail ?? '',
-                  style: textTheme.subDescription2.copyWith(
-                    color: AppColors.grey,
-                  ),
+                  style: AppTextTheme.of(context).subDescription2,
                 ),
               ),
             ],
@@ -162,9 +156,7 @@ class _ChatProfileBodyState extends ConsumerState<_ChatProfileBody> {
               Gap(18.h),
               Text(
                 '${vm.groupsInCommon.length} Groups in common',
-                style: textTheme.subDescription3.copyWith(
-                  color: AppColors.grey,
-                ),
+                style: AppTextTheme.of(context).subDescription3,
               ),
               Gap(6.h),
               _buildGroupInCommonList(),
@@ -204,7 +196,7 @@ class _ChatProfileBodyState extends ConsumerState<_ChatProfileBody> {
               child: !showPhoto
                   ? Text(
                       name[0].toUpperCase(),
-                      style: textTheme.senderName.copyWith(
+                      style: AppTextTheme.of(context).senderName.copyWith(
                         color: AppColors.senderNameColor(
                           uid,
                         ).withValues(alpha: 0.7),
@@ -219,9 +211,7 @@ class _ChatProfileBodyState extends ConsumerState<_ChatProfileBody> {
                 children: [
                   Text(
                     name,
-                    style: textTheme.senderName.copyWith(
-                      color: AppColors.black,
-                    ),
+                    style: AppTextTheme.of(context).senderName,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
@@ -273,16 +263,12 @@ class _ChatProfileBodyState extends ConsumerState<_ChatProfileBody> {
                 children: [
                   Text(
                     group.groupName ?? '',
-                    style: textTheme.senderName.copyWith(
-                      color: AppColors.black,
-                    ),
+                    style: AppTextTheme.of(context).senderName,
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
                     '${group.members.length} members',
-                    style: textTheme.subDescription3.copyWith(
-                      color: Colors.grey,
-                    ),
+                    style: AppTextTheme.of(context).subDescription3,
                   ),
                 ],
               ),
@@ -332,7 +318,7 @@ class _ChatProfileBodyState extends ConsumerState<_ChatProfileBody> {
             Gap(8.h),
             Text(
               member.value.displayName,
-              style: textTheme.subheadline1.copyWith(color: AppColors.black),
+              style: AppTextTheme.of(context).subheadline1,
             ),
             Gap(16.h),
             Row(

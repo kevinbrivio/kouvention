@@ -46,10 +46,10 @@ class SearchResultGroupTile extends StatelessWidget {
             Expanded(
               child: Text(
                 group.chatDisplayName,
-                style: textTheme.contactName.copyWith(color: AppColors.black),
+                style: AppTextTheme.of(context).contactName.copyWith(color: AppColors.black),
               ),
             ),
-            Text('${group.results.length}', style: textTheme.subDescription3),
+            Text('${group.results.length}', style: AppTextTheme.of(context).subDescription3),
           ],
         ),
       ),

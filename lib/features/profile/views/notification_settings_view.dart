@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:io';
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
@@ -20,10 +22,9 @@ class NotificationSettingsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) => BaseView(
     provider: notificationSettingsVM,
-    backgroundColor: AppColors.backdrop,
     useGradient: false,
     appBar: (_) => CustomAppBar(
-      body: Text('Notifications', style: textTheme.appBar),
+      body: Text('Notifications', style: AppTextTheme.of(context).appBar),
       onBack: () => context.go(RouterRoutes.profile.path),
     ),
     builder: (context, vm) => _Body(viewmodel: vm),
@@ -40,6 +41,8 @@ class _Body extends StatefulWidget {
 }
 
 class _BodyState extends State<_Body> with WidgetsBindingObserver {
+  final _previewPlayer = AudioPlayer();
+
   @override
   void initState() {
     super.initState();
@@ -48,8 +51,16 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _previewPlayer.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  void _playSound(NotificationSound sound) async {
+    await _previewPlayer.stop();
+    if (sound.assetPath != null) {
+      unawaited(_previewPlayer.play(AssetSource(sound.assetPath!)));
+    }
   }
 
   @override
@@ -70,12 +81,7 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
 
           Text(
             'NOTIFICATIONS',
-            style: TextStyle(
-              fontSize: 12.sp,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey.shade500,
-              letterSpacing: 1.0,
-            ),
+            style: AppTextTheme.of(context).subDescription
           ),
           Gap(12.h),
 
@@ -85,7 +91,7 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
           ],
 
           Opacity(
-            opacity: widget.viewmodel.osPermissionGranted ? 1.0 : 0.5,
+            opacity: widget.viewmodel.osPermissionGranted ? 1.0 : 0.25,
             child: AbsorbPointer(
               absorbing: !widget.viewmodel.osPermissionGranted,
               child: SettingsToggleTile(
@@ -101,7 +107,7 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
           Gap(4.h),
 
           Opacity(
-            opacity: widget.viewmodel.osPermissionGranted ? 1.0 : 0.5,
+            opacity: widget.viewmodel.osPermissionGranted ? 1.0 : 0.25,
             child: AbsorbPointer(
               absorbing: !widget.viewmodel.osPermissionGranted,
               child: SettingsTile(
@@ -117,13 +123,31 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
           Gap(4.h),
 
           Opacity(
-            opacity: widget.viewmodel.osPermissionGranted ? 1.0 : 0.5,
+            opacity: widget.viewmodel.osPermissionGranted ? 1.0 : 0.25,
+            child: AbsorbPointer(
+              absorbing: !widget.viewmodel.osPermissionGranted,
+              child: SettingsTile(
+                icon: Icons.groups_outlined,
+                iconColor: AppColors.primary,
+                title: 'Group Sound',
+                subtitle: widget.viewmodel.currentGroupSoundDisplayName,
+                onTap: () => _showGroupSoundPicker(context),
+              ),
+            ),
+          ),
+
+          Gap(4.h),
+
+          Opacity(
+            opacity: widget.viewmodel.osPermissionGranted ? 1.0 : 0.25,
             child: AbsorbPointer(
               absorbing: !widget.viewmodel.osPermissionGranted,
               child: SettingsToggleTile(
                 icon: Icons.vibration,
                 title: 'Vibration',
-                subtitle: 'Vibrate on new message',
+                subtitle: Platform.isAndroid
+                    ? 'Vibrate on new message'
+                    : 'Follows your device system settings',
                 value: widget.viewmodel.vibrationEnabled,
                 onChanged: (v) => widget.viewmodel.setVibrationEnabled(v),
               ),
@@ -138,11 +162,7 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
               widget.viewmodel.osPermissionGranted
                   ? 'You can also manage notification sounds and vibration from your device\'s Settings app.'
                   : 'Notifications are disabled at the system level. Tap "Open Settings" to enable them.',
-              style: TextStyle(
-                fontSize: 12.sp,
-                color: Colors.grey.shade500,
-                height: 1.4,
-              ),
+              style: AppTextTheme.of(context).subDescription3
             ),
           ),
 
@@ -153,7 +173,90 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
   );
 
   void _showSoundPicker(BuildContext context) {
-    final currentId = widget.viewmodel.currentSoundId;
+    showModalBottomSheet(
+      context: context,
+      useRootNavigator: true,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
+      ),
+      builder: (sheetContext) {
+        final initialId = widget.viewmodel.currentSoundId;
+        var selectedId = initialId;
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) => SafeArea(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 16.h),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20.w),
+                      child: Text(
+                        'Notification Sound',
+                        style: AppTextTheme.of(context).subDescription2
+                      ),
+                    ),
+                    Gap(8.h),
+                    ...NotificationSound.bundled.map(
+                      (sound) => _SoundTile(
+                        label: sound.displayName,
+                        isSelected: selectedId == sound.id,
+                        onTap: () {
+                          _playSound(sound);
+                          setDialogState(() => selectedId = sound.id);
+                        },
+                      ),
+                    ),
+                    _SoundTile(
+                      label: 'System Ringtone',
+                      isSelected: selectedId == NotificationSound.systemId,
+                      onTap: () => setDialogState(
+                        () => selectedId = NotificationSound.systemId,
+                      ),
+                    ),
+                    Gap(16.h),
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20.w),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            if (selectedId != initialId) {
+                              widget.viewmodel.selectSound(selectedId);
+                            }
+                            Navigator.pop(sheetContext);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(vertical: 14.h),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                            ),
+                          ),
+                          child: Text(
+                            'Done',
+                            style: AppTextTheme.of(context).subDescription2
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showGroupSoundPicker(BuildContext context) {
+    final initialId = widget.viewmodel.currentGroupSoundId;
+    var selectedId = initialId;
 
     showModalBottomSheet(
       context: context,
@@ -161,56 +264,92 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
       ),
-      builder: (sheetContext) => SafeArea(
-        child: Padding(
-          padding: EdgeInsets.symmetric(vertical: 16.h),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20.w),
-                child: Text(
-                  'Notification Sound',
-                  style: TextStyle(
-                    fontSize: 16.sp,
-                    fontWeight: FontWeight.w600,
-                  ),
+      builder: (sheetContext) => StatefulBuilder(
+          builder: (context, setDialogState) => SafeArea(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 16.h),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20.w),
+                      child: Text(
+                        'Group Notification Sound',
+                        style: AppTextTheme.of(context).subDescription2
+                      ),
+                    ),
+                    Gap(8.h),
+                    ListTile(
+                      leading: Icon(
+                        selectedId == null
+                            ? Icons.radio_button_checked
+                            : Icons.radio_button_unchecked,
+                        color: selectedId == null
+                            ? AppColors.primary
+                            : Colors.grey.shade400,
+                      ),
+                      title: Text(
+                        'Default (same as direct)',
+                        style: AppTextTheme.of(context).subDescription2
+                      ),
+                      onTap: () => setDialogState(() => selectedId = null),
+                    ),
+                    ...NotificationSound.bundled.map(
+                      (sound) => _SoundTile(
+                        label: sound.displayName,
+                        isSelected: selectedId == sound.id,
+                        onTap: () {
+                          _playSound(sound);
+                          setDialogState(() => selectedId = sound.id);
+                        },
+                      ),
+                    ),
+                    _SoundTile(
+                      label: 'System Ringtone',
+                      isSelected: selectedId == NotificationSound.systemId,
+                      onTap: () => setDialogState(
+                        () => selectedId = NotificationSound.systemId,
+                      ),
+                    ),
+                    Gap(16.h),
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20.w),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            if (selectedId != initialId) {
+                              if (selectedId == null) {
+                                await widget.viewmodel.selectGroupSound('');
+                              } else {
+                                await widget.viewmodel.selectGroupSound(selectedId!);
+                              }
+                            }
+                            if (sheetContext.mounted) Navigator.pop(sheetContext);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(vertical: 14.h),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                            ),
+                          ),
+                          child: Text(
+                            'Done',
+                            style: AppTextTheme.of(context).subDescription2
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              Gap(8.h),
-              ...NotificationSound.bundled.map(
-                (sound) => _SoundTile(
-                  label: sound.displayName,
-                  isSelected: currentId == sound.id,
-                  onTap: () {
-                    widget.viewmodel.selectSound(sound.id);
-                    Navigator.pop(sheetContext);
-                  },
-                ),
-              ),
-              if (Platform.isAndroid) ...[
-                Divider(height: 24.h, indent: 20.w, endIndent: 20.w),
-                ListTile(
-                  leading: Icon(Icons.audiotrack, color: AppColors.primary),
-                  title: Text(
-                    'Pick from system ringtones',
-                    style: TextStyle(fontSize: 14.sp),
-                  ),
-                  trailing: Icon(
-                    Icons.chevron_right,
-                    color: Colors.grey.shade400,
-                  ),
-                  onTap: () async {
-                    Navigator.pop(sheetContext);
-                    await widget.viewmodel.pickSystemRingtone();
-                  },
-                ),
-              ],
-            ],
+            ),
           ),
         ),
-      ),
     );
   }
 
@@ -283,7 +422,7 @@ class _SoundTile extends StatelessWidget {
       isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
       color: isSelected ? AppColors.primary : Colors.grey.shade400,
     ),
-    title: Text(label, style: TextStyle(fontSize: 14.sp)),
+    title: Text(label, style: AppTextTheme.of(context).subDescription2),
     onTap: onTap,
   );
 }

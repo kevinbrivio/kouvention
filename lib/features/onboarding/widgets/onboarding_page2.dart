@@ -35,6 +35,7 @@ class OnboardingPage2 extends StatelessWidget {
             color: AppColors.white.withValues(alpha: 0.2),
             radius: BorderRadius.circular(12.r),
             child: _buildContent(
+              context,
               'Chat Rooms',
               'Join public communities or create private groups for your team.',
               Icons.search_outlined,
@@ -48,6 +49,7 @@ class OnboardingPage2 extends StatelessWidget {
             color: AppColors.white.withValues(alpha: 0.2),
             radius: BorderRadius.circular(12.r),
             child: _buildContent(
+              context,
               'Global Search',
               'Find messages, files, and contacts instantly across all chats.',
               Icons.people_alt_outlined,
@@ -61,6 +63,7 @@ class OnboardingPage2 extends StatelessWidget {
             color: AppColors.white.withValues(alpha: 0.2),
             radius: BorderRadius.circular(12.r),
             child: _buildContent(
+              context,
               'User Profiles',
               'Customize your presence and view detailed contact information.',
               Icons.nature_people_outlined,
@@ -72,7 +75,7 @@ class OnboardingPage2 extends StatelessWidget {
     ),
   );
 
-  Widget _buildContent(String title, String description, IconData icon) => Row(
+  Widget _buildContent(BuildContext context, String title, String description, IconData icon) => Row(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       // TODO: Change hardcoded icons to params
@@ -85,7 +88,7 @@ class OnboardingPage2 extends StatelessWidget {
           children: [
             Text(
               title,
-              style: textTheme.subDescription.copyWith(
+              style: AppTextTheme.of(context).subDescription.copyWith(
                 fontWeight: FontWeight.w600,
                 color: AppColors.white,
               ),
@@ -93,7 +96,7 @@ class OnboardingPage2 extends StatelessWidget {
             Gap(4.h),
             Text(
               description,
-              style: textTheme.subDescription.copyWith(fontSize: 13.sp),
+              style: AppTextTheme.of(context).subDescription.copyWith(fontSize: 13.sp),
               textAlign: TextAlign.left,
               softWrap: true,
             ),

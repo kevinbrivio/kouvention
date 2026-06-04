@@ -38,6 +38,7 @@ class BaseView<T extends BaseNotifier> extends ConsumerWidget {
         },
         child: Scaffold(
           extendBodyBehindAppBar: true,
+          resizeToAvoidBottomInset: false,
           appBar: appBar != null ? appBar!(viewmodel) : null,
           backgroundColor: backgroundColor,
           body: (!viewmodel.isInitialized)
@@ -52,7 +53,10 @@ class BaseView<T extends BaseNotifier> extends ConsumerWidget {
                             end: Alignment.bottomRight,
                           ),
                         )
-                      : BoxDecoration(image: backgroundImage, color: backgroundColor ?? AppColors.white),
+                      : BoxDecoration(
+                          image: backgroundImage,
+                          color: backgroundColor,
+                        ),
                   child: Stack(
                     children: [
                       builder(context, viewmodel),

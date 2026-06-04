@@ -20,7 +20,6 @@ class PersonalInfoSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     decoration: BoxDecoration(
-      color: AppColors.white,
       borderRadius: BorderRadius.circular(16.r),
       boxShadow: [ 
         BoxShadow(
@@ -40,19 +39,17 @@ class PersonalInfoSection extends StatelessWidget {
           child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Display Name', style: textTheme.subDescription3),
+            Text('Display Name', style: AppTextTheme.of(context).subDescription3),
             Gap(4.h),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   displayName,
-                  style: textTheme.subDescription2.copyWith(
-                    color: AppColors.black,
-                  ),
+                  style: AppTextTheme.of(context).subDescription2,
                 ),
 
-                Icon(Icons.create_rounded, size: 24.sp, color: AppColors.grey),
+                Icon(Icons.create_rounded, size: 24.sp),
               ],
             ),
           ],
@@ -61,7 +58,6 @@ class PersonalInfoSection extends StatelessWidget {
         Gap(12.h),
         Divider(color: AppColors.grey.withValues(alpha: 0.15),),
         Gap(6.h),
-        // Status/Bio
         
         InkWell(
           onTap: onEditStatus,
@@ -69,19 +65,17 @@ class PersonalInfoSection extends StatelessWidget {
           child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Status', style: textTheme.subDescription3),
+            Text('Status', style: AppTextTheme.of(context).subDescription3),
             Gap(4.h),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   status,
-                  style: textTheme.subDescription2.copyWith(
-                    color: AppColors.black,
-                  ),
+                  style: AppTextTheme.of(context).subDescription2,
                 ),
 
-                Icon(Icons.create_rounded, size: 24.sp, color: AppColors.grey),
+                Icon(Icons.create_rounded, size: 24.sp),
               ],
             ),
           ],

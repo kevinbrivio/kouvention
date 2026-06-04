@@ -56,12 +56,12 @@ class LoginView extends ConsumerWidget {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Center(child: Text('Welcome Back', style: textTheme.subheadline1)),
+        Center(child: Text('Welcome Back', style: AppTextTheme.of(context).subheadline1)),
         Gap(8.h),
         Center(
           child: Text(
             'Sign in to continue to your messages',
-            style: textTheme.subDescription2,
+            style: AppTextTheme.of(context).subDescription2,
             textAlign: TextAlign.center,
           ),
         ),
@@ -70,7 +70,7 @@ class LoginView extends ConsumerWidget {
         _buildGoogleButton(context, vm),
         Gap(24.h),
 
-        _buildDivider(),
+        _buildDivider(context),
         Gap(24.h),
 
         _buildEmailButton(context, vm),
@@ -93,8 +93,7 @@ class LoginView extends ConsumerWidget {
       icon: Image.asset(icons.google, height: 24.h, width: 24.h),
       label: Text(
         'Continue with Google',
-        style: textTheme.body1.copyWith(
-          color: AppColors.black,
+        style: AppTextTheme.of(context).body1.copyWith(
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -115,8 +114,7 @@ class LoginView extends ConsumerWidget {
       icon: Icon(Icons.email_outlined, color: Colors.white, size: 22.sp),
       label: Text(
         'Sign in with Email',
-        style: textTheme.body1.copyWith(
-          color: Colors.white,
+        style: AppTextTheme.of(context).body1.copyWith(
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -129,14 +127,14 @@ class LoginView extends ConsumerWidget {
     ),
   );
 
-  Widget _buildDivider() => Row(
+  Widget _buildDivider(BuildContext context) => Row(
     children: [
       Expanded(child: const Divider(color: Colors.white38, thickness: 1)),
       Padding(
         padding: EdgeInsets.symmetric(horizontal: 16.w),
         child: Text(
           'OR',
-          style: textTheme.subDescription2.copyWith(
+          style: AppTextTheme.of(context).subDescription2.copyWith(
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -150,13 +148,13 @@ class LoginView extends ConsumerWidget {
     child: Text.rich(
       TextSpan(
         text: 'Don\'t have an account? ',
-        style: textTheme.subDescription2,
+        style: AppTextTheme.of(context).subDescription2,
         children: [
           TextSpan(
             text: 'Sign up',
-            style: textTheme.subDescription2.copyWith(
+            style: AppTextTheme.of(context).subDescription2.copyWith(
               fontWeight: FontWeight.w600,
-              color: AppColors.white,
+
             ),
           ),
         ],

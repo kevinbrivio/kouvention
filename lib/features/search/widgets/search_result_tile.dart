@@ -38,7 +38,7 @@ class SearchResultTile extends StatelessWidget {
         children: [
           _buildHighlightedText(result.messageText, query, context),
           Gap(4.h),
-          _buildSenderLine(),
+          _buildSenderLine(context),
         ],
       ),
     ),
@@ -56,13 +56,13 @@ class SearchResultTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildMediaLabel(),
+                _buildMediaLabel(context),
                 if (result.messageText.isNotEmpty) ...[
                   Gap(2.h),
                   _buildHighlightedText(result.messageText, query, context),
                 ],
                 Gap(2.h),
-                _buildSenderLine(),
+                _buildSenderLine(context),
               ],
             ),
           ),
@@ -132,11 +132,11 @@ class SearchResultTile extends StatelessWidget {
     return Icon(Icons.attach_file, color: Colors.grey[400]);
   }
 
-  Widget _buildMediaLabel() {
+  Widget _buildMediaLabel(BuildContext context, ) {
     if (result.isImage) {
       return Text(
         'Photo',
-        style: textTheme.body2.copyWith(color: AppColors.black),
+        style: AppTextTheme.of(context).body2.copyWith(color: AppColors.black),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       );
@@ -144,7 +144,7 @@ class SearchResultTile extends StatelessWidget {
     if (result.isVideo) {
       return Text(
         'Video',
-        style: textTheme.body2.copyWith(color: AppColors.black),
+        style: AppTextTheme.of(context).body2.copyWith(color: AppColors.black),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       );
@@ -152,7 +152,7 @@ class SearchResultTile extends StatelessWidget {
     if (result.isFile) {
       return Text(
         result.fileName ?? 'File',
-        style: textTheme.body2.copyWith(color: AppColors.black),
+        style: AppTextTheme.of(context).body2.copyWith(color: AppColors.black),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       );
@@ -160,12 +160,12 @@ class SearchResultTile extends StatelessWidget {
     return const SizedBox.shrink();
   }
 
-  Widget _buildSenderLine() => Text(
+  Widget _buildSenderLine(BuildContext context) => Text(
     result.senderId == currentUid
         ? 'You'
         : '${result.senderName} '
               '· ${DateTimeHelper.formatDateMonthYear(result.sentAt)}',
-    style: textTheme.body2.copyWith(color: AppColors.grey),
+    style: AppTextTheme.of(context).body2.copyWith(color: AppColors.grey),
   );
 
   Widget _buildHighlightedText(
@@ -189,7 +189,7 @@ class SearchResultTile extends StatelessWidget {
       maxLines: 2,
       overflow: TextOverflow.ellipsis,
       text: TextSpan(
-        style: Theme.of(context).textTheme.bodyMedium,
+        style: AppTextTheme.of(context).body2,
         children: [
           TextSpan(text: before),
           TextSpan(

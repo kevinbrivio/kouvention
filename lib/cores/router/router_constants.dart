@@ -34,6 +34,11 @@ class RouterRoutes {
     path: '/profile/notifications',
     name: 'notificationSettings',
   );
+  static const appearanceSettings = RouterRoute(
+    path: '/profile/appearance',
+    name: 'appearanceSettings',
+  );
+  
   static const login = RouterRoute(path: '/login', name: 'login');
   static const signUp = RouterRoute(path: '/sign-up', name: 'signup');
   static const emailSignIn = RouterRoute(path: '/email', name: 'emailSignIn');

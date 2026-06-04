@@ -46,6 +46,42 @@ class ChatModel {
     this.lastReadAt = const {},
   });
 
+  ChatModel copyWith({
+    String? id,
+    String? type,
+    List<String>? members,
+    Map<String, MemberInfo>? memberInfo,
+    String? Function()? memberHash,
+    String? Function()? groupName,
+    String? Function()? groupPhotoUrl,
+    Map<String, String>? Function()? createdBy,
+    LastMessage? Function()? lastMessage,
+    Map<String, int>? unreadCount,
+    List<String>? typingUsers,
+    List<String>? pinnedBy,
+    Map<String, DateTime>? lastReadAt,
+    DateTime? createdAt,
+    DateTime? Function()? updatedAt,
+    Map<String, dynamic>? Function()? deletedBy,
+  }) => ChatModel(
+    id: id ?? this.id,
+    type: type ?? this.type,
+    members: members ?? this.members,
+    memberInfo: memberInfo ?? this.memberInfo,
+    memberHash: memberHash != null ? memberHash() : this.memberHash,
+    groupName: groupName != null ? groupName() : this.groupName,
+    groupPhotoUrl: groupPhotoUrl != null ? groupPhotoUrl() : this.groupPhotoUrl,
+    createdBy: createdBy != null ? createdBy() : this.createdBy,
+    lastMessage: lastMessage != null ? lastMessage() : this.lastMessage,
+    unreadCount: unreadCount ?? this.unreadCount,
+    typingUsers: typingUsers ?? this.typingUsers,
+    pinnedBy: pinnedBy ?? this.pinnedBy,
+    lastReadAt: lastReadAt ?? this.lastReadAt,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt != null ? updatedAt() : this.updatedAt,
+    deletedBy: deletedBy != null ? deletedBy() : this.deletedBy,
+  );
+
   bool get isDirect => type == 'direct';
   bool isPinnedBy(String uid) => pinnedBy.contains(uid);
 

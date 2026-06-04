@@ -13,8 +13,8 @@ import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/models/reply_to_model.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_selection_viewmodel.dart';
-import 'package:kouvention/features/chat/widgets/bubble_tail_painter.dart';
-import 'package:kouvention/features/chat/widgets/media_bubble.dart';
+import 'package:kouvention/features/chat/widgets/chatRoom/bubble_tail_painter.dart';
+import 'package:kouvention/features/chat/widgets/chatRoom/media_bubble.dart';
 import 'package:swipe_to/swipe_to.dart';
 
 class MessageBubble extends ConsumerWidget {
@@ -134,7 +134,7 @@ class MessageBubble extends ConsumerWidget {
                     child: !showSenderPhoto
                         ? Text(
                             senderName.isNotEmpty ? senderName[0].toUpperCase() : '?',
-                            style: textTheme.senderName.copyWith(
+                            style: AppTextTheme.of(context).senderName.copyWith(
                               color: AppColors.senderNameColor(message.senderId)
                                   .withValues(alpha: 0.7),
                             ),
@@ -170,14 +170,14 @@ class MessageBubble extends ConsumerWidget {
                                       onTapReply!(replyMsg.messageId);
                                     }
                                   : null,
-                              child: _buildInBubbleReplyPreview(replyMsg, currentUid),
+                              child: _buildInBubbleReplyPreview(context, replyMsg, currentUid),
                             ),
                             Gap(6.h),
                           ],
                           if (!isMe && isGroup && isFirstSequence) ...[
                             Text(
                               senderName,
-                              style: textTheme.senderName.copyWith(
+                              style: AppTextTheme.of(context).senderName.copyWith(
                                 color: AppColors.senderNameColor(message.senderId),
                               ),
                             ),
@@ -190,7 +190,7 @@ class MessageBubble extends ConsumerWidget {
                                       ? 'You deleted this message'
                                       : 'This message was deleted'
                                   : message.text,
-                              style: textTheme.senderName.copyWith(
+                              style: AppTextTheme.of(context).senderName.copyWith(
                                 color: isMe
                                     ? message.isDeleted ? AppColors.grey : Colors.white
                                     : message.isDeleted ? AppColors.grey : Colors.black87,
@@ -253,7 +253,7 @@ class MessageBubble extends ConsumerWidget {
     }
   }
 
-  Widget _buildInBubbleReplyPreview(ReplyToModel replyTo, String currentUid) {
+  Widget _buildInBubbleReplyPreview(BuildContext context, ReplyToModel replyTo, String currentUid) {
     final isRepliedMessageMine = replyTo.senderId == currentUid;
 
     return Container(
@@ -291,25 +291,25 @@ class MessageBubble extends ConsumerWidget {
               ),
             ),
 
-          if (replyTo.mediaUrl != null) ...[_buildReplyMediaPreview(replyTo)],
+          if (replyTo.mediaUrl != null) ...[_buildReplyMediaPreview(context, replyTo)],
         ],
       ),
     );
   }
 
-  Widget _buildReplyMediaPreview(ReplyToModel replyTo) {
+  Widget _buildReplyMediaPreview(BuildContext context, ReplyToModel replyTo) {
     final type = replyTo.mediaType ?? '';
     final url = replyTo.mediaUrl!;
     final filename = url.split('/').last.toLowerCase().split('?').first;
     final ext = filename.split('.').last.toLowerCase();
 
-    if (ext == 'pdf') return _iconBox(Icons.picture_as_pdf, filename);
+    if (ext == 'pdf') return _iconBox(context, Icons.picture_as_pdf, filename);
     if (ext == 'docx' || ext == 'doc')
-      return _iconBox(Icons.description, 'Document');
+      return _iconBox(context, Icons.description, 'Document');
     if (ext == 'xlsx' || ext == 'xls')
-      return _iconBox(Icons.table_chart, 'Spreadsheet');
+      return _iconBox(context, Icons.table_chart, 'Spreadsheet');
     if (ext == 'mp3' || ext == 'wav' || ext == 'ogg')
-      return _iconBox(Icons.audiotrack, 'Audio');
+      return _iconBox(context, Icons.audiotrack, 'Audio');
 
     if (type == 'image') return _thumbnailBox(imageUrl: url);
     if (type == 'video') {
@@ -319,7 +319,7 @@ class MessageBubble extends ConsumerWidget {
       );
     }
 
-    return _iconBox(Icons.insert_drive_file, 'File');
+    return _iconBox(context, Icons.insert_drive_file, 'File');
   }
 
   String? _getVideoThumbnailUrl(String videoUrl) => videoUrl
@@ -350,7 +350,7 @@ class MessageBubble extends ConsumerWidget {
     ),
   );
 
-  Widget _iconBox(IconData icon, String label) => Padding(
+  Widget _iconBox(BuildContext context, IconData icon, String label) => Padding(
     padding: EdgeInsets.all(4.w),
     child: Row(
       mainAxisSize: MainAxisSize.min,
@@ -360,7 +360,7 @@ class MessageBubble extends ConsumerWidget {
         Flexible(
           child: Text(
             label, 
-            style: textTheme.subDescription3,
+            style: AppTextTheme.of(context).subDescription3,
           ),
         )
       ],

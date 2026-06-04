@@ -3,13 +3,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
+import 'package:kouvention/cores/constants/text_theme.dart';
 
 class SettingsTile extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
   final String title;
   final String subtitle;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
+  final Widget? trailing;
 
   const SettingsTile({
     super.key,
@@ -17,17 +19,17 @@ class SettingsTile extends StatelessWidget {
     required this.iconColor,
     required this.title,
     required this.subtitle,
-    required this.onTap,
+    this.onTap,
+    this.trailing,
   });
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
+    onTap: onTap ?? () {},
     child: Container(
       margin: EdgeInsets.only(bottom: 8.h),
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
       decoration: BoxDecoration(
-        color: Colors.white,
         borderRadius: BorderRadius.circular(12.r),
         boxShadow: [
           BoxShadow(
@@ -54,24 +56,18 @@ class SettingsTile extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: TextStyle(
-                    fontSize: 15.sp,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.black87,
-                  ),
+                  style: AppTextTheme.of(context).subDescription2
                 ),
                 Gap(2.h),
                 Text(
                   subtitle,
-                  style: TextStyle(
-                    fontSize: 12.sp,
-                    color: Colors.grey.shade500,
-                  ),
+                  style: AppTextTheme.of(context).subDescription3
                 ),
               ],
             ),
           ),
-          Icon(Icons.chevron_right, size: 24.sp, color: Colors.grey.shade400),
+          trailing ??
+              Icon(Icons.chevron_right, size: 24.sp, color: Colors.grey.shade400),
         ],
       ),
     ),

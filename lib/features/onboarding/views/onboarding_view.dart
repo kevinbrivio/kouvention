@@ -35,7 +35,7 @@ class OnboardingView extends StatelessWidget {
               alignment: Alignment.centerRight,
               child: GestureDetector(
                 onTap: vm.goToPrivacyPolicy,
-                child: Text('Skip', style: textTheme.subDescription),
+                child: Text('Skip', style: AppTextTheme.of(context).subDescription),
               ),
             ),
           ),

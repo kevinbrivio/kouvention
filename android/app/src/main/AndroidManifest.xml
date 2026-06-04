@@ -1,4 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.VIBRATE" />
     <application
         android:label="kouvention"
         android:name="${applicationName}"
@@ -42,7 +43,7 @@
             android:resource="@drawable/ic_chat_message" />
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="chat_messages" />
+            android:value="dm_default" />
         <receiver 
             android:exported="false" 
             android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver" />

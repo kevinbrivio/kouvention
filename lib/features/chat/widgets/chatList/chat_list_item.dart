@@ -63,11 +63,11 @@ class ChatListItem extends ConsumerWidget {
             padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
             child: Row(
               children: [
-                _buildAvatar(vm, initialLetter, showAvatarPhoto),
+                _buildAvatar(context, vm, initialLetter, showAvatarPhoto),
                 Gap(12.w),
-                _buildMessagePreview(displayName, lastMessage, typing),
+                _buildMessagePreview(context, displayName, lastMessage, typing),
                 Gap(4.w),
-                _buildTimeAndBadge(lastMessage, unread, isPinned),
+                _buildTimeAndBadge(context, lastMessage, unread, isPinned),
               ],
             ),
           ),
@@ -85,7 +85,7 @@ class ChatListItem extends ConsumerWidget {
     );
   }
 
-  Widget _buildAvatar(vm, String initialLetter, bool showAvatarPhoto) => Stack(
+  Widget _buildAvatar(BuildContext context, ChatListVM vm, String initialLetter, bool showAvatarPhoto) => Stack(
     children: [
       CircleAvatar(
         radius: 24.r,
@@ -105,7 +105,7 @@ class ChatListItem extends ConsumerWidget {
                     )
                   : Text(
                       initialLetter,
-                      style: textTheme.senderName.copyWith(
+                      style: AppTextTheme.of(context).senderName.copyWith(
                         fontSize: 18.sp,
                         color: AppColors.senderNameColor(
                           chat.id,
@@ -127,20 +127,20 @@ class ChatListItem extends ConsumerWidget {
     ],
   );
 
-  Widget _buildMessagePreview(String displayName, lastMessage, typing) =>
+  Widget _buildMessagePreview(BuildContext context, String displayName, lastMessage, typing) =>
       Expanded(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               displayName,
-              style: textTheme.senderName.copyWith(color: AppColors.black),
+              style: AppTextTheme.of(context).senderName,
               overflow: TextOverflow.ellipsis,
             ),
             if (lastMessage != null)
               Text(
                 typing ?? lastMessage.text,
-                style: textTheme.subDescription2.copyWith(
+                style: AppTextTheme.of(context).subDescription2.copyWith(
                   color: typing != null ? AppColors.primary : AppColors.grey,
                 ),
                 overflow: TextOverflow.ellipsis,
@@ -150,13 +150,13 @@ class ChatListItem extends ConsumerWidget {
         ),
       );
 
-  Widget _buildTimeAndBadge(lastMessage, int unread, bool isPinned) => Column(
+  Widget _buildTimeAndBadge(BuildContext context, LastMessage? lastMessage, int unread, bool isPinned) => Column(
     crossAxisAlignment: CrossAxisAlignment.end,
     children: [
       if (lastMessage != null)
         Text(
           DateTimeHelper.formatChatTime(lastMessage.sentAt),
-          style: textTheme.subDescription3.copyWith(
+          style: AppTextTheme.of(context).subDescription3.copyWith(
             color: unread > 0 ? AppColors.primary : Colors.grey,
           ),
         ),
@@ -172,7 +172,7 @@ class ChatListItem extends ConsumerWidget {
               backgroundColor: AppColors.primary,
               child: Text(
                 '$unread',
-                style: textTheme.subDescription3.copyWith(
+                style: AppTextTheme.of(context).subDescription3.copyWith(
                   color: AppColors.white,
                 ),
               ),

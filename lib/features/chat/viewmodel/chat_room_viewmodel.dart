@@ -84,6 +84,23 @@ class ChatRoomVM extends BaseNotifier {
         // Fetch from local
         await syncProvider.fetchMessages(chatId);
 
+        // Sync this chat's metadata into Drift so the chat list shows it
+        try {
+          final room = await _chatService.getChat(chatId);
+          if (room != null) {
+            final db = ref.read(messageDatabaseProvider);
+            final existing = await db.getChatById(chatId);
+            await db.upsertChatRooms([
+              SyncService.chatToCompanion(
+                room,
+                lastSyncAt: existing?.lastSyncTimestamp,
+              ),
+            ]);
+          }
+        } catch (e) {
+          debugPrint('Chat metadata sync skipped ($e)');
+        }
+
         // Also listen to Firestore updates
         _firestoreSubscription = await syncProvider
             .streamFirestoreMessages(chatId)
@@ -168,6 +185,11 @@ class ChatRoomVM extends BaseNotifier {
     notifyListeners();
   }
 
+  void closeMediaPanel() {
+    _showMediaPanel = false;
+    notifyListeners();
+  }
+
   void toggleStickerPanel(BuildContext context) {
     _showStickerPanel = !_showStickerPanel;
     if (_showStickerPanel) {
@@ -177,36 +199,40 @@ class ChatRoomVM extends BaseNotifier {
     notifyListeners();
   }
 
+  void closeStickerPanel() {
+    _showStickerPanel = false;
+    notifyListeners();
+  }
+
+  void dismissPanels() {
+    if (_showMediaPanel || _showStickerPanel) {
+      _showMediaPanel = false;
+      _showStickerPanel = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> sendSticker(StickerModel sticker) async {
     if (_currentUid == null) return;
 
     final chat = ref.read(chatMetadataStreamProvider(chatId)).value;
     if (chat == null) return;
 
-    final messageId = 'sticker_${DateTime.now().millisecondsSinceEpoch}';
-
     try {
       _isSending = true;
       notifyListeners();
 
-      final db = ref.read(messageDatabaseProvider);
-
-      final msg = MessageModel(
-        id: messageId,
-        senderId: _currentUid,
-        senderName: chat.displayName(_currentUid),
-        text: '',
-        type: MessageType.sticker,
-        sentAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-        mediaUrls: [sticker.url],
-        mimeType: 'image/gif',
-        fileName: 'sticker.gif',
-        fileSizeBytes: 0,
-        syncStatus: SyncStatus.sent,
-      );
-
-      await db.upsertMessage(messageToCompanion(msg, chatId, SyncStatus.sent));
+      final replyTo = _replyMessage != null
+          ? ReplyToModel(
+              messageId: _replyMessage!.id,
+              senderId: _replyMessage!.senderId,
+              senderName: _replyMessage!.senderName,
+              text: _replyMessage!.text,
+              sentAt: _replyMessage!.sentAt,
+              mediaUrl: _replyMessage!.allMediaUrls.toString(),
+              mediaType: _replyMessage!.type.name,
+            )
+          : null;
 
       UserModel? otherUser;
       if (chat.type == 'direct') {
@@ -214,18 +240,13 @@ class ChatRoomVM extends BaseNotifier {
         otherUser = ref.read(otherUserStreamProvider(otherUid)).value;
       }
 
-      await _chatService.sendMediaMessage(
-        chatId: chatId,
-        messageId: messageId,
-        senderId: _currentUid,
+      await _syncService.sendSticker(
+        chatRoomId: chatId,
+        stickerUrl: sticker.url,
         senderName: chat.displayName(_currentUid),
-        text: '',
-        type: MessageType.sticker,
-        mediaUrls: [sticker.url],
-        fileName: 'sticker.gif',
-        fileSizeBytes: 0,
-        mimeType: 'image/gif',
         memberUids: chat.members,
+        otherUserFcmTokens: otherUser?.fcmTokens,
+        replyTo: replyTo,
       );
     } catch (e, s) {
       print('Error sending sticker: $e $s');
@@ -313,7 +334,9 @@ class ChatRoomVM extends BaseNotifier {
 
       if (captionedFiles.length <= 1) {
         await _sendSingleBubble(
-          caption: captionedFiles.isNotEmpty ? captionedFiles.first.caption! : '',
+          caption: captionedFiles.isNotEmpty
+              ? captionedFiles.first.caption!
+              : '',
           files: files,
           mediaCaptions: mediaCaptions,
         );
@@ -363,7 +386,8 @@ class ChatRoomVM extends BaseNotifier {
       otherUser = ref.read(otherUserStreamProvider(otherUid)).value;
     }
 
-    final captions = mediaCaptions ?? files.map((f) => f.caption ?? '').toList();
+    final captions =
+        mediaCaptions ?? files.map((f) => f.caption ?? '').toList();
 
     try {
       await _syncService.sendMediaMessageDirect(

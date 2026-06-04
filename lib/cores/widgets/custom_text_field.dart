@@ -137,10 +137,10 @@ class _CustomTextFieldState extends State<CustomTextField>
           children: [
             Text.rich(
               TextSpan(
-                style: textTheme.body2.copyWith(
+                style: AppTextTheme.of(context).body2.copyWith(
                   fontSize: 14.sp,
                   fontWeight: FontWeight.w500,
-                  fontFamily: textTheme.body2.fontFamily,
+                  fontFamily: AppTextTheme.of(context).body2.fontFamily,
                   color: widget.labelColor,
                 ),
                 children: [
@@ -151,7 +151,7 @@ class _CustomTextFieldState extends State<CustomTextField>
                       style: TextStyle(
                         color: AppColors.red1,
                         fontWeight: FontWeight.w500,
-                        fontFamily: textTheme.body2.fontFamily,
+                        fontFamily: AppTextTheme.of(context).body2.fontFamily,
                       ),
                     ),
                 ],
@@ -197,7 +197,7 @@ class _CustomTextFieldState extends State<CustomTextField>
                   widget.contentPadding ??
                   EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 12.h),
               hintText: widget.hint,
-              hintStyle: textTheme.body2.copyWith(
+              hintStyle: AppTextTheme.of(context).body2.copyWith(
                 color: widget.hintColor ?? AppColors.grey,
                 fontWeight: FontWeight.w400,
               ),
@@ -209,7 +209,7 @@ class _CustomTextFieldState extends State<CustomTextField>
               border: getBorder(AppColors.grey),
               errorBorder: getBorder(AppColors.red1),
               focusedErrorBorder: getBorder(AppColors.primary),
-              errorStyle: textTheme.body2.copyWith(
+              errorStyle: AppTextTheme.of(context).body2.copyWith(
                 fontSize: 0,
                 color: Colors.transparent,
               ),
@@ -224,7 +224,7 @@ class _CustomTextFieldState extends State<CustomTextField>
                 maxHeight: 23.h,
               ),
             ),
-            style: (widget.style ?? textTheme.body2).copyWith(
+            style: (widget.style ?? AppTextTheme.of(context).body2).copyWith(
               color: !widget.enabled
                   ? AppColors.grey
                   : (errorMessage != null
@@ -258,14 +258,14 @@ class _CustomTextFieldState extends State<CustomTextField>
         Gap(3.h),
         Text(
           widget.description!,
-          style: textTheme.body2.copyWith(color: AppColors.black),
+          style: AppTextTheme.of(context).body2,
         ),
       ],
       if (errorMessage != null) ...[
         Gap(3.h),
         Text(
           errorMessage!,
-          style: textTheme.body2.copyWith(
+          style: AppTextTheme.of(context).body2.copyWith(
             fontWeight: FontWeight.w400,
             color: widget.errorMsgColor ?? AppColors.errorLight,
           ),

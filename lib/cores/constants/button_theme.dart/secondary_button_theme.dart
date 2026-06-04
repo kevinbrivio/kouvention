@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:kouvention/cores/constants/colors.dart';
-import 'package:kouvention/cores/constants/text_theme.dart';
 
 final secondaryElevatedButtonTheme = ElevatedButtonThemeData(
   style: ButtonStyle(
@@ -34,10 +33,12 @@ final secondaryElevatedButtonTheme = ElevatedButtonThemeData(
       },
     ),
     textStyle: WidgetStateProperty.resolveWith<TextStyle>(
-      (states) => textTheme.buttonText.copyWith(
+      (states) => TextStyle(
+        fontSize: 12.sp,
+        color: AppColors.white,
         fontWeight: FontWeight.w500,
-        color: AppColors.primary,
         fontFamily: 'Asap',
+        height: 1.5,
       ),
     ),
     elevation: WidgetStateProperty.resolveWith<double>(

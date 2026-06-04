@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:kouvention/cores/configs/env.dart';
 import 'package:kouvention/cores/configs/flavor_config.dart';
+import 'package:kouvention/cores/constants/custom_theme.dart';
 import 'package:kouvention/cores/router/auth_notifier.dart';
 import 'package:kouvention/cores/router/prefs_guard.dart';
 import 'package:kouvention/cores/router/router.dart';
@@ -21,6 +22,7 @@ import 'package:kouvention/features/notification/services/notification_handler.d
 import 'package:kouvention/features/shared/services/prefs_service.dart';
 import 'package:kouvention/features/shared/viewmodel/connectivity_viewmodel.dart';
 import 'package:kouvention/features/shared/viewmodel/security_notifier.dart';
+import 'package:kouvention/features/shared/viewmodel/theme_mode_provider.dart';
 import 'package:kouvention/features/shared/views/device_blocked_view.dart';
 import 'package:kouvention/features/user/viewmodel/presence_notifier.dart';
 import 'package:oktoast/oktoast.dart';
@@ -65,7 +67,12 @@ void main() async {
       );
 
       // Background handler for notification
-      FirebaseMessaging.onBackgroundMessage(firebaseBackgroundHandler);
+      try {
+        FirebaseMessaging.onBackgroundMessage(firebaseBackgroundHandler);
+        debugPrint('[main] firebaseBackgroundHandler registered');
+      } catch (e, s) {
+        debugPrint('[main] firebaseBackgroundHandler registration FAILED: $e\n$s');
+      }
 
       // Pass all uncuaught errors from Flutter to Crashlytics
       FlutterError.onError =
@@ -145,9 +152,16 @@ class _KouventionAppState extends ConsumerState<KouventionApp>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    debugPrint('[App] initState — reading providers...');
     ref.read(
       presenceNotifierProvider,
     ); // listen to presence notifier to check user presence throughout the use
+    try {
+      ref.read(notificationHandlerProvider);
+      debugPrint('[App] notificationHandlerProvider read OK');
+    } catch (e, s) {
+      debugPrint('[App] notificationHandlerProvider read FAILED: $e\n$s');
+    }
   }
 
   @override
@@ -183,8 +197,9 @@ class _KouventionAppState extends ConsumerState<KouventionApp>
         ),
         title: 'Kouvention',
         debugShowCheckedModeBanner: FlavorConfig.showBanner(),
-        theme: ThemeData(primaryColor: FlavorConfig.instance!.color),
-        // theme: ,
+        theme: AppTheme.light,
+        darkTheme: AppTheme.dark,
+        themeMode: ref.watch(themeModeProvider),
         routerConfig: router,
       ),
     );

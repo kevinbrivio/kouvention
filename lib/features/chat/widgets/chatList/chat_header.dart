@@ -30,7 +30,7 @@ class ChatHeader extends ConsumerWidget {
               if (!compact)
                 Text(
                   'Kouvention',
-                  style: textTheme.subheadline1.copyWith(color: AppColors.primary),
+                  style: AppTextTheme.of(context).subheadline1.copyWith(color: AppColors.primary),
                 ),
               if (!compact) Gap(6.h),
               _buildSearchBox(context, ref, chatVM, searchVM),
@@ -61,7 +61,7 @@ class ChatHeader extends ConsumerWidget {
           children: [
             Icon(Icons.search, color: AppColors.grey, size: 16.sp),
             Gap(8.w),
-            Text('Search something...', style: textTheme.subDescription3),
+            Text('Search something...', style: AppTextTheme.of(context).subDescription3),
           ],
         ),
       ),
