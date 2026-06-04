@@ -50,6 +50,12 @@ String _singleLabel(MessageType type, String fileName) {
   }
 }
 
+/// Resolves a video URL to its Cloudinary thumbnail (jpg)
+String getCloudinaryThumbnail(String videoUrl) {
+  if (videoUrl.isEmpty) return '';
+  return videoUrl.replaceAll(RegExp(r'\.[^.]+$'), '.jpg');
+}
+
 String _pluralLabel(MessageType type) {
   switch (type) {
     case MessageType.image:

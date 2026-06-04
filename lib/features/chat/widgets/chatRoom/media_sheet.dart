@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/services/databases/message_database.dart';
+import 'package:kouvention/features/chat/utils/message_label.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
 import 'package:kouvention/features/chat/viewmodel/media/media_picker_helper.dart';
 import 'package:kouvention/features/chat/viewmodel/media/media_preview_viewmodel.dart';
@@ -155,29 +156,52 @@ class _MediaSheetState extends ConsumerState<MediaSheet> {
                 : null;
             if (imageUrl == null) return const SizedBox.shrink();
 
+            final isVideo = msg.type == MessageType.video.name;
+            final displayUrl =
+                isVideo ? getCloudinaryThumbnail(imageUrl) : imageUrl;
+
             return GestureDetector(
               onTap: () => _onRecentMediaTap(msg),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8.r),
-                child: CachedNetworkImage(
-                  imageUrl: imageUrl,
-                  width: 80.h,
-                  height: 80.h,
-                  fit: BoxFit.cover,
-                  placeholder: (_, __) => Container(
-                    width: 80.h,
-                    height: 80.h,
-                    color: Colors.grey.shade100,
-                  ),
-                  errorWidget: (_, __, ___) => Container(
-                    width: 80.h,
-                    height: 80.h,
-                    color: Colors.grey.shade100,
-                    child: Icon(
-                      Icons.broken_image,
-                      color: Colors.grey.shade400,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    CachedNetworkImage(
+                      imageUrl: displayUrl,
+                      width: 80.h,
+                      height: 80.h,
+                      fit: BoxFit.cover,
+                      placeholder: (_, __) => Container(
+                        width: 80.h,
+                        height: 80.h,
+                        color: Colors.grey.shade100,
+                      ),
+                      errorWidget: (_, __, ___) => Container(
+                        width: 80.h,
+                        height: 80.h,
+                        color: Colors.grey.shade100,
+                        child: Icon(
+                          Icons.broken_image,
+                          color: Colors.grey.shade400,
+                        ),
+                      ),
                     ),
-                  ),
+                    if (isVideo)
+                      Container(
+                        width: 28.w,
+                        height: 28.w,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.5),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.play_arrow,
+                          color: Colors.white,
+                          size: 18.w,
+                        ),
+                      ),
+                  ],
                 ),
               ),
             );
