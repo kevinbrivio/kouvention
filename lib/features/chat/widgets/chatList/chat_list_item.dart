@@ -134,7 +134,7 @@ class ChatListItem extends ConsumerWidget {
           children: [
             Text(
               displayName,
-              style: AppTextTheme.of(context).senderName.copyWith(color: AppColors.black),
+              style: AppTextTheme.of(context).senderName,
               overflow: TextOverflow.ellipsis,
             ),
             if (lastMessage != null)
