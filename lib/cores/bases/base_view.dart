@@ -8,7 +8,7 @@ class BaseView<T extends BaseNotifier> extends ConsumerWidget {
   final AutoDisposeChangeNotifierProvider<T> provider;
   final Widget Function(BuildContext, T) builder;
   final Widget Function(BuildContext, T)? showOverlay;
-  final PreferredSizeWidget Function(T)? appBar
+  final PreferredSizeWidget Function(T)? appBar;
   final Color? backgroundColor;
   final bool useGradient;
   final DecorationImage? backgroundImage;
@@ -53,7 +53,10 @@ class BaseView<T extends BaseNotifier> extends ConsumerWidget {
                             end: Alignment.bottomRight,
                           ),
                         )
-                      : BoxDecoration(image: backgroundImage, color: backgroundColor ?? AppColors.white),
+                      : BoxDecoration(
+                          image: backgroundImage,
+                          color: backgroundColor ?? AppColors.white,
+                        ),
                   child: Stack(
                     children: [
                       builder(context, viewmodel),
