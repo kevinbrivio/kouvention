@@ -52,7 +52,6 @@ class ChatRoomView extends ConsumerWidget {
       child: BaseView<ChatRoomVM>(
         provider: chatRoomVMProvider(chatId),
         useGradient: false,
-        backgroundColor: Colors.white,
         appBar: (vm) {
           if (selectionVM.isSelecting) {
             return SelectionAppBar(chatId: chatId, currentUid: currentUid!);
@@ -207,7 +206,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                             width: 40.w,
                             height: 40.w,
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: Theme.of(context).colorScheme.surface,
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
@@ -350,6 +349,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
 
     final isGroup = chat.type == 'group';
     final chatName = chat.displayName(currentUid);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
@@ -359,17 +359,24 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
           if (isGroup)
             CircleAvatar(
               radius: 14.r,
-              backgroundColor: Colors.grey[300],
+              backgroundColor: isDark
+                  ? AppColors.darkOtherUserBubble
+                  : Colors.grey[300],
               child: Text(
                 chatName.isNotEmpty ? chatName[0] : '?',
-                style: TextStyle(fontSize: 10.sp, color: Colors.grey[700]),
+                style: TextStyle(
+                  fontSize: 10.sp,
+                  color: isDark ? AppColors.white : Colors.grey[700],
+                ),
               ),
             ),
           Gap(8.w),
           Container(
             padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
             decoration: BoxDecoration(
-              color: Colors.grey[100],
+              color: isDark
+                  ? AppColors.darkOtherUserBubble
+                  : Colors.grey[100],
               borderRadius: BorderRadius.circular(16.r),
             ),
             child: TypingDots(),
@@ -379,34 +386,39 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     );
   }
 
-  Widget _buildInputBar(ChatModel? chat, String? currentUid) => Container(
-    padding: EdgeInsets.only(
-      left: 8.w,
-      right: 8.w,
-      top: 8.h,
-      bottom:
-          MediaQuery.of(context).viewInsets.bottom +
-          MediaQuery.of(context).padding.bottom +
-          8.h,
-    ),
-    decoration: BoxDecoration(
-      color: Colors.transparent,
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.05),
-          offset: const Offset(0, -1),
-          blurRadius: 4,
-        ),
-      ],
-    ),
-    child: _buildTextField(ctx, chat, currentUid),
-  );
+  Widget _buildInputBar(ChatModel? chat, String? currentUid) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: EdgeInsets.only(
+        left: 8.w,
+        right: 8.w,
+        top: 8.h,
+        bottom:
+            MediaQuery.of(context).viewInsets.bottom +
+            MediaQuery.of(context).padding.bottom +
+            8.h,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.transparent,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.05),
+            offset: const Offset(0, -1),
+            blurRadius: 4,
+          ),
+        ],
+      ),
+      child: _buildTextField(ctx, chat, currentUid),
+    );
+  }
 
   Widget _buildTextField(
     BuildContext context,
     ChatModel? chat,
     String? currentUid,
-  ) => Row(
+  ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Row(
     crossAxisAlignment: CrossAxisAlignment.end,
     children: [
       Flexible(
@@ -416,7 +428,9 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
             vertical: 4.h,
           ),
           decoration: BoxDecoration(
-            color: AppColors.white.withValues(alpha: 0.85),
+            color: isDark
+                ? AppColors.darkInputBarSurface
+                : AppColors.white.withValues(alpha: 0.85),
             borderRadius: BorderRadius.circular(
               vm.replyMessage != null ? 12.r : 24.r,
             ),
@@ -513,6 +527,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
       ),
     ],
   );
+  }
 
   Widget _buildMediaPanel() => AnimatedSize(
     duration: const Duration(milliseconds: 250),
@@ -541,13 +556,16 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
 
   Widget _buildReplyPreview(MessageModel message) {
     final isMe = vm.isMyMessage(message);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(16.r),
       child: Container(
         height: 76.h,
         decoration: BoxDecoration(
-          color: AppColors.grey.withValues(alpha: 0.35),
+          color: isDark
+              ? AppColors.darkInputBarSurface
+              : AppColors.grey.withValues(alpha: 0.35),
           border: Border(
             left: BorderSide(color: AppColors.primary, width: 3.w),
           ),

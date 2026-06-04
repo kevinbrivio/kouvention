@@ -108,7 +108,12 @@ class MessageBubble extends ConsumerWidget {
     required ReplyToModel? replyMsg,
     required String currentUid,
     required MessageStatus status,
-  }) => Column(
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final otherBubbleColor = isDark
+        ? AppColors.darkOtherUserBubble
+        : AppColors.otherUserBubble;
+    return Column(
       crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
       children: [
         Padding(
@@ -151,7 +156,7 @@ class MessageBubble extends ConsumerWidget {
                       constraints: BoxConstraints(maxWidth: 260.w),
                       padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
                       decoration: BoxDecoration(
-                        color: isMe ? AppColors.primary2 : AppColors.otherUserBubble,
+                        color: isMe ? AppColors.primary2 : otherBubbleColor,
                         borderRadius: BorderRadius.only(
                           topLeft: Radius.circular(isMe ? 16.r : 4.r),
                           topRight: Radius.circular(isMe ? 4.r : 16.r),
@@ -193,7 +198,9 @@ class MessageBubble extends ConsumerWidget {
                               style: AppTextTheme.of(context).senderName.copyWith(
                                 color: isMe
                                     ? message.isDeleted ? AppColors.grey : Colors.white
-                                    : message.isDeleted ? AppColors.grey : Colors.black87,
+                                    : message.isDeleted
+                                        ? AppColors.grey
+                                        : (isDark ? Colors.white : Colors.black87),
                                 fontStyle: message.isDeleted ? FontStyle.italic : FontStyle.normal,
                               ),
                             ),
@@ -207,7 +214,7 @@ class MessageBubble extends ConsumerWidget {
                               Text(
                                 time,
                                 style: TextStyle(
-                                  color: isMe ? Colors.white70 : Colors.grey[500],
+                                  color: isMe ? Colors.white70 : (isDark ? Colors.white60 : Colors.grey[500]),
                                   fontSize: 11.sp,
                                 ),
                               ),
@@ -228,7 +235,7 @@ class MessageBubble extends ConsumerWidget {
                         child: CustomPaint(
                           size: Size(8.w, 12.h),
                           painter: BubbleTailPainter(
-                            color: isMe ? AppColors.primary2 : AppColors.otherUserBubble,
+                            color: isMe ? AppColors.primary2 : otherBubbleColor,
                             isMe: isMe,
                           ),
                         ),
@@ -241,15 +248,16 @@ class MessageBubble extends ConsumerWidget {
         ),
       ],
     );
+  }
 
   Widget _buildMessageStatus(MessageStatus status) {
     switch (status) {
       case MessageStatus.sending:
-        return Icon(Icons.access_time, size: 12.sp, color: Colors.white70); // Lebih enak ikon Jam
+        return Icon(Icons.access_time, size: 12.sp, color: Colors.white70);
       case MessageStatus.sent:
-        return Icon(Icons.done_all, size: 14.sp, color: Colors.white70); // Centang Abu
+        return Icon(Icons.done_all, size: 14.sp, color: Colors.white70);
       case MessageStatus.read:
-        return Icon(Icons.done_all, size: 14.sp, color: Colors.blueAccent); // Centang Biru
+        return Icon(Icons.done_all, size: 14.sp, color: Colors.blueAccent);
     }
   }
 

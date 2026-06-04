@@ -21,10 +21,16 @@ class AppColors {
   static const Color formField = Colors.white38;
   static const Color searchBar = Color(0xFFF5F5F0);
   static const Color otherUserBubble = Color(0xFFF5F5F0);
+  static const Color darkOtherUserBubble = Color(0xFF202C33);
   static const Color lightSkeleton = Color(0xFFe6e9ed);
   static const Color lightSkeletonHighlight = Color(0xFF82B1FF);
   static const Color darkSkeleton = Color(0xFF1E1E1E);
   static const Color darkSkeletonHighlight = Color(0xFF03DAC6);
+
+  // Dark mode surfaces
+  static const Color darkFormField = Color(0xFF1F2A30);
+  static const Color darkInputBarSurface = Color(0xFF1A1A1A);
+  static const Color darkInputBarShadow = Colors.transparent;
 
   static const Color transparent = Colors.transparent;
 

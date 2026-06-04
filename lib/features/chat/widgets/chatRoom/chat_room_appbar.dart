@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/constants/colors.dart';
+import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
@@ -31,20 +32,20 @@ class ChatRoomAppBar extends ConsumerWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentUid = ref.watch(authServiceProvider).currentUser?.uid;
+    final textTheme = AppTextTheme.of(context);
 
     final chatAsync = ref.watch(chatMetadataStreamProvider(chatId));
 
     return chatAsync.when(
       loading: () => AppBar(
-        backgroundColor: Colors.white,
         elevation: 0.5,
         title: const CircularProgressIndicator.adaptive(),
       ),
       error: (err, stack) =>
-          AppBar(backgroundColor: Colors.white, title: Text('Error: $err')),
+          AppBar(backgroundColor: Colors.transparent, title: Text('Error: $err')),
       data: (chat) {
         if (chat == null || currentUid == null) {
-          return AppBar(backgroundColor: Colors.white);
+          return AppBar();
         }
 
         final isDirect = chat.type == 'direct';
@@ -75,7 +76,6 @@ class ChatRoomAppBar extends ConsumerWidget implements PreferredSizeWidget {
         // RENDER UI APPBAR
         // =====================================
         return AppBar(
-          backgroundColor: Colors.white,
           elevation: 0.5,
           scrolledUnderElevation: 0,
           leading: IconButton(
@@ -136,7 +136,7 @@ class ChatRoomAppBar extends ConsumerWidget implements PreferredSizeWidget {
                         overflow: TextOverflow.ellipsis,
                         softWrap: true,
                         style: TextStyle(
-                          color: Colors.black87,
+                          color: textTheme.primaryText,
                           fontSize: 16.sp,
                           fontWeight: FontWeight.w600,
                         ),
@@ -148,7 +148,7 @@ class ChatRoomAppBar extends ConsumerWidget implements PreferredSizeWidget {
                           style: TextStyle(
                             color: onlineStatusText == 'Online'
                                 ? Colors.green
-                                : Colors.grey[500],
+                                : textTheme.greyText,
                             fontSize: 12.sp,
                           ),
                         ),
