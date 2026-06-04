@@ -22,7 +22,7 @@ class DocumentPreview extends StatelessWidget {
           Gap(6.h),
           Text(
             fileName,
-            style: textTheme.subDescription.copyWith(
+            style: AppTextTheme.of(context).subDescription.copyWith(
               color: Colors.white,
             ),
           ),

@@ -18,6 +18,7 @@ import 'package:kouvention/features/chat/views/new_chat_view.dart';
 import 'package:kouvention/features/chat/views/new_group_chat_view.dart';
 import 'package:kouvention/features/onboarding/views/onboarding_view.dart';
 import 'package:kouvention/features/privacy_policy/views/privacy_policy_view.dart';
+import 'package:kouvention/features/profile/views/appearence_settings_view.dart';
 import 'package:kouvention/features/profile/views/edit_name_view.dart';
 import 'package:kouvention/features/profile/views/edit_status_view..dart';
 import 'package:kouvention/features/profile/views/notification_settings_view.dart';
@@ -247,6 +248,11 @@ setupRouter({
         path: RouterRoutes.notificationSettings.path,
         name: RouterRoutes.notificationSettings.name,
         builder: (_, _) => const NotificationSettingsView(),
+      ),
+      GoRoute(
+        path: RouterRoutes.appearanceSettings.path,
+        name: RouterRoutes.appearanceSettings.name,
+        builder: (_, _) => const AppearanceSettingsView(),
       ),
     ],
   );

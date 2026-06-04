@@ -8,7 +8,6 @@ import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/cores/widgets/hidden_app_bar.dart';
-import 'package:kouvention/cores/widgets/loading_indicator.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_list_viewmodel.dart';
 import 'package:kouvention/features/chat/widgets/chatList/chat_header.dart';
 import 'package:kouvention/features/chat/widgets/chatList/chat_list_item.dart';
@@ -218,7 +217,6 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
     final allPinned = vm.isSelectedChatsPinned;
 
     return AppBar(
-      backgroundColor: AppColors.backdrop,
       leading: IconButton(
         icon: const Icon(Icons.close, color: AppColors.primary),
         onPressed: () => vm.clearSelection(),
@@ -249,11 +247,11 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
       builder: (context) => AlertDialog(
         title: Text(
           'Delete this chat?',
-          style: textTheme.subheadline1.copyWith(color: AppColors.black),
+          style: AppTextTheme.of(context).subheadline1,
         ),
         content: Text(
           'This chat will be removed from your list. It will reappear if someone sends a new message.',
-          style: textTheme.subDescription3,
+          style: AppTextTheme.of(context).subDescription3,
         ),
         actionsPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
         actions: [
@@ -264,9 +262,7 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
                 onPressed: () => Navigator.pop(context),
                 child: Text(
                   'Cancel',
-                  style: textTheme.subDescription3.copyWith(
-                    color: AppColors.primary,
-                  ),
+                  style: AppTextTheme.of(context).subDescription3,
                 ),
               ),
               Gap(12.w),
@@ -277,9 +273,7 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
                 },
                 child: Text(
                   'Delete chat',
-                  style: textTheme.subDescription3.copyWith(
-                    color: AppColors.primary,
-                  ),
+                  style: AppTextTheme.of(context).subDescription3,
                 ),
               ),
             ],

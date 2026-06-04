@@ -21,7 +21,7 @@ class PasswordField extends StatelessWidget {
     obscureText: obscure,
     controller: controller,
     validator: validator,
-    style: textTheme.subDescription,
+    style: AppTextTheme.of(context).subDescription,
     decoration: InputDecoration(
       hintText: 'Password',
       hintStyle: TextStyle(color: Colors.white54),

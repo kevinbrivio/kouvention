@@ -418,7 +418,7 @@ class _VideoMedia extends StatelessWidget {
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       if (urls.length > 1)
-        Text('${urls.length} videos', style: textTheme.subDescription),
+        Text('${urls.length} videos', style: AppTextTheme.of(context).subDescription),
       Gap(6.h),
       if (urls.length == 1)
         _VideoTile(url: urls[0], isMe: isMe)
@@ -825,13 +825,13 @@ class _AudioTileState extends State<_AudioTile> with RouteAware {
             // Durasi
             Text(
               _formatDuration(_position),
-              style: textTheme.subDescription2.copyWith(color: AppColors.white),
+              style: AppTextTheme.of(context).subDescription2.copyWith(color: AppColors.white),
             ),
           ],
         ),
       ),
       if (widget.byteSizes != null && widget.byteSizes != 0)
-        Text(formatBytes(widget.byteSizes!), style: textTheme.subDescription3),
+        Text(formatBytes(widget.byteSizes!), style: AppTextTheme.of(context).subDescription3),
     ],
   );
 }
@@ -872,7 +872,7 @@ class _FileMedia extends StatelessWidget {
       children: [
         Text(
           '${urls.length} files',
-          style: textTheme.subDescription3.copyWith(
+          style: AppTextTheme.of(context).subDescription3.copyWith(
             color: isMe ? AppColors.white : AppColors.black,
           ),
         ),
@@ -1188,7 +1188,7 @@ class _FileTileState extends State<_FileTile> {
                 children: [
                   Text(
                     widget.name,
-                    style: textTheme.subDescription2.copyWith(
+                    style: AppTextTheme.of(context).subDescription2.copyWith(
                       color: widget.isMe ? Colors.white : AppColors.black,
                       fontWeight: FontWeight.w500,
                     ),
@@ -1199,7 +1199,7 @@ class _FileTileState extends State<_FileTile> {
                   if (widget.size != null && !_isDownloading)
                     Text(
                       formatBytes(widget.size ?? 0),
-                      style: textTheme.subDescription3.copyWith(
+                      style: AppTextTheme.of(context).subDescription3.copyWith(
                         color: widget.isMe ? Colors.white : AppColors.grey,
                         fontWeight: FontWeight.w500,
                       ),
@@ -1239,7 +1239,7 @@ class _FileTileState extends State<_FileTile> {
               children: [
                 Text(
                   widget.name,
-                  style: textTheme.subDescription3.copyWith(
+                  style: AppTextTheme.of(context).subDescription3.copyWith(
                     color: widget.isMe ? Colors.white : AppColors.grey,
                     fontWeight: FontWeight.w500,
                   ),
@@ -1249,7 +1249,7 @@ class _FileTileState extends State<_FileTile> {
                 if (widget.size != null && !_isDownloading)
                   Text(
                     formatBytes(widget.size!),
-                    style: textTheme.subDescription3.copyWith(
+                    style: AppTextTheme.of(context).subDescription3.copyWith(
                       color: widget.isMe ? Colors.white : AppColors.grey,
                       fontWeight: FontWeight.w500,
                     ),

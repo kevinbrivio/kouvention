@@ -26,7 +26,7 @@ class AddNameView extends StatelessWidget {
             MediaQuery.of(context).size.height -
             MediaQuery.of(context).padding.top,
         child: Column(
-          children: [Gap(40.h), _buildLogo(), Gap(32.h), _buildCard(vm)],
+          children: [Gap(40.h), _buildLogo(), Gap(32.h), _buildCard(context, vm)],
         ),
       ),
     ),
@@ -47,24 +47,24 @@ class AddNameView extends StatelessWidget {
     ],
   );
 
-  Widget _buildCard(AddNameVM vm) => TransparentBox(
+  Widget _buildCard(BuildContext context, AddNameVM vm) => TransparentBox(
     color: AppColors.primary.withValues(alpha: 0.4),
     borderColor: AppColors.white.withValues(alpha: 0.7),
     child: Form(
       key: vm.formKey,
       child: Column(
         children: [
-          Text('One last thing', style: textTheme.body1),
+          Text('One last thing', style: AppTextTheme.of(context).body1),
 
           Gap(8.h),
           Text(
             'What should others call you?',
-            style: textTheme.subDescription2,
+            style: AppTextTheme.of(context).subDescription2,
             textAlign: TextAlign.center,
           ),
           Gap(32.h),
 
-          _buildNameField(vm),
+          _buildNameField(context, vm),
 
           Gap(24.h),
 
@@ -74,10 +74,10 @@ class AddNameView extends StatelessWidget {
     ),
   );
 
-  Widget _buildNameField(AddNameVM vm) => TextFormField(
+  Widget _buildNameField(BuildContext context, AddNameVM vm) => TextFormField(
     controller: vm.form.displayName.controller,
     textCapitalization: TextCapitalization.words,
-    style: textTheme.subDescription2,
+    style: AppTextTheme.of(context).subDescription2,
     validator: (val) => vm.form.displayName.validator?.call(val ?? ''),
     decoration: InputDecoration(
       hintText: 'Display name',

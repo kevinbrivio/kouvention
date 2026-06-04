@@ -47,20 +47,20 @@ class DeviceBlockedView extends StatelessWidget {
           Gap(24.h),
           Text(
             'Access Refused',
-            style: textTheme.subheadline1
+            style: AppTextTheme.of(context).subheadline1
           ),
           Gap(16.h),
           Text(
             _threatMessage,
             textAlign: TextAlign.center,
-            style: textTheme.subDescription2
+            style: AppTextTheme.of(context).subDescription2
           ),
           Gap(8.h),
           Text(
             'Kouvention cannot be used in this device '
             ' for your own data safety.',
             textAlign: TextAlign.center,
-            style: textTheme.subDescription2
+            style: AppTextTheme.of(context).subDescription2
           ),
           Gap(32.h),
           SizedBox(
@@ -76,7 +76,7 @@ class DeviceBlockedView extends StatelessWidget {
               ),
               child: Text(
                 'Close App',
-                style: textTheme.subDescription,
+                style: AppTextTheme.of(context).subDescription,
               ),
             ),
           ),

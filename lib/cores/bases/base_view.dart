@@ -55,7 +55,7 @@ class BaseView<T extends BaseNotifier> extends ConsumerWidget {
                         )
                       : BoxDecoration(
                           image: backgroundImage,
-                          color: backgroundColor ?? AppColors.white,
+                          color: backgroundColor,
                         ),
                   child: Stack(
                     children: [

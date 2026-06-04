@@ -6,6 +6,9 @@ class AppTheme {
   static ThemeData light = ThemeData(
     brightness: Brightness.light,
     primaryColor: AppColors.primary,
+    colorScheme: ColorScheme.light(
+      surface: AppColors.white,
+    ),
     scaffoldBackgroundColor: AppColors.white,
     appBarTheme: AppBarTheme(
       backgroundColor: AppColors.white,
@@ -23,11 +26,14 @@ class AppTheme {
   );
   static ThemeData dark = ThemeData(
     brightness: Brightness.dark,
-    primaryColor: AppColors.primaryDark,
-    scaffoldBackgroundColor: AppColors.black,
+    primaryColor: AppColors.primary,
+    colorScheme: ColorScheme.dark(
+      surface: AppColors.black,
+    ),
+    scaffoldBackgroundColor: AppColors.black.withValues(alpha: 0.8),
     appBarTheme: AppBarTheme(
-      backgroundColor: AppColors.white,
-      foregroundColor: AppColors.grey,
+      backgroundColor: AppColors.black,
+      foregroundColor: AppColors.black.withValues(alpha: 0.4),
       elevation: 0.5,
     ),
     extensions: [

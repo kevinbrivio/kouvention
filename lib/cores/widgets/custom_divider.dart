@@ -22,7 +22,7 @@ class CustomDivider extends StatelessWidget {
           padding: EdgeInsets.symmetric(horizontal: 16.w),
           child: Text(
             text!,
-            style: textTheme.subDescription2.copyWith(
+            style: AppTextTheme.of(context).subDescription2.copyWith(
               fontWeight: FontWeight.w600,
             ),
           ),

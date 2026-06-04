@@ -24,7 +24,7 @@ class SelectionAppBar extends ConsumerWidget implements PreferredSizeWidget {
       ),
       title: Text(
         '${vm.selectedCount}',
-        style: textTheme.subDescription.copyWith(color: AppColors.primary),
+        style: AppTextTheme.of(context).subDescription.copyWith(color: AppColors.primary),
       ),
       actions: [
         IconButton(
@@ -48,7 +48,7 @@ class SelectionAppBar extends ConsumerWidget implements PreferredSizeWidget {
                 ),
                 title: Text(
                   'Delete ${vm.selectedCount} message${vm.selectedCount > 1 ? 's' : ''}?',
-                  style: textTheme.subDescription2.copyWith(
+                  style: AppTextTheme.of(context).subDescription2.copyWith(
                     color: AppColors.black,
                   ),
                 ),
@@ -63,7 +63,7 @@ class SelectionAppBar extends ConsumerWidget implements PreferredSizeWidget {
                       },
                       child: Text(
                         'Cancel',
-                        style: textTheme.subDescription3.copyWith(
+                        style: AppTextTheme.of(context).subDescription3.copyWith(
                           color: AppColors.primary2,
                         ),
                       ),
@@ -75,7 +75,7 @@ class SelectionAppBar extends ConsumerWidget implements PreferredSizeWidget {
                       },
                       child: Text(
                         'Delete for me',
-                        style: textTheme.subDescription3.copyWith(
+                        style: AppTextTheme.of(context).subDescription3.copyWith(
                           color: AppColors.primary2,
                         ),
                       ),
@@ -88,7 +88,7 @@ class SelectionAppBar extends ConsumerWidget implements PreferredSizeWidget {
                         },
                         child: Text(
                           'Delete for everyone',
-                          style: textTheme.subDescription3.copyWith(
+                          style: AppTextTheme.of(context).subDescription3.copyWith(
                             color: AppColors.primary2,
                           ),
                         ),

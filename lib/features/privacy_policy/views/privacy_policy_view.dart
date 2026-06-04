@@ -52,7 +52,7 @@ class PrivacyPolicyView extends StatelessWidget {
           padding: EdgeInsets.only(right: 8.w),
           child: Text(
             'LAST UPDATED: MAY 2026',
-            style: textTheme.subDescription3.copyWith(
+            style: AppTextTheme.of(context).subDescription3.copyWith(
               color: AppColors.white.withValues(alpha: 0.6),
             ),
           ),
@@ -73,14 +73,14 @@ class PrivacyPolicyView extends StatelessWidget {
               children: [
                 Padding(
                   padding: EdgeInsetsGeometry.symmetric(horizontal: 16.w),
-                  child: Text('Privacy Policy', style: textTheme.subheadline1),
+                  child: Text('Privacy Policy', style: AppTextTheme.of(context).subheadline1),
                 ),
                 Gap(4.h),
                 Padding(
                   padding: EdgeInsetsGeometry.symmetric(horizontal: 16.w),
                   child: Text(
                     'Please review how we handle your data before continuing.',
-                    style: textTheme.subDescription2,
+                    style: AppTextTheme.of(context).subDescription2,
                   ),
                 ),
                 Gap(24.h),
@@ -88,7 +88,7 @@ class PrivacyPolicyView extends StatelessWidget {
                   padding: EdgeInsetsGeometry.symmetric(horizontal: 16.w),
                   child: TransparentBox(
                     color: AppColors.white.withValues(alpha: 0.3),
-                    child: _buildPolicy(),
+                    child: _buildPolicy(context),
                   ),
                 ),
 
@@ -103,7 +103,7 @@ class PrivacyPolicyView extends StatelessWidget {
     ),
   );
 
-  Widget _buildPolicy() => Column(
+  Widget _buildPolicy(BuildContext context, ) => Column(
     mainAxisSize: MainAxisSize.min,
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
@@ -117,7 +117,7 @@ class PrivacyPolicyView extends StatelessWidget {
           ),
           Gap(12.w),
           Flexible(
-            child: Text('Data Collected', style: textTheme.subheadline1),
+            child: Text('Data Collected', style: AppTextTheme.of(context).subheadline1),
           ),
         ],
       ),
@@ -128,7 +128,7 @@ class PrivacyPolicyView extends StatelessWidget {
             'We collect information necessary to provide you with secure '
             'messaging services. This includes your profile details, usage '
             'data and device information',
-            style: textTheme.subDescription,
+            style: AppTextTheme.of(context).subDescription,
             softWrap: true,
           ),
           Gap(6.h),
@@ -137,12 +137,11 @@ class PrivacyPolicyView extends StatelessWidget {
               Icon(
                 Icons.check_box_rounded,
                 size: 12.w,
-                color: AppColors.white.withValues(alpha: 0.8),
               ),
               Gap(8.w),
               Text(
                 'Basic profile information',
-                style: textTheme.subDescription,
+                style: AppTextTheme.of(context).subDescription,
               ),
             ],
           ),
@@ -152,10 +151,9 @@ class PrivacyPolicyView extends StatelessWidget {
               Icon(
                 Icons.check_box_rounded,
                 size: 12.w,
-                color: AppColors.white.withValues(alpha: 0.8),
               ),
               Gap(8.w),
-              Text('App interaction metrics', style: textTheme.subDescription),
+              Text('App interaction metrics', style: AppTextTheme.of(context).subDescription),
             ],
           ),
         ],
@@ -166,7 +164,7 @@ class PrivacyPolicyView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Flexible(
-            child: Text('Firebase Integration', style: textTheme.subheadline1),
+            child: Text('Firebase Integration', style: AppTextTheme.of(context).subheadline1),
           ),
           Gap(12.w),
           IconHolder(
@@ -181,7 +179,7 @@ class PrivacyPolicyView extends StatelessWidget {
         'Firebase. Your messages are encrypted in transit and securely '
         'stored using Firebase\'s cloud infrastructure, adhering to '
         'strict security protocols',
-        style: textTheme.subDescription,
+        style: AppTextTheme.of(context).subDescription,
         softWrap: true,
         textDirection: TextDirection.rtl,
       ),
@@ -196,7 +194,7 @@ class PrivacyPolicyView extends StatelessWidget {
           ),
           Gap(12.w),
           Flexible(
-            child: Text('Your Data Rights', style: textTheme.subheadline1),
+            child: Text('Your Data Rights', style: AppTextTheme.of(context).subheadline1),
           ),
         ],
       ),
@@ -205,7 +203,7 @@ class PrivacyPolicyView extends StatelessWidget {
         'You have full control over your personal data. You can request '
         'to access, update, or permanently delete your account and '
         'associated data at any time through the app settings',
-        style: textTheme.subDescription,
+        style: AppTextTheme.of(context).subDescription,
         softWrap: true,
       ),
       Gap(16.h),
@@ -278,7 +276,7 @@ class PrivacyPolicyView extends StatelessWidget {
                   Flexible(
                     child: Text(
                       'I have read and agree to the Privacy Policy',
-                      style: textTheme.subDescription,
+                      style: AppTextTheme.of(context).subDescription,
                     ),
                   ),
                 ],
@@ -292,7 +290,7 @@ class PrivacyPolicyView extends StatelessWidget {
               child: Text(
                 'By clicking "Accept & Continue", you agree to our'
                 ' Privacy Policy and Terms of Service.',
-                style: textTheme.subDescription.copyWith(fontSize: 12.sp),
+                style: AppTextTheme.of(context).subDescription.copyWith(fontSize: 12.sp),
                 textAlign: TextAlign.center,
                 softWrap: true,
               ),
@@ -302,7 +300,7 @@ class PrivacyPolicyView extends StatelessWidget {
               text: 'Accept & Continue',
               onPressed: vm.isChecked ? () => vm.acceptPolicy() : null,
               isWhiteBackground: true,
-              textStyle: textTheme.subheadline1.copyWith(
+              textStyle: AppTextTheme.of(context).subheadline1.copyWith(
                 color: AppColors.primary2,
                 fontWeight: FontWeight.w600,
               ),
@@ -312,7 +310,7 @@ class PrivacyPolicyView extends StatelessWidget {
               onPressed: () => _showDeclineDialog(context, vm),
               child: Text(
                 'Decline',
-                style: textTheme.subDescription.copyWith(
+                style: AppTextTheme.of(context).subDescription.copyWith(
                   decoration: TextDecoration.underline,
                   decorationColor: AppColors.white.withValues(alpha: 0.6),
                   color: AppColors.white.withValues(alpha: 0.6),
@@ -330,11 +328,11 @@ class PrivacyPolicyView extends StatelessWidget {
         context: context,
         builder: (dialogContext) => AlertDialog(
           backgroundColor: AppColors.primary.withValues(alpha: 0.99),
-          title: Text('Decline Privacy Policy', style: textTheme.subheadline1),
+          title: Text('Decline Privacy Policy', style: AppTextTheme.of(context).subheadline1),
           content: Text(
             'Are you sure you want to decline the privacy policy? '
             'You will not be able to use the app without accepting it.',
-            style: textTheme.subDescription2,
+            style: AppTextTheme.of(context).subDescription2,
           ),
           actions: [
             Button(

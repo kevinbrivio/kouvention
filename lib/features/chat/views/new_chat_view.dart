@@ -82,7 +82,7 @@ class _NewChatBodyState extends State<_NewChatBody> {
               )
             : _searchController.text.isNotEmpty && vm.searchResults.isEmpty
             ? Center(
-                child: Text('No users found', style: textTheme.subDescription3),
+                child: Text('No users found', style: AppTextTheme.of(context).subDescription3),
               )
             : _searchController.text.isEmpty
             ? RecentUsersList(
@@ -112,12 +112,12 @@ class _NewChatBodyState extends State<_NewChatBody> {
         onChanged: vm.onSearchChanged,
         decoration: InputDecoration(
           hintText: 'Search people by name',
-          hintStyle: textTheme.subDescription3,
+          hintStyle: AppTextTheme.of(context).subDescription3,
           border: InputBorder.none,
           icon: Icon(Icons.search, color: Colors.grey[400], size: 20.sp),
           contentPadding: EdgeInsets.symmetric(vertical: 12.h),
         ),
-        style: textTheme.subDescription3,
+        style: AppTextTheme.of(context).subDescription3,
       ),
     ),
   );
@@ -145,7 +145,7 @@ class _NewChatBodyState extends State<_NewChatBody> {
             Gap(12.w),
             Text(
               'New Group',
-              style: textTheme.subDescription2.copyWith(color: AppColors.grey),
+              style: AppTextTheme.of(context).subDescription2,
             ),
           ],
         ),
@@ -185,7 +185,7 @@ class _NewChatBodyState extends State<_NewChatBody> {
                     user.displayName.isNotEmpty
                         ? user.displayName[0].toUpperCase()
                         : '?',
-                    style: textTheme.body2.copyWith(
+                    style: AppTextTheme.of(context).body2.copyWith(
                       color: AppColors.primary,
                       fontWeight: FontWeight.w600,
                     ),
@@ -202,10 +202,10 @@ class _NewChatBodyState extends State<_NewChatBody> {
               children: [
                 Text(
                   user.displayName,
-                  style: textTheme.body2.copyWith(color: AppColors.black),
+                  style: AppTextTheme.of(context).body2.copyWith(color: AppColors.black),
                 ),
                 Gap(2.h),
-                Text(user.email, style: textTheme.subDescription3),
+                Text(user.email, style: AppTextTheme.of(context).subDescription3),
               ],
             ),
           ),

@@ -450,7 +450,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                         onChanged: vm.onTextChanged,
                         decoration: InputDecoration(
                           hintText: 'Type a message...',
-                          hintStyle: textTheme.typeMessage.copyWith(
+                          hintStyle: AppTextTheme.of(context).typeMessage.copyWith(
                             color: AppColors.grey,
                           ),
                           isDense: true,
@@ -465,7 +465,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                             vertical: 10.h,
                           ),
                         ),
-                        style: textTheme.typeMessage,
+                        style: AppTextTheme.of(context).typeMessage,
                         textCapitalization: TextCapitalization.sentences,
                       ),
                     ),
@@ -570,7 +570,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                   children: [
                     Text(
                       isMe ? 'You' : message.senderName,
-                      style: textTheme.senderName,
+                      style: AppTextTheme.of(context).senderName,
                     ),
                     Gap(4.h),
 
@@ -588,7 +588,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                               message.allMediaUrls.length > 1
                                   ? _getReplyMediaCountLabel(message)
                                   : _getReplyMediaLabel(message),
-                              style: textTheme.senderName.copyWith(
+                              style: AppTextTheme.of(context).senderName.copyWith(
                                 color: AppColors.grey,
                               ),
                               maxLines: 1,
@@ -600,9 +600,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                     ] else ...[
                       Text(
                         message.text,
-                        style: textTheme.body2.copyWith(
-                          color: isMe ? AppColors.grey : AppColors.black,
-                        ),
+                        style: AppTextTheme.of(context).body2,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),

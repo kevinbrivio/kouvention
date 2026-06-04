@@ -33,14 +33,14 @@ class RecentUsersList extends ConsumerWidget {
         ),
       ),
       error: (_, __) => Center(
-        child: Text('Search users by name', style: textTheme.subDescription),
+        child: Text('Search users by name', style: AppTextTheme.of(context).subDescription),
       ),
       data: (users) {
         if (users.isEmpty) {
           return Center(
             child: Text(
               'Search users by name',
-              style: textTheme.subDescription,
+              style: AppTextTheme.of(context).subDescription,
             ),
           );
         }
@@ -63,7 +63,7 @@ class RecentUsersList extends ConsumerWidget {
                   ),
                   child: Text(
                     'Sorted by latest message',
-                    style: textTheme.subDescription3.copyWith(
+                    style: AppTextTheme.of(context).subDescription3.copyWith(
                       color: AppColors.primary2,
                     ),
                   ),
@@ -73,7 +73,7 @@ class RecentUsersList extends ConsumerWidget {
                     shrinkWrap: true,
                     itemCount: users.length,
                     itemBuilder: (context, index) =>
-                        _buildUserTile(users[index]),
+                        _buildUserTile(context, users[index]),
                   ),
                 ),
               ],
@@ -84,7 +84,7 @@ class RecentUsersList extends ConsumerWidget {
     );
   }
 
-  Widget _buildUserTile(UserModel user) {
+  Widget _buildUserTile(BuildContext context, UserModel user) {
     final selected = isSelected?.call(user) ?? false;
 
     return InkWell(
@@ -113,7 +113,7 @@ class RecentUsersList extends ConsumerWidget {
                       user.displayName.isNotEmpty
                           ? user.displayName[0].toUpperCase()
                           : '?',
-                      style: textTheme.senderName.copyWith(
+                      style: AppTextTheme.of(context).senderName.copyWith(
                         fontSize: 18.sp,
                         color: AppColors.senderNameColor(
                           user.uid,

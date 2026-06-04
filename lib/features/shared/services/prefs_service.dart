@@ -23,6 +23,8 @@ class PrefsService {
   static const String _notificationVibrationKey =
       'notification_vibration_enabled';
   static const String _themeModeKey = 'theme_mode';
+  static const String _bubbleSchemeKey = 'bubble_color_scheme';
+  static const String _wallpaperPathKey = 'chat_wallpaper_path';
 
   // --- ONBOARDING
   Future<bool> hasSeenOnboarding() async =>
@@ -118,5 +120,27 @@ class PrefsService {
       _ => 'system',
     };
     await _prefs.setString(_themeModeKey, val);
+  }
+
+  // --- BUBBLE COLOR SCHEME
+  String? getBubbleSchemeId() => _prefs.getString(_bubbleSchemeKey);
+
+  Future<void> setBubbleSchemeId(String? id) async {
+    if (id != null) {
+      await _prefs.setString(_bubbleSchemeKey, id);
+    } else {
+      await _prefs.remove(_bubbleSchemeKey);
+    }
+  }
+
+  // --- CHAT WALLPAPER
+  String? getWallpaperPath() => _prefs.getString(_wallpaperPathKey);
+
+  Future<void> setWallpaperPath(String? path) async {
+    if (path != null) {
+      await _prefs.setString(_wallpaperPathKey, path);
+    } else {
+      await _prefs.remove(_wallpaperPathKey);
+    }
   }
 }

@@ -22,10 +22,9 @@ class NotificationSettingsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) => BaseView(
     provider: notificationSettingsVM,
-    backgroundColor: AppColors.backdrop,
     useGradient: false,
     appBar: (_) => CustomAppBar(
-      body: Text('Notifications', style: textTheme.appBar),
+      body: Text('Notifications', style: AppTextTheme.of(context).appBar),
       onBack: () => context.go(RouterRoutes.profile.path),
     ),
     builder: (context, vm) => _Body(viewmodel: vm),
@@ -82,12 +81,7 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
 
           Text(
             'NOTIFICATIONS',
-            style: TextStyle(
-              fontSize: 12.sp,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey.shade500,
-              letterSpacing: 1.0,
-            ),
+            style: AppTextTheme.of(context).subDescription
           ),
           Gap(12.h),
 
@@ -168,11 +162,7 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
               widget.viewmodel.osPermissionGranted
                   ? 'You can also manage notification sounds and vibration from your device\'s Settings app.'
                   : 'Notifications are disabled at the system level. Tap "Open Settings" to enable them.',
-              style: TextStyle(
-                fontSize: 12.sp,
-                color: Colors.grey.shade500,
-                height: 1.4,
-              ),
+              style: AppTextTheme.of(context).subDescription3
             ),
           ),
 
@@ -206,10 +196,7 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
                       padding: EdgeInsets.symmetric(horizontal: 20.w),
                       child: Text(
                         'Notification Sound',
-                        style: TextStyle(
-                          fontSize: 16.sp,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: AppTextTheme.of(context).subDescription2
                       ),
                     ),
                     Gap(8.h),
@@ -252,10 +239,7 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
                           ),
                           child: Text(
                             'Done',
-                            style: TextStyle(
-                              fontSize: 16.sp,
-                              fontWeight: FontWeight.w600,
-                            ),
+                            style: AppTextTheme.of(context).subDescription2
                           ),
                         ),
                       ),
@@ -280,8 +264,7 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
       ),
-      builder: (sheetContext) {
-        return StatefulBuilder(
+      builder: (sheetContext) => StatefulBuilder(
           builder: (context, setDialogState) => SafeArea(
             child: Padding(
               padding: EdgeInsets.symmetric(vertical: 16.h),
@@ -294,10 +277,7 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
                       padding: EdgeInsets.symmetric(horizontal: 20.w),
                       child: Text(
                         'Group Notification Sound',
-                        style: TextStyle(
-                          fontSize: 16.sp,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: AppTextTheme.of(context).subDescription2
                       ),
                     ),
                     Gap(8.h),
@@ -312,7 +292,7 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
                       ),
                       title: Text(
                         'Default (same as direct)',
-                        style: TextStyle(fontSize: 14.sp),
+                        style: AppTextTheme.of(context).subDescription2
                       ),
                       onTap: () => setDialogState(() => selectedId = null),
                     ),
@@ -359,10 +339,7 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
                           ),
                           child: Text(
                             'Done',
-                            style: TextStyle(
-                              fontSize: 16.sp,
-                              fontWeight: FontWeight.w600,
-                            ),
+                            style: AppTextTheme.of(context).subDescription2
                           ),
                         ),
                       ),
@@ -372,8 +349,7 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
               ),
             ),
           ),
-        );
-      },
+        ),
     );
   }
 
@@ -446,7 +422,7 @@ class _SoundTile extends StatelessWidget {
       isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
       color: isSelected ? AppColors.primary : Colors.grey.shade400,
     ),
-    title: Text(label, style: TextStyle(fontSize: 14.sp)),
+    title: Text(label, style: AppTextTheme.of(context).subDescription2),
     onTap: onTap,
   );
 }

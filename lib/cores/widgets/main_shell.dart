@@ -41,7 +41,6 @@ class _MainShellState extends ConsumerState<MainShell> {
       child: Container(
         // height: 56.h,
         decoration: BoxDecoration(
-          color: Colors.white,
           borderRadius: BorderRadius.circular(48.r),
           boxShadow: [
             BoxShadow(

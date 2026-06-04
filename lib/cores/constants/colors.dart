@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  static const Color primary = Color(0xFF4490ed);
-  static const Color primary2 = Color(0xFF233e92);
+  static const Color primary = Color(0xFF0fba39);
+  static const Color primary2 = Color(0xFF80d58b);
+  static const Color primaryDark = Color(0xFF4490ed);
   static const Color secondary = Color(0xFFFF8040);
   static const Color backdrop = Color(0xFFf9fafb);
 
@@ -20,11 +21,15 @@ class AppColors {
   static const Color formField = Colors.white38;
   static const Color searchBar = Color(0xFFF5F5F0);
   static const Color otherUserBubble = Color(0xFFF5F5F0);
+  static const Color lightSkeleton = Color(0xFFe6e9ed);
+  static const Color lightSkeletonHighlight = Color(0xFF82B1FF);
+  static const Color darkSkeleton = Color(0xFF1E1E1E);
+  static const Color darkSkeletonHighlight = Color(0xFF03DAC6);
 
   static const Color transparent = Colors.transparent;
-  
+
   // ------- RANDOM COLOR
-  static const senderNameColors  = [
+  static const senderNameColors = [
     Color(0xFF1565C0), // blue
     Color(0xFF2E7D32), // green
     Color(0xFFC62828), // red
@@ -34,7 +39,7 @@ class AppColors {
     Color(0xFFAD1457), // pink
     Color(0xFF4527A0), // deep purple
   ];
-  
+
   static Color senderNameColor(String senderId) {
     final index = senderId.hashCode.abs() % senderNameColors.length;
     return senderNameColors[index];

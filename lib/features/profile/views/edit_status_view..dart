@@ -57,12 +57,12 @@ class _EditNameViewState extends State<EditStatusView> {
                   Gap(8.h),
                   Text(
                     'Visible in chats',
-                    style: textTheme.subDescription3,
+                    style: AppTextTheme.of(context).subDescription3,
                   ),
                   Gap(8.h),
                   CustomDivider(),
                   Gap(8.h),
-                  Text('Select', style: textTheme.subDescription3),
+                  Text('Select', style: AppTextTheme.of(context).subDescription3),
                   Gap(8.h),
                   _buildDefaultStatus(vm),
                   Gap(16.h),
@@ -77,7 +77,7 @@ class _EditNameViewState extends State<EditStatusView> {
   );
 
   PreferredSizeWidget _buildAppBar() => CustomAppBar(
-    body: Text('About', style: textTheme.appBar),
+    body: Text('About', style: AppTextTheme.of(context).appBar),
     onBack: () => context.go(RouterRoutes.profile.path),
   );
 
@@ -104,10 +104,10 @@ class _EditNameViewState extends State<EditStatusView> {
                 shape: BoxShape.circle,
               ),
               alignment: Alignment.center,
-              child: Text(status.emoji, style: textTheme.subDescription3),
+              child: Text(status.emoji, style: AppTextTheme.of(context).subDescription3),
             ),
             Gap(12.w),
-            Text(status.label, style: textTheme.subDescription3),
+            Text(status.label, style: AppTextTheme.of(context).subDescription3),
           ],
         ),
       );

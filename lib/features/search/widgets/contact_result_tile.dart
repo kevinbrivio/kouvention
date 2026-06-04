@@ -48,7 +48,7 @@ class ContactResultTile extends ConsumerWidget {
         child: !showPhoto
             ? Text(
                 name[0].toUpperCase(),
-                style: textTheme.senderName.copyWith(
+                style: AppTextTheme.of(context).senderName.copyWith(
                   color: AppColors.senderNameColor(chat.id),
                 ),
               )
@@ -72,7 +72,7 @@ class ContactResultTile extends ConsumerWidget {
 
     return RichText(
       text: TextSpan(
-        style: textTheme.contactName.copyWith(color: AppColors.black),
+        style: AppTextTheme.of(context).contactName.copyWith(color: AppColors.black),
         children: [
           TextSpan(text: before),
           TextSpan(
