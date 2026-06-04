@@ -14,7 +14,6 @@ import 'package:kouvention/features/chat/services/chat_service.dart';
 import 'package:kouvention/features/chat/services/databases/message_database.dart';
 import 'package:kouvention/features/notification/viewmodel/active_chat_id_provider.dart';
 import 'package:kouvention/features/shared/services/sync_service.dart';
-import 'package:kouvention/cores/utils/id_generator.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
 import 'package:kouvention/features/user/services/user_service.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -201,30 +200,21 @@ class ChatRoomVM extends BaseNotifier {
     final chat = ref.read(chatMetadataStreamProvider(chatId)).value;
     if (chat == null) return;
 
-    final messageId = IdGenerator.generateId();
-
     try {
       _isSending = true;
       notifyListeners();
 
-      final db = ref.read(messageDatabaseProvider);
-
-      final msg = MessageModel(
-        id: messageId,
-        senderId: _currentUid,
-        senderName: chat.displayName(_currentUid),
-        text: '',
-        type: MessageType.sticker,
-        sentAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-        mediaUrls: [sticker.url],
-        mimeType: 'image/gif',
-        fileName: 'sticker.gif',
-        fileSizeBytes: 0,
-        syncStatus: SyncStatus.sent,
-      );
-
-      await db.upsertMessage(messageToCompanion(msg, chatId, SyncStatus.sent));
+      final replyTo = _replyMessage != null
+          ? ReplyToModel(
+              messageId: _replyMessage!.id,
+              senderId: _replyMessage!.senderId,
+              senderName: _replyMessage!.senderName,
+              text: _replyMessage!.text,
+              sentAt: _replyMessage!.sentAt,
+              mediaUrl: _replyMessage!.allMediaUrls.toString(),
+              mediaType: _replyMessage!.type.name,
+            )
+          : null;
 
       UserModel? otherUser;
       if (chat.type == 'direct') {
@@ -232,18 +222,13 @@ class ChatRoomVM extends BaseNotifier {
         otherUser = ref.read(otherUserStreamProvider(otherUid)).value;
       }
 
-      await _chatService.sendMediaMessage(
-        chatId: chatId,
-        messageId: messageId,
-        senderId: _currentUid,
+      await _syncService.sendSticker(
+        chatRoomId: chatId,
+        stickerUrl: sticker.url,
         senderName: chat.displayName(_currentUid),
-        text: '',
-        type: MessageType.sticker,
-        mediaUrls: [sticker.url],
-        fileName: 'sticker.gif',
-        fileSizeBytes: 0,
-        mimeType: 'image/gif',
         memberUids: chat.members,
+        otherUserFcmTokens: otherUser?.fcmTokens,
+        replyTo: replyTo,
       );
     } catch (e, s) {
       print('Error sending sticker: $e $s');
@@ -331,7 +316,9 @@ class ChatRoomVM extends BaseNotifier {
 
       if (captionedFiles.length <= 1) {
         await _sendSingleBubble(
-          caption: captionedFiles.isNotEmpty ? captionedFiles.first.caption! : '',
+          caption: captionedFiles.isNotEmpty
+              ? captionedFiles.first.caption!
+              : '',
           files: files,
           mediaCaptions: mediaCaptions,
         );
@@ -381,7 +368,8 @@ class ChatRoomVM extends BaseNotifier {
       otherUser = ref.read(otherUserStreamProvider(otherUid)).value;
     }
 
-    final captions = mediaCaptions ?? files.map((f) => f.caption ?? '').toList();
+    final captions =
+        mediaCaptions ?? files.map((f) => f.caption ?? '').toList();
 
     try {
       await _syncService.sendMediaMessageDirect(

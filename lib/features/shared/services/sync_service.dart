@@ -116,19 +116,29 @@ class SyncService {
     sw.stop();
   }
 
-  static String _lastMessageLabel(String text, MessageType type, String fileName) {
-  if (text.isNotEmpty) return text;
-  switch (type) {
-    case MessageType.image: return '📷 Photo';
-    case MessageType.video: return '🎥 $fileName';
-    case MessageType.audio: return '🎵 $fileName';
-    case MessageType.file: return '📎 $fileName';
-    case MessageType.sticker: return 'Sticker';
-    default: return '';
+  static String _lastMessageLabel(
+    String text,
+    MessageType type,
+    String fileName,
+  ) {
+    if (text.isNotEmpty) return text;
+    switch (type) {
+      case MessageType.image:
+        return '📷 Photo';
+      case MessageType.video:
+        return '🎥 $fileName';
+      case MessageType.audio:
+        return '🎵 $fileName';
+      case MessageType.file:
+        return '📎 $fileName';
+      case MessageType.sticker:
+        return 'Sticker';
+      default:
+        return '';
+    }
   }
-}
 
-static ChatsCompanion chatToCompanion(
+  static ChatsCompanion chatToCompanion(
     ChatModel chat, {
     int? lastSyncAt,
   }) => ChatsCompanion(
@@ -237,7 +247,9 @@ static ChatsCompanion chatToCompanion(
 
               // Also update chat metadata so the chat list reflects the new message
               final label = _lastMessageLabel(
-                newest.text, newest.type, newest.fileName ?? '',
+                newest.text,
+                newest.type,
+                newest.fileName ?? '',
               );
               await _db.updateChatLastMessage(
                 chatId,
@@ -367,7 +379,8 @@ static ChatsCompanion chatToCompanion(
     final tempId = IdGenerator.generateId();
 
     final allUrls = uploadResults.map((r) => r.url).toList();
-    final allCaptions = mediaCaptions ?? uploadResults.map((r) => r.caption ?? '').toList();
+    final allCaptions =
+        mediaCaptions ?? uploadResults.map((r) => r.caption ?? '').toList();
     final first = uploadResults.first;
 
     final localMsg = MessagesCompanion(
@@ -396,7 +409,7 @@ static ChatsCompanion chatToCompanion(
       messageId: tempId,
       text: caption,
       type: type,
-      senderId: _currentUid!,
+      senderId: _currentUid,
       senderName: senderName,
       mediaUrls: allUrls,
       mediaCaptions: allCaptions,
@@ -420,7 +433,7 @@ static ChatsCompanion chatToCompanion(
       chatRoomId,
       LastMessage(
         text: _lastMessageLabel(caption, type, first.fileName),
-        sentBy: _currentUid!,
+        sentBy: _currentUid,
         sentAt: DateTime.now(),
         type: type.name,
       ),
@@ -429,7 +442,7 @@ static ChatsCompanion chatToCompanion(
     await _sendFcmToRecipients(
       otherUserFcmTokens: otherUserFcmTokens,
       chatRoomId: chatRoomId,
-      senderId: _currentUid!,
+      senderId: _currentUid,
       senderName: senderName,
       messageText: caption,
       isGroup: memberUids.length > 2,
@@ -488,7 +501,7 @@ static ChatsCompanion chatToCompanion(
         chatRoomId,
         LastMessage(
           text: _lastMessageLabel(caption, type, fileName),
-          sentBy: _currentUid!,
+          sentBy: _currentUid,
           sentAt: DateTime.now(),
           type: type.name,
         ),
@@ -497,7 +510,7 @@ static ChatsCompanion chatToCompanion(
       await _sendFcmToRecipients(
         otherUserFcmTokens: otherUserFcmTokens,
         chatRoomId: chatRoomId,
-        senderId: _currentUid!,
+        senderId: _currentUid,
         senderName: senderName,
         messageText: caption,
         isGroup: memberUids.length > 2,
@@ -552,6 +565,80 @@ static ChatsCompanion chatToCompanion(
     }
   }
 
+  Future<void> sendSticker({
+    required String chatRoomId,
+    required String stickerUrl,
+    required String senderName,
+    required List<String> memberUids,
+    Map<String, dynamic>? otherUserFcmTokens,
+    ReplyToModel? replyTo,
+  }) async {
+    final tempId = IdGenerator.generateId();
+
+    final localMsg = MessagesCompanion(
+      id: Value(tempId),
+      chatRoomId: Value(chatRoomId),
+      senderId: Value(_currentUid!),
+      senderName: Value(senderName),
+      textContent: Value(''),
+      type: Value(MessageType.sticker.name),
+      sentAt: Value(DateTime.now().millisecondsSinceEpoch),
+      updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
+      syncStatus: Value(SyncStatus.sent),
+      mediaUrls: Value([stickerUrl]),
+      mimeType: Value('image/gif'),
+      fileName: Value('sticker.gif'),
+      fileSizeBytes: Value(0),
+      replyToId: Value(replyTo?.messageId),
+      replyToSenderName: Value(replyTo?.senderName),
+      replyToSentAt: Value(replyTo?.sentAt.millisecondsSinceEpoch),
+      replyToText: Value(replyTo?.text),
+      replyToMediaType: Value(replyTo?.mediaType),
+      replyToMediaUrl: Value(replyTo?.mediaUrl),
+    );
+
+    await _db.upsertMessage(localMsg);
+
+    try {
+      await _chatService.sendMediaMessage(
+        chatId: chatRoomId,
+        messageId: tempId,
+        text: 'Sticker',
+        type: MessageType.sticker,
+        senderId: _currentUid,
+        senderName: senderName,
+        mediaUrls: [stickerUrl],
+        mimeType: 'image/gif',
+        fileSizeBytes: 0,
+        fileName: 'sticker.gif',
+        memberUids: memberUids,
+        replyTo: replyTo,
+      );
+  
+      await _db.updateChatLastMessage(
+        chatRoomId,
+        LastMessage(
+          text: 'Sticker',
+          sentBy: _currentUid,
+          sentAt: DateTime.now(),
+          type: MessageType.sticker.name,
+        ),
+      );
+  
+      await _sendFcmToRecipients(
+        chatRoomId: chatRoomId,
+        messageText: 'Sticker',
+        senderId: _currentUid,
+        senderName: senderName,
+        isGroup: memberUids.length > 2,
+        otherUserFcmTokens: otherUserFcmTokens,
+      );
+    } catch (e) {
+      await _db.updateMessageStatus(tempId, SyncStatus.failed);
+      rethrow;
+    }
+  }
+
   Future<void> _sendFcmToRecipients({
     required Map<String, dynamic>? otherUserFcmTokens,
     required String chatRoomId,
@@ -565,7 +652,10 @@ static ChatsCompanion chatToCompanion(
       return;
     }
 
-    debugPrint('[SyncService] Sending FCM to ${otherUserFcmTokens.length} token(s)');
+    debugPrint(
+      '[SyncService] Sending FCM to ${otherUserFcmTokens.length} token(s)',
+    );
+    debugPrint('[SyncService] Sending FCM with Message: $messageText');
 
     final senderPhotoUrl = FirebaseAuth.instance.currentUser?.photoURL;
 
@@ -581,7 +671,9 @@ static ChatsCompanion chatToCompanion(
           senderImageUrl: senderPhotoUrl,
           isGroup: isGroup,
         );
-        debugPrint('[SyncService] FCM sent to token: ${token.substring(0, 20)}...');
+        debugPrint(
+          '[SyncService] FCM sent to token: ${token.substring(0, 20)}...',
+        );
       } catch (e) {
         debugPrint('[SyncService] FCM send failed for token: $e');
       }
@@ -641,7 +733,6 @@ static ChatsCompanion chatToCompanion(
 
     // 2. Delete all cache temporary medias
   }
-
 }
 
 final syncServiceProvider = Provider<SyncService>(
