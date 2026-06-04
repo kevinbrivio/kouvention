@@ -17,6 +17,7 @@ import 'package:kouvention/features/chat/services/chat_service.dart';
 import 'package:kouvention/features/chat/services/databases/message_database.dart';
 import 'package:kouvention/features/chat/models/upload_result_model.dart';
 import 'package:kouvention/features/chat/services/media/cloud_media_service.dart';
+import 'package:kouvention/features/chat/utils/message_label.dart';
 import 'package:kouvention/features/notification/services/notification_service.dart';
 
 MessagesCompanion messageToCompanion(
@@ -114,28 +115,6 @@ class SyncService {
 
     // 4. Sebagai anak yang baik, kita matikan jamnya jika sudah selesai
     sw.stop();
-  }
-
-  static String _lastMessageLabel(
-    String text,
-    MessageType type,
-    String fileName,
-  ) {
-    if (text.isNotEmpty) return text;
-    switch (type) {
-      case MessageType.image:
-        return '📷 Photo';
-      case MessageType.video:
-        return '🎥 $fileName';
-      case MessageType.audio:
-        return '🎵 $fileName';
-      case MessageType.file:
-        return '📎 $fileName';
-      case MessageType.sticker:
-        return 'Sticker';
-      default:
-        return '';
-    }
   }
 
   static ChatsCompanion chatToCompanion(
@@ -246,7 +225,7 @@ class SyncService {
               await _db.updateChatLastSync(chatId, latestMsgTime);
 
               // Also update chat metadata so the chat list reflects the new message
-              final label = _lastMessageLabel(
+              final label = lastMessageLabel(
                 newest.text,
                 newest.type,
                 newest.fileName ?? '',
@@ -432,7 +411,7 @@ class SyncService {
     await _db.updateChatLastMessage(
       chatRoomId,
       LastMessage(
-        text: _lastMessageLabel(caption, type, first.fileName),
+        text: lastMessageLabel(caption, type, first.fileName),
         sentBy: _currentUid,
         sentAt: DateTime.now(),
         type: type.name,
@@ -444,7 +423,7 @@ class SyncService {
       chatRoomId: chatRoomId,
       senderId: _currentUid,
       senderName: senderName,
-      messageText: caption,
+      messageText: fcmLabel(caption, type, mediaCount: uploadResults.length),
       isGroup: memberUids.length > 2,
     );
   }
@@ -500,7 +479,7 @@ class SyncService {
       await _db.updateChatLastMessage(
         chatRoomId,
         LastMessage(
-          text: _lastMessageLabel(caption, type, fileName),
+          text: lastMessageLabel(caption, type, fileName),
           sentBy: _currentUid,
           sentAt: DateTime.now(),
           type: type.name,
@@ -512,7 +491,7 @@ class SyncService {
         chatRoomId: chatRoomId,
         senderId: _currentUid,
         senderName: senderName,
-        messageText: caption,
+        messageText: fcmLabel(caption, type, mediaCount: files.length),
         isGroup: memberUids.length > 2,
       );
     } catch (e) {

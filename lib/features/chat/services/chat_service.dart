@@ -5,6 +5,7 @@ import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/models/reply_to_model.dart';
+import 'package:kouvention/features/chat/utils/message_label.dart';
 
 class ChatService {
   final FirebaseFirestore _firestore;
@@ -207,7 +208,7 @@ class ChatService {
     final lastMessageMap = MessageModel.toLastMessageMap(
       senderId: senderId,
       senderName: senderName,
-      text: text.isNotEmpty ? text : _mediaLabel(type, fileName),
+      text: text.isNotEmpty ? text : lastMessageLabel(text, type, fileName),
       type: type,
       replyTo: replyTo,
      );
@@ -234,23 +235,6 @@ class ChatService {
     batch.update(chatRef, unreadUpdates);
 
     await batch.commit();
-  }
-
-  String _mediaLabel(MessageType type, String filename) {
-    switch (type) {
-      case MessageType.image:
-        return '📷 Photo';
-      case MessageType.video:
-        return '🎥 ${filename}';
-      case MessageType.audio:
-        return '🎵 ${filename}';
-      case MessageType.file:
-        return '📎 ${filename}';
-      case MessageType.sticker:
-        return 'Sticker';
-      default:
-        return '';
-    }
   }
 
   // --- GET CHATS --------------------------------
