@@ -97,7 +97,7 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
           ],
 
           Opacity(
-            opacity: widget.viewmodel.osPermissionGranted ? 1.0 : 0.5,
+            opacity: widget.viewmodel.osPermissionGranted ? 1.0 : 0.25,
             child: AbsorbPointer(
               absorbing: !widget.viewmodel.osPermissionGranted,
               child: SettingsToggleTile(
@@ -113,7 +113,7 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
           Gap(4.h),
 
           Opacity(
-            opacity: widget.viewmodel.osPermissionGranted ? 1.0 : 0.5,
+            opacity: widget.viewmodel.osPermissionGranted ? 1.0 : 0.25,
             child: AbsorbPointer(
               absorbing: !widget.viewmodel.osPermissionGranted,
               child: SettingsTile(
@@ -129,7 +129,7 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
           Gap(4.h),
 
           Opacity(
-            opacity: widget.viewmodel.osPermissionGranted ? 1.0 : 0.5,
+            opacity: widget.viewmodel.osPermissionGranted ? 1.0 : 0.25,
             child: AbsorbPointer(
               absorbing: !widget.viewmodel.osPermissionGranted,
               child: SettingsTile(
@@ -145,7 +145,7 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
           Gap(4.h),
 
           Opacity(
-            opacity: widget.viewmodel.osPermissionGranted ? 1.0 : 0.5,
+            opacity: widget.viewmodel.osPermissionGranted ? 1.0 : 0.25,
             child: AbsorbPointer(
               absorbing: !widget.viewmodel.osPermissionGranted,
               child: SettingsToggleTile(
