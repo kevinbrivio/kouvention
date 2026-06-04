@@ -242,7 +242,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     reverse: true,
     padding: EdgeInsets.only(
       bottom: 12.h,
-      top: MediaQuery.of(ctx).padding.top + kToolbarHeight,
+      top: MediaQuery.of(context).padding.top + kToolbarHeight,
     ),
     itemCount: messages.length,
     itemBuilder: (context, index) {
@@ -374,7 +374,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
       left: 8.w,
       right: 8.w,
       top: 8.h,
-      bottom: MediaQuery.of(ctx).padding.bottom + 8.h,
+      bottom: MediaQuery.of(context).padding.bottom + 8.h,
     ),
     decoration: BoxDecoration(
       color: Colors.transparent,
