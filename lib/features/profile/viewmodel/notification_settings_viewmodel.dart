@@ -153,7 +153,6 @@ class NotificationSettingsVM extends BaseNotifier {
   Future<void> selectSound(String soundId) async {
     final channelId = NotificationSound.channelIdForSound(soundId, isGroup: false);
     await prefs.setDmChannelId(channelId);
-    _syncChannelToBackend('dm', channelId);
     if (soundId == NotificationSound.systemId) {
       await openNativeNotificationChannelSettings(channelId);
     }
@@ -163,11 +162,9 @@ class NotificationSettingsVM extends BaseNotifier {
   Future<void> selectGroupSound(String? soundId) async {
     if (soundId == null) {
       await prefs.setGroupChannelId(null);
-      _syncChannelToBackend('group', null);
     } else {
       final channelId = NotificationSound.channelIdForSound(soundId, isGroup: true);
       await prefs.setGroupChannelId(channelId);
-      _syncChannelToBackend('group', channelId);
       if (soundId == NotificationSound.systemId) {
         await openNativeNotificationChannelSettings(channelId);
       }
@@ -183,12 +180,6 @@ class NotificationSettingsVM extends BaseNotifier {
     } catch (e) {
       debugPrint('Failed to open channel settings: $e');
     }
-  }
-
-  void _syncChannelToBackend(String type, String? channelId) {
-    debugPrint('[APISync] Updating $type channel preference to "$channelId"');
-    // TODO: Replace with actual API call:
-    // _userService.updateNotificationChannel(uid, type, channelId);
   }
 
   Future<void> refreshPermission() async {
