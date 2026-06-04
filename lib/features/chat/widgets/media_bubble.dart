@@ -499,7 +499,7 @@ class _VideoTileState extends State<_VideoTile> {
             )
           else
             Container(width: 160.w, height: 180.w, color: Colors.grey[800]),
-
+            
           Container(
             decoration: BoxDecoration(
               color: Colors.black45,

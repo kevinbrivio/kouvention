@@ -54,7 +54,7 @@ class ChatRoomView extends ConsumerWidget {
         backgroundColor: Colors.white,
         appBar: (vm) => selectionVM.isSelecting
             ? SelectionAppBar(chatId: chatId, currentUid: currentUid!)
-            : ChatRoomAppBar(chatId: chatId,),
+            : ChatRoomAppBar(chatId: chatId),
         builder: (context, vm) {
           final queryParams = GoRouterState.of(context).uri.queryParameters;
           return _ChatRoomBody(
@@ -599,43 +599,64 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
 
             if (message.allMediaUrls.isNotEmpty)
               Stack(
+                key: ValueKey('reply_thumb_${message.id}'),
                 alignment: Alignment.center,
                 children: [
                   if (message.isImage ||
-                      message.type == MessageType.sticker) ...[
-                    CachedNetworkImage(
-                      imageUrl: message.isImage
-                          ? message.allMediaUrls.first
-                          : vm.getCloudinaryThumbnail(
-                              message.allMediaUrls.first,
-                            ),
-                      width: 64.w,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(
-                        color: AppColors.grey.withValues(alpha: 0.2),
-                        width: 64.w,
-                      ),
-                      errorWidget: (context, url, error) => Container(
-                        color: AppColors.grey.withValues(alpha: 0.2),
-                        width: 64.w,
-                        child: Icon(
-                          Icons.broken_image,
-                          size: 16.r,
-                          color: Colors.grey,
+                      message.type == MessageType.sticker || message.isVideo) ...[
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8.r),
+                      child: CachedNetworkImage(
+                          imageUrl: message.isVideo
+                          ? vm.getCloudinaryThumbnail(message.allMediaUrls.first)
+                          : message.allMediaUrls.first,
+                        width: 76.h,
+                        height: 76.h,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => Container(
+                          color: AppColors.grey.withValues(alpha: 0.2),
+                          width: 64.w,
+                        ),
+                        errorWidget: (context, url, error) => Container(
+                          color: AppColors.grey.withValues(alpha: 0.2),
+                          width: 64.w,
+                          child: Icon(
+                            Icons.broken_image,
+                            size: 16.r,
+                            color: Colors.grey,
+                          ),
                         ),
                       ),
                     ),
                   ] else if (message.isVideo) ...[
-                    Container(
-                      padding: EdgeInsets.all(4.r),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.5),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.play_arrow_rounded,
-                        color: Colors.white,
-                        size: 20.w,
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8.r),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          CachedNetworkImage(
+                            imageUrl: vm.getCloudinaryThumbnail(
+                              message.allMediaUrls.first,
+                            ),
+                            height: 76.h,
+                            width: 76.h,
+                            fit: BoxFit.cover,
+                          ),
+                          Center(
+                            child: Container(
+                              padding: EdgeInsets.all(4.r),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.5),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.play_arrow_rounded,
+                                color: Colors.white,
+                                size: 20.w,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
