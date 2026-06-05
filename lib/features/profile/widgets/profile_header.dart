@@ -115,7 +115,7 @@ class ProfileHeader extends StatelessWidget {
                 Icon(
                   Icons.check_circle,
                   size: 16.r,
-                  color: Colors.blue.shade600,
+                  color: AppColors.primary
                 ),
                 Gap(4.w),
               ],

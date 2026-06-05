@@ -393,8 +393,8 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: EdgeInsets.only(
-        left: 8.w,
-        right: 8.w,
+        left: 6.w,
+        right: 6.w,
         top: 8.h,
         bottom:
             MediaQuery.of(context).viewInsets.bottom +
@@ -405,7 +405,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
         color: Colors.transparent,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.05),
+            color: Colors.black.withValues(alpha: isDark ? 0.1 : 0.05),
             offset: const Offset(0, -1),
             blurRadius: 4,
           ),
@@ -427,7 +427,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
         Flexible(
           child: Container(
             padding: EdgeInsets.symmetric(
-              horizontal: vm.replyMessage != null ? 6.w : 12.w,
+              horizontal: vm.replyMessage != null ? 6.w : 4.w,
               vertical: 4.h,
             ),
             decoration: BoxDecoration(
@@ -439,7 +439,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
               ),
             ),
             child: AnimatedSize(
-              duration: const Duration(milliseconds: 400),
+              duration: const Duration(milliseconds: 200),
               curve: Curves.easeOut,
               alignment: Alignment.bottomCenter,
               child: Column(
@@ -516,14 +516,14 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                 ? SizedBox(
                     width: 24.w,
                     height: 24.w,
-                    child: const CircularProgressIndicator(
+                    child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: Colors.white,
+                      color: isDark ? AppColors.black : AppColors.white,
                     ),
                   )
                 : Icon(
                     vm.isTyping ? Icons.send : Icons.mic,
-                    color: Colors.white,
+                    color: isDark ? AppColors.black : AppColors.white,
                     size: 24.w,
                   ),
           ),
