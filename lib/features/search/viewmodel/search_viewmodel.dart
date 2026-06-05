@@ -11,7 +11,7 @@ import 'package:kouvention/features/shared/services/sync_service.dart';
 
 enum SearchState { idle, searching, results, empty, error }
 
-final searchVMProvider = ChangeNotifierProvider.autoDispose<SearchVM>((ref) {
+final searchVMProvider = ChangeNotifierProvider<SearchVM>((ref) {
   final searchService = ref.read(localSearchServiceProvider);
   final syncService = ref.read(syncServiceProvider);
   final currentUid = ref.read(authServiceProvider).currentUser?.uid;
