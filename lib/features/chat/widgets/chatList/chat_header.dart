@@ -29,7 +29,7 @@ class ChatHeader extends ConsumerWidget {
             children: [
               if (!compact)
                 Text(
-                  'Kouvention',
+                  'Kouvéntion',
                   style: AppTextTheme.of(context).subheadline1.copyWith(color: AppColors.primary),
                 ),
               if (!compact) Gap(6.h),
