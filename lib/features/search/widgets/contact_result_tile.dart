@@ -72,7 +72,7 @@ class ContactResultTile extends ConsumerWidget {
 
     return RichText(
       text: TextSpan(
-        style: AppTextTheme.of(context).contactName.copyWith(color: AppColors.black),
+        style: AppTextTheme.of(context).contactName,
         children: [
           TextSpan(text: before),
           TextSpan(

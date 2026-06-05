@@ -48,9 +48,7 @@ class SearchBody extends ConsumerWidget {
                   padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                   child: Text(
                     'Contacts',
-                    style: AppTextTheme.of(context).subDescription.copyWith(
-                      color: AppColors.black,
-                    ),
+                    style: AppTextTheme.of(context).subDescription,
                   ),
                 ),
               ),
@@ -78,9 +76,7 @@ class SearchBody extends ConsumerWidget {
                   padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                   child: Text(
                     'Messages',
-                    style: AppTextTheme.of(context).subDescription.copyWith(
-                      color: AppColors.black,
-                    ),
+                    style: AppTextTheme.of(context).subDescription,
                   ),
                 ),
               ),
@@ -97,6 +93,7 @@ class SearchBody extends ConsumerWidget {
               ),
             ],
           ],
+          
         );
   
       case SearchState.empty:

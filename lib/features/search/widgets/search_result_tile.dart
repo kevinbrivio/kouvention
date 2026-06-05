@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:kouvention/cores/constants/colors.dart';
+import 'package:kouvention/cores/constants/custom_theme.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/cores/utils/date_time_helper.dart';
 import 'package:kouvention/features/search/models/search_result_model.dart';
@@ -50,7 +51,7 @@ class SearchResultTile extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Flexible(
             child: Column(
@@ -87,7 +88,8 @@ class SearchResultTile extends StatelessWidget {
           imageUrl: thumb,
           fit: BoxFit.cover,
           placeholder: (_, _) => Container(color: Colors.grey[200]),
-          errorWidget: (_, _, _) => Icon(Icons.broken_image, color: Colors.grey[400]),
+          errorWidget: (_, _, _) =>
+              Icon(Icons.broken_image, color: Colors.grey[400]),
         );
       }
       return Icon(Icons.image, color: Colors.grey[400]);
@@ -105,7 +107,8 @@ class SearchResultTile extends StatelessWidget {
               width: double.infinity,
               height: double.infinity,
               placeholder: (_, _) => Container(color: Colors.grey[200]),
-              errorWidget: (_, _, _) => Icon(Icons.broken_image, color: Colors.grey[400]),
+              errorWidget: (_, _, _) =>
+                  Icon(Icons.broken_image, color: Colors.grey[400]),
             ),
             Container(
               decoration: BoxDecoration(
@@ -132,11 +135,11 @@ class SearchResultTile extends StatelessWidget {
     return Icon(Icons.attach_file, color: Colors.grey[400]);
   }
 
-  Widget _buildMediaLabel(BuildContext context, ) {
+  Widget _buildMediaLabel(BuildContext context) {
     if (result.isImage) {
       return Text(
         'Photo',
-        style: AppTextTheme.of(context).body2.copyWith(color: AppColors.black),
+        style: AppTextTheme.of(context).body2,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       );
@@ -144,7 +147,7 @@ class SearchResultTile extends StatelessWidget {
     if (result.isVideo) {
       return Text(
         'Video',
-        style: AppTextTheme.of(context).body2.copyWith(color: AppColors.black),
+        style: AppTextTheme.of(context).body2,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       );
@@ -152,7 +155,7 @@ class SearchResultTile extends StatelessWidget {
     if (result.isFile) {
       return Text(
         result.fileName ?? 'File',
-        style: AppTextTheme.of(context).body2.copyWith(color: AppColors.black),
+        style: AppTextTheme.of(context).body2,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       );
@@ -165,7 +168,9 @@ class SearchResultTile extends StatelessWidget {
         ? 'You'
         : '${result.senderName} '
               '· ${DateTimeHelper.formatDateMonthYear(result.sentAt)}',
-    style: AppTextTheme.of(context).body2.copyWith(color: AppColors.grey),
+    style: AppTextTheme.of(
+      context,
+    ).subDescription3.copyWith(fontSize: 9.sp, color: AppColors.grey),
   );
 
   Widget _buildHighlightedText(
@@ -189,12 +194,12 @@ class SearchResultTile extends StatelessWidget {
       maxLines: 2,
       overflow: TextOverflow.ellipsis,
       text: TextSpan(
-        style: AppTextTheme.of(context).body2,
+        style: AppTextTheme.of(context).body1,
         children: [
           TextSpan(text: before),
           TextSpan(
             text: match,
-            style: const TextStyle(
+            style: AppTextTheme.of(context).body1.copyWith(
               fontWeight: FontWeight.bold,
               backgroundColor: Color(0x33FFC107),
             ),
@@ -208,8 +213,10 @@ class SearchResultTile extends StatelessWidget {
   IconData _fileIcon() {
     final mime = result.mimeType ?? '';
     if (mime.contains('pdf')) return Icons.picture_as_pdf;
-    if (mime.contains('word') || mime.contains('document')) return Icons.description;
-    if (mime.contains('excel') || mime.contains('spreadsheet')) return Icons.table_chart;
+    if (mime.contains('word') || mime.contains('document'))
+      return Icons.description;
+    if (mime.contains('excel') || mime.contains('spreadsheet'))
+      return Icons.table_chart;
     if (mime.contains('zip') || mime.contains('rar')) return Icons.folder_zip;
     return Icons.insert_drive_file;
   }
