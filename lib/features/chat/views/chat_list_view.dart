@@ -92,7 +92,11 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
                   onPressed: () {
                     context.push(RouterRoutes.newChat.path);
                   },
-                  child: Icon(Icons.edit, color: Colors.white, size: 20.sp),
+                  child: Icon(
+                    Icons.edit,
+                    color: Theme.of(context).colorScheme.surface,
+                    size: 20.sp,
+                  ),
                 ),
               ),
           ],
@@ -122,9 +126,7 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
           Expanded(
             child: filteredChatAsync.when(
               loading: () => const Center(child: ChatListSkeleton()),
-              error: (err, stack) => Center(
-                child: ChatListSkeleton(),
-              ),
+              error: (err, stack) => Center(child: ChatListSkeleton()),
               data: (chats) {
                 if (chats.isEmpty) return ChatListSkeleton();
 
@@ -166,7 +168,6 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
   ) {
     final chatRooms = ref.watch(localChatListFromStreamProvider).value ?? [];
     return Container(
-      color: AppColors.white,
       padding: EdgeInsets.only(
         top: MediaQuery.of(context).padding.top + 8.h,
         bottom: 8.h,
