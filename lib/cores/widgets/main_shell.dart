@@ -5,6 +5,7 @@ import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_list_viewmodel.dart';
+import 'package:kouvention/features/search/viewmodel/search_viewmodel.dart';
 
 class MainShell extends ConsumerStatefulWidget {
   final StatefulNavigationShell navigationShell;
@@ -16,16 +17,19 @@ class MainShell extends ConsumerStatefulWidget {
 }
 
 class _MainShellState extends ConsumerState<MainShell> {
-
   @override
   Widget build(BuildContext context) {
     // Keep the realtime sync alive for the entire authenticated session
     ref.watch(realtimeChatSyncProvider);
+    final searchVM = ref.read(searchVMProvider);
 
     return Scaffold(
       extendBody: true,
+      backgroundColor: Colors.transparent,
       body: widget.navigationShell,
-      bottomNavigationBar: _buildFloatingNav(context),
+      bottomNavigationBar: searchVM.isActive
+          ? null
+          : _buildFloatingNav(context),
     );
   }
 
@@ -39,7 +43,6 @@ class _MainShellState extends ConsumerState<MainShell> {
         bottom: MediaQuery.of(context).padding.bottom + 16.h,
       ),
       child: Container(
-        // height: 56.h,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(48.r),
           boxShadow: [

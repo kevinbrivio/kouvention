@@ -8,9 +8,9 @@ import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/bases/base_view.dart';
 import 'package:kouvention/cores/constants/colors.dart';
-import 'package:kouvention/cores/constants/image_paths.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
+import 'package:kouvention/cores/widgets/loading_indicator.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
@@ -18,6 +18,8 @@ import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/models/message_status.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_selection_viewmodel.dart';
+import 'package:kouvention/features/chat/viewmodel/bubble_scheme_provider.dart';
+import 'package:kouvention/features/chat/viewmodel/wallpaper_provider.dart';
 import 'package:kouvention/features/chat/widgets/chatRoom/chat_room_skeleton.dart';
 import 'package:kouvention/features/chat/widgets/chatRoom/media_sheet.dart';
 import 'package:kouvention/features/chat/widgets/chatRoom/message_bubble.dart';
@@ -37,6 +39,8 @@ class ChatRoomView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final selectionVM = ref.watch(chatSelectionVM(chatId));
     final currentUid = ref.read(currentUidProvider);
+    final wallpaper = ref.watch(chatWallpaperProvider(chatId));
+    final wallpaperImage = wallpaper.image;
 
     return PopScope(
       canPop: false,
@@ -52,7 +56,6 @@ class ChatRoomView extends ConsumerWidget {
       child: BaseView<ChatRoomVM>(
         provider: chatRoomVMProvider(chatId),
         useGradient: false,
-        backgroundColor: Colors.white,
         appBar: (vm) {
           if (selectionVM.isSelecting) {
             return SelectionAppBar(chatId: chatId, currentUid: currentUid!);
@@ -72,13 +75,15 @@ class ChatRoomView extends ConsumerWidget {
             scrollToSentAt: queryParams['sentAt'],
           );
         },
-        backgroundImage: DecorationImage(
-          image: AssetImage(images.chatWallpaper),
-          fit: BoxFit.cover,
-          onError: (error, stackTrace) {
-            debugPrint('Background image error: $error');
-          },
-        ),
+        backgroundImage: wallpaperImage == null
+            ? null
+            : DecorationImage(
+                image: wallpaperImage,
+                fit: BoxFit.cover,
+                onError: (error, stackTrace) {
+                  debugPrint('Background image error: $error');
+                },
+              ),
       ),
     );
   }
@@ -170,11 +175,21 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
 
     return Column(
       children: [
+        if (vm.hasMoreMessges)
+        Container(
+          height: 48.h,
+          width: double.infinity,
+          color: AppColors.primary,
+          child: Text('THERE IS STILL MESSAEGES, PAGINATION IS WORKING!'),
+        ),
         Expanded(
           child: messagesAsync.when(
             loading: () => const ChatRoomSkeleton(),
             error: (err, s) => Center(child: Text('Error: $err')),
             data: (messages) {
+              if (messages.isNotEmpty && vm.oldestLoadedSentAt == 0) {
+                vm.setOldestLoadedSentAt(messages.last.sentAt.millisecondsSinceEpoch);
+              }
               _currentMessagesCount = messages.length;
               _currentMessagesList = messages;
 
@@ -207,7 +222,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                             width: 40.w,
                             height: 40.w,
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: Theme.of(context).colorScheme.surface,
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
@@ -254,22 +269,21 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
       bottom: 12.h,
       top: MediaQuery.of(context).padding.top + kToolbarHeight,
     ),
-    itemCount: messages.length,
+    itemCount: messages.length + (vm.hasMoreMessges ? 1 : 0),
     itemBuilder: (context, index) {
       if (index == messages.length) {
-        return Padding(
-          padding: EdgeInsets.symmetric(vertical: 16.h),
-          child: Center(
-            child: SizedBox(
-              width: 24.w,
-              height: 24.w,
-              child: CircularProgressIndicator(
-                strokeWidth: 2.w,
-                color: AppColors.primary,
-              ),
-            ),
-          ),
-        );
+        return vm.isLoadingOlder
+            ? Padding(
+                padding: EdgeInsets.symmetric(vertical: 16.h),
+                child: Center(
+                  child: SizedBox(
+                    width: 24.w,
+                    height: 24.w,
+                    child: LoadingIndicator(),
+                  ),
+                ),
+              )
+            : SizedBox.shrink();
       }
 
       final message = messages[index];
@@ -350,6 +364,9 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
 
     final isGroup = chat.type == 'group';
     final chatName = chat.displayName(currentUid);
+    final scheme = ref.watch(bubbleSchemeProvider);
+    final receivedColor = scheme.receivedBubble;
+    final isLightReceived = receivedColor.computeLuminance() > 0.5;
 
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
@@ -359,17 +376,20 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
           if (isGroup)
             CircleAvatar(
               radius: 14.r,
-              backgroundColor: Colors.grey[300],
+              backgroundColor: receivedColor,
               child: Text(
                 chatName.isNotEmpty ? chatName[0] : '?',
-                style: TextStyle(fontSize: 10.sp, color: Colors.grey[700]),
+                style: TextStyle(
+                  fontSize: 10.sp,
+                  color: isLightReceived ? Colors.grey[700] : Colors.white,
+                ),
               ),
             ),
           Gap(8.w),
           Container(
             padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
             decoration: BoxDecoration(
-              color: Colors.grey[100],
+              color: receivedColor,
               borderRadius: BorderRadius.circular(16.r),
             ),
             child: TypingDots(),
@@ -379,140 +399,148 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     );
   }
 
-  Widget _buildInputBar(ChatModel? chat, String? currentUid) => Container(
-    padding: EdgeInsets.only(
-      left: 8.w,
-      right: 8.w,
-      top: 8.h,
-      bottom:
-          MediaQuery.of(context).viewInsets.bottom +
-          MediaQuery.of(context).padding.bottom +
-          8.h,
-    ),
-    decoration: BoxDecoration(
-      color: Colors.transparent,
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.05),
-          offset: const Offset(0, -1),
-          blurRadius: 4,
-        ),
-      ],
-    ),
-    child: _buildTextField(ctx, chat, currentUid),
-  );
+  Widget _buildInputBar(ChatModel? chat, String? currentUid) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: EdgeInsets.only(
+        left: 6.w,
+        right: 6.w,
+        top: 8.h,
+        bottom:
+            MediaQuery.of(context).viewInsets.bottom +
+            MediaQuery.of(context).padding.bottom +
+            8.h,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.transparent,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.1 : 0.05),
+            offset: const Offset(0, -1),
+            blurRadius: 4,
+          ),
+        ],
+      ),
+      child: _buildTextField(ctx, chat, currentUid),
+    );
+  }
 
   Widget _buildTextField(
     BuildContext context,
     ChatModel? chat,
     String? currentUid,
-  ) => Row(
-    crossAxisAlignment: CrossAxisAlignment.end,
-    children: [
-      Flexible(
-        child: Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: vm.replyMessage != null ? 6.w : 12.w,
-            vertical: 4.h,
-          ),
-          decoration: BoxDecoration(
-            color: AppColors.white.withValues(alpha: 0.85),
-            borderRadius: BorderRadius.circular(
-              vm.replyMessage != null ? 12.r : 24.r,
+  ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Flexible(
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: vm.replyMessage != null ? 6.w : 4.w,
+              vertical: 4.h,
             ),
-          ),
-          child: AnimatedSize(
-            duration: const Duration(milliseconds: 400),
-            curve: Curves.easeOut,
-            alignment: Alignment.bottomCenter,
-            child: Column(
-              children: [
-                if (vm.replyMessage != null)
-                  _buildReplyPreview(vm.replyMessage!),
-                Row(
-                  children: [
-                    IconButton(
-                      icon: Icon(
-                        Icons.emoji_emotions_outlined,
-                        color: AppColors.primary,
-                      ),
-                      onPressed: () {
-                        vm.toggleStickerPanel(context);
-                        _focusNode.unfocus();
-                      },
-                    ),
-                    Flexible(
-                      child: TextField(
-                        focusNode: _focusNode,
-                        controller: _textController,
-                        minLines: 1,
-                        maxLines: 5,
-                        onChanged: vm.onTextChanged,
-                        decoration: InputDecoration(
-                          hintText: 'Type a message...',
-                          hintStyle: AppTextTheme.of(context).typeMessage.copyWith(
-                            color: AppColors.grey,
-                          ),
-                          isDense: true,
-                          filled: false,
-                          border: OutlineInputBorder(
-                            borderSide: BorderSide.none,
-                          ),
-                          enabledBorder: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 4.w,
-                            vertical: 10.h,
-                          ),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? AppColors.darkInputBarSurface
+                  : AppColors.white.withValues(alpha: 0.85),
+              borderRadius: BorderRadius.circular(
+                vm.replyMessage != null ? 12.r : 24.r,
+              ),
+            ),
+            child: AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              alignment: Alignment.bottomCenter,
+              child: Column(
+                children: [
+                  if (vm.replyMessage != null)
+                    _buildReplyPreview(vm.replyMessage!),
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          Icons.emoji_emotions_outlined,
+                          color: AppColors.primary,
                         ),
-                        style: AppTextTheme.of(context).typeMessage,
-                        textCapitalization: TextCapitalization.sentences,
+                        onPressed: () {
+                          vm.toggleStickerPanel(context);
+                          _focusNode.unfocus();
+                        },
                       ),
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.add, color: AppColors.primary),
-                      onPressed: () => vm.toggleMediaPanel(context),
-                    ),
-                  ],
-                ),
-              ],
+                      Flexible(
+                        child: TextField(
+                          focusNode: _focusNode,
+                          controller: _textController,
+                          minLines: 1,
+                          maxLines: 5,
+                          onChanged: vm.onTextChanged,
+                          decoration: InputDecoration(
+                            hintText: 'Type a message...',
+                            hintStyle: AppTextTheme.of(
+                              context,
+                            ).typeMessage.copyWith(color: AppColors.grey),
+                            isDense: true,
+                            filled: false,
+                            border: OutlineInputBorder(
+                              borderSide: BorderSide.none,
+                            ),
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 4.w,
+                              vertical: 10.h,
+                            ),
+                          ),
+                          style: AppTextTheme.of(context).typeMessage,
+                          textCapitalization: TextCapitalization.sentences,
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.add, color: AppColors.primary),
+                        onPressed: () => vm.toggleMediaPanel(context),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
-      ),
-      Gap(8.w),
-      GestureDetector(
-        onTap: () {
-          if (_textController.text.trim().isNotEmpty) {
-            vm.sendMessage(_textController.text);
-            _textController.clear();
-            _scrollToBottom();
-          } else {
-            vm.startRecording();
-          }
-        },
+        Gap(8.w),
+        GestureDetector(
+          onTap: () {
+            if (_textController.text.trim().isNotEmpty) {
+              vm.sendMessage(_textController.text);
+              _textController.clear();
+              _scrollToBottom();
+            } else {
+              vm.startRecording();
+            }
+          },
 
-        child: CircleAvatar(
-          radius: 28.r,
-          backgroundColor: vm.isSending ? AppColors.grey : AppColors.primary,
-          child: vm.isSending
-              ? SizedBox(
-                  width: 24.w,
-                  height: 24.w,
-                  child: const CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
+          child: CircleAvatar(
+            radius: 28.r,
+            backgroundColor: vm.isSending ? AppColors.grey : AppColors.primary,
+            child: vm.isSending
+                ? SizedBox(
+                    width: 24.w,
+                    height: 24.w,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: isDark ? AppColors.black : AppColors.white,
+                    ),
+                  )
+                : Icon(
+                    vm.isTyping ? Icons.send : Icons.mic,
+                    color: isDark ? AppColors.black : AppColors.white,
+                    size: 24.w,
                   ),
-                )
-              : Icon(
-                  vm.isTyping ? Icons.send : Icons.mic,
-                  color: Colors.white,
-                  size: 24.w,
-                ),
+          ),
         ),
-      ),
-    ],
-  );
+      ],
+    );
+  }
 
   Widget _buildMediaPanel() => AnimatedSize(
     duration: const Duration(milliseconds: 250),
@@ -541,13 +569,16 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
 
   Widget _buildReplyPreview(MessageModel message) {
     final isMe = vm.isMyMessage(message);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(16.r),
       child: Container(
         height: 76.h,
         decoration: BoxDecoration(
-          color: AppColors.grey.withValues(alpha: 0.35),
+          color: isDark
+              ? AppColors.darkInputBarSurface
+              : AppColors.grey.withValues(alpha: 0.35),
           border: Border(
             left: BorderSide(color: AppColors.primary, width: 3.w),
           ),
@@ -588,9 +619,9 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                               message.allMediaUrls.length > 1
                                   ? _getReplyMediaCountLabel(message)
                                   : _getReplyMediaLabel(message),
-                              style: AppTextTheme.of(context).senderName.copyWith(
-                                color: AppColors.grey,
-                              ),
+                              style: AppTextTheme.of(
+                                context,
+                              ).senderName.copyWith(color: AppColors.grey),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -782,10 +813,13 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     final maxIndex = positions
         .map((p) => p.index)
         .reduce((a, b) => a > b ? a : b);
+
+    debugPrint('===== Current pagination position: $maxIndex');
+
     final threshold = _currentMessagesCount - 5;
 
-    if (_currentMessagesCount >= 50 && maxIndex >= threshold) {
-      // LOAD MORE MSG
+    if (_currentMessagesCount >= 10 && maxIndex >= threshold) {
+      vm.loadOlderMessages();
     }
   }
 

@@ -12,7 +12,6 @@ class ChatRoomAppBarSkeleton extends StatelessWidget
 
   @override
   Widget build(BuildContext context) => AppBar(
-    backgroundColor: Colors.white,
     elevation: 0.5,
     leading: Padding(
       padding: EdgeInsets.all(8.r),

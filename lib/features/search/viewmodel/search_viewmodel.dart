@@ -7,23 +7,20 @@ import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/search/models/search_result_group.dart';
 import 'package:kouvention/features/search/models/search_result_model.dart';
 import 'package:kouvention/features/search/services/local_search_service.dart';
-import 'package:kouvention/features/shared/services/sync_service.dart';
 
 enum SearchState { idle, searching, results, empty, error }
 
-final searchVMProvider = ChangeNotifierProvider.autoDispose<SearchVM>((ref) {
+final searchVMProvider = ChangeNotifierProvider<SearchVM>((ref) {
   final searchService = ref.read(localSearchServiceProvider);
-  final syncService = ref.read(syncServiceProvider);
   final currentUid = ref.read(authServiceProvider).currentUser?.uid;
-  return SearchVM(searchService, syncService, currentUid!);
+  return SearchVM(searchService, currentUid!);
 });
 
 class SearchVM extends ChangeNotifier {
   final LocalSearchService _searchService;
-  final SyncService _syncService;
   final String _currentUid;
 
-  SearchVM(this._searchService, this._syncService, this._currentUid);
+  SearchVM(this._searchService, this._currentUid);
 
   // --- State -----
   SearchState _state = SearchState.idle;

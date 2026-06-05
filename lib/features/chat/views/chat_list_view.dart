@@ -92,7 +92,11 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
                   onPressed: () {
                     context.push(RouterRoutes.newChat.path);
                   },
-                  child: Icon(Icons.edit, color: Colors.white, size: 20.sp),
+                  child: Icon(
+                    Icons.edit,
+                    color: Theme.of(context).colorScheme.surface,
+                    size: 20.sp,
+                  ),
                 ),
               ),
           ],
@@ -108,6 +112,8 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
     WidgetRef ref,
   ) {
     final filteredChatAsync = ref.watch(filteredChatListProvider);
+    final isChatListReady =
+        filteredChatAsync.hasValue && filteredChatAsync.value != null;
 
     return SafeArea(
       child: Column(
@@ -122,12 +128,14 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
           Expanded(
             child: filteredChatAsync.when(
               loading: () => const Center(child: ChatListSkeleton()),
-              error: (err, stack) => Center(
-                child: ChatListSkeleton(),
-              ),
+              error: (err, stack) => Center(child: ChatListSkeleton()),
               data: (chats) {
-                if (chats.isEmpty) return ChatListSkeleton();
+                if (chats.isEmpty && !isChatListReady) {
+                  return const ChatListSkeleton();
+                }
 
+                if (chats.isEmpty)
+                  return const Center(child: Text('No conversations yet.'));
                 return ListView.builder(
                   controller: _scrollController,
                   padding: EdgeInsets.zero,
@@ -136,10 +144,10 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
                     if (index == chats.length) {
                       return Padding(
                         padding: EdgeInsets.symmetric(vertical: 16.h),
-                        child: const Center(
+                        child: Center(
                           child: SizedBox(
-                            width: 20,
-                            height: 20,
+                            width: 20.w,
+                            height: 20.w,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           ),
                         ),
@@ -166,10 +174,10 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
   ) {
     final chatRooms = ref.watch(localChatListFromStreamProvider).value ?? [];
     return Container(
-      color: AppColors.white,
       padding: EdgeInsets.only(
         top: MediaQuery.of(context).padding.top + 8.h,
         bottom: 8.h,
+        right: 8.w,
       ),
       child: Row(
         children: [
@@ -180,13 +188,15 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
           Expanded(
             child: SizedBox(
               height: 40.h,
-              child: TextField(
+              child: TextFormField(
                 autofocus: true,
+                textAlignVertical: TextAlignVertical.center,
                 onChanged: (value) => searchVM.onTextChanged(value, chatRooms),
                 decoration: InputDecoration(
                   hintText: 'Search...',
                   hintStyle: TextStyle(color: AppColors.grey, fontSize: 14.sp),
                   filled: true,
+                  counterStyle: TextStyle(color: AppColors.primary),
                   fillColor: AppColors.grey.withValues(alpha: 0.1),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(20.r),
@@ -197,6 +207,8 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
                     vertical: 8.h,
                   ),
                 ),
+                showCursor: true,
+                cursorColor: AppColors.primary,
               ),
             ),
           ),

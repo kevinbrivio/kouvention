@@ -29,6 +29,12 @@ class ChatRoomVM extends BaseNotifier {
   StreamSubscription? _firestoreSubscription;
 
   // Pagination
+  static const messagePaginationThreshold = 50;
+  int _oldestLoadedSentAt = 0;
+  bool _hasMoreMessages = true;
+  bool _isLoadingOlder = false;
+  List<Message> _loadedOlderMessages = [];
+
   String? _highlightedMessageId;
 
   // Typing indicator debounce
@@ -70,6 +76,10 @@ class ChatRoomVM extends BaseNotifier {
   bool get showMediaPanel => _showMediaPanel;
   bool get showStickerPanel => _showStickerPanel;
   bool get isRecording => _isRecording;
+  bool get hasMoreMessges => _hasMoreMessages;
+  bool get isLoadingOlder => _isLoadingOlder;
+  int get oldestLoadedSentAt => _oldestLoadedSentAt;
+  List<Message> get loadedOlderMessages => _loadedOlderMessages;
 
   @override
   FutureOr<void> init() async {
@@ -171,6 +181,40 @@ class ChatRoomVM extends BaseNotifier {
       _isSending = false;
       notifyListeners();
     }
+  }
+
+  // ========================================
+  // SYNC MESSAGES & PAGINATION
+  // ========================================
+  Future<void> loadOlderMessages() async {
+    if (_isLoadingOlder || !_hasMoreMessages) return;
+    _isLoadingOlder = true;
+    notifyListeners();
+    try {
+      final db = ref.read(messageDatabaseProvider);
+      final older = await db.fetchOlderMessages(
+        chatId,
+        beforeSentAt: _oldestLoadedSentAt,
+        limit: messagePaginationThreshold,
+      );
+      if (older.length < messagePaginationThreshold) _hasMoreMessages = false;
+      if (older.isNotEmpty) {
+        _oldestLoadedSentAt = older.last.sentAt;
+        _loadedOlderMessages = older;
+        _hasMoreMessages = older.length >= 50;
+      }
+    } catch (e) {
+      _hasMoreMessages = true;
+      debugPrint('=== ERROR on Load More Messages: $e');
+    } finally {
+      _isLoadingOlder = false;
+      notifyListeners();
+    }
+  }
+
+  void setOldestLoadedSentAt(int lastSentAt) {
+    _oldestLoadedSentAt = lastSentAt;
+    notifyListeners();
   }
 
   // ========================================
@@ -498,12 +542,16 @@ final chatMessagesStreamProvider = StreamProvider.autoDispose
         localStream = db.watchMessagesAround(
           chatId,
           targetSentAt: targetSentAt,
-          limit: 50,
+          limit: 10, // TODO: Use limit: 500
         );
       } else {
         // No target sent means nothing for us to jump
         final uid = ref.read(currentUidProvider);
-        localStream = db.watchMessages(chatId, uid!, limit: 50);
+        localStream = db.watchMessages(
+          chatId,
+          uid!,
+          limit: 10,
+        ); // TODO: Use limit: 500
       }
 
       return localStream.map((localMsgs) {

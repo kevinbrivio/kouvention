@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
-import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/cores/widgets/custom_divider.dart';
 import 'package:kouvention/features/search/models/search_result_model.dart';
@@ -48,9 +47,7 @@ class SearchBody extends ConsumerWidget {
                   padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                   child: Text(
                     'Contacts',
-                    style: AppTextTheme.of(context).subDescription.copyWith(
-                      color: AppColors.black,
-                    ),
+                    style: AppTextTheme.of(context).subDescription,
                   ),
                 ),
               ),
@@ -78,9 +75,7 @@ class SearchBody extends ConsumerWidget {
                   padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                   child: Text(
                     'Messages',
-                    style: AppTextTheme.of(context).subDescription.copyWith(
-                      color: AppColors.black,
-                    ),
+                    style: AppTextTheme.of(context).subDescription,
                   ),
                 ),
               ),
@@ -97,6 +92,7 @@ class SearchBody extends ConsumerWidget {
               ),
             ],
           ],
+          
         );
   
       case SearchState.empty:

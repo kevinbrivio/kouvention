@@ -197,25 +197,48 @@ class MessageDatabase extends _$MessageDatabase {
     if (tokens.isEmpty) return [];
     final ftsQuery = tokens.map((t) => '$t*').join(' ');
 
-    // Query A: FTS5 only — proven instant
-    final ftsRows = await customSelect(
-      'SELECT message_id FROM messages_fts WHERE messages_fts MATCH ?',
-      variables: [Variable.withString(ftsQuery)],
+    // Query A: FTS5
+    final rawSql = '''
+      SELECT m.* FROM messages m
+      INNER JOIN messages_fts f ON m.id = f.message_id
+      WHERE f.messages_fts MATCH ?
+        AND m.is_deleted = 0
+        AND m.deleted_for NOT LIKE ?
+      ORDER BY m.sent_at DESC
+      LIMIT ?
+    ''';
+
+    final uidLikeParam = '%"$currentUid"%';
+
+    final rows = await customSelect(
+      rawSql,
+      variables: [
+        Variable.withString(ftsQuery),
+        Variable.withString(uidLikeParam),
+        Variable.withInt(limit),
+      ],
     ).get();
-    if (ftsRows.isEmpty) return [];
 
-    final ids = ftsRows.map((r) => r.data['message_id'] as String).toList();
+    return rows.map((row) => messages.map(row.data)).toList();
 
-    // Query B: Simple PK lookup — no JOIN, no FTS5
-    final results =
-        await (select(messages)
-              ..where((m) => m.id.isIn(ids))
-              ..where((m) => m.isDeleted.equals(false))
-              ..where((m) => m.deletedFor.like('%"$currentUid"%').not()))
-            .get();
+    // final ftsRows = await customSelect(
+    //   'SELECT message_id FROM messages_fts WHERE messages_fts MATCH ?',
+    //   variables: [Variable.withString(ftsQuery)],
+    // ).get();
+    // if (ftsRows.isEmpty) return [];
 
-    results.sort((a, b) => b.sentAt.compareTo(a.sentAt));
-    return results.take(limit).toList();
+    // final ids = ftsRows.map((r) => r.data['message_id'] as String).toList();
+
+    // // Query B: Simple PK lookup — no JOIN, no FTS5
+    // final results =
+    //     await (select(messages)
+    //           ..where((m) => m.id.isIn(ids))
+    //           ..where((m) => m.isDeleted.equals(false))
+    //           ..where((m) => m.deletedFor.like('%"$currentUid"%').not()))
+    //         .get();
+
+    // results.sort((a, b) => b.sentAt.compareTo(a.sentAt));
+    // return results.take(limit).toList();
   }
 
   // ===========================
@@ -594,14 +617,15 @@ class LastMessageConverter extends TypeConverter<LastMessage, String> {
 LazyDatabase _openConnection() => LazyDatabase(() async {
   final dbFolder = await getApplicationDocumentsDirectory();
   final file = File(p.join(dbFolder.path, 'kouvention.db'));
+  final markerFile = File(p.join(dbFolder.path, '.encrypted_db'));
 
-  // Delete old unencrypted database from sqflite era.
-  // sqlite3mc cannot read unencrypted files, so we start fresh.
-  if (await file.exists()) {
+  if (!await markerFile.exists() && await file.exists()) {
     await file.delete();
   }
 
+  await markerFile.create(recursive: true);
   final key = await DbKeyManager.getOrCreateKey();
+
   return NativeDatabase(
     file,
     setup: (sqlite3.Database db) {

@@ -338,6 +338,9 @@ class PrivacyPolicyView extends StatelessWidget {
             Button(
               onPressed: () => Navigator.pop(dialogContext),
               text: 'Cancel',
+              textStyle: AppTextTheme.of(context).subDescription2.copyWith(
+                color: AppColors.black,
+              ),
               isWhiteBackground: true,
             ),
 
@@ -350,6 +353,9 @@ class PrivacyPolicyView extends StatelessWidget {
               },
               isWhiteBackground: true,
               text: 'Decline',
+              textStyle: AppTextTheme.of(context).subDescription2.copyWith(
+                color: AppColors.black,
+              ),
             ),
           ],
         ),

@@ -8,6 +8,7 @@ import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/cores/widgets/custom_button.dart';
+import 'package:kouvention/cores/widgets/liquid_glass_box.dart';
 import 'package:kouvention/cores/widgets/loading_indicator.dart';
 import 'package:kouvention/features/profile/viewmodel/profile_viewmodel.dart';
 import 'package:kouvention/features/profile/widgets/profile_header.dart';
@@ -26,7 +27,7 @@ class ProfileView extends StatelessWidget {
       elevation: 0,
       scrolledUnderElevation: 0,
       leading: IconButton(
-        icon: Icon(Icons.arrow_back),
+        icon: Icon(Icons.arrow_back, color: AppColors.primary,),
         onPressed: () => context.go(RouterRoutes.chatList.path),
       ),
       title: Text('Profile', style: AppTextTheme.of(context).appBar),
@@ -52,9 +53,6 @@ class _ProfileBody extends ConsumerWidget {
         child: const Center(child: LoadingIndicator()),
       );
     }
-
-    final cuaca = Theme.of(context).brightness;
-    print('🚨 LAPORAN CUACA SAAT INI: $cuaca');
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -183,19 +181,8 @@ class _ProfileBody extends ConsumerWidget {
     onTap: viewmodel.isButtonLoading
         ? null
         : () => _showSignOutConfirmation(context),
-    child: Container(
-      width: double.infinity,
+    child: LiquidGlassBox(
       padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12.r),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
       child: viewmodel.isButtonLoading
           ? Center(
               child: SizedBox(

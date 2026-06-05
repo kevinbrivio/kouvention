@@ -30,48 +30,74 @@ class BaseView<T extends BaseNotifier> extends ConsumerWidget {
     return _buildScreenContent(context, viewmodel);
   }
 
-  Widget _buildScreenContent(BuildContext context, T viewmodel) => Stack(
-    children: [
-      GestureDetector(
-        onTap: () {
-          FocusScope.of(context).unfocus();
-        },
-        child: Scaffold(
-          extendBodyBehindAppBar: true,
-          resizeToAvoidBottomInset: false,
-          appBar: appBar != null ? appBar!(viewmodel) : null,
-          backgroundColor: backgroundColor,
-          body: (!viewmodel.isInitialized)
-              ? const Center(child: LoadingIndicator())
-              : Container(
-                  decoration: useGradient
-                      ? BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [AppColors.primary, AppColors.primary2],
-                            stops: [0.6, 0.9],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
+  Widget _buildScreenContent(BuildContext context, T viewmodel) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Stack(
+      children: [
+        GestureDetector(
+          onTap: () {
+            FocusScope.of(context).unfocus();
+          },
+          child: Scaffold(
+            extendBodyBehindAppBar: true,
+            resizeToAvoidBottomInset: false,
+            appBar: appBar != null ? appBar!(viewmodel) : null,
+            backgroundColor: backgroundColor,
+            body: (!viewmodel.isInitialized)
+                ? const Center(child: LoadingIndicator())
+                : Container(
+                    decoration: useGradient
+                        ? BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [AppColors.primary, AppColors.primary2],
+                              stops: [0.6, 0.9],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                          )
+                        : BoxDecoration(
+                            image: _buildBackgroundImage(
+                              backgroundImage,
+                              isDark,
+                            ),
+                            color: backgroundColor,
                           ),
-                        )
-                      : BoxDecoration(
-                          image: backgroundImage,
-                          color: backgroundColor,
-                        ),
-                  child: Stack(
-                    children: [
-                      builder(context, viewmodel),
-                      if (viewmodel.showOverlay && showOverlay != null)
-                        showOverlay!(context, viewmodel),
-                    ],
+                    child: Stack(
+                      children: [
+                        builder(context, viewmodel),
+                        if (viewmodel.showOverlay && showOverlay != null)
+                          showOverlay!(context, viewmodel),
+                      ],
+                    ),
                   ),
-                ),
+          ),
         ),
-      ),
 
-      if (viewmodel.isLoading &&
-          !viewmodel.showOverlay &&
-          viewmodel.isInitialized)
-        const LoadingIndicator(showBackdrop: true),
-    ],
-  );
+        if (viewmodel.isLoading &&
+            !viewmodel.showOverlay &&
+            viewmodel.isInitialized)
+          const LoadingIndicator(showBackdrop: true),
+      ],
+    );
+  }
+
+  DecorationImage? _buildBackgroundImage(
+    DecorationImage? original,
+    bool isDark,
+  ) {
+    if (original == null) return null;
+    if (!isDark) return original;
+    return DecorationImage(
+      image: original.image,
+      fit: original.fit,
+      alignment: original.alignment,
+      repeat: original.repeat,
+      matchTextDirection: original.matchTextDirection,
+      colorFilter: const ColorFilter.mode(
+        Color(0xFF1A1A1A),
+        BlendMode.multiply,
+      ),
+      onError: original.onError,
+    );
+  }
 }
