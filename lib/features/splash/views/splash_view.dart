@@ -45,7 +45,7 @@ class _SplashViewState extends ConsumerState<SplashView> {
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [AppColors.primary2, AppColors.primary],
+            colors: [AppColors.primary, AppColors.primaryDark],
             stops: [0.5, 0.9],
             begin: Alignment.topRight,
             end: Alignment.bottomLeft,

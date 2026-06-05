@@ -101,7 +101,7 @@ class ChatListItem extends ConsumerWidget {
                       Icons.people_alt_rounded,
                       color: AppColors.senderNameColor(
                         chat.id,
-                      ).withValues(alpha: 0.7),
+                      ).withValues(alpha: 0.75),
                     )
                   : Text(
                       initialLetter,
@@ -109,7 +109,7 @@ class ChatListItem extends ConsumerWidget {
                         fontSize: 18.sp,
                         color: AppColors.senderNameColor(
                           chat.id,
-                        ).withValues(alpha: 0.7),
+                        ).withValues(alpha: 0.75),
                       ),
                     ))
             : null,

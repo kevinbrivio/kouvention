@@ -9,9 +9,9 @@ class AppTheme {
     colorScheme: ColorScheme.light(
       surface: AppColors.white,
     ),
-    scaffoldBackgroundColor: AppColors.white,
+    scaffoldBackgroundColor: AppColors.lightBackground,
     appBarTheme: AppBarTheme(
-      backgroundColor: AppColors.white,
+      backgroundColor: AppColors.lightBackground,
       foregroundColor: AppColors.grey,
       elevation: 0.5,
     ),
@@ -30,7 +30,7 @@ class AppTheme {
     colorScheme: ColorScheme.dark(
       surface: AppColors.black,
     ),
-    scaffoldBackgroundColor: AppColors.black.withValues(alpha: 0.8),
+    scaffoldBackgroundColor: AppColors.darkBackground,
     appBarTheme: AppBarTheme(
       backgroundColor: AppColors.black,
       foregroundColor: AppColors.black.withValues(alpha: 0.4),

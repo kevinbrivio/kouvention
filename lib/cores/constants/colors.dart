@@ -18,6 +18,8 @@ class AppColors {
   static const Color red1 = Colors.red;
 
   // Cases
+  static const Color lightBackground = Color(0xFFF6F4E8);
+  static const Color darkBackground = Color(0xFF161717);
   static const Color formField = Colors.white38;
   static const Color searchBar = Color(0xFFF5F5F0);
   static const Color otherUserBubble = Color(0xFFF5F5F0);

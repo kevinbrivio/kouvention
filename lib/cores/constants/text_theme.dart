@@ -13,9 +13,7 @@ class AppTextTheme {
           ? AppColors.white.withValues(alpha: 0.7) 
           : AppColors.black.withValues(alpha: 0.7),
           
-      appBarText: isDark 
-          ? AppColors.white 
-          : AppColors.primary.withValues(alpha: 0.9),
+      appBarText:AppColors.primary.withValues(alpha: 0.9),
           
       typeMessageText: isDark 
           ? AppColors.white.withValues(alpha: 0.8) 
@@ -114,7 +112,7 @@ class _TextTheme {
 
   TextStyle get senderName => TextStyle(
     fontSize: 14.sp,
-    color: primary2Color,
+    color: primaryColor,
     fontWeight: FontWeight.w600,
     height: 1.5,
   );

@@ -24,6 +24,7 @@ class _MainShellState extends ConsumerState<MainShell> {
 
     return Scaffold(
       extendBody: true,
+      backgroundColor: Colors.transparent,
       body: widget.navigationShell,
       bottomNavigationBar: _buildFloatingNav(context),
     );
@@ -39,7 +40,6 @@ class _MainShellState extends ConsumerState<MainShell> {
         bottom: MediaQuery.of(context).padding.bottom + 16.h,
       ),
       child: Container(
-        // height: 56.h,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(48.r),
           boxShadow: [

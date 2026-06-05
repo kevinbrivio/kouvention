@@ -86,11 +86,7 @@ class ProfileHeader extends StatelessWidget {
         // Display name
         Text(
           displayName,
-          style: TextStyle(
-            fontSize: 22.sp,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
-          ),
+          style: AppTextTheme.of(context).subheadline1,
         ),
 
         Gap(4.h),
