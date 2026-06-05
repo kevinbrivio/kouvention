@@ -147,7 +147,7 @@ class ChatRoomAppBar extends ConsumerWidget implements PreferredSizeWidget {
                           onlineStatusText,
                           style: TextStyle(
                             color: onlineStatusText == 'Online'
-                                ? Colors.green
+                                ? AppColors.primary
                                 : textTheme.greyText,
                             fontSize: 12.sp,
                           ),

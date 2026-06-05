@@ -270,7 +270,7 @@ class _ChatRoomWallpaperPreview extends ConsumerWidget {
   const _ChatRoomWallpaperPreview();
 
   static const _darkOverlay = ColorFilter.mode(
-    Color(0xFF1A1A1A),
+    Color(0xFF2e2e2e),
     BlendMode.multiply,
   );
 
@@ -321,7 +321,6 @@ class _PreviewAppBar extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      height: 40.h,
       padding: EdgeInsets.symmetric(horizontal: 6.w),
       decoration: BoxDecoration(
         color: isDark
@@ -334,11 +333,11 @@ class _PreviewAppBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(Icons.arrow_back, size: 18.sp, color: AppColors.primary),
+          Icon(Icons.arrow_back, size: 16.w, color: AppColors.primary),
           Gap(6.w),
           Container(
-            width: 24.w,
-            height: 24.w,
+            width: 36.r,
+            height: 36.r,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: AppColors.primary.withValues(alpha: 0.2),
@@ -349,11 +348,11 @@ class _PreviewAppBar extends StatelessWidget {
               style: TextStyle(
                 color: AppColors.primary,
                 fontWeight: FontWeight.w600,
-                fontSize: 12.sp,
+                fontSize: 14.sp,
               ),
             ),
           ),
-          Gap(6.w),
+          Gap(10.w),
           Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -364,13 +363,13 @@ class _PreviewAppBar extends StatelessWidget {
                   style: AppTextTheme.of(context).senderName,
                   overflow: TextOverflow.ellipsis,
                 ),
-                Text('online', style: AppTextTheme.of(context).subDescription3),
+                Text('Online', style: AppTextTheme.of(context).subDescription3.copyWith(color: AppColors.primary)),
               ],
             ),
           ),
-          Icon(Icons.phone, size: 16.sp, color: AppColors.primary),
+          Icon(Icons.phone, size: 20.w, color: AppColors.primary),
           Gap(10.w),
-          Icon(Icons.info_outline, size: 16.sp, color: AppColors.primary),
+          Icon(Icons.info_outline, size: 20.w, color: AppColors.primary),
         ],
       ),
     );
@@ -403,13 +402,6 @@ class _PreviewMessages extends ConsumerWidget {
             text: 'Almost done — just polishing the UI',
             time: '10:43 AM',
             showRead: true,
-          ),
-          Gap(6.h),
-          _PreviewBubble(
-            scheme: scheme,
-            isMe: false,
-            text: "Can't wait to see it \u{1F64C}",
-            time: '10:44 AM',
           ),
         ],
       ),
@@ -503,8 +495,9 @@ class _PreviewInputBar extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
+      // color: Color(0xFF2e2e2e),
       decoration: BoxDecoration(
-        color: Colors.transparent,
+        color: isDark ? AppColors.black : Colors.transparent,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.05),
@@ -551,9 +544,9 @@ class _PreviewInputBar extends StatelessWidget {
           ),
           Gap(8.w),
           CircleAvatar(
-            radius: 12.r,
+            radius: 15.r,
             backgroundColor: AppColors.primary,
-            child: Icon(Icons.mic, size: 12.sp, color: Colors.white),
+            child: Icon(Icons.mic, size: 14.sp, color: Colors.white),
           ),
         ],
       ),
