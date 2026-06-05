@@ -10,6 +10,7 @@ import 'package:kouvention/cores/bases/base_view.dart';
 import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
+import 'package:kouvention/cores/widgets/loading_indicator.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
@@ -174,11 +175,21 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
 
     return Column(
       children: [
+        if (vm.hasMoreMessges)
+        Container(
+          height: 48.h,
+          width: double.infinity,
+          color: AppColors.primary,
+          child: Text('THERE IS STILL MESSAEGES, PAGINATION IS WORKING!'),
+        ),
         Expanded(
           child: messagesAsync.when(
             loading: () => const ChatRoomSkeleton(),
             error: (err, s) => Center(child: Text('Error: $err')),
             data: (messages) {
+              if (messages.isNotEmpty && vm.oldestLoadedSentAt == 0) {
+                vm.setOldestLoadedSentAt(messages.last.sentAt.millisecondsSinceEpoch);
+              }
               _currentMessagesCount = messages.length;
               _currentMessagesList = messages;
 
@@ -258,22 +269,21 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
       bottom: 12.h,
       top: MediaQuery.of(context).padding.top + kToolbarHeight,
     ),
-    itemCount: messages.length,
+    itemCount: messages.length + (vm.hasMoreMessges ? 1 : 0),
     itemBuilder: (context, index) {
       if (index == messages.length) {
-        return Padding(
-          padding: EdgeInsets.symmetric(vertical: 16.h),
-          child: Center(
-            child: SizedBox(
-              width: 24.w,
-              height: 24.w,
-              child: CircularProgressIndicator(
-                strokeWidth: 2.w,
-                color: AppColors.primary,
-              ),
-            ),
-          ),
-        );
+        return vm.isLoadingOlder
+            ? Padding(
+                padding: EdgeInsets.symmetric(vertical: 16.h),
+                child: Center(
+                  child: SizedBox(
+                    width: 24.w,
+                    height: 24.w,
+                    child: LoadingIndicator(),
+                  ),
+                ),
+              )
+            : SizedBox.shrink();
       }
 
       final message = messages[index];
@@ -803,10 +813,13 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     final maxIndex = positions
         .map((p) => p.index)
         .reduce((a, b) => a > b ? a : b);
+
+    debugPrint('===== Current pagination position: $maxIndex');
+
     final threshold = _currentMessagesCount - 5;
 
-    if (_currentMessagesCount >= 50 && maxIndex >= threshold) {
-      // LOAD MORE MSG
+    if (_currentMessagesCount >= 10 && maxIndex >= threshold) {
+      vm.loadOlderMessages();
     }
   }
 
