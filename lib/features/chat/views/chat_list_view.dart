@@ -171,6 +171,7 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
       padding: EdgeInsets.only(
         top: MediaQuery.of(context).padding.top + 8.h,
         bottom: 8.h,
+        right: 8.w
       ),
       child: Row(
         children: [
