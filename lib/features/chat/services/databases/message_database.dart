@@ -617,14 +617,15 @@ class LastMessageConverter extends TypeConverter<LastMessage, String> {
 LazyDatabase _openConnection() => LazyDatabase(() async {
   final dbFolder = await getApplicationDocumentsDirectory();
   final file = File(p.join(dbFolder.path, 'kouvention.db'));
+  final markerFile = File(p.join(dbFolder.path, '.encrypted_db'));
 
-  // Delete old unencrypted database from sqflite era.
-  // sqlite3mc cannot read unencrypted files, so we start fresh.
-  if (await file.exists()) {
+  if (!await markerFile.exists() && await file.exists()) {
     await file.delete();
   }
 
+  await markerFile.create(recursive: true);
   final key = await DbKeyManager.getOrCreateKey();
+
   return NativeDatabase(
     file,
     setup: (sqlite3.Database db) {
