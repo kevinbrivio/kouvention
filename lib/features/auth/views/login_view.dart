@@ -95,12 +95,14 @@ class LoginView extends ConsumerWidget {
         'Continue with Google',
         style: AppTextTheme.of(context).body1.copyWith(
           fontWeight: FontWeight.w600,
+          color: AppColors.black,
         ),
       ),
       style: ElevatedButton.styleFrom(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12.r),
         ),
+        backgroundColor: AppColors.white,
         elevation: 0,
       ),
     ),
