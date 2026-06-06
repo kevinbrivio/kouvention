@@ -12,10 +12,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:kouvention/cores/router/router.dart';
 import 'package:kouvention/features/chat/services/chat_service.dart';
+import 'package:kouvention/features/chat/services/sync/chat_sync_coordinator.dart';
 import 'package:kouvention/features/notification/services/notification_config.dart';
 import 'package:kouvention/features/notification/services/notification_sound.dart';
 import 'package:kouvention/features/notification/viewmodel/active_chat_id_provider.dart';
-import 'package:kouvention/features/shared/services/sync_service.dart';
 import 'package:kouvention/features/shared/services/prefs_service.dart';
 import 'package:kouvention/firebase_options.dart';
 
@@ -63,6 +63,7 @@ void onBackgroundNotificationResponse(NotificationResponse response) async {
     senderId: currentUser.uid,
     senderName: senderName ?? '',
     text: replyText,
+    sentAt: DateTime.now(),
     memberUids: chat.members,
   );
   debugPrint('[BackgroundReply] Reply sent successfully, messageId=$docId');
@@ -341,7 +342,12 @@ class NotificationHandler {
 
     if (incomingChatId != null && incomingChatId.isNotEmpty) {
       try {
-        await _ref.read(syncServiceProvider).fetchMessages(incomingChatId);
+        // Route through the coordinator so the lightweight sync goes
+        // through the bounded queue. The coordinator decides whether
+        // to enqueue an immediate `fetchMissedMessages` job.
+        _ref.read(chatSyncCoordinatorProvider).onNotificationReceived(
+              incomingChatId,
+            );
         debugPrint('[ForegroundHandler] Synced messages for $incomingChatId');
       } catch (e) {
         debugPrint('[ForegroundHandler] Sync failed for $incomingChatId: $e');

@@ -6,9 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
-import 'package:kouvention/features/chat/services/chat_service.dart';
+import 'package:kouvention/features/chat/repositories/chat_repository.dart';
 import 'package:kouvention/features/chat/services/databases/message_database.dart';
-import 'package:kouvention/features/shared/services/sync_service.dart';
 import 'package:oktoast/oktoast.dart';
 
 enum ChatFilter { all, direct, group }
@@ -17,7 +16,7 @@ const int kChatListPageSize = 50;
 const int kChatListMaxCached = 200;
 
 class ChatListVM extends BaseNotifier {
-  final ChatService _chatService;
+  final ChatRepository _chatRepository;
   final String? _currentUid;
 
   // Filter chats
@@ -35,7 +34,7 @@ class ChatListVM extends BaseNotifier {
   String? _error;
 
   ChatListVM(super.ref)
-    : _chatService = ref.read(chatServiceProvider),
+    : _chatRepository = ref.read(chatRepositoryProvider),
       _currentUid = ref.read(authServiceProvider).currentUser?.uid;
 
   // --- GETTERS ----------------------
@@ -81,8 +80,7 @@ class ChatListVM extends BaseNotifier {
 
     if (unpinned.isEmpty) {
       for (final chat in selectedChats) {
-        await _chatService.unpinChat(_currentUid, chat.id);
-        await db.unpinChatLocally(chat.id, _currentUid);
+        await _chatRepository.unpinChat(_currentUid, chat.id);
       }
       clearSelection();
       return;
@@ -102,49 +100,40 @@ class ChatListVM extends BaseNotifier {
     }
 
     for (final chat in unpinned) {
-      await _chatService.pinChat(_currentUid, chat.id);
-      await db.pinChatLocally(chat.id, _currentUid);
+      await _chatRepository.pinChat(_currentUid, chat.id);
     }
     clearSelection();
   }
 
   Future<void> pinChat(String chatId) async {
     if (_currentUid != null) {
-      final db = ref.read(messageDatabaseProvider);
-      await _chatService.pinChat(_currentUid, chatId);
-      await db.pinChatLocally(chatId, _currentUid);
+      await _chatRepository.pinChat(_currentUid, chatId);
     }
   }
 
   Future<void> unpinChat(String chatId) async {
     if (_currentUid != null) {
-      final db = ref.read(messageDatabaseProvider);
-      await _chatService.unpinChat(_currentUid, chatId);
-      await db.unpinChatLocally(chatId, _currentUid);
+      await _chatRepository.unpinChat(_currentUid, chatId);
     }
   }
 
   Future<void> deleteSelectedChat() async {
     if (_currentUid == null) return;
 
-    final db = ref.read(messageDatabaseProvider);
     final allChats = _currentChatFromStream;
     final selectedChats = allChats
         .where((c) => _selectedChatIds.contains(c.id))
         .toList();
 
     for (final chat in selectedChats) {
-      await _chatService.deleteChat(_currentUid, chat.id);
-      await db.markChatDeletedLocally(chat.id, _currentUid);
+      await _chatRepository.deleteChat(_currentUid, chat.id);
     }
     clearSelection();
   }
 
   Future<void> deleteChat(String chatId) async {
     if (_currentUid != null) {
-      final db = ref.read(messageDatabaseProvider);
-      await _chatService.deleteChat(_currentUid, chatId);
-      await db.markChatDeletedLocally(chatId, _currentUid);
+      await _chatRepository.deleteChat(_currentUid, chatId);
     }
   }
 
@@ -165,18 +154,13 @@ class ChatListVM extends BaseNotifier {
     try {
       final cursor = ref.read(chatCursorProvider);
 
-      final fetched = await _chatService.fetchChatRoomsPage(
-        currentUid: _currentUid,
+      final fetched = await _chatRepository.fetchOlderChatsPage(
+        uid: _currentUid,
         limit: kChatListPageSize,
         cursor: cursor,
       );
 
       if (fetched.isNotEmpty) {
-        await _persistChats(fetched);
-        await ref.read(messageDatabaseProvider).evictOldestChats(
-              keep: kChatListMaxCached,
-            );
-
         if (fetched.length < kChatListPageSize) {
           ref.read(chatCursorProvider.notifier).state = null;
         } else {
@@ -197,23 +181,6 @@ class ChatListVM extends BaseNotifier {
       _isLoadingMore = false;
       notifyListeners();
     }
-  }
-
-  Future<void> _persistChats(List<ChatModel> chats) async {
-    if (chats.isEmpty) return;
-    final db = ref.read(messageDatabaseProvider);
-    final existing = await db.getChatsByIds(chats.map((c) => c.id).toList());
-    final companions = <ChatsCompanion>[];
-    for (final chat in chats) {
-      final prior = existing[chat.id];
-      companions.add(
-        SyncService.chatToCompanion(
-          chat,
-          latestSeenRemoteAt: prior?.latestSeenRemoteAt,
-        ),
-      );
-    }
-    await db.upsertChatRooms(companions);
   }
 
   // ================================
@@ -275,7 +242,9 @@ final chatListVM = ChangeNotifierProvider.autoDispose<ChatListVM>(
 /// `(lastMessage.sentAt, chatId)` provides a stable tie-breaker so chats
 /// that share a timestamp are not skipped or duplicated.
 final chatCursorProvider =
-    StateProvider.autoDispose<ChatCursor?>((ref) => null);
+    StateProvider.autoDispose<({DateTime lastActivityAt, String chatId})?>(
+      (ref) => null,
+    );
 
 /// Filter for the chat list. Re-keyed when the filter changes so any
 /// filter-dependent state (page window, cursor) is reset cleanly.
@@ -323,48 +292,14 @@ final inboxFirstPageProvider = StreamProvider.autoDispose<List<ChatModel>>(
       yield const <ChatModel>[];
       return;
     }
-    final chatService = ref.watch(chatServiceProvider);
-    final db = ref.read(messageDatabaseProvider);
+    final chatRepository = ref.watch(chatRepositoryProvider);
 
-    // 1. Seed the local cache with a one-shot page.
-    try {
-      final initial = await chatService.fetchChatRoomsPage(
-        currentUid: uid,
-        limit: kChatListPageSize,
-      );
-      if (initial.isNotEmpty) {
-        await _persistInbox(initial, db);
-        await db.evictOldestChats(keep: kChatListMaxCached);
-      }
-    } catch (e) {
-      debugPrint('inboxFirstPageProvider: initial fetch failed: $e');
-    }
-
-    // 2. Live updates for the top [kChatListPageSize] chats.
-    yield* chatService.streamChatList(uid, limit: kChatListPageSize).asyncMap(
-      (chats) async {
-        await _persistInbox(chats, db);
-        return chats;
-      },
-    );
+    // The repository streams the first page, persisting each emission into
+    // Drift (and triggering the 200-chat LRU eviction). The chat list UI
+    // and the typing indicator both subscribe to this single stream.
+    yield* chatRepository.firstPageStream(uid, limit: kChatListPageSize);
   },
 );
-
-Future<void> _persistInbox(List<ChatModel> chats, MessageDatabase db) async {
-  if (chats.isEmpty) return;
-  final existing = await db.getChatsByIds(chats.map((c) => c.id).toList());
-  final companions = <ChatsCompanion>[];
-  for (final chat in chats) {
-    final prior = existing[chat.id];
-    companions.add(
-      SyncService.chatToCompanion(
-        chat,
-        latestSeenRemoteAt: prior?.latestSeenRemoteAt,
-      ),
-    );
-  }
-  await db.upsertChatRooms(companions);
-}
 
 /// Typing indicator map derived from the screen-scoped inbox stream.
 /// Sharing the underlying Firestore stream with [inboxFirstPageProvider]
