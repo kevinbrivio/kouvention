@@ -129,6 +129,12 @@ class Messages extends Table {
 class MessageDatabase extends _$MessageDatabase {
   MessageDatabase() : super(_openConnection());
 
+  /// Test-only constructor. Pass an in-memory [QueryExecutor] (e.g.
+  /// `NativeDatabase.memory()`) to avoid touching the real encrypted
+  /// database file. The Phase 7 performance fixtures in `test/` rely on
+  /// this to seed 20,000 chats and 500-message chats in seconds.
+  MessageDatabase.forExecutor(super.executor);
+
   @override
   int get schemaVersion => 2;
 
@@ -577,7 +583,7 @@ class MessageDatabase extends _$MessageDatabase {
     await updateChatSyncState(
       chatId: chatId,
       oldestCachedAt: minSent,
-      hasMoreOlderRemote: count > 0,
+      hasMoreOlderRemote: true,
     );
   }
 
