@@ -209,7 +209,7 @@ class ChatListVM extends BaseNotifier {
       companions.add(
         SyncService.chatToCompanion(
           chat,
-          lastSyncAt: prior?.lastSyncTimestamp,
+          latestSeenRemoteAt: prior?.latestSeenRemoteAt,
         ),
       );
     }
@@ -359,7 +359,7 @@ Future<void> _persistInbox(List<ChatModel> chats, MessageDatabase db) async {
     companions.add(
       SyncService.chatToCompanion(
         chat,
-        lastSyncAt: prior?.lastSyncTimestamp,
+        latestSeenRemoteAt: prior?.latestSeenRemoteAt,
       ),
     );
   }

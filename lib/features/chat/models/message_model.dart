@@ -108,9 +108,9 @@ class MessageModel {
     required String senderId,
     required String senderName,
     required String text,
+    required DateTime sentAt,
     MessageType type = MessageType.text,
     ReplyToModel? replyTo,
-    // Media files
     List<String>? mediaUrls,
     List<String>? mediaCaptions,
     String? fileName,
@@ -118,6 +118,7 @@ class MessageModel {
     String? mimeType,
     int? mediaDuration,
   }) {
+    final sentAtTs = Timestamp.fromDate(sentAt);
     return {
       'senderId': senderId,
       'senderName': senderName,
@@ -130,8 +131,8 @@ class MessageModel {
       if (fileSizeBytes != null) 'fileSizeBytes': fileSizeBytes,
       if (mimeType != null) 'mimeType': mimeType,
       if (mediaDuration != null) 'mediaDuration': mediaDuration,
-      'sentAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
+      'sentAt': sentAtTs,
+      'updatedAt': sentAtTs,
     };
   }
 
@@ -139,6 +140,7 @@ class MessageModel {
     required String senderId,
     required String senderName,
     required String text,
+    required DateTime sentAt,
     MessageType type = MessageType.text,
     ReplyToModel? replyTo,
   }) {
@@ -148,7 +150,7 @@ class MessageModel {
         'sentBy': senderId,
         'senderName': senderName,
         if (replyTo != null) 'replyTo': replyTo.toMap(),
-        'sentAt': FieldValue.serverTimestamp(),
+        'sentAt': Timestamp.fromDate(sentAt),
         'type': type.name,
       },
     };

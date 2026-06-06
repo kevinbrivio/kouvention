@@ -201,41 +201,43 @@ class ChatService {
     required String senderId,
     required String senderName,
     required String text,
+    required DateTime sentAt,
     required List<String> memberUids,
     ReplyToModel? replyTo,
   }) async {
-    final batch = _firestore.batch();
+    await _firestore.runTransaction((tx) async {
+      final msgRef = _messagesRef(chatId).doc(messageId);
+      final existing = await tx.get(msgRef);
+      if (existing.exists) return;
 
-    final msgRef = _messagesRef(chatId).doc(messageId);
-    batch.set(
-      msgRef,
-      MessageModel.toNewMessageMap(
-        senderId: senderId,
-        senderName: senderName,
-        text: text,
-        replyTo: replyTo,
-      ),
-    );
-    final chatRef = _chatsRef.doc(chatId);
-    batch.update(chatRef, {
-      ...MessageModel.toLastMessageMap(
-        senderId: senderId,
-        senderName: senderName,
-        text: text,
-        replyTo: replyTo,
-      ),
-      'updatedAt': FieldValue.serverTimestamp(),
+      tx.set(
+        msgRef,
+        MessageModel.toNewMessageMap(
+          senderId: senderId,
+          senderName: senderName,
+          text: text,
+          sentAt: sentAt,
+          replyTo: replyTo,
+        ),
+      );
+
+      final chatRef = _chatsRef.doc(chatId);
+      final unreadUpdates = <String, dynamic>{
+        for (final uid in memberUids)
+          if (uid != senderId) 'unreadCount.$uid': FieldValue.increment(1),
+      };
+      tx.update(chatRef, {
+        ...MessageModel.toLastMessageMap(
+          senderId: senderId,
+          senderName: senderName,
+          text: text,
+          sentAt: sentAt,
+          replyTo: replyTo,
+        ),
+        'updatedAt': Timestamp.fromDate(sentAt),
+        ...unreadUpdates,
+      });
     });
-
-    final unreadUpdates = <String, dynamic>{};
-    for (final uid in memberUids) {
-      if (uid != senderId) {
-        unreadUpdates['unreadCount.$uid'] = FieldValue.increment(1);
-      }
-    }
-    batch.update(chatRef, unreadUpdates);
-
-    await batch.commit();
   }
 
   // --- SEND MEDIA MESSAGE ---------------------
@@ -247,6 +249,7 @@ class ChatService {
     required String text,
     required MessageType type,
     required List<String> mediaUrls,
+    required DateTime sentAt,
     List<String>? mediaCaptions,
     required String fileName,
     required int fileSizeBytes,
@@ -255,50 +258,47 @@ class ChatService {
     required List<String> memberUids,
     ReplyToModel? replyTo,
   }) async {
-    final messageMap = MessageModel.toNewMessageMap(
-      senderId: senderId,
-      senderName: senderName,
-      text: text,
-      type: type,
-      replyTo: replyTo,
-      mediaUrls: mediaUrls,
-      mediaCaptions: mediaCaptions,
-      fileName: fileName,
-      fileSizeBytes: fileSizeBytes,
-      mimeType: mimeType,
-      mediaDuration: mediaDuration,
-    );
+    await _firestore.runTransaction((tx) async {
+      final msgRef = _messagesRef(chatId).doc(messageId);
+      final existing = await tx.get(msgRef);
+      if (existing.exists) return;
 
-    final lastMessageMap = MessageModel.toLastMessageMap(
-      senderId: senderId,
-      senderName: senderName,
-      text: text.isNotEmpty ? text : lastMessageLabel(text, type, fileName),
-      type: type,
-      replyTo: replyTo,
-     );
+      tx.set(
+        msgRef,
+        MessageModel.toNewMessageMap(
+          senderId: senderId,
+          senderName: senderName,
+          text: text,
+          sentAt: sentAt,
+          type: type,
+          replyTo: replyTo,
+          mediaUrls: mediaUrls,
+          mediaCaptions: mediaCaptions,
+          fileName: fileName,
+          fileSizeBytes: fileSizeBytes,
+          mimeType: mimeType,
+          mediaDuration: mediaDuration,
+        ),
+      );
 
-    final batch = FirebaseFirestore.instance.batch();
-    final chatRef = FirebaseFirestore.instance.collection('chats').doc(chatId);
-
-    batch.set(
-      chatRef.collection('messages').doc(messageId),
-      messageMap,
-    );
-
-    batch.update(chatRef, {
-      ...lastMessageMap,
-      'updatedAt': FieldValue.serverTimestamp(),
+      final chatRef = _chatsRef.doc(chatId);
+      final unreadUpdates = <String, dynamic>{
+        for (final uid in memberUids)
+          if (uid != senderId) 'unreadCount.$uid': FieldValue.increment(1),
+      };
+      tx.update(chatRef, {
+        ...MessageModel.toLastMessageMap(
+          senderId: senderId,
+          senderName: senderName,
+          text: text.isNotEmpty ? text : lastMessageLabel(text, type, fileName),
+          sentAt: sentAt,
+          type: type,
+          replyTo: replyTo,
+        ),
+        'updatedAt': Timestamp.fromDate(sentAt),
+        ...unreadUpdates,
+      });
     });
-
-    final unreadUpdates = <String, dynamic>{};
-    for (final uid in memberUids) {
-      if (uid != senderId) {
-        unreadUpdates['unreadCount.$uid'] = FieldValue.increment(1);
-      }
-    }
-    batch.update(chatRef, unreadUpdates);
-
-    await batch.commit();
   }
 
   // --- GET CHATS --------------------------------
@@ -322,9 +322,10 @@ class ChatService {
   }
 
   // --- UNREAD COUNT --------------------------------
-  Future<void> resetUnreadCount(String chatId, String uid) async {
-    await _chatsRef.doc(chatId).update({'unreadCount.$uid': 0});
-  }
+  // Removed: resetUnreadCount. The single markChatAsRead() call below
+  // writes both unreadCount.$uid = 0 and lastReadAt.$uid in one update
+  // (AGENTS.md §9.8). Keeping a separate resetUnreadCount would
+  // double-fire on retry.
 
   // --- Typing Indicators ----------------------------
   /// Adds user to TypingUsers array
