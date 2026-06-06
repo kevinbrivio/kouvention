@@ -7,6 +7,13 @@ import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/models/reply_to_model.dart';
 import 'package:kouvention/features/chat/utils/message_label.dart';
 
+/// Compound cursor for chat list pagination.
+///
+/// `(lastMessage.sentAt, chatId)` gives a stable tie-breaker so two chats
+/// with the same `sentAt` (a server-timestamp batch) don't get skipped or
+/// duplicated on pagination.
+typedef ChatCursor = ({DateTime lastActivityAt, String chatId});
+
 class ChatService {
   final FirebaseFirestore _firestore;
 
@@ -84,6 +91,63 @@ class ChatService {
     return snapshot.docs
         .map((doc) => ChatModel.fromMap(doc.id, doc.data()))
         .toList();
+  }
+
+  /// One-shot, paged fetch with a stable compound cursor.
+  ///
+  /// Ordering: `lastMessage.sentAt DESC, __name__ DESC`. The chatId tie-breaker
+  /// is required for stable pagination across writes that batch the same
+  /// timestamp. Requires the compound index
+  /// `(members array-contains, lastMessage.sentAt desc, __name__ desc)`.
+  Future<List<ChatModel>> fetchChatRoomsPage({
+    required String currentUid,
+    required int limit,
+    ChatCursor? cursor,
+  }) async {
+    var query = _chatsRef
+        .where('members', arrayContains: currentUid)
+        .orderBy('lastMessage.sentAt', descending: true)
+        .orderBy('__name__', descending: true);
+
+    if (cursor != null) {
+      query = query.startAfter([
+        Timestamp.fromDate(cursor.lastActivityAt),
+        cursor.chatId,
+      ]);
+    }
+
+    final snapshot = await query.limit(limit).get();
+    return snapshot.docs
+        .map((doc) => ChatModel.fromMap(doc.id, doc.data()))
+        .toList();
+  }
+
+  /// Stream variant of [fetchChatRoomsPage]. The initial cursor lets callers
+  /// resume from a specific page after a hot restart.
+  Stream<List<ChatModel>> streamChatListPage({
+    required String currentUid,
+    required int limit,
+    ChatCursor? cursor,
+  }) {
+    var query = _chatsRef
+        .where('members', arrayContains: currentUid)
+        .orderBy('lastMessage.sentAt', descending: true)
+        .orderBy('__name__', descending: true)
+        .limit(limit);
+
+    if (cursor != null) {
+      query = query.startAfter([
+        Timestamp.fromDate(cursor.lastActivityAt),
+        cursor.chatId,
+      ]);
+    }
+
+    return query.snapshots().map(
+          (snapshot) => snapshot.docs
+              .map((doc) => ChatModel.fromMap(doc.id, doc.data()))
+              .where((chat) => !chat.isDeletedBy(currentUid))
+              .toList(),
+        );
   }
 
   /// Fetches message after specific timestamp

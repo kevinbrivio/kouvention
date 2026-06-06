@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
+import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_list_viewmodel.dart';
 import 'package:kouvention/features/search/viewmodel/search_viewmodel.dart';
 
@@ -48,7 +49,7 @@ class ChatHeader extends ConsumerWidget {
   Widget _buildSearchBox(BuildContext context, WidgetRef ref, ChatListVM chatVM, SearchVM searchVM) => InkWell(
       onTap: () {
         HapticFeedback.selectionClick();
-        final chatRooms = ref.read(localChatListFromStreamProvider).value ?? [];
+        final chatRooms = ref.read(pagedChatListProvider).value ?? const <ChatModel>[];
         searchVM.openSearch(chatRooms);
       },
       child: Container(

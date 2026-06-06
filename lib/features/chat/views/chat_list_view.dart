@@ -8,6 +8,7 @@ import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/cores/widgets/hidden_app_bar.dart';
+import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_list_viewmodel.dart';
 import 'package:kouvention/features/chat/widgets/chatList/chat_header.dart';
 import 'package:kouvention/features/chat/widgets/chatList/chat_list_item.dart';
@@ -172,7 +173,7 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
     SearchVM searchVM,
     WidgetRef ref,
   ) {
-    final chatRooms = ref.watch(localChatListFromStreamProvider).value ?? [];
+    final chatRooms = ref.watch(pagedChatListProvider).value ?? const <ChatModel>[];
     return Container(
       padding: EdgeInsets.only(
         top: MediaQuery.of(context).padding.top + 8.h,

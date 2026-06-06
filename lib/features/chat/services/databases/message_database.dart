@@ -18,6 +18,7 @@ enum SyncStatus { pending, sent, failed }
 // ===============================
 // Table Chats
 // ===============================
+@TableIndex(name: 'idx_chats_updated_id', columns: {#updatedAt, #id})
 class Chats extends Table {
   TextColumn get id => text()();
   TextColumn get type => text()();
@@ -54,12 +55,22 @@ class Chats extends Table {
       text().map(const MapStringStringConverter()).nullable()();
   TextColumn get deletedBy => text().nullable()();
 
-  // Flag to point last message existence, so Firestore cannot reach it
   BoolColumn get hasReachedBeginning =>
       boolean().withDefault(const Constant(false))();
 
-  // Flag to syncing
+  // Deprecated. The 4-field sync state below (`latestSeenRemoteAt`,
+  // `oldestCachedAt`, `hasMoreOlderRemote`, `hasLocalGap`) is now the sole
+  // cursor (AGENTS.md §8). The column is kept for the v1→v2 migration that
+  // backfilled it into `latest_seen_remote_at`; new code must not write to
+  // it. Remove in a future v3 migration.
   IntColumn get lastSyncTimestamp => integer().withDefault(const Constant(0))();
+
+  IntColumn get latestSeenRemoteAt =>
+      integer().withDefault(const Constant(0))();
+  IntColumn get oldestCachedAt => integer().withDefault(const Constant(0))();
+  BoolColumn get hasMoreOlderRemote =>
+      boolean().withDefault(const Constant(true))();
+  BoolColumn get hasLocalGap => boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column<Object>>? get primaryKey => {id};
@@ -119,15 +130,14 @@ class MessageDatabase extends _$MessageDatabase {
   MessageDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (Migrator m) async {
       print('🛠️ [DATABASE] Membuat tabel baru dari nol!');
-      await m.createAll(); // Create the tables
+      await m.createAll();
 
-      // Build FTS using FTS5
       await customStatement('''
         CREATE VIRTUAL TABLE messages_fts USING fts5(
           message_id UNINDEXED,
@@ -137,7 +147,6 @@ class MessageDatabase extends _$MessageDatabase {
         );
       ''');
 
-      // Trigger on insert
       await customStatement('''
         CREATE TRIGGER after_message_insert
         AFTER INSERT ON messages
@@ -147,7 +156,6 @@ class MessageDatabase extends _$MessageDatabase {
         END;
       ''');
 
-      // Trigger on update
       await customStatement('''
         CREATE TRIGGER after_message_update
         AFTER UPDATE OF text_content ON messages
@@ -158,7 +166,6 @@ class MessageDatabase extends _$MessageDatabase {
         END;
       ''');
 
-      // Trigger on delete
       await customStatement('''
         CREATE TRIGGER after_message_delete
         AFTER DELETE ON messages
@@ -170,10 +177,19 @@ class MessageDatabase extends _$MessageDatabase {
     },
 
     onUpgrade: (Migrator m, int from, int to) async {
-      print('🛠️ [DATABASE] Migrasi! Menghancurkan dan membuat ulang...');
+      print('🛠️ [DATABASE] Migrasi dari v$from ke v$to');
       await customStatement('PRAGMA foreign_keys = OFF');
 
-      if (from < 2) {}
+      if (from < 2) {
+        await m.addColumn(chats, chats.latestSeenRemoteAt);
+        await m.addColumn(chats, chats.oldestCachedAt);
+        await m.addColumn(chats, chats.hasMoreOlderRemote);
+        await m.addColumn(chats, chats.hasLocalGap);
+
+        await customStatement(
+          'UPDATE chats SET latest_seen_remote_at = last_sync_timestamp',
+        );
+      }
     },
 
     beforeOpen: (details) async {
@@ -345,8 +361,123 @@ class MessageDatabase extends _$MessageDatabase {
             ..limit(limit))
           .watch();
 
+  /// Unbounded watch. **Deprecated** — kept only for legacy callers and tests.
+  /// The chat list screen must use [watchPagedChats] or [fetchPagedChats] instead.
   Stream<List<Chat>> watchChatRooms() =>
       (select(chats)..orderBy([(c) => OrderingTerm.desc(c.updatedAt)])).watch();
+
+  /// Reactive, bounded, SQL-sorted chat list page.
+  ///
+  /// Pinned chats (for [currentUid]) come first, then by [updatedAt] DESC with
+  /// [id] DESC as a stable tie-breaker. Bounded to [limit] rows.
+  ///
+  /// [typeFilter] is the literal `'direct'` or `'group'`. Pass `null` for all.
+  Stream<List<Chat>> watchPagedChats({
+    required int limit,
+    int offset = 0,
+    String? typeFilter,
+    String? currentUid,
+  }) {
+    final typeClause = typeFilter != null ? 'AND type = ?' : '';
+    final pinnedOrder = currentUid != null
+        ? "CASE WHEN pinned_by LIKE ? THEN 0 ELSE 1 END"
+        : "0";
+
+    final sql = '''
+      SELECT * FROM chats
+      WHERE 1=1 $typeClause
+      ORDER BY $pinnedOrder, updated_at DESC, id DESC
+      LIMIT ? OFFSET ?
+    ''';
+
+    final variables = <Variable<Object>>[];
+    if (typeFilter != null) {
+      variables.add(Variable.withString(typeFilter));
+    }
+    if (currentUid != null) {
+      variables.add(Variable.withString('%"$currentUid"%'));
+    }
+    variables.add(Variable.withInt(limit));
+    variables.add(Variable.withInt(offset));
+
+    return customSelect(
+      sql,
+      variables: variables,
+      readsFrom: {chats},
+    ).watch().map((rows) => rows.map((row) => chats.map(row.data)).toList());
+  }
+
+  /// One-shot variant of [watchPagedChats]. Used by `loadMore` so the second
+  /// and subsequent pages are appended to the first page without the first
+  /// page re-emit stealing focus.
+  Future<List<Chat>> fetchPagedChats({
+    required int limit,
+    int offset = 0,
+    String? typeFilter,
+    String? currentUid,
+  }) async {
+    final typeClause = typeFilter != null ? 'AND type = ?' : '';
+    final pinnedOrder = currentUid != null
+        ? "CASE WHEN pinned_by LIKE ? THEN 0 ELSE 1 END"
+        : "0";
+
+    final sql = '''
+      SELECT * FROM chats
+      WHERE 1=1 $typeClause
+      ORDER BY $pinnedOrder, updated_at DESC, id DESC
+      LIMIT ? OFFSET ?
+    ''';
+
+    final variables = <Variable<Object>>[];
+    if (typeFilter != null) {
+      variables.add(Variable.withString(typeFilter));
+    }
+    if (currentUid != null) {
+      variables.add(Variable.withString('%"$currentUid"%'));
+    }
+    variables.add(Variable.withInt(limit));
+    variables.add(Variable.withInt(offset));
+
+    final rows = await customSelect(
+      sql,
+      variables: variables,
+      readsFrom: {chats},
+    ).get();
+    return rows.map((row) => chats.map(row.data)).toList();
+  }
+
+  Future<int> getChatCount() async {
+    final row = await customSelect(
+      'SELECT COUNT(*) AS cnt FROM chats',
+      readsFrom: {chats},
+    ).getSingle();
+    return row.read<int>('cnt');
+  }
+
+  /// LRU eviction: keep the [keep] most recently updated chats in local cache.
+  /// Returns the number of rows deleted.
+  Future<int> evictOldestChats({required int keep}) async {
+    final count = await getChatCount();
+    if (count <= keep) return 0;
+
+    final toDeleteCount = count - keep;
+    final toDelete = await customSelect(
+      'SELECT id FROM chats ORDER BY updated_at ASC LIMIT ?',
+      variables: [Variable.withInt(toDeleteCount)],
+      readsFrom: {chats},
+    ).get();
+
+    if (toDelete.isEmpty) return 0;
+
+    final ids = toDelete.map((r) => r.read<String>('id')).toList();
+    return (delete(chats)..where((c) => c.id.isIn(ids))).go();
+  }
+
+  Future<Map<String, Chat>> getChatsByIds(List<String> ids) async {
+    if (ids.isEmpty) return const {};
+    final rows = await (select(chats)..where((c) => c.id.isIn(ids))).get();
+    return {for (final c in rows) c.id: c};
+  }
 
   // ============================
   // Upsert
@@ -393,6 +524,62 @@ class MessageDatabase extends _$MessageDatabase {
       fileName: Value(fileName),
     ),
   );
+
+  Future<void> updateLatestSeenRemoteAt(String chatId, int timestamp) =>
+      (update(chats)..where((c) => c.id.equals(chatId))).write(
+        ChatsCompanion(latestSeenRemoteAt: Value(timestamp)),
+      );
+
+  Future<void> updateChatSyncState({
+    required String chatId,
+    int? latestSeenRemoteAt,
+    int? oldestCachedAt,
+    bool? hasMoreOlderRemote,
+    bool? hasLocalGap,
+  }) {
+    final companion = ChatsCompanion(
+      latestSeenRemoteAt: latestSeenRemoteAt != null
+          ? Value(latestSeenRemoteAt)
+          : const Value.absent(),
+      oldestCachedAt: oldestCachedAt != null
+          ? Value(oldestCachedAt)
+          : const Value.absent(),
+      hasMoreOlderRemote: hasMoreOlderRemote != null
+          ? Value(hasMoreOlderRemote)
+          : const Value.absent(),
+      hasLocalGap: hasLocalGap != null
+          ? Value(hasLocalGap)
+          : const Value.absent(),
+    );
+    return (update(chats)..where((c) => c.id.equals(chatId))).write(companion);
+  }
+
+  Future<void> recomputeLocalMessageBounds(String chatId) async {
+    final row = await customSelect(
+      'SELECT MIN(sent_at) AS min_sent, MAX(sent_at) AS max_sent, COUNT(*) AS cnt '
+      'FROM messages WHERE chat_room_id = ?',
+      variables: [Variable.withString(chatId)],
+      readsFrom: {messages},
+    ).getSingleOrNull();
+
+    if (row == null) {
+      await updateChatSyncState(
+        chatId: chatId,
+        oldestCachedAt: 0,
+        hasMoreOlderRemote: true,
+      );
+      return;
+    }
+
+    final minSent = row.data['min_sent'] as int? ?? 0;
+    final count = row.data['cnt'] as int? ?? 0;
+
+    await updateChatSyncState(
+      chatId: chatId,
+      oldestCachedAt: minSent,
+      hasMoreOlderRemote: count > 0,
+    );
+  }
 
   Future<void> updateChatLastSync(String chatId, int timestamp) =>
       (update(chats)..where((c) => c.id.equals(chatId))).write(
@@ -514,12 +701,21 @@ class MessageDatabase extends _$MessageDatabase {
       (select(chats)..where((c) => c.id.equals(chatId))).getSingleOrNull();
 
   Future<List<Message>> getStuckPendingMessages() async {
+    // The 5-minute gate stops the retry loop from racing the in-flight
+    // initial send. Pending rows newer than 5 min are assumed to still be
+    // trying. Once the gate passes, the retry calls the transaction-guarded
+    // flush (see SyncService.flushPendingMessage), which is safe to call
+    // even if the message already exists in Firestore.
     final fiveMinutesAgo = DateTime.now()
         .subtract(const Duration(minutes: 5))
         .millisecondsSinceEpoch;
 
     return (select(messages)
-          ..where((m) => m.syncStatus.equals(SyncStatus.pending.name))
+          ..where(
+            (m) =>
+                m.syncStatus.equals(SyncStatus.pending.name) |
+                m.syncStatus.equals(SyncStatus.failed.name),
+          )
           ..where((m) => m.sentAt.isSmallerThanValue(fiveMinutesAgo)))
         .get();
   }

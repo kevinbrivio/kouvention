@@ -4,7 +4,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/constants/colors.dart';
-import 'package:kouvention/features/chat/viewmodel/chat_list_viewmodel.dart';
 import 'package:kouvention/features/search/viewmodel/search_viewmodel.dart';
 
 class MainShell extends ConsumerStatefulWidget {
@@ -19,8 +18,6 @@ class MainShell extends ConsumerStatefulWidget {
 class _MainShellState extends ConsumerState<MainShell> {
   @override
   Widget build(BuildContext context) {
-    // Keep the realtime sync alive for the entire authenticated session
-    ref.watch(realtimeChatSyncProvider);
     final searchVM = ref.read(searchVMProvider);
 
     return Scaffold(
