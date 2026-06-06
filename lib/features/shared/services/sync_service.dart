@@ -247,6 +247,99 @@ class SyncService {
     return (pages: pagesFetched, messages: totalInserted);
   }
 
+  /// Fetches the next page of messages OLDER than the local cache for one
+  /// chat. Used by `ChatRoomVM.loadOlderMessages` when the user scrolls
+  /// up past the locally-cached window and the 4-field sync state
+  /// (`hasMoreOlderRemote`) is still `true` (AGENTS.md §8).
+  ///
+  /// Each call:
+  ///   1. Reads the local chat row from Drift to get `oldestCachedAt`.
+  ///   2. Returns immediately if `hasMoreOlderRemote == false`.
+  ///   3. Asks `ChatService.fetchOlderMessagesPage` for one older page
+  ///      (`startAfter` on `sentAt DESC`, `limit = [limit]`).
+  ///   4. Upserts the page into Drift.
+  ///   5. Updates the 4-field sync state: `oldestCachedAt = min(sentAt)`,
+  ///      `hasMoreOlderRemote` flipped off the moment the server returns
+  ///      a short or empty page.
+  ///
+  /// Returns the number of messages inserted (0 means "we've reached
+  /// the beginning of the chat, stop scrolling").
+  Future<({int pages, int messages})> fetchOlderMessages(
+    String chatId, {
+    int limit = 50,
+    int maxPages = 4,
+  }) async {
+    final chatRoom = await _db.getChatById(chatId);
+    if (chatRoom == null) {
+      debugPrint('fetchOlderMessages: chat $chatId missing locally — skip');
+      return (pages: 0, messages: 0);
+    }
+    if (!chatRoom.hasMoreOlderRemote) {
+      return (pages: 0, messages: 0);
+    }
+
+    int pagesFetched = 0;
+    int totalInserted = 0;
+    int cursor = chatRoom.oldestCachedAt;
+    bool serverExhausted = false;
+
+    while (pagesFetched < maxPages) {
+      if (cursor <= 0) {
+        serverExhausted = true;
+        break;
+      }
+
+      final page = await _chatService.fetchOlderMessagesPage(
+        chatId: chatId,
+        beforeSentAt: cursor,
+        limit: limit,
+      );
+
+      if (page.isEmpty) {
+        // Server has nothing older than the cursor.
+        serverExhausted = true;
+        break;
+      }
+
+      final companions = page
+          .map((m) => messageToCompanion(m, chatId, SyncStatus.sent))
+          .toList();
+      await _db.upsertMessages(companions);
+
+      final oldest = page.first.sentAt.millisecondsSinceEpoch;
+      pagesFetched++;
+      totalInserted += page.length;
+
+      // Cursor must strictly advance; if it didn't, bail to avoid an
+      // infinite loop (shouldn't happen with startAfter on a unique
+      // timestamp, but the guard is cheap).
+      if (oldest <= 0 || oldest >= cursor) {
+        serverExhausted = true;
+        cursor = oldest > 0 ? oldest : 0;
+        break;
+      }
+      cursor = oldest;
+
+      if (page.length < limit) {
+        // Short page = the server has no more rows after this one.
+        serverExhausted = true;
+        break;
+      }
+    }
+
+    await _db.updateChatSyncState(
+      chatId: chatId,
+      oldestCachedAt: cursor,
+      hasMoreOlderRemote: !serverExhausted,
+    );
+
+    if (totalInserted > 0) {
+      await _db.recomputeLocalMessageBounds(chatId);
+    }
+
+    return (pages: pagesFetched, messages: totalInserted);
+  }
+
   /// Subscribes to a single chat's messages newer than the local
   /// [latestSeenRemoteAt]. Each emission is upserted into Drift, which
   /// also reconciles any locally `pending` row whose `messageId` matches

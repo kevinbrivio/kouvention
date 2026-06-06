@@ -194,6 +194,35 @@ class ChatService {
         .toList();
   }
 
+  /// Fetches a single page of messages OLDER than [beforeSentAt]
+  /// (millisecondsSinceEpoch) for [chatId], ordered chronologically
+  /// (oldest first) so the caller can append the result directly to a
+  /// local list. Returns up to [limit] rows.
+  ///
+  /// Implementation: one Firestore query, `orderBy('sentAt', desc)`
+  /// + `startAfter(Timestamp.fromMillis(beforeSentAt))` + `limit`,
+  /// then reverse the docs in memory to chronological order.
+  ///
+  /// `beforeSentAt <= 0` is treated as "no lower bound" (Firestore
+  /// startAfter rejects sentinel timestamps). `limit <= 0` is also
+  /// short-circuited so we never issue a zero-page query.
+  Future<List<MessageModel>> fetchOlderMessagesPage({
+    required String chatId,
+    required int beforeSentAt,
+    int limit = 50,
+  }) async {
+    if (limit <= 0 || beforeSentAt <= 0) return const [];
+    final snap = await _messagesRef(chatId)
+        .orderBy('sentAt', descending: true)
+        .startAfter([Timestamp.fromMillisecondsSinceEpoch(beforeSentAt)])
+        .limit(limit)
+        .get();
+    final docs = snap.docs.reversed.toList();
+    return docs
+        .map((doc) => MessageModel.fromMap(doc.id, doc.data()))
+        .toList();
+  }
+
   // --- Send Messages --------------------------------
   Future<void> sendMessage({
     required String chatId,

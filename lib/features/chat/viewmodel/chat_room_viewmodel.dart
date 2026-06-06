@@ -8,20 +8,20 @@ import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/models/reply_to_model.dart';
-import 'package:kouvention/features/chat/models/upload_result_model.dart';
 import 'package:kouvention/features/chat/models/sticker_model.dart';
-import 'package:kouvention/features/chat/services/chat_service.dart';
+import 'package:kouvention/features/chat/models/upload_result_model.dart';
+import 'package:kouvention/features/chat/repositories/chat_repository.dart';
+import 'package:kouvention/features/chat/repositories/message_repository.dart';
 import 'package:kouvention/features/chat/services/databases/message_database.dart';
 import 'package:kouvention/features/notification/viewmodel/active_chat_id_provider.dart';
-import 'package:kouvention/features/shared/services/sync_service.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
 import 'package:kouvention/features/user/services/user_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
 
 class ChatRoomVM extends BaseNotifier {
-  final ChatService _chatService;
-  final SyncService _syncService;
+  final ChatRepository _chatRepository;
+  final MessageRepository _messageRepository;
   final String? _currentUid;
   final String chatId;
 
@@ -39,6 +39,8 @@ class ChatRoomVM extends BaseNotifier {
 
   // Typing indicator debounce
   Timer? _typingTimer;
+  Timer? _typingDebounce;
+  static const _typingDebounceWindow = Duration(seconds: 2);
   bool _isTyping = false;
 
   // Sending message
@@ -61,8 +63,8 @@ class ChatRoomVM extends BaseNotifier {
   String? _error;
 
   ChatRoomVM(super.ref, {required this.chatId})
-    : _chatService = ref.read(chatServiceProvider),
-      _syncService = ref.read(syncServiceProvider),
+    : _chatRepository = ref.read(chatRepositoryProvider),
+      _messageRepository = ref.read(messageRepositoryProvider),
       _currentUid = ref.read(authServiceProvider).currentUser?.uid;
 
   // --- GETTERS ------------------------------
@@ -85,49 +87,42 @@ class ChatRoomVM extends BaseNotifier {
   FutureOr<void> init() async {
     if (_currentUid == null) {
       _error = 'Not authenticated';
-    } else {
-      // Turn off notification when in the chatId room
-      Future.microtask(() async {
-        ref.read(activeChatIdProvider.notifier).state = chatId;
-        final syncProvider = ref.read(syncServiceProvider);
-
-        // Fetch from local
-        await syncProvider.fetchMessages(chatId);
-
-        // Sync this chat's metadata into Drift so the chat list shows it
-        try {
-          final room = await _chatService.getChat(chatId);
-          if (room != null) {
-            final db = ref.read(messageDatabaseProvider);
-            final existing = await db.getChatById(chatId);
-            await db.upsertChatRooms([
-              SyncService.chatToCompanion(
-                room,
-                lastSyncAt: existing?.lastSyncTimestamp,
-              ),
-            ]);
-          }
-        } catch (e) {
-          debugPrint('Chat metadata sync skipped ($e)');
-        }
-
-        // Also listen to Firestore updates
-        _firestoreSubscription = await syncProvider
-            .streamFirestoreMessages(chatId)
-            .listen((_) {
-              debugPrint('New messages arrived in Drift local database');
-            });
-
-        // Non-critical Firestore writes — won't block init() if offline
-        try {
-          await _chatService.resetUnreadCount(chatId, _currentUid);
-          await _chatService.markChatAsRead(chatId, _currentUid);
-        } catch (e) {
-          // networkAutoSyncProvider retries on reconnect
-          debugPrint('Offline: unread/read update skipped ($e)');
-        }
-      });
+      return;
     }
+
+    // Turn off notification when in the chatId room
+    Future.microtask(() async {
+      ref.read(activeChatIdProvider.notifier).state = chatId;
+
+      // 1. Fetch missed messages for this chat (bounded, idempotent).
+      await _messageRepository.fetchMissedMessages(chatId);
+
+      // 2. Mirror chat metadata into Drift so the chat list reflects
+      //    the latest unread / typing / lastMessage fields.
+      try {
+        await _chatRepository.getChat(chatId);
+      } catch (e) {
+        debugPrint('Chat metadata sync skipped ($e)');
+      }
+
+      // 3. Attach the realtime listener so incoming messages land in
+      //    Drift and reconcile any locally-pending row by messageId.
+      _firestoreSubscription = _messageRepository
+          .watchActiveChatRealtime(chatId)
+          .listen((_) {
+            debugPrint('New messages arrived in Drift local database');
+          });
+
+      // 4. Non-critical: reset unread + advance lastReadAt.
+      try {
+        await _messageRepository.markChatAsRead(chatId, _currentUid);
+      } catch (e) {
+        // Implicit retry: opening the chat again writes a fresh
+        // lastReadAt + reset unreadCount. networkAutoSyncProvider
+        // covers pending messages, not read receipts.
+        debugPrint('Offline: unread/read update skipped ($e)');
+      }
+    });
   }
 
   Future<void> sendMessage(String text) async {
@@ -164,7 +159,7 @@ class ChatRoomVM extends BaseNotifier {
             )
           : null;
 
-      await _syncService.sendMessage(
+      await _messageRepository.sendTextMessage(
         chatRoomId: chat.id,
         textContent: text,
         senderName: chat.displayName(_currentUid),
@@ -186,26 +181,77 @@ class ChatRoomVM extends BaseNotifier {
   // ========================================
   // SYNC MESSAGES & PAGINATION
   // ========================================
+  /// Loads the next older page of messages for this chat.
+  ///
+  /// Per AGENTS.md §5 / §8 / §11.2, scroll-up behavior is:
+  ///   1. Try the local cache first (`db.fetchOlderMessages`).
+  ///   2. If the local page is short OR empty AND the chat's
+  ///      `hasMoreOlderRemote` flag is `true`, fall back to one
+  ///      remote older page (`SyncService.fetchOlderMessages`).
+  ///   3. Stop only when both local and remote are exhausted.
+  ///
+  /// Re-entrant guard: the entire body is wrapped in
+  /// `if (_isLoadingOlder || !_hasMoreMessages) return` so scroll
+  /// events can't double-fire mid-flight.
   Future<void> loadOlderMessages() async {
     if (_isLoadingOlder || !_hasMoreMessages) return;
     _isLoadingOlder = true;
     notifyListeners();
+
+    final db = ref.read(messageDatabaseProvider);
+    const threshold = messagePaginationThreshold;
+    bool fetchedRemote = false;
+    int insertedCount = 0;
+
     try {
-      final db = ref.read(messageDatabaseProvider);
+      // 1. Local page.
       final older = await db.fetchOlderMessages(
         chatId,
         beforeSentAt: _oldestLoadedSentAt,
-        limit: messagePaginationThreshold,
+        limit: threshold,
       );
-      if (older.length < messagePaginationThreshold) _hasMoreMessages = false;
+
       if (older.isNotEmpty) {
+        _loadedOlderMessages = [..._loadedOlderMessages, ...older];
         _oldestLoadedSentAt = older.last.sentAt;
-        _loadedOlderMessages = older;
-        _hasMoreMessages = older.length >= 50;
+        insertedCount = older.length;
       }
-    } catch (e) {
+
+      // 2. Fall back to a remote page only if the local cache was
+      //    short AND the 4-field sync state says the server still
+      //    has older rows.
+      final localExhausted = older.length < threshold;
+      if (localExhausted) {
+        final chat = await db.getChatById(chatId);
+        if (chat?.hasMoreOlderRemote ?? false) {
+          final remote = await _messageRepository.fetchOlderMessages(
+            chatId,
+          );
+          fetchedRemote = remote.messages > 0;
+          insertedCount += remote.messages;
+
+          // The Drift watch upstream will re-emit. Refresh the local
+          // cursor and bounds from the chat row.
+          if (fetchedRemote) {
+            final updated = await db.getChatById(chatId);
+            if (updated != null) {
+              _oldestLoadedSentAt = updated.oldestCachedAt;
+            }
+          }
+        }
+      }
+
+      // 3. Decide if there's anything left to load.
+      final chat = await db.getChatById(chatId);
+      final remoteExhausted = !(chat?.hasMoreOlderRemote ?? false);
+      if (remoteExhausted &&
+          (insertedCount == 0 || (insertedCount < threshold && !fetchedRemote))) {
+        _hasMoreMessages = false;
+      }
+    } catch (e, st) {
+      // Re-open the gate on error; the user can scroll up again.
       _hasMoreMessages = true;
-      debugPrint('=== ERROR on Load More Messages: $e');
+      debugPrint('=== ERROR on Load More Messages: $e\n$st');
     } finally {
       _isLoadingOlder = false;
       notifyListeners();
@@ -284,7 +330,7 @@ class ChatRoomVM extends BaseNotifier {
         otherUser = ref.read(otherUserStreamProvider(otherUid)).value;
       }
 
-      await _syncService.sendSticker(
+      await _messageRepository.sendSticker(
         chatRoomId: chatId,
         stickerUrl: sticker.url,
         senderName: chat.displayName(_currentUid),
@@ -301,28 +347,31 @@ class ChatRoomVM extends BaseNotifier {
   }
 
   // --- Typing Indicator --------------------
-  /// Calls this when user types in the text field.
-  /// Set debounce for 2 seconds when user type first keystroke.
   void onTextChanged(String text) {
     if (_currentUid == null) return;
 
-    if (text.isNotEmpty || !_isTyping) {
-      _isTyping = true;
-      _chatService.setTyping(chatId, _currentUid);
+    if (text.isEmpty) {
+      clearTyping();
+      return;
     }
 
-    // Reset debounce timer
+    _typingDebounce?.cancel();
+    _typingDebounce = Timer(_typingDebounceWindow, () {
+      if (_isTyping) return;
+      _isTyping = true;
+      _messageRepository.setTyping(chatId, _currentUid);
+    });
+
     _typingTimer?.cancel();
     _typingTimer = Timer(const Duration(seconds: 10), clearTyping);
-
-    if (text.isEmpty) clearTyping();
   }
 
   Future<void> clearTyping() async {
-    if (_currentUid != null && _isTyping) {
+    if (_isTyping && _currentUid != null) {
       _isTyping = false;
       _typingTimer?.cancel();
-      await _chatService.clearTyping(chatId, _currentUid);
+      _typingDebounce?.cancel();
+      await _messageRepository.clearTyping(chatId, _currentUid);
     }
   }
 
@@ -360,7 +409,7 @@ class ChatRoomVM extends BaseNotifier {
   }
 
   Future<void> fetchMessagesAround(DateTime sentAt) async {
-    await _syncService.fetchMessagesAround(chatId, sentAt);
+    await _messageRepository.fetchMessagesAround(chatId, sentAt);
   }
 
   Future<void> sendMediaMessage({
@@ -434,7 +483,7 @@ class ChatRoomVM extends BaseNotifier {
         mediaCaptions ?? files.map((f) => f.caption ?? '').toList();
 
     try {
-      await _syncService.sendMediaMessageDirect(
+      await _messageRepository.sendMediaMessageDirect(
         chatRoomId: chatId,
         senderName: chat.displayName(_currentUid),
         memberUids: chat.members,
@@ -512,6 +561,7 @@ class ChatRoomVM extends BaseNotifier {
     _firestoreSubscription?.cancel();
     clearTyping();
     _typingTimer?.cancel();
+    _typingDebounce?.cancel();
     _audioRecorder.dispose();
     super.dispose();
   }
@@ -542,7 +592,7 @@ final chatMessagesStreamProvider = StreamProvider.autoDispose
         localStream = db.watchMessagesAround(
           chatId,
           targetSentAt: targetSentAt,
-          limit: 10, // TODO: Use limit: 500
+          limit: 50,
         );
       } else {
         // No target sent means nothing for us to jump
@@ -550,8 +600,8 @@ final chatMessagesStreamProvider = StreamProvider.autoDispose
         localStream = db.watchMessages(
           chatId,
           uid!,
-          limit: 10,
-        ); // TODO: Use limit: 500
+          limit: 50,
+        );
       }
 
       return localStream.map((localMsgs) {
@@ -608,8 +658,8 @@ final chatMessagesStreamProvider = StreamProvider.autoDispose
 
 final chatMetadataStreamProvider = StreamProvider.autoDispose
     .family<ChatModel?, String>((ref, chatId) {
-      final chatService = ref.watch(chatServiceProvider);
-      return chatService.streamChat(chatId);
+      final repo = ref.watch(chatRepositoryProvider);
+      return repo.watchChat(chatId);
     });
 
 final otherUserStreamProvider = StreamProvider.autoDispose
