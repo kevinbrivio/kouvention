@@ -29,7 +29,8 @@ class ChatRepository {
 
   /// Streams a single chat document from Firestore. Used for the
   /// chat-room screen header / metadata.
-  Stream<ChatModel?> watchChat(String chatId) => _chatService.streamChat(chatId);
+  Stream<ChatModel?> watchChat(String chatId) =>
+      _chatService.streamChat(chatId);
 
   /// Fetches a single chat row from Firestore and mirrors it into Drift.
   /// Returns the fresh model, or null if the chat is missing remotely.
@@ -54,9 +55,18 @@ class ChatRepository {
   /// listener. All chat rows are upserted with the existing
   /// `latestSeenRemoteAt` preserved per-id.
   ///
+  /// [onInitial] is called with the Firestore-ordered list after the
+  /// one-shot fetch and Drift persist, before the realtime stream starts.
+  /// Use it to seed the Firestore pagination cursor (see
+  /// [ChatListVM.inboxFirstPageProvider]).
+  ///
   /// Caller is responsible for clamping [limit] to the screen-scoped
   /// window (50 by default per AGENTS.md §11.1).
-  Stream<List<ChatModel>> firstPageStream(String uid, {int limit = 50}) async* {
+  Stream<List<ChatModel>> firstPageStream(
+    String uid, {
+    int limit = 50,
+    void Function(List<ChatModel> initial)? onInitial,
+  }) async* {
     try {
       final initial = await _chatService.fetchChatRoomsPage(
         currentUid: uid,
@@ -65,16 +75,20 @@ class ChatRepository {
       if (initial.isNotEmpty) {
         await _persistChats(initial);
         await _db.evictOldestChats(keep: kChatListMaxCached);
+        onInitial?.call(initial);
       }
     } catch (e) {
       debugPrint('firstPageStream: initial fetch failed: $e');
     }
-    yield* _chatService
-        .streamChatList(uid, limit: limit)
-        .asyncMap((chats) async {
-          await _persistChats(chats);
-          return chats;
-        });
+    yield* _chatService.streamChatList(uid, limit: limit).asyncMap((
+      chats,
+    ) async {
+      final hasNew = await _persistChats(chats);
+      if (hasNew) {
+        await _db.evictOldestChats(keep: kChatListMaxCached);
+      }
+      return chats;
+    });
   }
 
   // --- Inbox (older pages) ---------------------------
@@ -85,24 +99,37 @@ class ChatRepository {
   /// (`chatCursorProvider`).
   ///
   /// Preserves the existing `latestSeenRemoteAt` per row via a single
-  /// `getChatsByIds` lookup (AGENTS.md §9.10). Triggers 200-chat LRU
   /// eviction after a successful write.
   Future<List<ChatModel>> fetchOlderChatsPage({
     required String uid,
     required int limit,
     ChatCursor? cursor,
   }) async {
+    debugPrint(
+      '🌐 Firestore: fetching $limit chats (cursor: ${cursor?.chatId ?? "none"})',
+    );
     final fetched = await _chatService.fetchChatRoomsPage(
       currentUid: uid,
       limit: limit,
       cursor: cursor,
     );
-    if (fetched.isEmpty) return fetched;
+    debugPrint('🌐 Firestore: got ${fetched.length} chats from remote');
+
+    if (fetched.isEmpty) {
+      debugPrint('🌐 Firestore: empty page, no more chats');
+      return fetched;
+    }
 
     await _persistChats(fetched);
-    await _db.evictOldestChats(keep: kChatListMaxCached);
+    await _db.evictOldestChats(keep: 200);
+    final total = await _db.getChatCount();
+    debugPrint(
+      '💾 Drift: persisted ${fetched.length} chats, total in Drift: $total',
+    );
     return fetched;
   }
+
+  Future<int> getChatListCount() async => await _db.getChatCount();
 
   // --- Mutations -------------------------------------
 
@@ -123,9 +150,16 @@ class ChatRepository {
 
   // --- Helpers ---------------------------------------
 
-  Future<void> _persistChats(List<ChatModel> chats) async {
-    if (chats.isEmpty) return;
+  /// Persists chats to Drift, preserving existing sync state.
+  /// Returns `true` if any new rows were inserted (not just updated).
+  Future<bool> _persistChats(List<ChatModel> chats) async {
+    if (chats.isEmpty) return false;
     final existing = await _db.getChatsByIds(chats.map((c) => c.id).toList());
+    final newIds = chats
+        .where((c) => !existing.containsKey(c.id))
+        .map((c) => c.id)
+        .toSet();
+
     final companions = <ChatsCompanion>[];
     for (final c in chats) {
       final ex = existing[c.id];
@@ -136,7 +170,9 @@ class ChatRepository {
         ),
       );
     }
+
     await _db.upsertChatRooms(companions);
+    return newIds.isNotEmpty;
   }
 }
 

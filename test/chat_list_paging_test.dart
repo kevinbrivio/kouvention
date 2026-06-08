@@ -34,32 +34,35 @@ void main() {
   );
 
   test('evictOldestChats caps local cache at kChatListMaxCached', () async {
-    // Seed 250 chats. updatedAt increases with index, so chat[0] is the
-    // oldest, chat[249] is the newest.
+    // Seed 501 chats. updatedAt increases with index, so chat[0] is the
+    // oldest, chat[500] is the newest.
     final now = DateTime.now().millisecondsSinceEpoch;
-    for (var i = 0; i < 250; i++) {
-      await db.upsertChatRooms([
+    final companions = [
+      for (var i = 0; i < 501; i++)
         _chatCompanion(id: 'c$i', updatedAt: now + i),
-      ]);
+    ];
+    // Batch insert all at once for speed.
+    for (var i = 0; i < companions.length; i += 100) {
+      final end = (i + 100).clamp(0, companions.length);
+      await db.upsertChatRooms(companions.sublist(i, end));
     }
 
-    expect(await db.getChatCount(), 250);
+    expect(await db.getChatCount(), 501);
 
     await db.evictOldestChats(keep: kChatListMaxCached);
-
     final remaining = await db.getChatCount();
     expect(remaining, kChatListMaxCached);
 
-    // The 50 oldest should be evicted. With updatedAt increasing
-    // monotonically (c0 oldest, c249 newest), the survivors are
-    // c50..c249. Sorted DESC, the LAST row is the oldest survivor.
+    // The oldest (501 - kChatListMaxCached = 1) should be evicted. With updatedAt
+    // increasing monotonically (c0 oldest, c500 newest), the survivors are
+    // c1..c500. Sorted DESC, the LAST row is the oldest survivor.
     final survivors = await (db.select(db.chats)
           ..orderBy([(c) => OrderingTerm.desc(c.updatedAt)]))
         .get();
-    expect(survivors.first.id, 'c249',
-        reason: 'newest survivor should be c249');
-    expect(survivors.last.id, 'c50',
-        reason: 'oldest survivor should be c50 (c0..c49 evicted)');
+    expect(survivors.first.id, 'c500',
+        reason: 'newest survivor should be c500');
+    expect(survivors.last.id, 'c${501 - kChatListMaxCached}',
+        reason: 'oldest survivor should be c${501 - kChatListMaxCached}');
   });
 
   test('watchPagedChats returns SQL-sorted page', () async {
