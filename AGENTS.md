@@ -276,7 +276,7 @@ These are concrete things the agent must not do. Each has a current code:line re
 Sorting the in-memory list on every Drift emit blocks the UI thread.
 
 - ❌ `localChatListFromStreamProvider` watching every Drift row via `watchChatRooms()` — `lib/features/chat/services/databases/message_database.dart:325`
-- ✅ Replace with paged Drift queries (§14.1). Eviction policy caps local cache at **200 chats** (aggressive, low memory).
+- ✅ Replace with paged Drift queries (§14.1). Eviction policy caps local cache at **500 chats**; eviction uses a true LRU order (see §14.1 and `docs/lru_eviction_local_cache_design.md`).
 
 ### 9.2 Do not keep a global stream listener in `MainShell`
 
@@ -419,7 +419,9 @@ work; this phase now documents the line refs in §9.5 / §9.7 / §9.8.
 - Keep only a visible chat window in provider state.
 - Load the next local page only when the user scrolls.
 - Keep the Firestore realtime chat listener limited to the top 20-50 chats.
-- Cap the local cache at **200 chats** (aggressive, low memory); evict by oldest `updatedAt`.
+- Cap the local cache at **500 chats**; eviction uses a true LRU order
+  (`lastOpenedAt` + `json_extract(last_message, '$.sentAt')` + `createdAt`),
+  not `updatedAt` (see `docs/lru_eviction_local_cache_design.md`).
 
 **Completed 2026-06-05:** Paged Drift queries, screen-scoped listener,
 SQL sort/filter, and 200-chat LRU eviction shipped in one pass. The
@@ -430,7 +432,12 @@ The chat list view model uses `pagedChatListRowsProvider` →
 is gone. `fetchOlderChats` reads sync state via a single
 `getChatsByIds` call (no more N+1 per-row reads, §9.10). LRU eviction
 is triggered after every page fetch via `evictOldestChats(keep: 200)`.
-The legacy `realtimeChatSyncProvider` watch in `main_shell.dart:23` is
+
+**Updated 2026-06-08:** LRU eviction redesigned — `lastOpenedAt` column added,
+eviction order changed to true LRU, cap raised to 500 via `kChatListMaxCached`,
+viewport protection via `excludeIds` + scroll tracking. See
+`docs/lru_eviction_local_cache_design.md`. The legacy
+`realtimeChatSyncProvider` watch in `main_shell.dart:23` is
 removed.
 
 ### Phase 5 — Add remote older-message pagination [DONE 2026-06-05]
@@ -526,9 +533,10 @@ and `notification_handler` route through the coordinator.
 `MessageDatabase.forExecutor(NativeDatabase.memory())` test-only
 constructor. All 12 tests pass on a desktop test runner.
 
-- `test/chat_list_paging_test.dart` — 3 tests: 250→200 LRU cap, SQL
-  sort order (pinned first, then `updated_at DESC, id DESC`), no-op
-  eviction when below cap.
+- `test/chat_list_paging_test.dart` — 3 tests: 501→500 LRU cap (true LRU
+  order: `last_opened_at ASC, json_extract... ASC, id ASC`), SQL sort
+  order (pinned first, then `updated_at DESC, id DESC`), no-op eviction
+  when below cap.
 - `test/sync_cursor_test.dart` — 5 tests: 4-field cursor writes,
   `recomputeLocalMessageBounds` math, `fetchOlderMessages` ordering,
   `getChatById` null path.
@@ -716,15 +724,39 @@ Future<int> getChatCount() async =>
           (row) => row.read(chats.id.count()) ?? 0,
         );
 
-Future<void> evictOldestChats({required int keep}) async {
+Future<void> evictOldestChats({
+  required int keep,
+  Set<String> excludeIds = const {},
+}) async {
   final count = await getChatCount();
   if (count <= keep) return;
-  final toDelete = await (select(chats)
-        ..orderBy([(c) => OrderingTerm.asc(c.updatedAt)])
-        ..limit(count - keep))
-      .get();
+  final limit = count - keep;
+
+  const _sqlPrefix = r'''
+    SELECT id FROM chats
+    WHERE 1=1 ''';
+  final excludeClause = excludeIds.isNotEmpty
+      ? 'AND id NOT IN (${excludeIds.map((_) => '?').join(', ')})'
+      : '';
+  const _sqlSuffix = r'''
+    ORDER BY
+      last_opened_at ASC,
+      COALESCE(json_extract(last_message, '$.sentAt'), created_at) ASC,
+      id ASC
+    LIMIT ?
+  ''';
+
+  final toDelete = await customSelect(
+    '$_sqlPrefix$excludeClause$_sqlSuffix',
+    variables: [
+      ...excludeIds.map(Variable.withString),
+      Variable.withInt(limit),
+    ],
+    readsFrom: {chats},
+  ).get();
   if (toDelete.isEmpty) return;
-  await (delete(chats)..where((c) => c.id.isIn(toDelete.map((c) => c.id)))).go();
+  final ids = toDelete.map((r) => r.data['id'] as String).toList();
+  await (delete(chats)..where((c) => c.id.isIn(ids))).go();
 }
 ```
 
@@ -841,10 +873,11 @@ Before merging any change that touches the chat sync path, verify all of these:
 
 ### 15.1 Performance fixtures (Phase 7)
 
-- [ ] `test/chat_list_paging_test.dart` — 250 chats in, 200 chats after `evictOldestChats`; SQL order is `pinned_by DESC, updated_at DESC, id DESC`.
+- [ ] `test/chat_list_paging_test.dart` — 501 chats in, 500 chats after `evictOldestChats`; eviction order is `last_opened_at ASC, COALESCE(json_extract(last_message, '$.sentAt'), created_at) ASC, id ASC`; SQL display order is `pinned_by DESC, updated_at DESC, id DESC`.
 - [ ] `test/sync_cursor_test.dart` — 4-field cursor state machine: `updateChatSyncState` writes all four fields, `recomputeLocalMessageBounds` sets `oldestCachedAt` and keeps `hasMoreOlderRemote = true` even with 0 local messages.
 - [ ] `test/chat_open_budget_test.dart` — Row-count assertions + printed timings:
-  - 20K chats → 200 cap in < 1s on a desktop test runner.
+  - 501 chats → 500 cap in < 1s on a desktop test runner.
+  - 20K chats → 500 cap via `seedLargeInbox(db, chatCount: 20000, keep: kChatListMaxCached)`.
   - 500-message chat → `watchMessages(limit: 50).first` returns exactly 50 rows.
   - 500-message chat → `fetchOlderMessages(limit: 50)` returns 50 rows in single-digit ms.
 

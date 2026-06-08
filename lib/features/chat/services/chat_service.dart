@@ -74,6 +74,7 @@ class ChatService {
                 .toList(),
           );
 
+  @Deprecated('Use fetchChatRoomsPage with compound cursor instead')
   Future<List<ChatModel>> fetchChatRooms(
     String currentUid, {
     int limit = 20,

@@ -104,6 +104,7 @@ class ChatRepository {
     required String uid,
     required int limit,
     ChatCursor? cursor,
+    Set<String> excludeIds = const {},
   }) async {
     debugPrint(
       '🌐 Firestore: fetching $limit chats (cursor: ${cursor?.chatId ?? "none"})',
@@ -121,7 +122,7 @@ class ChatRepository {
     }
 
     await _persistChats(fetched);
-    await _db.evictOldestChats(keep: 200);
+    await _db.evictOldestChats(keep: kChatListMaxCached, excludeIds: excludeIds);
     final total = await _db.getChatCount();
     debugPrint(
       '💾 Drift: persisted ${fetched.length} chats, total in Drift: $total',

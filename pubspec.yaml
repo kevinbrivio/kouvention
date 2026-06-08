@@ -64,6 +64,8 @@ dev_dependencies:
   drift_dev: ^2.32.0
   flutter_test:
     sdk: flutter
+  integration_test:
+    sdk: flutter
   envied_generator: ^1.3.4
   flutter_launcher_icons: ^0.14.4
 

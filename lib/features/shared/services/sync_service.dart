@@ -250,7 +250,7 @@ class SyncService {
   /// Fetches the next page of messages OLDER than the local cache for one
   /// chat. Used by `ChatRoomVM.loadOlderMessages` when the user scrolls
   /// up past the locally-cached window and the 4-field sync state
-  /// (`hasMoreOlderRemote`) is still `true` (AGENTS.md §8).
+  /// (`hasMoreOlderRemote`) is still `true`.
   ///
   /// Each call:
   ///   1. Reads the local chat row from Drift to get `oldestCachedAt`.

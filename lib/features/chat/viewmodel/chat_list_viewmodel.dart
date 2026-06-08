@@ -189,10 +189,14 @@ class ChatListVM extends BaseNotifier {
         ref.read(chatCursorProvider.notifier).state = cursor;
       }
 
+      // Protect chats visible in the current viewport from LRU eviction
+      // that runs inside fetchOlderChatsPage.
+      final visibleIds = ref.read(visibleChatIdsProvider);
       final fetched = await _chatRepository.fetchOlderChatsPage(
         uid: _currentUid,
         limit: kChatListPageSize,
         cursor: cursor,
+        excludeIds: visibleIds,
       );
 
       if (fetched.isNotEmpty) {
@@ -290,6 +294,13 @@ final chatCursorProvider =
 final chatListFilterProvider = StateProvider.autoDispose<ChatFilter>(
   (ref) => ChatFilter.all,
 );
+
+/// IDs of chats currently visible in the user's viewport (debounced).
+/// Updated by [ChatListView]'s scroll listener. Read by [ChatListVM] when
+/// calling [ChatRepository.fetchOlderChatsPage] to exclude visible chats
+/// from the LRU eviction (see [MessageDatabase.evictOldestChats]).
+final visibleChatIdsProvider =
+    StateProvider.autoDispose<Set<String>>((ref) => const {});
 
 // =============================================================
 // SCREEN-SCOPED INBOX (top [kChatListPageSize] chats)

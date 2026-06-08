@@ -72,6 +72,12 @@ class Chats extends Table {
       boolean().withDefault(const Constant(true))();
   BoolColumn get hasLocalGap => boolean().withDefault(const Constant(false))();
 
+  /// Timestamp (ms since epoch) of when this chat was LAST OPENED by the
+  /// user. Used by [evictOldestChats] as the primary LRU sort key. Defaults
+  /// to 0 (never opened) so never-opened chats are always eviction
+  /// candidates before opened ones.
+  IntColumn get lastOpenedAt => integer().withDefault(const Constant(0))();
+
   @override
   Set<Column<Object>>? get primaryKey => {id};
 }
@@ -136,7 +142,7 @@ class MessageDatabase extends _$MessageDatabase {
   MessageDatabase.forExecutor(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -194,6 +200,19 @@ class MessageDatabase extends _$MessageDatabase {
 
         await customStatement(
           'UPDATE chats SET latest_seen_remote_at = last_sync_timestamp',
+        );
+      }
+
+      if (from < 3) {
+        await m.addColumn(chats, chats.lastOpenedAt);
+        // Backfill: approximate lastOpenedAt from the best available
+        // timestamp. We use updated_at here (which is polluted by system
+        // actions like markChatAsRead, deleteMessageForMe) because it's
+        // the only per-row timestamp we have at migration time. The v2→v3
+        // migration is one-time — after it, only ChatRoomVM.init() writes
+        // to last_opened_at.
+        await customStatement(
+          'UPDATE chats SET last_opened_at = COALESCE(updated_at, created_at)',
         );
       }
     },
@@ -368,9 +387,16 @@ class MessageDatabase extends _$MessageDatabase {
           .watch();
 
   /// Unbounded watch. **Deprecated** — kept only for legacy callers and tests.
-  /// The chat list screen must use [watchPagedChats] or [fetchPagedChats] instead.
+  /// The chat list screen must use [watchPagedChats] or `fetchPagedChats` instead.
   Stream<List<Chat>> watchChatRooms() =>
       (select(chats)..orderBy([(c) => OrderingTerm.desc(c.updatedAt)])).watch();
+
+  /// Reactive watch of a single chat row by id. Emits the current row
+  /// (or null if missing) and re-emits on every Drift change to that
+  /// row. Used by the debug info overlay in the chat room to surface
+  /// the 4-field sync state in real time.
+  Stream<Chat?> watchChatRow(String chatId) =>
+      (select(chats)..where((c) => c.id.equals(chatId))).watchSingleOrNull();
 
   /// Reactive, bounded, SQL-sorted chat list page.
   ///
@@ -389,7 +415,8 @@ class MessageDatabase extends _$MessageDatabase {
         ? "CASE WHEN pinned_by LIKE ? THEN 0 ELSE 1 END"
         : "0";
 
-    final sql = '''
+    final sql =
+        '''
       SELECT * FROM chats
       WHERE 1=1 $typeClause
       ORDER BY $pinnedOrder, updated_at DESC, id DESC
@@ -427,7 +454,8 @@ class MessageDatabase extends _$MessageDatabase {
         ? "CASE WHEN pinned_by LIKE ? THEN 0 ELSE 1 END"
         : "0";
 
-    final sql = '''
+    final sql =
+        '''
       SELECT * FROM chats
       WHERE 1=1 $typeClause
       ORDER BY $pinnedOrder, updated_at DESC, id DESC
@@ -460,25 +488,6 @@ class MessageDatabase extends _$MessageDatabase {
     return row.read<int>('cnt');
   }
 
-  /// LRU eviction: keep the [keep] most recently updated chats in local cache.
-  /// Returns the number of rows deleted.
-  Future<int> evictOldestChats({required int keep}) async {
-    final count = await getChatCount();
-    if (count <= keep) return 0;
-
-    final toDeleteCount = count - keep;
-    final toDelete = await customSelect(
-      'SELECT id FROM chats ORDER BY updated_at ASC LIMIT ?',
-      variables: [Variable.withInt(toDeleteCount)],
-      readsFrom: {chats},
-    ).get();
-
-    if (toDelete.isEmpty) return 0;
-
-    final ids = toDelete.map((r) => r.read<String>('id')).toList();
-    return (delete(chats)..where((c) => c.id.isIn(ids))).go();
-  }
-
   Future<Map<String, Chat>> getChatsByIds(List<String> ids) async {
     if (ids.isEmpty) return const {};
     final rows = await (select(chats)..where((c) => c.id.isIn(ids))).get();
@@ -494,6 +503,60 @@ class MessageDatabase extends _$MessageDatabase {
         b.insert(chats, room, onConflict: DoUpdate((old) => room));
       }
     });
+  }
+
+  /// Evicts the oldest chats so that at most [keep] rows remain.
+  ///
+  /// Eviction order (ASC for deletion):
+  ///   1. [lastOpenedAt] — never-opened (0) first, most recently opened last.
+  ///   2. [lastMessage]→`sentAt` (via JSON) — chats with no recent activity
+  ///      are evicted before chats with recent messages.
+  ///   3. [createdAt] — oldest-created next (fallback when no `lastMessage`).
+  ///   4. [id] — stable tie-breaker.
+  ///
+  /// [excludeIds] are never evicted even if they rank lowest, protecting
+  /// chats currently visible in the user's viewport.
+  ///
+  /// A no-op when the current count is already ≤ [keep].
+  Future<void> evictOldestChats({
+    required int keep,
+    Set<String> excludeIds = const {},
+  }) async {
+    final count = await getChatCount();
+    if (count <= keep) return;
+    final limit = count - keep;
+
+    final excludeClause = excludeIds.isNotEmpty
+        ? 'AND id NOT IN (${excludeIds.map((_) => '?').join(', ')})'
+        : '';
+
+    // Raw string avoids Drift analyzer interpreting $ in '$.sentAt' as
+    // a Dart interpolation that confuses the drift_dev builder.
+    const _sqlPrefix = r'''
+      SELECT id FROM chats
+      WHERE 1=1 ''';
+    const _sqlSuffix = r'''
+      ORDER BY
+        last_opened_at ASC,
+        COALESCE(json_extract(last_message, '$.sentAt'), created_at) ASC,
+        id ASC
+      LIMIT ?
+    ''';
+
+    final sql = '$_sqlPrefix$excludeClause$_sqlSuffix';
+
+    final toDelete = await customSelect(
+      sql,
+      variables: [
+        ...excludeIds.map(Variable.withString),
+        Variable.withInt(limit),
+      ],
+      readsFrom: {chats},
+    ).get();
+
+    if (toDelete.isEmpty) return;
+    final ids = toDelete.map((r) => r.data['id'] as String).toList();
+    await (delete(chats)..where((c) => c.id.isIn(ids))).go();
   }
 
   Future<void> upsertMessages(List<MessagesCompanion> newMessages) async {
@@ -597,6 +660,16 @@ class MessageDatabase extends _$MessageDatabase {
         ChatsCompanion(
           lastMessage: Value(lastMessage),
           updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
+        ),
+      );
+
+  /// Records that the user opened this chat. Updates [lastOpenedAt] to now
+  /// so the LRU eviction ([evictOldestChats]) ranks this chat as recently
+  /// used and preserves it from eviction. Called from [ChatRoomVM.init].
+  Future<void> updateLastOpenedAt(String chatId) =>
+      (update(chats)..where((c) => c.id.equals(chatId))).write(
+        ChatsCompanion(
+          lastOpenedAt: Value(DateTime.now().millisecondsSinceEpoch),
         ),
       );
 
