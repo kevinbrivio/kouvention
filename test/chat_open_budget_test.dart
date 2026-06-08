@@ -1,18 +1,21 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kouvention/features/chat/services/databases/message_database.dart'
+    show kEvictionThreshold;
 import 'package:kouvention/features/chat/viewmodel/chat_list_viewmodel.dart'
     show kChatListMaxCached;
 import 'performance_helpers.dart';
 
 void main() {
   test(
-      'chat list LRU eviction caps local cache at kChatListMaxCached (501 input)',
+      'chat list LRU eviction caps local cache at kChatListMaxCached (551 input)',
       () async {
     final db = await freshInMemoryDb();
     try {
+      final seedCount = kChatListMaxCached + kEvictionThreshold + 1;
       final timings =
-          await seedLargeInbox(db, chatCount: 501, keep: kChatListMaxCached);
+          await seedLargeInbox(db, chatCount: seedCount, keep: kChatListMaxCached);
       // ignore: avoid_print
-      print('PERF chat-list-501: $timings');
+      print('PERF chat-list-seed: $timings');
 
       final count = await db.getChatCount();
       expect(count, kChatListMaxCached,
@@ -48,12 +51,12 @@ void main() {
 
       // First emit of the watch must be bounded.
       final t0 = DateTime.now();
-      final first = await db.watchMessages('deep', 'u1', limit: 50).first;
+      final first = await db.watchMessages('deep', 'u1', limit: 100).first;
       final watchMs = DateTime.now().difference(t0).inMilliseconds;
       // ignore: avoid_print
       print('PERF watch-first: ${first.length} rows in ${watchMs}ms');
 
-      expect(first.length, 50,
+      expect(first.length, 100,
           reason: 'AGENTS.md §11.2: latest 50-100 local messages');
 
       // Order is sentAt DESC, so the first row is the newest.

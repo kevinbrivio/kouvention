@@ -337,7 +337,7 @@ Two writes = two reads on the listener, and on a retry, double-fire is possible.
 `fetchMessages` currently has a fixed `limit: 20` but the API allows unbounded reads.
 
 - ❌ `fetchMessages` in `lib/features/chat/services/chat_service.dart:90-104` if called without `lastSyncTimestamp` (or with a stale one) — pre-Phase 5
-- ✅ Phase 5: `chat_service.dart` exposes `fetchOlderMessagesPage` (remote, `startAfter` on `sentAt DESC`); `sync_service.dart` orchestrates it as `fetchOlderMessages`. `chat_room_viewmodel.loadOlderMessages` consults `hasMoreOlderRemote` and falls back to a remote page only when the local cache is exhausted. The latest message window is 50 rows (`watchMessages` limit = 50). Page size 50.
+- ✅ Phase 5: `chat_service.dart` exposes `fetchOlderMessagesPage` (remote, `startAfter` on `sentAt DESC`); `sync_service.dart` orchestrates it as `fetchOlderMessages`. `chat_room_viewmodel.loadOlderMessages` consults `hasMoreOlderRemote` and falls back to a remote page only when the local cache is exhausted. The latest message window is 100 rows (`watchMessages` limit = 100). Page size 100.
 
 ### 9.10 Do not call `db.getChatById` per-row in a paginated batch
 
@@ -543,7 +543,7 @@ constructor. All 12 tests pass on a desktop test runner.
 - `test/chat_open_budget_test.dart` — 4 tests with printed timings:
   - 20K chats → 200 cap in 550ms.
   - 500-message chat seeded in 33ms.
-  - `watchMessages(limit: 50).first` emits 50 rows in 13ms.
+  - `watchMessages(limit: 100).first` emits 100 rows in 10ms.
   - `fetchOlderMessages(limit: 50)` returns 50 rows in 1ms.
 
 `recomputeLocalMessageBounds` was also fixed during this phase:
@@ -569,7 +569,7 @@ These are the exact step sequences the implementation must produce. Use them as 
 
 ### 11.2 Open chat
 
-1. Load latest 50-100 local messages from Drift.
+1. Load latest 100 local messages from Drift.
 2. Fetch missed newer messages for this chat in bounded pages.
 3. Attach one realtime listener for the active chat.
 4. Load older messages only when the user scrolls.
@@ -592,7 +592,7 @@ Target per active user session:
 | Event | Budget |
 |---|---|
 | Login | 20-50 chat reads |
-| Open chat | 50-100 message reads |
+| Open chat | 100 message reads |
 | Scroll older | 50 message reads per page |
 | Send message | 1 message write + 1 transaction-guarded chat metadata update |
 | Typing | near-zero writes (debounced) |
@@ -878,7 +878,7 @@ Before merging any change that touches the chat sync path, verify all of these:
 - [ ] `test/chat_open_budget_test.dart` — Row-count assertions + printed timings:
   - 501 chats → 500 cap in < 1s on a desktop test runner.
   - 20K chats → 500 cap via `seedLargeInbox(db, chatCount: 20000, keep: kChatListMaxCached)`.
-  - 500-message chat → `watchMessages(limit: 50).first` returns exactly 50 rows.
+  - 500-message chat → `watchMessages(limit: 100).first` returns exactly 100 rows.
   - 500-message chat → `fetchOlderMessages(limit: 50)` returns 50 rows in single-digit ms.
 
 Run with:
