@@ -15,6 +15,11 @@ part 'message_database.g.dart';
 
 enum SyncStatus { pending, sent, failed }
 
+/// Eviction trigger buffer zone. When Drift exceeds [keep] by more than
+/// [kEvictionThreshold] rows, [evictOldestChats] evicts down to [keep].
+/// Value matches page size (see AGENTS.md §14.1).
+const int kEvictionThreshold = 50;
+
 // ===============================
 // Table Chats
 // ===============================
@@ -523,7 +528,7 @@ class MessageDatabase extends _$MessageDatabase {
     Set<String> excludeIds = const {},
   }) async {
     final count = await getChatCount();
-    if (count <= keep) return;
+    if (count <= keep + kEvictionThreshold) return;
     final limit = count - keep;
 
     final excludeClause = excludeIds.isNotEmpty

@@ -34,11 +34,14 @@ void main() {
   );
 
   test('evictOldestChats caps local cache at kChatListMaxCached', () async {
-    // Seed 501 chats. updatedAt increases with index, so chat[0] is the
-    // oldest, chat[500] is the newest.
+    // Seed 551 chats (kChatListMaxCached + kEvictionThreshold + 1).
+    // The buffer zone means eviction only fires when count > 550.
+    // updatedAt increases with index, so chat[0] is the oldest,
+    // chat[550] is the newest.
     final now = DateTime.now().millisecondsSinceEpoch;
+    final seedCount = kChatListMaxCached + kEvictionThreshold + 1;
     final companions = [
-      for (var i = 0; i < 501; i++)
+      for (var i = 0; i < seedCount; i++)
         _chatCompanion(id: 'c$i', updatedAt: now + i),
     ];
     // Batch insert all at once for speed.
@@ -47,22 +50,23 @@ void main() {
       await db.upsertChatRooms(companions.sublist(i, end));
     }
 
-    expect(await db.getChatCount(), 501);
+    expect(await db.getChatCount(), seedCount);
 
     await db.evictOldestChats(keep: kChatListMaxCached);
     final remaining = await db.getChatCount();
     expect(remaining, kChatListMaxCached);
 
-    // The oldest (501 - kChatListMaxCached = 1) should be evicted. With updatedAt
-    // increasing monotonically (c0 oldest, c500 newest), the survivors are
-    // c1..c500. Sorted DESC, the LAST row is the oldest survivor.
+    // The oldest (seedCount - kChatListMaxCached = 51) should be evicted.
+    // With updatedAt increasing monotonically (c0 oldest, c550 newest),
+    // the survivors are c51..c550. Sorted DESC, the LAST row is the
+    // oldest survivor.
     final survivors = await (db.select(db.chats)
           ..orderBy([(c) => OrderingTerm.desc(c.updatedAt)]))
         .get();
-    expect(survivors.first.id, 'c500',
-        reason: 'newest survivor should be c500');
-    expect(survivors.last.id, 'c${501 - kChatListMaxCached}',
-        reason: 'oldest survivor should be c${501 - kChatListMaxCached}');
+    expect(survivors.first.id, 'c${seedCount - 1}',
+        reason: 'newest survivor should be c${seedCount - 1}');
+    expect(survivors.last.id, 'c${seedCount - kChatListMaxCached}',
+        reason: 'oldest survivor should be c${seedCount - kChatListMaxCached}');
   });
 
   test('watchPagedChats returns SQL-sorted page', () async {
