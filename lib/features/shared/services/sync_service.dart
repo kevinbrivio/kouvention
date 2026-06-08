@@ -92,8 +92,12 @@ class SyncService {
 
     final existingLocalRooms = await _db.getAllChatRooms(currentUid);
 
-    final lastSyncAtMap = {
-      for (var room in existingLocalRooms) room.id: room.lastSyncTimestamp,
+    // The 4-field sync state (see AGENTS.md §8) is the sole cursor. The
+    // v1→v2 migration backfilled `latest_seen_remote_at` from
+    // `last_sync_timestamp`; once a user is on v2 we never read the legacy
+    // column again.
+    final latestSeenRemoteAtMap = {
+      for (var room in existingLocalRooms) room.id: room.latestSeenRemoteAt,
     };
 
     List<ChatsCompanion> companions;
@@ -101,7 +105,10 @@ class SyncService {
     if (chatRooms.length < 100) {
       print('Chat list length: ${chatRooms.length}');
       companions = chatRooms.map((chat) {
-        return chatToCompanion(chat, lastSyncAt: lastSyncAtMap[chat.id]);
+        return chatToCompanion(
+          chat,
+          latestSeenRemoteAt: latestSeenRemoteAtMap[chat.id],
+        );
       }).toList();
     } else {
       companions = chatRooms.map(chatToCompanion).toList();
@@ -113,13 +120,12 @@ class SyncService {
       ' ========= [Everything is done] Total testing time: ${sw.elapsedMilliseconds} ms =======',
     );
 
-    // 4. Sebagai anak yang baik, kita matikan jamnya jika sudah selesai
     sw.stop();
   }
 
   static ChatsCompanion chatToCompanion(
     ChatModel chat, {
-    int? lastSyncAt,
+    int? latestSeenRemoteAt,
   }) => ChatsCompanion(
     id: Value(chat.id),
     type: Value(chat.type),
@@ -136,7 +142,6 @@ class SyncService {
     createdAt: Value(chat.createdAt.millisecondsSinceEpoch),
     updatedAt: Value(chat.updatedAt?.millisecondsSinceEpoch),
 
-    // Untuk Map yang kita biarkan nullable string di Drift, encode manual 1 kali:
     deletedBy: Value(
       chat.deletedBy != null
           ? jsonEncode(
@@ -149,7 +154,10 @@ class SyncService {
     ),
     createdBy: Value(chat.createdBy),
 
-    lastSyncTimestamp: Value(lastSyncAt ?? 0),
+    // The 4-field sync state is the sole cursor (AGENTS.md §8). The legacy
+    // `lastSyncTimestamp` column is left untouched — it stays at the value
+    // copied by the v1→v2 migration.
+    latestSeenRemoteAt: Value(latestSeenRemoteAt ?? 0),
   );
 
   Future<void> fetchMessagesAround(
@@ -168,52 +176,196 @@ class SyncService {
         .toList();
 
     await _db.upsertMessages(companions);
+
+    await _db.updateChatSyncState(
+      chatId: chatId,
+      latestSeenRemoteAt: messages.first.sentAt.millisecondsSinceEpoch,
+      hasLocalGap: false,
+    );
   }
 
   Future<void> fetchMessages(String chatId) async {
-    final chatRoom = await _db.getChatById(chatId);
-    final lastSyncAt = chatRoom?.lastSyncTimestamp ?? 0;
-
-    final missedMessages = await _chatService.fetchMessages(
-      chatId,
-      lastSyncTimestamp: DateTime.fromMillisecondsSinceEpoch(lastSyncAt),
-      limit: 50,
-    );
-
-    if (missedMessages.isEmpty) {
-      await _db.updateChatLastSync(chatId, lastSyncAt);
-      return;
-    }
-
-    final companions = missedMessages
-        .map((m) => messageToCompanion(m, chatId, SyncStatus.sent))
-        .toList();
-
-    await _db.upsertMessages(companions);
-
-    final latestMsgTime = missedMessages
-        .first
-        .sentAt
-        .millisecondsSinceEpoch; // Firestore send descendingly, hence use .first
-    await _db.updateChatLastSync(chatId, latestMsgTime);
+    await fetchMissedMessagesBounded(chatId);
   }
 
+  /// Fetches every message newer than the chat's [latestSeenRemoteAt] in
+  /// pages, until either the server returns less than a full page or
+  /// [maxPages] is reached. The 4-field sync state is the sole cursor
+  /// (AGENTS.md §8).
+  ///
+  /// If the server keeps returning full pages at [maxPages], the local
+  /// cache is marked with `hasLocalGap = true` so a follow-up fetch can
+  /// finish the job — we never silently leave the cache behind the server.
+  Future<({int pages, int messages})> fetchMissedMessagesBounded(
+    String chatId, {
+    int limit = 50,
+    int maxPages = 20,
+  }) async {
+    final chatRoom = await _db.getChatById(chatId);
+    int cursor = chatRoom?.latestSeenRemoteAt ?? 0;
+
+    int pagesFetched = 0;
+    int totalInserted = 0;
+    bool hitMaxPages = false;
+
+    while (pagesFetched < maxPages) {
+      final page = await _chatService.fetchMessages(
+        chatId,
+        lastSyncTimestamp: DateTime.fromMillisecondsSinceEpoch(cursor),
+        limit: limit,
+      );
+
+      if (page.isEmpty) break;
+
+      final companions = page
+          .map((m) => messageToCompanion(m, chatId, SyncStatus.sent))
+          .toList();
+      await _db.upsertMessages(companions);
+
+      final newest = page.first.sentAt.millisecondsSinceEpoch;
+      if (newest <= cursor) break;
+
+      cursor = newest;
+      pagesFetched++;
+      totalInserted += page.length;
+
+      if (page.length < limit) break;
+    }
+
+    hitMaxPages = pagesFetched >= maxPages && totalInserted > 0;
+
+    await _db.updateChatSyncState(
+      chatId: chatId,
+      latestSeenRemoteAt: cursor,
+      hasLocalGap: hitMaxPages,
+    );
+
+    if (totalInserted > 0) {
+      await _db.recomputeLocalMessageBounds(chatId);
+    }
+
+    return (pages: pagesFetched, messages: totalInserted);
+  }
+
+  /// Fetches the next page of messages OLDER than the local cache for one
+  /// chat. Used by `ChatRoomVM.loadOlderMessages` when the user scrolls
+  /// up past the locally-cached window and the 4-field sync state
+  /// (`hasMoreOlderRemote`) is still `true`.
+  ///
+  /// Each call:
+  ///   1. Reads the local chat row from Drift to get `oldestCachedAt`.
+  ///   2. Returns immediately if `hasMoreOlderRemote == false`.
+  ///   3. Asks `ChatService.fetchOlderMessagesPage` for one older page
+  ///      (`startAfter` on `sentAt DESC`, `limit = [limit]`).
+  ///   4. Upserts the page into Drift.
+  ///   5. Updates the 4-field sync state: `oldestCachedAt = min(sentAt)`,
+  ///      `hasMoreOlderRemote` flipped off the moment the server returns
+  ///      a short or empty page.
+  ///
+  /// Returns the number of messages inserted (0 means "we've reached
+  /// the beginning of the chat, stop scrolling").
+  Future<({int pages, int messages})> fetchOlderMessages(
+    String chatId, {
+    int limit = 50,
+    int maxPages = 4,
+  }) async {
+    final chatRoom = await _db.getChatById(chatId);
+    if (chatRoom == null) {
+      debugPrint('fetchOlderMessages: chat $chatId missing locally — skip');
+      return (pages: 0, messages: 0);
+    }
+    if (!chatRoom.hasMoreOlderRemote) {
+      return (pages: 0, messages: 0);
+    }
+
+    int pagesFetched = 0;
+    int totalInserted = 0;
+    int cursor = chatRoom.oldestCachedAt;
+    bool serverExhausted = false;
+
+    while (pagesFetched < maxPages) {
+      if (cursor <= 0) {
+        serverExhausted = true;
+        break;
+      }
+
+      final page = await _chatService.fetchOlderMessagesPage(
+        chatId: chatId,
+        beforeSentAt: cursor,
+        limit: limit,
+      );
+
+      if (page.isEmpty) {
+        // Server has nothing older than the cursor.
+        serverExhausted = true;
+        break;
+      }
+
+      final companions = page
+          .map((m) => messageToCompanion(m, chatId, SyncStatus.sent))
+          .toList();
+      await _db.upsertMessages(companions);
+
+      final oldest = page.first.sentAt.millisecondsSinceEpoch;
+      pagesFetched++;
+      totalInserted += page.length;
+
+      // Cursor must strictly advance; if it didn't, bail to avoid an
+      // infinite loop (shouldn't happen with startAfter on a unique
+      // timestamp, but the guard is cheap).
+      if (oldest <= 0 || oldest >= cursor) {
+        serverExhausted = true;
+        cursor = oldest > 0 ? oldest : 0;
+        break;
+      }
+      cursor = oldest;
+
+      if (page.length < limit) {
+        // Short page = the server has no more rows after this one.
+        serverExhausted = true;
+        break;
+      }
+    }
+
+    await _db.updateChatSyncState(
+      chatId: chatId,
+      oldestCachedAt: cursor,
+      hasMoreOlderRemote: !serverExhausted,
+    );
+
+    if (totalInserted > 0) {
+      await _db.recomputeLocalMessageBounds(chatId);
+    }
+
+    return (pages: pagesFetched, messages: totalInserted);
+  }
+
+  /// Subscribes to a single chat's messages newer than the local
+  /// [latestSeenRemoteAt]. Each emission is upserted into Drift, which
+  /// also reconciles any locally `pending` row whose `messageId` matches
+  /// the realtime echo (the upsert updates `syncStatus` to `sent` — see
+  /// §7 rule 7).
   Stream<void> streamFirestoreMessages(String chatId) async* {
     var retryDelay = 1;
 
     while (true) {
       try {
         final chatRoom = await _db.getChatById(chatId);
-        final lastSyncAt = chatRoom?.lastSyncTimestamp ?? 0;
+        // 4-field sync state is the sole cursor (AGENTS.md §8).
+        int latestSeen = chatRoom?.latestSeenRemoteAt ?? 0;
 
         yield* _chatService
             .streamMessagesSince(
               chatId,
-              DateTime.fromMillisecondsSinceEpoch(lastSyncAt),
+              DateTime.fromMillisecondsSinceEpoch(latestSeen),
             )
             .asyncMap((newMessages) async {
               if (newMessages.isEmpty) return;
 
+              // messageToCompanion passes SyncStatus.sent for every echo.
+              // _db.upsertMessages uses insertOnConflictUpdate, so a
+              // locally-pending row with the same messageId is reconciled
+              // to `sent` here (AGENTS.md §7 rule 7).
               final companions = newMessages
                   .map((m) => messageToCompanion(m, chatId, SyncStatus.sent))
                   .toList();
@@ -222,9 +374,12 @@ class SyncService {
 
               final newest = newMessages.first;
               final latestMsgTime = newest.sentAt.millisecondsSinceEpoch;
-              await _db.updateChatLastSync(chatId, latestMsgTime);
+              await _db.updateChatSyncState(
+                chatId: chatId,
+                latestSeenRemoteAt: latestMsgTime,
+                hasLocalGap: false,
+              );
 
-              // Also update chat metadata so the chat list reflects the new message
               final label = lastMessageLabel(
                 newest.text,
                 newest.type,
@@ -241,7 +396,6 @@ class SyncService {
               );
             });
 
-        // Stream completed normally — exit retry loop
         break;
       } catch (e) {
         debugPrint(
@@ -310,6 +464,7 @@ class SyncService {
     ReplyToModel? replyTo,
   }) async {
     final tempId = IdGenerator.generateId();
+    final now = DateTime.now();
 
     final localMsg = MessagesCompanion(
       id: Value(tempId),
@@ -318,8 +473,8 @@ class SyncService {
       senderName: Value(senderName),
       textContent: Value(caption ?? ''),
       type: Value(type.name),
-      sentAt: Value(DateTime.now().millisecondsSinceEpoch),
-      updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
+      sentAt: Value(now.millisecondsSinceEpoch),
+      updatedAt: Value(now.millisecondsSinceEpoch),
       syncStatus: Value(SyncStatus.pending),
       localPath: Value(files.first.path),
       mediaUrls: Value(null),
@@ -333,6 +488,7 @@ class SyncService {
 
     _processMediaUploadsInBackground(
       tempId: tempId,
+      sentAt: now,
       files: files,
       chatRoomId: chatRoomId,
       type: type,
@@ -356,6 +512,7 @@ class SyncService {
     ReplyToModel? replyTo,
   }) async {
     final tempId = IdGenerator.generateId();
+    final now = DateTime.now();
 
     final allUrls = uploadResults.map((r) => r.url).toList();
     final allCaptions =
@@ -369,8 +526,8 @@ class SyncService {
       senderName: Value(senderName),
       textContent: Value(caption),
       type: Value(type.name),
-      sentAt: Value(DateTime.now().millisecondsSinceEpoch),
-      updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
+      sentAt: Value(now.millisecondsSinceEpoch),
+      updatedAt: Value(now.millisecondsSinceEpoch),
       syncStatus: Value(SyncStatus.sent),
       localPath: Value(first.localPath),
       mediaUrls: Value(allUrls),
@@ -395,6 +552,7 @@ class SyncService {
       mediaDuration: first.mediaDuration,
       mimeType: first.mimeType,
       fileSizeBytes: first.fileSizeBytes,
+      sentAt: now,
       memberUids: memberUids,
       replyTo: replyTo,
       fileName: first.fileName,
@@ -413,7 +571,7 @@ class SyncService {
       LastMessage(
         text: lastMessageLabel(caption, type, first.fileName),
         sentBy: _currentUid,
-        sentAt: DateTime.now(),
+        sentAt: now,
         type: type.name,
       ),
     );
@@ -430,6 +588,7 @@ class SyncService {
 
   Future<void> _processMediaUploadsInBackground({
     required String tempId,
+    required DateTime sentAt,
     required List<File> files,
     required String chatRoomId,
     required MessageType type,
@@ -462,6 +621,7 @@ class SyncService {
         mediaDuration: uploaded.first.mediaDuration,
         mimeType: uploaded.first.mimeType,
         fileSizeBytes: uploaded.first.fileSizeBytes,
+        sentAt: sentAt,
         memberUids: memberUids,
         replyTo: replyTo,
         fileName: files.first.path.split('/').last,
@@ -481,7 +641,7 @@ class SyncService {
         LastMessage(
           text: lastMessageLabel(caption, type, fileName),
           sentBy: _currentUid,
-          sentAt: DateTime.now(),
+          sentAt: sentAt,
           type: type.name,
         ),
       );
@@ -514,6 +674,7 @@ class SyncService {
         senderId: localMessage.senderId,
         senderName: localMessage.senderName,
         text: localMessage.text,
+        sentAt: localMessage.sentAt,
         replyTo: localMessage.replyTo,
       );
 
@@ -525,7 +686,7 @@ class SyncService {
         LastMessage(
           text: localMessage.text,
           sentBy: localMessage.senderId,
-          sentAt: DateTime.now(),
+          sentAt: localMessage.sentAt,
           type: MessageType.text.name,
         ),
       );
@@ -553,6 +714,7 @@ class SyncService {
     ReplyToModel? replyTo,
   }) async {
     final tempId = IdGenerator.generateId();
+    final now = DateTime.now();
 
     final localMsg = MessagesCompanion(
       id: Value(tempId),
@@ -561,8 +723,8 @@ class SyncService {
       senderName: Value(senderName),
       textContent: Value(''),
       type: Value(MessageType.sticker.name),
-      sentAt: Value(DateTime.now().millisecondsSinceEpoch),
-      updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
+      sentAt: Value(now.millisecondsSinceEpoch),
+      updatedAt: Value(now.millisecondsSinceEpoch),
       syncStatus: Value(SyncStatus.sent),
       mediaUrls: Value([stickerUrl]),
       mimeType: Value('image/gif'),
@@ -590,16 +752,17 @@ class SyncService {
         mimeType: 'image/gif',
         fileSizeBytes: 0,
         fileName: 'sticker.gif',
+        sentAt: now,
         memberUids: memberUids,
         replyTo: replyTo,
       );
-  
+
       await _db.updateChatLastMessage(
         chatRoomId,
         LastMessage(
           text: 'Sticker',
           sentBy: _currentUid,
-          sentAt: DateTime.now(),
+          sentAt: now,
           type: MessageType.sticker.name,
         ),
       );
@@ -662,13 +825,139 @@ class SyncService {
   // ===========================================
   // RETRY SENDING MESSAGE AFTER NO CONNECTION
   // ==========================================
+  /// Sweeps every locally `pending` or `failed` message older than the
+  /// 5-min gate and re-flushes it. Called by the connectivity-resume
+  /// handler (`networkAutoSyncProvider`) when the device comes back
+  /// online, so a queue of unsent messages replays deterministically.
+  ///
+  /// Each call is idempotent because the underlying [ChatService.sendMessage]
+  /// is transaction-guarded (§6 / §7). Retries, realtime echoes, and
+  /// concurrent devices all converge to the same Firestore state.
   Future<void> retryStuckMessages() async {
     final stuckMessages = await _db.getStuckPendingMessages();
     if (stuckMessages.isEmpty) return;
 
-    for (final _ in stuckMessages) {
-      // TODO: implement retry logic for text and media messages
+    debugPrint('🔁 Retrying ${stuckMessages.length} stuck message(s)');
+
+    for (final msg in stuckMessages) {
+      await flushPendingMessage(msg);
     }
+  }
+
+  /// Re-flushes a single pending or failed message.
+  ///
+  /// The local row's `messageId` and `sentAt` are reused (deterministic
+  /// identity, §6). The transaction in [ChatService.sendMessage] reads
+  /// `chats/{chatId}/messages/{messageId}` first:
+  ///   * if it exists, the transaction is a no-op;
+  ///   * else it writes the message + chat metadata + unread bump
+  ///     atomically, with the **client** `sentAt` (never
+  ///     `FieldValue.serverTimestamp()`).
+  ///
+  /// Either path leaves the message in Firestore. The local row goes from
+  /// `pending`/`failed` to `sent` regardless, so this method is safe to
+  /// call from retry loops, from the connectivity-resume handler, and
+  /// from a periodic background task.
+  ///
+  /// Media messages that failed at the Cloudinary upload step have no
+  /// `mediaUrls` in Drift; without a successful upload there is nothing
+  /// to re-send, so we skip them. The row stays `failed` until the user
+  /// manually re-attaches the media.
+  Future<void> flushPendingMessage(Message msg) async {
+    final hasMediaUrls =
+        msg.mediaUrls != null && msg.mediaUrls!.isNotEmpty;
+    if (msg.type != MessageType.text.name && !hasMediaUrls) {
+      return;
+    }
+
+    try {
+      final chat = await _db.getChatById(msg.chatRoomId);
+      if (chat == null) {
+        debugPrint(
+          'flushPendingMessage: chat ${msg.chatRoomId} missing locally — '
+          'skipping ${msg.id}',
+        );
+        return;
+      }
+      final memberUids = chat.members;
+      final sentAt = DateTime.fromMillisecondsSinceEpoch(msg.sentAt);
+      final replyTo = _replyToFromDrift(msg);
+
+      if (msg.type == MessageType.text.name) {
+        await _chatService.sendMessage(
+          chatId: msg.chatRoomId,
+          messageId: msg.id,
+          senderId: msg.senderId,
+          senderName: msg.senderName,
+          text: msg.textContent,
+          sentAt: sentAt,
+          memberUids: memberUids,
+          replyTo: replyTo,
+        );
+      } else {
+        await _chatService.sendMediaMessage(
+          chatId: msg.chatRoomId,
+          messageId: msg.id,
+          senderId: msg.senderId,
+          senderName: msg.senderName,
+          text: msg.textContent,
+          type: MessageType.fromString(msg.type),
+          mediaUrls: msg.mediaUrls!,
+          mediaCaptions: msg.mediaCaptions,
+          fileName: msg.fileName ?? '',
+          fileSizeBytes: msg.fileSizeBytes ?? 0,
+          mimeType: msg.mimeType ?? '',
+          mediaDuration: msg.mediaDuration,
+          sentAt: sentAt,
+          memberUids: memberUids,
+          replyTo: replyTo,
+        );
+      }
+
+      // Transaction either wrote or was a no-op; either way the message
+      // is in Firestore now. Mark local sent.
+      await _db.updateMessageStatus(msg.id, SyncStatus.sent);
+
+      // Re-sync the local chat's lastMessage cache. The transaction
+      // already wrote the remote `lastMessage`; this keeps the local
+      // Drift mirror consistent in case the post-write step in the
+      // original send path failed (network drop after the transaction
+      // commit but before the local updateChatLastMessage call).
+      await _db.updateChatLastMessage(
+        msg.chatRoomId,
+        LastMessage(
+          text: msg.textContent,
+          sentBy: msg.senderId,
+          sentAt: sentAt,
+          type: msg.type,
+        ),
+      );
+    } catch (e) {
+      // Leave the row at its current status (pending or failed). The
+      // 5-min gate in getStuckPendingMessages prevents an infinite
+      // retry-storm on a persistent failure.
+      debugPrint('flushPendingMessage failed for ${msg.id}: $e');
+    }
+  }
+
+  /// Constructs a [ReplyToModel] from the local Drift [Message] row. The
+  /// reply-to `senderId` is not stored in the local schema (the
+  /// `replyToSenderName` is the canonical display field, see AGENTS.md §5
+  /// schema) so we pass an empty string — the field is unused by the
+  /// chat service when serializing the reply-to map.
+  ReplyToModel? _replyToFromDrift(Message m) {
+    if (m.replyToId == null) return null;
+    return ReplyToModel(
+      messageId: m.replyToId!,
+      text: m.replyToText ?? '',
+      senderId: '',
+      senderName: m.replyToSenderName ?? '',
+      sentAt: m.replyToSentAt != null
+          ? DateTime.fromMillisecondsSinceEpoch(m.replyToSentAt!)
+          : DateTime.fromMillisecondsSinceEpoch(m.sentAt),
+      mediaUrl: m.replyToMediaUrl,
+      mediaType: m.replyToMediaType,
+    );
   }
 
   // ============================

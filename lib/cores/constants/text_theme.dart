@@ -112,7 +112,7 @@ class _TextTheme {
 
   TextStyle get senderName => TextStyle(
     fontSize: 14.sp,
-    color: primaryColor,
+    color: greyText,
     fontWeight: FontWeight.w600,
     height: 1.5,
   );

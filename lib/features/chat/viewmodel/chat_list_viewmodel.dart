@@ -6,15 +6,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
-import 'package:kouvention/features/chat/services/chat_service.dart';
+import 'package:kouvention/features/chat/repositories/chat_repository.dart';
 import 'package:kouvention/features/chat/services/databases/message_database.dart';
-import 'package:kouvention/features/shared/services/sync_service.dart';
 import 'package:oktoast/oktoast.dart';
 
 enum ChatFilter { all, direct, group }
 
+const int kChatListPageSize = 10; // TEST VALUE (was 50)
+const int kChatListMaxCached = 500;
+
 class ChatListVM extends BaseNotifier {
-  final ChatService _chatService;
+  final ChatRepository _chatRepository;
   final String? _currentUid;
 
   // Filter chats
@@ -28,11 +30,12 @@ class ChatListVM extends BaseNotifier {
 
   // Pagination
   bool _isLoadingMore = false;
+  bool _hasMoreChats = true;
 
   String? _error;
 
   ChatListVM(super.ref)
-    : _chatService = ref.read(chatServiceProvider),
+    : _chatRepository = ref.read(chatRepositoryProvider),
       _currentUid = ref.read(authServiceProvider).currentUser?.uid;
 
   // --- GETTERS ----------------------
@@ -61,7 +64,7 @@ class ChatListVM extends BaseNotifier {
   }
 
   List<ChatModel> get _currentChatFromStream =>
-      ref.read(localChatListFromStreamProvider).value ?? [];
+      ref.read(pagedChatListProvider).value ?? const <ChatModel>[];
 
   // ---- PIN ---------------
   Future<void> pinSelectedChats() async {
@@ -78,8 +81,7 @@ class ChatListVM extends BaseNotifier {
 
     if (unpinned.isEmpty) {
       for (final chat in selectedChats) {
-        await _chatService.unpinChat(_currentUid, chat.id);
-        await db.unpinChatLocally(chat.id, _currentUid);
+        await _chatRepository.unpinChat(_currentUid, chat.id);
       }
       clearSelection();
       return;
@@ -99,93 +101,126 @@ class ChatListVM extends BaseNotifier {
     }
 
     for (final chat in unpinned) {
-      await _chatService.pinChat(_currentUid, chat.id);
-      await db.pinChatLocally(chat.id, _currentUid);
+      await _chatRepository.pinChat(_currentUid, chat.id);
     }
     clearSelection();
   }
 
   Future<void> pinChat(String chatId) async {
     if (_currentUid != null) {
-      final db = ref.read(messageDatabaseProvider);
-      await _chatService.pinChat(_currentUid, chatId);
-      await db.pinChatLocally(chatId, _currentUid);
+      await _chatRepository.pinChat(_currentUid, chatId);
     }
   }
 
   Future<void> unpinChat(String chatId) async {
     if (_currentUid != null) {
-      final db = ref.read(messageDatabaseProvider);
-      await _chatService.unpinChat(_currentUid, chatId);
-      await db.unpinChatLocally(chatId, _currentUid);
+      await _chatRepository.unpinChat(_currentUid, chatId);
     }
   }
 
   Future<void> deleteSelectedChat() async {
     if (_currentUid == null) return;
 
-    final db = ref.read(messageDatabaseProvider);
     final allChats = _currentChatFromStream;
     final selectedChats = allChats
         .where((c) => _selectedChatIds.contains(c.id))
         .toList();
 
     for (final chat in selectedChats) {
-      await _chatService.deleteChat(_currentUid, chat.id);
-      await db.markChatDeletedLocally(chat.id, _currentUid);
+      await _chatRepository.deleteChat(_currentUid, chat.id);
     }
     clearSelection();
   }
 
   Future<void> deleteChat(String chatId) async {
     if (_currentUid != null) {
-      final db = ref.read(messageDatabaseProvider);
-      await _chatService.deleteChat(_currentUid, chatId);
-      await db.markChatDeletedLocally(chatId, _currentUid);
+      await _chatRepository.deleteChat(_currentUid, chatId);
     }
   }
+
+  /// Get the visible chats into UI
+  List<ChatModel> get visibleChats =>
+      ref.read(filteredChatListProvider).value ?? [];
 
   // ================================
   // PAGINATION
   // ================================
+  /// Loads the next page of older chats from Firestore and grows the local
+  /// cache. Uses a single `getChatsByIds` lookup for sync state preservation
+  /// (§9.10), updates the compound cursor, and triggers LRU eviction
+  /// (§7, 200-chat cap).
   Future<void> fetchOlderChats() async {
-    if (_currentUid == null || _isLoadingMore) return;
+    if (_currentUid == null || _isLoadingMore || !_hasMoreChats) {
+      debugPrint('⏸️ fetchOlderChats skipped: uid=${_currentUid != null}, loading=$_isLoadingMore, hasMore=$_hasMoreChats');
+      return;
+    }
 
-    final cursor = ref.read(chatCursorProvider);
-    if (cursor == null) return;
+    final driftCount = await ref.read(messageDatabaseProvider).getChatCount();
+    debugPrint('🔍 Pagination check: Drift has $driftCount chats (cap: $kChatListMaxCached)');
 
+    if (driftCount >= kChatListMaxCached) {
+      debugPrint('⏸️ Drift is full, skipping Firestore fetch');
+      return;
+    }
+
+    debugPrint('➡️ Drift not full ($driftCount < $kChatListMaxCached), fetching from Firestore');
     _isLoadingMore = true;
     notifyListeners();
 
     try {
-      final fetched = await _chatService.fetchChatRooms(
-        _currentUid,
-        limit: 20,
-        startAfter: cursor,
+      var cursor = ref.read(chatCursorProvider);
+
+      // Fallback for filter-change case (setFilter resets cursor to null):
+      // derive cursor from the last item in the current Drift page.
+      // Drift's sort order (pinned, updated_at DESC) may differ from
+      // Firestore's (lastMessage.sentAt DESC), but this beats re-fetching
+      // page 1 and duplicating 50 chats.
+      if (cursor == null) {
+        final currentChats = ref.read(pagedChatListProvider).valueOrNull ?? [];
+        if (currentChats.isEmpty) {
+          // Drift page hasn't loaded yet — nothing to paginate from.
+          return;
+        }
+        final last = currentChats.last;
+        cursor = (
+          lastActivityAt: last.lastMessage?.sentAt ?? last.createdAt,
+          chatId: last.id,
+        );
+        ref.read(chatCursorProvider.notifier).state = cursor;
+      }
+
+      // Protect chats visible in the current viewport from LRU eviction
+      // that runs inside fetchOlderChatsPage.
+      final visibleIds = ref.read(visibleChatIdsProvider);
+      final fetched = await _chatRepository.fetchOlderChatsPage(
+        uid: _currentUid,
+        limit: kChatListPageSize,
+        cursor: cursor,
+        excludeIds: visibleIds,
       );
 
       if (fetched.isNotEmpty) {
-        final db = ref.read(messageDatabaseProvider);
-        final companions = <ChatsCompanion>[];
-        for (final c in fetched) {
-          final existing = await db.getChatById(c.id);
-          companions.add(
-            SyncService.chatToCompanion(
-              c,
-              lastSyncAt: existing?.lastSyncTimestamp,
-            ),
-          );
-        }
-        await db.upsertChatRooms(companions);
-
-        if (fetched.length < 20) {
+        if (fetched.length < kChatListPageSize) {
+          // Flag no more chat from remote
+          _hasMoreChats = false;
+          debugPrint('🏁 Reached end of Firestore (got ${fetched.length} < $kChatListPageSize)');
           ref.read(chatCursorProvider.notifier).state = null;
         } else {
-          final sentAt = fetched.last.lastMessage?.sentAt ?? fetched.last.createdAt;
-          ref.read(chatCursorProvider.notifier).state = sentAt;
+          // flag the cursor from oldest fetched chat
+          final lastChat = fetched.last;
+          final lastActivity =
+              lastChat.lastMessage?.sentAt ?? lastChat.createdAt;
+          ref.read(chatCursorProvider.notifier).state = (
+            lastActivityAt: lastActivity,
+            chatId: lastChat.id,
+          );
         }
+      } else {
+        _hasMoreChats = false;
+        ref.read(chatCursorProvider.notifier).state = null;
       }
     } catch (e) {
+      _hasMoreChats = true;
       debugPrint('fetchOlderChats failed: $e');
     } finally {
       _isLoadingMore = false;
@@ -213,8 +248,10 @@ class ChatListVM extends BaseNotifier {
 
   void setFilter(ChatFilter value) {
     _filter = value;
+    ref.read(chatListFilterProvider.notifier).state = value;
+    ref.read(chatCursorProvider.notifier).state = null;
+    _hasMoreChats = true;
     clearSelection();
-    notifyListeners();
   }
 
   String chatDisplayName(ChatModel chat) => chat.displayName(_currentUid!);
@@ -244,142 +281,174 @@ final chatListVM = ChangeNotifierProvider.autoDispose<ChatListVM>(
   (ref) => ChatListVM(ref),
 );
 
+/// Compound pagination cursor for the Firestore chat list fetch.
+/// `(lastMessage.sentAt, chatId)` provides a stable tie-breaker so chats
+/// that share a timestamp are not skipped or duplicated.
 final chatCursorProvider =
-    StateProvider.autoDispose<DateTime?>((ref) => null);
+    StateProvider.autoDispose<({DateTime lastActivityAt, String chatId})?>(
+      (ref) => null,
+    );
 
-final typingUsersProvider =
-    StreamProvider.autoDispose<Map<String, List<String>>>((ref) {
-      final chatService = ref.watch(chatServiceProvider);
-      final currentUid = ref.watch(authServiceProvider).currentUser?.uid;
-      if (currentUid == null) return Stream.value({});
+/// Filter for the chat list. Re-keyed when the filter changes so any
+/// filter-dependent state (page window, cursor) is reset cleanly.
+final chatListFilterProvider = StateProvider.autoDispose<ChatFilter>(
+  (ref) => ChatFilter.all,
+);
 
-      return chatService.streamChatList(currentUid, limit: 20).map(
-        (chats) => {for (final chat in chats) chat.id: chat.typingUsers},
-      );
-    });
+/// IDs of chats currently visible in the user's viewport (debounced).
+/// Updated by [ChatListView]'s scroll listener. Read by [ChatListVM] when
+/// calling [ChatRepository.fetchOlderChatsPage] to exclude visible chats
+/// from the LRU eviction (see [MessageDatabase.evictOldestChats]).
+final visibleChatIdsProvider =
+    StateProvider.autoDispose<Set<String>>((ref) => const {});
 
-/// Keeps the local Drift [Chats] table in sync with Firestore.
-///
-/// Subscribes to a real-time snapshot of the **top 20** most recently
-/// updated chats — any chat that pushes its [updatedAt] forward naturally
-/// enters the watched set.
-///
-/// On the first stream emission, initializes the pagination cursor from
-/// the 20th chat so [ChatListVM.fetchOlderChats] can load more.
-///
-/// Lives as long as the [MainShell] is mounted (i.e. while the user is
-/// authenticated). Cancels the subscription on dispose.
-final realtimeChatSyncProvider = Provider.autoDispose<void>((ref) {
+// =============================================================
+// SCREEN-SCOPED INBOX (top [kChatListPageSize] chats)
+// =============================================================
+//
+// Single subscription to the first page of the inbox. On subscribe:
+//   1. One-shot `fetchChatRoomsPage` to seed local Drift.
+//   2. Live `streamChatList` listener that writes every update to Drift.
+//
+// The typing indicator and the chat list persistence both derive from this
+// single stream, so the Firestore cost is one subscription per active
+// screen. Replaces the old global `realtimeChatSyncProvider` in `MainShell`.
+final inboxFirstPageProvider = StreamProvider.autoDispose<List<ChatModel>>((
+  ref,
+) async* {
   final uid = ref.watch(authServiceProvider).currentUser?.uid;
-  if (uid == null) return;
+  if (uid == null) {
+    yield const <ChatModel>[];
+    return;
+  }
+  final chatRepository = ref.watch(chatRepositoryProvider);
 
-  final db = ref.read(messageDatabaseProvider);
-  final chatService = ref.read(chatServiceProvider);
-
-  final sub = chatService
-      .streamChatList(uid, limit: 20)
-      .listen((chats) async {
-        final companions = <ChatsCompanion>[];
-        for (final c in chats) {
-          final existing = await db.getChatById(c.id);
-          companions.add(
-            SyncService.chatToCompanion(
-              c,
-              lastSyncAt: existing?.lastSyncTimestamp,
-            ),
-          );
-        }
-        unawaited(db.upsertChatRooms(companions));
-
-        // Initialize cursor from the 20th chat on first emission
-        if (chats.isNotEmpty && ref.read(chatCursorProvider) == null) {
-          final sentAt = chats.last.lastMessage?.sentAt ?? chats.last.createdAt;
-          ref.read(chatCursorProvider.notifier).state = sentAt;
-        }
-      });
-
-  ref.onDispose(() => sub.cancel());
+  // The repository streams the first page, persisting each emission into
+  // Drift (and triggering the 200-chat LRU eviction). The chat list UI
+  // and the typing indicator both subscribe to this single stream.
+  //
+  // After the initial Firestore fetch, seed the compound cursor from
+  // Firestore's sort order (lastMessage.sentAt DESC, __name__ DESC) so
+  // the first scroll fetches page 2 — not page 1 again. Seeding from
+  // Firestore's order avoids the Drift-sort-order mismatch that would
+  // cause skipped or duplicated chats when pinned items reorder the
+  // Drift page (see AGENTS.md §9.4).
+  yield* chatRepository.firstPageStream(
+    uid,
+    limit: kChatListPageSize,
+    onInitial: (initial) {
+      final last = initial.last;
+      ref.read(chatCursorProvider.notifier).state = (
+        lastActivityAt: last.lastMessage?.sentAt ?? last.createdAt,
+        chatId: last.id,
+      );
+    },
+  );
 });
 
-final localChatListFromStreamProvider =
-    StreamProvider.autoDispose<List<ChatModel>>((ref) {
-      final db = ref.watch(messageDatabaseProvider);
+/// Typing indicator map derived from the screen-scoped inbox stream.
+/// Sharing the underlying Firestore stream with [inboxFirstPageProvider]
+/// keeps the cost to one subscription per active screen.
+final typingUsersProvider = Provider.autoDispose<Map<String, List<String>>>((
+  ref,
+) {
+  final inbox = ref.watch(inboxFirstPageProvider).valueOrNull;
+  if (inbox == null) return const <String, List<String>>{};
+  return {for (final chat in inbox) chat.id: chat.typingUsers};
+});
 
-      return db.watchChatRooms().map(
-        (driftChats) => driftChats
-            .map(
-              (c) => ChatModel(
-                id: c.id,
-                type: c.type,
-                members: c.members,
-                memberInfo: c.memberInfo,
-                groupName: c.groupName,
-                groupPhotoUrl: c.groupPhotoUrl,
-                pinnedBy: c.pinnedBy,
-                unreadCount: c.unreadCount,
-                lastReadAt: c.lastReadAt,
-                lastMessage: c.lastMessage,
+// =============================================================
+// PAGED LOCAL CHAT LIST
+// =============================================================
 
-                createdAt: DateTime.fromMillisecondsSinceEpoch(c.createdAt),
-                updatedAt: c.updatedAt != null
-                    ? DateTime.fromMillisecondsSinceEpoch(c.updatedAt!)
-                    : null,
+/// Reactive, paged, SQL-sorted chat list (Drift rows).
+///
+/// Order is applied in SQL: pinned (for current user) first, then
+/// `updated_at DESC, id DESC`. This replaces the unbounded
+/// `watchChatRooms()` + in-Dart sort of the old pipeline.
+final pagedChatListRowsProvider = StreamProvider.autoDispose<List<Chat>>((ref) {
+  final filter = ref.watch(chatListFilterProvider);
+  final currentUid = ref.watch(authServiceProvider).currentUser?.uid;
+  final db = ref.read(messageDatabaseProvider);
 
-                deletedBy: c.deletedBy != null
-                    ? jsonDecode(c.deletedBy!)
-                    : null,
-                createdBy: c.createdBy,
+  final typeFilter = switch (filter) {
+    ChatFilter.direct => 'direct',
+    ChatFilter.group => 'group',
+    ChatFilter.all => null,
+  };
 
-                typingUsers: [],
-                memberHash: null,
-              ),
-            )
-            .toList(),
-      );
+  return db
+      .watchPagedChats(
+        limit: kChatListMaxCached,
+        offset: 0,
+        typeFilter: typeFilter,
+        currentUid: currentUid,
+      )
+      .map((rows) {
+        debugPrint(
+          '📊 Drift LIMIT $kChatListMaxCached returned: ${rows.length} rows',
+        );
+        return rows;
+      });
+});
+
+/// Maps Drift rows to [ChatModel] and injects the typing users from the
+/// screen-scoped inbox stream. This is the typed list the UI consumes.
+final pagedChatListProvider = Provider.autoDispose<AsyncValue<List<ChatModel>>>(
+  (ref) {
+    final rowsAsync = ref.watch(pagedChatListRowsProvider);
+    final typingUsersMap = ref.watch(typingUsersProvider);
+
+    return rowsAsync.whenData((rows) {
+      final mapped = rows
+          .map(
+            (c) => ChatModel(
+              id: c.id,
+              type: c.type,
+              members: c.members,
+              memberInfo: c.memberInfo,
+              groupName: c.groupName,
+              groupPhotoUrl: c.groupPhotoUrl,
+              pinnedBy: c.pinnedBy,
+              unreadCount: c.unreadCount,
+              lastReadAt: c.lastReadAt,
+              lastMessage: c.lastMessage,
+
+              createdAt: DateTime.fromMillisecondsSinceEpoch(c.createdAt),
+              updatedAt: c.updatedAt != null
+                  ? DateTime.fromMillisecondsSinceEpoch(c.updatedAt!)
+                  : null,
+
+              deletedBy: c.deletedBy != null ? jsonDecode(c.deletedBy!) : null,
+              createdBy: c.createdBy,
+
+              typingUsers: const [],
+              memberHash: null,
+            ),
+          )
+          .toList();
+
+      if (typingUsersMap.isEmpty) return mapped;
+
+      return mapped.map((chat) {
+        final typing = typingUsersMap[chat.id];
+        if (typing == null) return chat;
+        return chat.copyWith(typingUsers: typing);
+      }).toList();
     });
+  },
+);
 
+/// Final chat list passed to the UI. Type filter and sort are done in SQL
+/// (see [pagedChatListRowsProvider]). The only post-page filter is
+/// `isDeletedBy(currentUid)` — which is dynamic and depends on
+/// `lastMessage.sentAt`, so it cannot live in SQL.
 final filteredChatListProvider =
     Provider.autoDispose<AsyncValue<List<ChatModel>>>((ref) {
-      final chatAsyncValue = ref.watch(localChatListFromStreamProvider);
-      final typingUsersMap = ref.watch(typingUsersProvider).valueOrNull ?? {};
-      final filter = ref.watch(chatListVM).filter;
+      final paged = ref.watch(pagedChatListProvider);
       final currentUid = ref.watch(authServiceProvider).currentUser?.uid;
-
-      return chatAsyncValue.whenData((chats) {
-        List<ChatModel> filtered = chats.map((chat) {
-          final typing = typingUsersMap[chat.id];
-          if (typing == null) return chat;
-          return chat.copyWith(typingUsers: typing);
-        }).toList();
-
-        // 1. Filter out deleted chats
-        if (currentUid != null) {
-          filtered = filtered
-              .where((c) => !c.isDeletedBy(currentUid))
-              .toList();
-        }
-
-        // 2. Type filter
-        if (filter == ChatFilter.direct) {
-          filtered = filtered.where((c) => c.type == 'direct').toList();
-        } else if (filter == ChatFilter.group) {
-          filtered = filtered.where((c) => c.type == 'group').toList();
-        }
-
-        // 3. Sorting
-        if (currentUid != null) {
-          filtered.sort((a, b) {
-            final aPinned = a.isPinnedBy(currentUid) ? 0 : 1;
-            final bPinned = b.isPinnedBy(currentUid) ? 0 : 1;
-
-            if (aPinned != bPinned) return aPinned.compareTo(bPinned);
-
-            final aTime = a.lastMessage?.sentAt ?? a.createdAt;
-            final bTime = b.lastMessage?.sentAt ?? b.createdAt;
-            return bTime.compareTo(aTime);
-          });
-        }
-
-        return filtered;
-      });
+      if (currentUid == null) return paged;
+      return paged.whenData(
+        (chats) => chats.where((c) => !c.isDeletedBy(currentUid)).toList(),
+      );
     });

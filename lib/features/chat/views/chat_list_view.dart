@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -6,8 +8,10 @@ import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/bases/base_view.dart';
 import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
+import 'package:kouvention/cores/router/router.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/cores/widgets/hidden_app_bar.dart';
+import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_list_viewmodel.dart';
 import 'package:kouvention/features/chat/widgets/chatList/chat_header.dart';
 import 'package:kouvention/features/chat/widgets/chatList/chat_list_item.dart';
@@ -20,8 +24,11 @@ class ChatListView extends ConsumerStatefulWidget {
   ConsumerState<ChatListView> createState() => _ChatListViewState();
 }
 
-class _ChatListViewState extends ConsumerState<ChatListView> {
+class _ChatListViewState extends ConsumerState<ChatListView> with RouteAware {
   final _scrollController = ScrollController();
+  Timer? _visibleIdsDebounce;
+  static const _visibleIdDebounceWindow = Duration(milliseconds: 250);
+  static const _listItemHeight = 80.0; // approximate px per chat list item
 
   @override
   void initState() {
@@ -30,10 +37,25 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    routeObserver.subscribe(this, ModalRoute.of(context)!);
+  }
+
+  @override
   void dispose() {
+    routeObserver.unsubscribe(this);
+    _visibleIdsDebounce?.cancel();
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didPopNext() {
+    // Accumulated older chats persist across navigation so pagination
+    // progress is not lost when the user returns from a chat room.
+    // Clear only on filter change (handled in setFilter).
   }
 
   void _onScroll() {
@@ -41,6 +63,31 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
         _scrollController.position.maxScrollExtent * 0.8) {
       ref.read(chatListVM).fetchOlderChats();
     }
+
+    // Debounced tracking of visible chat IDs for eviction protection.
+    _visibleIdsDebounce?.cancel();
+    _visibleIdsDebounce = Timer(_visibleIdDebounceWindow, _trackVisibleIds);
+  }
+
+  /// Computes which chat IDs are currently visible in the viewport and
+  /// writes them to [visibleChatIdsProvider]. The LRU eviction reads this
+  /// set to avoid deleting a chat the user can see.
+  void _trackVisibleIds() {
+    final chats = ref.read(chatListVM).visibleChats;
+    if (chats.isEmpty) return;
+    final pos = _scrollController.position;
+    if (!pos.hasContentDimensions) return;
+
+    final firstIdx =
+        (pos.offset / _listItemHeight).floor().clamp(0, chats.length - 1);
+    final lastIdx =
+        ((pos.offset + pos.viewportDimension) / _listItemHeight)
+            .ceil()
+            .clamp(firstIdx, chats.length - 1);
+
+    final ids =
+        chats.sublist(firstIdx, lastIdx + 1).map((c) => c.id).toSet();
+    ref.read(visibleChatIdsProvider.notifier).state = ids;
   }
 
   @override
@@ -112,6 +159,7 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
     WidgetRef ref,
   ) {
     final filteredChatAsync = ref.watch(filteredChatListProvider);
+    final chats = vm.visibleChats;
     final isChatListReady =
         filteredChatAsync.hasValue && filteredChatAsync.value != null;
 
@@ -129,7 +177,7 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
             child: filteredChatAsync.when(
               loading: () => const Center(child: ChatListSkeleton()),
               error: (err, stack) => Center(child: ChatListSkeleton()),
-              data: (chats) {
+              data: (_) {
                 if (chats.isEmpty && !isChatListReady) {
                   return const ChatListSkeleton();
                 }
@@ -172,7 +220,8 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
     SearchVM searchVM,
     WidgetRef ref,
   ) {
-    final chatRooms = ref.watch(localChatListFromStreamProvider).value ?? [];
+    final chatRooms =
+        ref.watch(pagedChatListProvider).value ?? const <ChatModel>[];
     return Container(
       padding: EdgeInsets.only(
         top: MediaQuery.of(context).padding.top + 8.h,

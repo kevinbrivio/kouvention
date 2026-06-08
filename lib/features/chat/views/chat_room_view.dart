@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -129,6 +130,14 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
   @override
   void initState() {
     super.initState();
+    // Bypass `ref.watch(chatRoomVMProvider(...))` in build (which should
+    // mark the State dirty on every notifyListeners() but empirically
+    // does not in this widget's position in the tree) by attaching a
+    // direct ChangeNotifier listener that forces setState. This is the
+    // only way `vm.loadedOlderMessageModels` updates show up in the
+    // same room session — without it, paginated rows only render after
+    // navigating out to the chat list and back in.
+    vm.addListener(_onVmChanged);
     _itemPositionsListener.itemPositions.addListener(_onPositionChanged);
 
     // Update keyboard height after init screen
@@ -141,6 +150,14 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     if (widget.scrollToMessageId != null && widget.scrollToSentAt != null) {
       _handlePendingScroll();
     }
+  }
+
+  void _onVmChanged() {
+    final olderMessages = ref.watch(
+      chatRoomVMProvider(
+        widget.chatId,
+      ).select((vm) => vm.loadedOlderMessageModels),
+    );
   }
 
   Future<void> _handlePendingScroll() async {
@@ -160,7 +177,19 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
   }
 
   @override
+  void didUpdateWidget(covariant _ChatRoomBody oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // If BaseView rebuilt us with a different VM instance (e.g. the
+    // provider recreated for any reason), rebind the listener.
+    if (!identical(oldWidget.viewmodel, vm)) {
+      oldWidget.viewmodel.removeListener(_onVmChanged);
+      vm.addListener(_onVmChanged);
+    }
+  }
+
+  @override
   void dispose() {
+    vm.removeListener(_onVmChanged);
     _textController.dispose();
     _itemPositionsListener.itemPositions.removeListener(_onPositionChanged);
     super.dispose();
@@ -168,6 +197,10 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
 
   @override
   Widget build(BuildContext context) {
+    // The VM listener attached in initState drives rebuilds on every
+    // notifyListeners() — including loadOlderMessages, typing, send
+    // state, etc. The streams below still re-emit on their own cadence
+    // (Drift watch, chat metadata, auth) for their respective concerns.
     final messagesAsync = ref.watch(chatMessagesStreamProvider(widget.chatId));
     final chatAsync = ref.watch(chatMetadataStreamProvider(widget.chatId));
     final currentUid = ref.watch(authServiceProvider).currentUser?.uid;
@@ -175,23 +208,36 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
 
     return Column(
       children: [
-        if (vm.hasMoreMessges)
-        Container(
-          height: 48.h,
-          width: double.infinity,
-          color: AppColors.primary,
-          child: Text('THERE IS STILL MESSAEGES, PAGINATION IS WORKING!'),
-        ),
+        if (kDebugMode)
+          _DebugSyncStateBar(
+            chatId: widget.chatId,
+            isLoadingOlder: vm.isLoadingOlder,
+            hasMore: vm.hasMoreMessges,
+            loadedOlderCount: vm.loadedOlderMessages.length,
+            oldestLoadedSentAt: vm.oldestLoadedSentAt,
+          ),
         Expanded(
           child: messagesAsync.when(
             loading: () => const ChatRoomSkeleton(),
             error: (err, s) => Center(child: Text('Error: $err')),
             data: (messages) {
               if (messages.isNotEmpty && vm.oldestLoadedSentAt == 0) {
-                vm.setOldestLoadedSentAt(messages.last.sentAt.millisecondsSinceEpoch);
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (messages.isNotEmpty) {
+                    vm.setOldestLoadedSentAt(
+                      messages.last.sentAt.millisecondsSinceEpoch,
+                    );
+                  }
+                });
               }
               _currentMessagesCount = messages.length;
               _currentMessagesList = messages;
+
+              debugPrint(
+                '[chatRoomView] data: stream=${messages.length} '
+                'loadedOlder=${vm.loadedOlderMessages.length} '
+                'combined=${messages.length + vm.loadedOlderMessages.length}',
+              );
 
               if (messages.isEmpty && !isChatReady) {
                 return const ChatRoomSkeleton();
@@ -207,7 +253,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                     vm.error != null
                         ? Center(child: Text(vm.error ?? ''))
                         : _buildMessageList(
-                            messages,
+                            [...messages, ...vm.loadedOlderMessageModels],
                             chatAsync.value,
                             currentUid,
                           ),
@@ -294,7 +340,8 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
       final isFirstSequence =
           index == messages.length - 1 ||
           showDate ||
-          messages[index + 1].senderId != message.senderId;
+          (index + 1 < messages.length &&
+              messages[index + 1].senderId != message.senderId);
 
       return Column(
         children: [
@@ -835,5 +882,153 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
         curve: Curves.easeOut,
       );
     }
+  }
+}
+
+/// Debug-only bar shown above the message list. Surfaces the 4-field
+/// sync state (AGENTS.md §8) so older-message pagination can be
+/// observed live in the simulator without tailing `adb logcat`.
+///
+/// Only rendered when [kDebugMode] is true; the production view shows
+/// the legacy "PAGINATION IS WORKING!" banner instead.
+class _DebugSyncStateBar extends ConsumerWidget {
+  final String chatId;
+  final bool isLoadingOlder;
+  final bool hasMore;
+  final int loadedOlderCount;
+  final int oldestLoadedSentAt;
+
+  const _DebugSyncStateBar({
+    required this.chatId,
+    required this.isLoadingOlder,
+    required this.hasMore,
+    required this.loadedOlderCount,
+    required this.oldestLoadedSentAt,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final chatRowAsync = ref.watch(chatRowDebugStreamProvider(chatId));
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+      color: Colors.black.withValues(alpha: 0.85),
+      child: chatRowAsync.when(
+        loading: () => const Text(
+          '4-field state: loading...',
+          style: TextStyle(color: Colors.white, fontSize: 11),
+        ),
+        error: (e, _) => Text(
+          '4-field state error: $e',
+          style: const TextStyle(color: Colors.redAccent, fontSize: 11),
+        ),
+        data: (row) {
+          if (row == null) {
+            return const Text(
+              '4-field state: chat row missing locally',
+              style: TextStyle(color: Colors.white, fontSize: 11),
+            );
+          }
+          return Wrap(
+            spacing: 6.w,
+            runSpacing: 4.h,
+            children: [
+              _chip(
+                label: 'hasMoreOlderRemote',
+                value: row.hasMoreOlderRemote.toString(),
+                color: row.hasMoreOlderRemote ? Colors.green : Colors.orange,
+              ),
+              _chip(
+                label: 'hasLocalGap',
+                value: row.hasLocalGap.toString(),
+                color: row.hasLocalGap ? Colors.red : Colors.grey,
+              ),
+              _chip(
+                label: 'isLoadingOlder',
+                value: isLoadingOlder.toString(),
+                color: isLoadingOlder ? Colors.amber : Colors.grey,
+              ),
+              _chip(
+                label: 'hasMore(vm)',
+                value: hasMore.toString(),
+                color: hasMore ? Colors.green : Colors.grey,
+              ),
+              _chip(
+                label: 'oldestCachedAt',
+                value: row.oldestCachedAt == 0
+                    ? '0 (none)'
+                    : _fmtTs(row.oldestCachedAt),
+                color: Colors.cyan,
+              ),
+              _chip(
+                label: 'latestSeenRemoteAt',
+                value: row.latestSeenRemoteAt == 0
+                    ? '0 (none)'
+                    : _fmtTs(row.latestSeenRemoteAt),
+                color: Colors.cyan,
+              ),
+              _chip(
+                label: 'oldestLoaded(vm)',
+                value: oldestLoadedSentAt == 0
+                    ? '0'
+                    : _fmtTs(oldestLoadedSentAt),
+                color: Colors.cyan,
+              ),
+              _chip(
+                label: 'loadedOlderRows',
+                value: loadedOlderCount.toString(),
+                color: Colors.purpleAccent,
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _chip({
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+      decoration: BoxDecoration(
+        border: Border.all(color: color, width: 1),
+        borderRadius: BorderRadius.circular(4.r),
+      ),
+      child: Text.rich(
+        TextSpan(
+          children: [
+            TextSpan(
+              text: '$label: ',
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 10.sp,
+                fontFamily: 'monospace',
+              ),
+            ),
+            TextSpan(
+              text: value,
+              style: TextStyle(
+                color: color,
+                fontSize: 10.sp,
+                fontWeight: FontWeight.bold,
+                fontFamily: 'monospace',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _fmtTs(int millis) {
+    final dt = DateTime.fromMillisecondsSinceEpoch(millis);
+    final hh = dt.hour.toString().padLeft(2, '0');
+    final mm = dt.minute.toString().padLeft(2, '0');
+    final ss = dt.second.toString().padLeft(2, '0');
+    return '$hh:$mm:$ss';
   }
 }

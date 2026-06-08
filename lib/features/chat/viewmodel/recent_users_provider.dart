@@ -15,7 +15,7 @@ final recentUsersProvider = FutureProvider.autoDispose<List<UserModel>>((
 
   if (currentUid == null) return [];
 
-  final chats = await chatService.streamChatList(currentUid).first;
+  final chats = await chatService.streamChatList(currentUid, limit: 20).first;
 
   // Get other users with 'direct' type of chat
   final otherUids = chats

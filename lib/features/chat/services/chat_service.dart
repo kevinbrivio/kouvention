@@ -7,6 +7,13 @@ import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/models/reply_to_model.dart';
 import 'package:kouvention/features/chat/utils/message_label.dart';
 
+/// Compound cursor for chat list pagination.
+///
+/// `(lastMessage.sentAt, chatId)` gives a stable tie-breaker so two chats
+/// with the same `sentAt` (a server-timestamp batch) don't get skipped or
+/// duplicated on pagination.
+typedef ChatCursor = ({DateTime lastActivityAt, String chatId});
+
 class ChatService {
   final FirebaseFirestore _firestore;
 
@@ -67,6 +74,7 @@ class ChatService {
                 .toList(),
           );
 
+  @Deprecated('Use fetchChatRoomsPage with compound cursor instead')
   Future<List<ChatModel>> fetchChatRooms(
     String currentUid, {
     int limit = 20,
@@ -84,6 +92,63 @@ class ChatService {
     return snapshot.docs
         .map((doc) => ChatModel.fromMap(doc.id, doc.data()))
         .toList();
+  }
+
+  /// One-shot, paged fetch with a stable compound cursor.
+  ///
+  /// Ordering: `lastMessage.sentAt DESC, __name__ DESC`. The chatId tie-breaker
+  /// is required for stable pagination across writes that batch the same
+  /// timestamp. Requires the compound index
+  /// `(members array-contains, lastMessage.sentAt desc, __name__ desc)`.
+  Future<List<ChatModel>> fetchChatRoomsPage({
+    required String currentUid,
+    required int limit,
+    ChatCursor? cursor,
+  }) async {
+    var query = _chatsRef
+        .where('members', arrayContains: currentUid)
+        .orderBy('lastMessage.sentAt', descending: true)
+        .orderBy('__name__', descending: true);
+
+    if (cursor != null) {
+      query = query.startAfter([
+        Timestamp.fromDate(cursor.lastActivityAt),
+        cursor.chatId,
+      ]);
+    }
+
+    final snapshot = await query.limit(limit).get();
+    return snapshot.docs
+        .map((doc) => ChatModel.fromMap(doc.id, doc.data()))
+        .toList();
+  }
+
+  /// Stream variant of [fetchChatRoomsPage]. The initial cursor lets callers
+  /// resume from a specific page after a hot restart.
+  Stream<List<ChatModel>> streamChatListPage({
+    required String currentUid,
+    required int limit,
+    ChatCursor? cursor,
+  }) {
+    var query = _chatsRef
+        .where('members', arrayContains: currentUid)
+        .orderBy('lastMessage.sentAt', descending: true)
+        .orderBy('__name__', descending: true)
+        .limit(limit);
+
+    if (cursor != null) {
+      query = query.startAfter([
+        Timestamp.fromDate(cursor.lastActivityAt),
+        cursor.chatId,
+      ]);
+    }
+
+    return query.snapshots().map(
+          (snapshot) => snapshot.docs
+              .map((doc) => ChatModel.fromMap(doc.id, doc.data()))
+              .where((chat) => !chat.isDeletedBy(currentUid))
+              .toList(),
+        );
   }
 
   /// Fetches message after specific timestamp
@@ -130,6 +195,35 @@ class ChatService {
         .toList();
   }
 
+  /// Fetches a single page of messages OLDER than [beforeSentAt]
+  /// (millisecondsSinceEpoch) for [chatId], ordered chronologically
+  /// (oldest first) so the caller can append the result directly to a
+  /// local list. Returns up to [limit] rows.
+  ///
+  /// Implementation: one Firestore query, `orderBy('sentAt', desc)`
+  /// + `startAfter(Timestamp.fromMillis(beforeSentAt))` + `limit`,
+  /// then reverse the docs in memory to chronological order.
+  ///
+  /// `beforeSentAt <= 0` is treated as "no lower bound" (Firestore
+  /// startAfter rejects sentinel timestamps). `limit <= 0` is also
+  /// short-circuited so we never issue a zero-page query.
+  Future<List<MessageModel>> fetchOlderMessagesPage({
+    required String chatId,
+    required int beforeSentAt,
+    int limit = 50,
+  }) async {
+    if (limit <= 0 || beforeSentAt <= 0) return const [];
+    final snap = await _messagesRef(chatId)
+        .orderBy('sentAt', descending: true)
+        .startAfter([Timestamp.fromMillisecondsSinceEpoch(beforeSentAt)])
+        .limit(limit)
+        .get();
+    final docs = snap.docs.reversed.toList();
+    return docs
+        .map((doc) => MessageModel.fromMap(doc.id, doc.data()))
+        .toList();
+  }
+
   // --- Send Messages --------------------------------
   Future<void> sendMessage({
     required String chatId,
@@ -137,41 +231,43 @@ class ChatService {
     required String senderId,
     required String senderName,
     required String text,
+    required DateTime sentAt,
     required List<String> memberUids,
     ReplyToModel? replyTo,
   }) async {
-    final batch = _firestore.batch();
+    await _firestore.runTransaction((tx) async {
+      final msgRef = _messagesRef(chatId).doc(messageId);
+      final existing = await tx.get(msgRef);
+      if (existing.exists) return;
 
-    final msgRef = _messagesRef(chatId).doc(messageId);
-    batch.set(
-      msgRef,
-      MessageModel.toNewMessageMap(
-        senderId: senderId,
-        senderName: senderName,
-        text: text,
-        replyTo: replyTo,
-      ),
-    );
-    final chatRef = _chatsRef.doc(chatId);
-    batch.update(chatRef, {
-      ...MessageModel.toLastMessageMap(
-        senderId: senderId,
-        senderName: senderName,
-        text: text,
-        replyTo: replyTo,
-      ),
-      'updatedAt': FieldValue.serverTimestamp(),
+      tx.set(
+        msgRef,
+        MessageModel.toNewMessageMap(
+          senderId: senderId,
+          senderName: senderName,
+          text: text,
+          sentAt: sentAt,
+          replyTo: replyTo,
+        ),
+      );
+
+      final chatRef = _chatsRef.doc(chatId);
+      final unreadUpdates = <String, dynamic>{
+        for (final uid in memberUids)
+          if (uid != senderId) 'unreadCount.$uid': FieldValue.increment(1),
+      };
+      tx.update(chatRef, {
+        ...MessageModel.toLastMessageMap(
+          senderId: senderId,
+          senderName: senderName,
+          text: text,
+          sentAt: sentAt,
+          replyTo: replyTo,
+        ),
+        'updatedAt': Timestamp.fromDate(sentAt),
+        ...unreadUpdates,
+      });
     });
-
-    final unreadUpdates = <String, dynamic>{};
-    for (final uid in memberUids) {
-      if (uid != senderId) {
-        unreadUpdates['unreadCount.$uid'] = FieldValue.increment(1);
-      }
-    }
-    batch.update(chatRef, unreadUpdates);
-
-    await batch.commit();
   }
 
   // --- SEND MEDIA MESSAGE ---------------------
@@ -183,6 +279,7 @@ class ChatService {
     required String text,
     required MessageType type,
     required List<String> mediaUrls,
+    required DateTime sentAt,
     List<String>? mediaCaptions,
     required String fileName,
     required int fileSizeBytes,
@@ -191,50 +288,47 @@ class ChatService {
     required List<String> memberUids,
     ReplyToModel? replyTo,
   }) async {
-    final messageMap = MessageModel.toNewMessageMap(
-      senderId: senderId,
-      senderName: senderName,
-      text: text,
-      type: type,
-      replyTo: replyTo,
-      mediaUrls: mediaUrls,
-      mediaCaptions: mediaCaptions,
-      fileName: fileName,
-      fileSizeBytes: fileSizeBytes,
-      mimeType: mimeType,
-      mediaDuration: mediaDuration,
-    );
+    await _firestore.runTransaction((tx) async {
+      final msgRef = _messagesRef(chatId).doc(messageId);
+      final existing = await tx.get(msgRef);
+      if (existing.exists) return;
 
-    final lastMessageMap = MessageModel.toLastMessageMap(
-      senderId: senderId,
-      senderName: senderName,
-      text: text.isNotEmpty ? text : lastMessageLabel(text, type, fileName),
-      type: type,
-      replyTo: replyTo,
-     );
+      tx.set(
+        msgRef,
+        MessageModel.toNewMessageMap(
+          senderId: senderId,
+          senderName: senderName,
+          text: text,
+          sentAt: sentAt,
+          type: type,
+          replyTo: replyTo,
+          mediaUrls: mediaUrls,
+          mediaCaptions: mediaCaptions,
+          fileName: fileName,
+          fileSizeBytes: fileSizeBytes,
+          mimeType: mimeType,
+          mediaDuration: mediaDuration,
+        ),
+      );
 
-    final batch = FirebaseFirestore.instance.batch();
-    final chatRef = FirebaseFirestore.instance.collection('chats').doc(chatId);
-
-    batch.set(
-      chatRef.collection('messages').doc(messageId),
-      messageMap,
-    );
-
-    batch.update(chatRef, {
-      ...lastMessageMap,
-      'updatedAt': FieldValue.serverTimestamp(),
+      final chatRef = _chatsRef.doc(chatId);
+      final unreadUpdates = <String, dynamic>{
+        for (final uid in memberUids)
+          if (uid != senderId) 'unreadCount.$uid': FieldValue.increment(1),
+      };
+      tx.update(chatRef, {
+        ...MessageModel.toLastMessageMap(
+          senderId: senderId,
+          senderName: senderName,
+          text: text.isNotEmpty ? text : lastMessageLabel(text, type, fileName),
+          sentAt: sentAt,
+          type: type,
+          replyTo: replyTo,
+        ),
+        'updatedAt': Timestamp.fromDate(sentAt),
+        ...unreadUpdates,
+      });
     });
-
-    final unreadUpdates = <String, dynamic>{};
-    for (final uid in memberUids) {
-      if (uid != senderId) {
-        unreadUpdates['unreadCount.$uid'] = FieldValue.increment(1);
-      }
-    }
-    batch.update(chatRef, unreadUpdates);
-
-    await batch.commit();
   }
 
   // --- GET CHATS --------------------------------
@@ -258,9 +352,10 @@ class ChatService {
   }
 
   // --- UNREAD COUNT --------------------------------
-  Future<void> resetUnreadCount(String chatId, String uid) async {
-    await _chatsRef.doc(chatId).update({'unreadCount.$uid': 0});
-  }
+  // Removed: resetUnreadCount. The single markChatAsRead() call below
+  // writes both unreadCount.$uid = 0 and lastReadAt.$uid in one update
+  // (AGENTS.md §9.8). Keeping a separate resetUnreadCount would
+  // double-fire on retry.
 
   // --- Typing Indicators ----------------------------
   /// Adds user to TypingUsers array

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,7 +6,9 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
+import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_list_viewmodel.dart';
+import 'package:kouvention/features/chat/views/debug_seeder_view.dart';
 import 'package:kouvention/features/search/viewmodel/search_viewmodel.dart';
 
 class ChatHeader extends ConsumerWidget {
@@ -24,16 +27,38 @@ class ChatHeader extends ConsumerWidget {
       children: [
         Padding(
           padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              if (!compact)
-                Text(
-                  'Kouvéntion',
-                  style: AppTextTheme.of(context).subheadline1.copyWith(color: AppColors.primary),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (!compact)
+                      Text(
+                        'Kouvéntion',
+                        style: AppTextTheme.of(context).subheadline1.copyWith(color: AppColors.primary),
+                      ),
+                    if (!compact) Gap(6.h),
+                    _buildSearchBox(context, ref, chatVM, searchVM),
+                  ],
                 ),
-              if (!compact) Gap(6.h),
-              _buildSearchBox(context, ref, chatVM, searchVM),
+              ),
+              if (kDebugMode) ...[
+                Gap(8.w),
+                IconButton(
+                  icon: const Icon(Icons.bug_report, color: AppColors.primary),
+                  tooltip: 'Open debug seeder',
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const DebugSeederView(),
+                      ),
+                    );
+                  },
+                ),
+              ],
             ],
           ),
         ),
@@ -48,7 +73,7 @@ class ChatHeader extends ConsumerWidget {
   Widget _buildSearchBox(BuildContext context, WidgetRef ref, ChatListVM chatVM, SearchVM searchVM) => InkWell(
       onTap: () {
         HapticFeedback.selectionClick();
-        final chatRooms = ref.read(localChatListFromStreamProvider).value ?? [];
+        final chatRooms = ref.read(pagedChatListProvider).value ?? const <ChatModel>[];
         searchVM.openSearch(chatRooms);
       },
       child: Container(

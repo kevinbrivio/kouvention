@@ -8,20 +8,20 @@ import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/models/reply_to_model.dart';
-import 'package:kouvention/features/chat/models/upload_result_model.dart';
 import 'package:kouvention/features/chat/models/sticker_model.dart';
-import 'package:kouvention/features/chat/services/chat_service.dart';
+import 'package:kouvention/features/chat/models/upload_result_model.dart';
+import 'package:kouvention/features/chat/repositories/chat_repository.dart';
+import 'package:kouvention/features/chat/repositories/message_repository.dart';
 import 'package:kouvention/features/chat/services/databases/message_database.dart';
 import 'package:kouvention/features/notification/viewmodel/active_chat_id_provider.dart';
-import 'package:kouvention/features/shared/services/sync_service.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
 import 'package:kouvention/features/user/services/user_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
 
 class ChatRoomVM extends BaseNotifier {
-  final ChatService _chatService;
-  final SyncService _syncService;
+  final ChatRepository _chatRepository;
+  final MessageRepository _messageRepository;
   final String? _currentUid;
   final String chatId;
 
@@ -39,6 +39,8 @@ class ChatRoomVM extends BaseNotifier {
 
   // Typing indicator debounce
   Timer? _typingTimer;
+  Timer? _typingDebounce;
+  static const _typingDebounceWindow = Duration(seconds: 2);
   bool _isTyping = false;
 
   // Sending message
@@ -61,8 +63,8 @@ class ChatRoomVM extends BaseNotifier {
   String? _error;
 
   ChatRoomVM(super.ref, {required this.chatId})
-    : _chatService = ref.read(chatServiceProvider),
-      _syncService = ref.read(syncServiceProvider),
+    : _chatRepository = ref.read(chatRepositoryProvider),
+      _messageRepository = ref.read(messageRepositoryProvider),
       _currentUid = ref.read(authServiceProvider).currentUser?.uid;
 
   // --- GETTERS ------------------------------
@@ -81,53 +83,106 @@ class ChatRoomVM extends BaseNotifier {
   int get oldestLoadedSentAt => _oldestLoadedSentAt;
   List<Message> get loadedOlderMessages => _loadedOlderMessages;
 
+  /// Maps [_loadedOlderMessages] (Drift `Message` rows appended by
+  /// [loadOlderMessages] on scroll-up) to `MessageModel` for the view.
+  ///
+  /// The view combines this with the latest 50 from
+  /// `chatMessagesStreamProvider` to render the full visible window.
+  /// Mapping logic mirrors `chatMessagesStreamProvider`.
+  List<MessageModel> get loadedOlderMessageModels {
+    if (_loadedOlderMessages.isEmpty) return const <MessageModel>[];
+    return _loadedOlderMessages.map(_toMessageModel).toList(growable: false);
+  }
+
+  static MessageModel _toMessageModel(Message m) => MessageModel(
+    id: m.id,
+    senderId: m.senderId,
+    senderName: m.senderName,
+    text: m.textContent,
+    type: MessageType.values.firstWhere(
+      (e) => e.name.toLowerCase() == m.type.toLowerCase(),
+      orElse: () => MessageType.text,
+    ),
+    sentAt: DateTime.fromMillisecondsSinceEpoch(m.sentAt),
+    updatedAt: DateTime.fromMillisecondsSinceEpoch(m.updatedAt),
+    isDeleted: m.isDeleted,
+    deletedFor: m.deletedFor,
+    syncStatus: m.syncStatus,
+    mediaUrls: m.mediaUrls ?? [],
+    mediaCaptions: m.mediaCaptions,
+    fileSizeBytes: m.fileSizeBytes,
+    fileName: m.fileName,
+    mimeType: m.mimeType ?? '',
+    mediaDuration: m.mediaDuration,
+    replyTo: m.replyToId != null
+        ? ReplyToModel(
+            messageId: m.replyToId!,
+            senderId: '',
+            senderName: m.replyToSenderName ?? '',
+            text: m.replyToText ?? '',
+            sentAt: m.replyToSentAt != null
+                ? DateTime.fromMillisecondsSinceEpoch(m.replyToSentAt!)
+                : DateTime.fromMillisecondsSinceEpoch(m.sentAt),
+            mediaType: m.replyToMediaType,
+            mediaUrl: m.replyToMediaUrl,
+          )
+        : null,
+  );
+
   @override
   FutureOr<void> init() async {
     if (_currentUid == null) {
       _error = 'Not authenticated';
-    } else {
-      // Turn off notification when in the chatId room
-      Future.microtask(() async {
-        ref.read(activeChatIdProvider.notifier).state = chatId;
-        final syncProvider = ref.read(syncServiceProvider);
-
-        // Fetch from local
-        await syncProvider.fetchMessages(chatId);
-
-        // Sync this chat's metadata into Drift so the chat list shows it
-        try {
-          final room = await _chatService.getChat(chatId);
-          if (room != null) {
-            final db = ref.read(messageDatabaseProvider);
-            final existing = await db.getChatById(chatId);
-            await db.upsertChatRooms([
-              SyncService.chatToCompanion(
-                room,
-                lastSyncAt: existing?.lastSyncTimestamp,
-              ),
-            ]);
-          }
-        } catch (e) {
-          debugPrint('Chat metadata sync skipped ($e)');
-        }
-
-        // Also listen to Firestore updates
-        _firestoreSubscription = await syncProvider
-            .streamFirestoreMessages(chatId)
-            .listen((_) {
-              debugPrint('New messages arrived in Drift local database');
-            });
-
-        // Non-critical Firestore writes — won't block init() if offline
-        try {
-          await _chatService.resetUnreadCount(chatId, _currentUid);
-          await _chatService.markChatAsRead(chatId, _currentUid);
-        } catch (e) {
-          // networkAutoSyncProvider retries on reconnect
-          debugPrint('Offline: unread/read update skipped ($e)');
-        }
-      });
+      return;
     }
+
+    // Turn off notification when in the chatId room
+    Future.microtask(() async {
+      ref.read(activeChatIdProvider.notifier).state = chatId;
+
+      // 1. Fetch missed messages for this chat (bounded, idempotent).
+      await _messageRepository.fetchMissedMessages(chatId);
+
+      // 🔄 Force chatMessagesStreamProvider to re-read from Drift.
+      ref.read(chatRoomRefreshProvider(chatId).notifier).state++;
+      notifyListeners();
+
+      // 2. Mirror chat metadata into Drift so the chat list reflects
+      //    the latest unread / typing / lastMessage fields.
+      try {
+        await _chatRepository.getChat(chatId);
+      } catch (e) {
+        debugPrint('Chat metadata sync skipped ($e)');
+      }
+
+      // 3. Attach the realtime listener so incoming messages land in
+      //    Drift and reconcile any locally-pending row by messageId.
+      _firestoreSubscription = _messageRepository
+          .watchActiveChatRealtime(chatId)
+          .listen((_) {
+            debugPrint('New messages arrived in Drift local database');
+          });
+
+      // 4. Non-critical: reset unread + advance lastReadAt.
+      try {
+        await _messageRepository.markChatAsRead(chatId, _currentUid);
+      } catch (e) {
+        // Implicit retry: opening the chat again writes a fresh
+        // lastReadAt + reset unreadCount. networkAutoSyncProvider
+        // covers pending messages, not read receipts.
+        debugPrint('Offline: unread/read update skipped ($e)');
+      }
+
+      // 5. Update lastOpenedAt so the LRU eviction ranks this chat as
+      //    recently used and preserves it from eviction. Non-critical.
+      try {
+        await ref
+            .read(messageDatabaseProvider)
+            .updateLastOpenedAt(chatId);
+      } catch (e) {
+        debugPrint('lastOpenedAt update skipped ($e)');
+      }
+    });
   }
 
   Future<void> sendMessage(String text) async {
@@ -164,7 +219,7 @@ class ChatRoomVM extends BaseNotifier {
             )
           : null;
 
-      await _syncService.sendMessage(
+      await _messageRepository.sendTextMessage(
         chatRoomId: chat.id,
         textContent: text,
         senderName: chat.displayName(_currentUid),
@@ -186,26 +241,123 @@ class ChatRoomVM extends BaseNotifier {
   // ========================================
   // SYNC MESSAGES & PAGINATION
   // ========================================
+  /// Loads the next older page of messages for this chat.
+  ///
+  /// Per AGENTS.md §5 / §8 / §11.2, scroll-up behavior is:
+  ///   1. Try the local cache first (`db.fetchOlderMessages`).
+  ///   2. If the local page is short OR empty AND the chat's
+  ///      `hasMoreOlderRemote` flag is `true`, fall back to one
+  ///      remote older page (`SyncService.fetchOlderMessages`).
+  ///   3. Stop only when both local and remote are exhausted.
+  ///
+  /// Re-entrant guard: the entire body is wrapped in
+  /// `if (_isLoadingOlder || !_hasMoreMessages) return` so scroll
+  /// events can't double-fire mid-flight.
   Future<void> loadOlderMessages() async {
-    if (_isLoadingOlder || !_hasMoreMessages) return;
-    _isLoadingOlder = true;
-    notifyListeners();
+    if (_isLoadingOlder || !_hasMoreMessages) {
+      debugPrint(
+        '[loadOlder] SKIP isLoading=$_isLoadingOlder hasMore=$_hasMoreMessages',
+      );
+      return;
+    }
+
+    final db = ref.read(messageDatabaseProvider);
+    const threshold = messagePaginationThreshold;
+    bool fetchedRemote = false;
+    int insertedCount = 0;
+
+    debugPrint(
+      '[loadOlder] ENTRY oldestLoaded=$_oldestLoadedSentAt loaded=${_loadedOlderMessages.length}',
+    );
+
     try {
-      final db = ref.read(messageDatabaseProvider);
+      _isLoadingOlder = true;
+      notifyListeners();
+      // 1. Local page.
       final older = await db.fetchOlderMessages(
         chatId,
         beforeSentAt: _oldestLoadedSentAt,
-        limit: messagePaginationThreshold,
+        limit: threshold,
       );
-      if (older.length < messagePaginationThreshold) _hasMoreMessages = false;
+
+      debugPrint(
+        '[loadOlder] LOCAL fetched=${older.length} '
+        'oldest=${older.isNotEmpty ? older.last.sentAt : "n/a"}',
+      );
+
       if (older.isNotEmpty) {
+        _loadedOlderMessages = [..._loadedOlderMessages, ...older];
         _oldestLoadedSentAt = older.last.sentAt;
-        _loadedOlderMessages = older;
-        _hasMoreMessages = older.length >= 50;
+        insertedCount = older.length;
       }
-    } catch (e) {
+
+      // 2. Fall back to a remote page only if the local cache was
+      //    short AND the 4-field sync state says the server still
+      //    has older rows.
+      final localExhausted = older.length < threshold;
+      debugPrint('[loadOlder] localExhausted=$localExhausted');
+      if (localExhausted) {
+        final chat = await db.getChatById(chatId);
+        debugPrint(
+          '[loadOlder] CHAT row '
+          'hasMoreOlderRemote=${chat?.hasMoreOlderRemote} '
+          'oldestCachedAt=${chat?.oldestCachedAt} '
+          'latestSeenRemoteAt=${chat?.latestSeenRemoteAt}',
+        );
+        if (chat?.hasMoreOlderRemote ?? false) {
+          final remote = await _messageRepository.fetchOlderMessages(
+            chatId,
+          );
+          fetchedRemote = remote.messages > 0;
+          insertedCount += remote.messages;
+          debugPrint(
+            '[loadOlder] REMOTE fetched=${remote.messages} '
+            'insertedCount=$insertedCount',
+          );
+
+          // The Drift watch upstream will re-emit. Refresh the local
+          // cursor and bounds from the chat row.
+          if (fetchedRemote) {
+            final reRead = await db.fetchOlderMessages(
+              chatId,
+              beforeSentAt: _oldestLoadedSentAt,  // still the old cursor
+              limit: threshold,
+            );
+            if (reRead.isNotEmpty) {
+                _loadedOlderMessages = [..._loadedOlderMessages, ...reRead];
+                _oldestLoadedSentAt = reRead.last.sentAt;  // deepest loaded
+                insertedCount += reRead.length;
+            }
+            // final updated = await db.getChatById(chatId);
+            // if (updated != null) {
+            //   _oldestLoadedSentAt = updated.oldestCachedAt;
+            //   debugPrint(
+            //     '[loadOlder] cursor updated to oldestCachedAt='
+            //     '${updated.oldestCachedAt}',
+            //   );
+            // }
+          }
+        } else {
+          debugPrint('[loadOlder] remote not needed '
+              '(hasMoreOlderRemote=false or chat missing)');
+        }
+      }
+
+      // 3. Decide if there's anything left to load.
+      final chat = await db.getChatById(chatId);
+      final remoteExhausted = !(chat?.hasMoreOlderRemote ?? false);
+      if (remoteExhausted &&
+          (insertedCount == 0 || (insertedCount < threshold && !fetchedRemote))) {
+        _hasMoreMessages = false;
+      }
+      debugPrint(
+        '[loadOlder] EXIT loaded=${_loadedOlderMessages.length} '
+        'hasMore=$_hasMoreMessages oldestLoaded=$_oldestLoadedSentAt',
+      );
+    } catch (e, st) {
+      // Re-open the gate on error; the user can scroll up again.
       _hasMoreMessages = true;
-      debugPrint('=== ERROR on Load More Messages: $e');
+      debugPrint('=== ERROR on Load More Messages: $e\n$st');
     } finally {
       _isLoadingOlder = false;
       notifyListeners();
@@ -214,7 +366,6 @@ class ChatRoomVM extends BaseNotifier {
 
   void setOldestLoadedSentAt(int lastSentAt) {
     _oldestLoadedSentAt = lastSentAt;
-    notifyListeners();
   }
 
   // ========================================
@@ -284,7 +435,7 @@ class ChatRoomVM extends BaseNotifier {
         otherUser = ref.read(otherUserStreamProvider(otherUid)).value;
       }
 
-      await _syncService.sendSticker(
+      await _messageRepository.sendSticker(
         chatRoomId: chatId,
         stickerUrl: sticker.url,
         senderName: chat.displayName(_currentUid),
@@ -301,28 +452,31 @@ class ChatRoomVM extends BaseNotifier {
   }
 
   // --- Typing Indicator --------------------
-  /// Calls this when user types in the text field.
-  /// Set debounce for 2 seconds when user type first keystroke.
   void onTextChanged(String text) {
     if (_currentUid == null) return;
 
-    if (text.isNotEmpty || !_isTyping) {
-      _isTyping = true;
-      _chatService.setTyping(chatId, _currentUid);
+    if (text.isEmpty) {
+      clearTyping();
+      return;
     }
 
-    // Reset debounce timer
+    _typingDebounce?.cancel();
+    _typingDebounce = Timer(_typingDebounceWindow, () {
+      if (_isTyping) return;
+      _isTyping = true;
+      _messageRepository.setTyping(chatId, _currentUid);
+    });
+
     _typingTimer?.cancel();
     _typingTimer = Timer(const Duration(seconds: 10), clearTyping);
-
-    if (text.isEmpty) clearTyping();
   }
 
   Future<void> clearTyping() async {
-    if (_currentUid != null && _isTyping) {
+    if (_isTyping && _currentUid != null) {
       _isTyping = false;
       _typingTimer?.cancel();
-      await _chatService.clearTyping(chatId, _currentUid);
+      _typingDebounce?.cancel();
+      await _messageRepository.clearTyping(chatId, _currentUid);
     }
   }
 
@@ -360,7 +514,7 @@ class ChatRoomVM extends BaseNotifier {
   }
 
   Future<void> fetchMessagesAround(DateTime sentAt) async {
-    await _syncService.fetchMessagesAround(chatId, sentAt);
+    await _messageRepository.fetchMessagesAround(chatId, sentAt);
   }
 
   Future<void> sendMediaMessage({
@@ -434,7 +588,7 @@ class ChatRoomVM extends BaseNotifier {
         mediaCaptions ?? files.map((f) => f.caption ?? '').toList();
 
     try {
-      await _syncService.sendMediaMessageDirect(
+      await _messageRepository.sendMediaMessageDirect(
         chatRoomId: chatId,
         senderName: chat.displayName(_currentUid),
         memberUids: chat.members,
@@ -512,6 +666,7 @@ class ChatRoomVM extends BaseNotifier {
     _firestoreSubscription?.cancel();
     clearTyping();
     _typingTimer?.cancel();
+    _typingDebounce?.cancel();
     _audioRecorder.dispose();
     super.dispose();
   }
@@ -530,9 +685,20 @@ final jumpToTargetProvider = StateProvider.autoDispose.family<int?, String>(
   (ref, chatId) => null,
 );
 
+/// Increment this to force `chatMessagesStreamProvider` to re-create its
+/// Drift subscription (e.g. after the initial fetch in `init()` completes).
+/// Drift's `watch()` stream often misses the re-emission when a `batch()`
+/// upsert happens shortly after subscription — re-subscribing re-reads the
+/// now-populated cache immediately.
+final chatRoomRefreshProvider = StateProvider.autoDispose.family<int, String>(
+  (ref, chatId) => 0,
+);
+
 final chatMessagesStreamProvider = StreamProvider.autoDispose
     .family<List<MessageModel>, String>((ref, chatId) {
       final db = ref.watch(messageDatabaseProvider);
+      // Watch refresh trigger — re-creates stream when init fetches data.
+      ref.watch(chatRoomRefreshProvider(chatId));
 
       final targetSentAt = ref.watch(jumpToTargetProvider(chatId));
 
@@ -542,7 +708,7 @@ final chatMessagesStreamProvider = StreamProvider.autoDispose
         localStream = db.watchMessagesAround(
           chatId,
           targetSentAt: targetSentAt,
-          limit: 10, // TODO: Use limit: 500
+          limit: 50,
         );
       } else {
         // No target sent means nothing for us to jump
@@ -550,18 +716,11 @@ final chatMessagesStreamProvider = StreamProvider.autoDispose
         localStream = db.watchMessages(
           chatId,
           uid!,
-          limit: 10,
-        ); // TODO: Use limit: 500
+          limit: 50,
+        );
       }
 
       return localStream.map((localMsgs) {
-        debugPrint(
-          '🕵️‍♂️ [DEBUG CHAT] Local Stream terpanggil! ChatID: $chatId',
-        );
-        debugPrint(
-          '🕵️‍♂️ [DEBUG CHAT] Jumlah pesan dari SQLite (Drift): ${localMsgs.length}',
-        );
-
         return localMsgs
             .map(
               (m) => MessageModel(
@@ -608,8 +767,18 @@ final chatMessagesStreamProvider = StreamProvider.autoDispose
 
 final chatMetadataStreamProvider = StreamProvider.autoDispose
     .family<ChatModel?, String>((ref, chatId) {
-      final chatService = ref.watch(chatServiceProvider);
-      return chatService.streamChat(chatId);
+      final repo = ref.watch(chatRepositoryProvider);
+      return repo.watchChat(chatId);
+    });
+
+/// Debug-only: streams the raw Drift [Chat] row so the 4-field sync
+/// state can be rendered live in the chat room's debug overlay.
+/// Hidden behind [kDebugMode] in the view; this provider is always
+/// available but cheap to subscribe to.
+final chatRowDebugStreamProvider = StreamProvider.autoDispose
+    .family<Chat?, String>((ref, chatId) {
+      final db = ref.watch(messageDatabaseProvider);
+      return db.watchChatRow(chatId);
     });
 
 final otherUserStreamProvider = StreamProvider.autoDispose
