@@ -1,18 +1,21 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kouvention/features/chat/services/databases/message_database.dart'
+    show kEvictionThreshold;
 import 'package:kouvention/features/chat/viewmodel/chat_list_viewmodel.dart'
     show kChatListMaxCached;
 import 'performance_helpers.dart';
 
 void main() {
   test(
-      'chat list LRU eviction caps local cache at kChatListMaxCached (501 input)',
+      'chat list LRU eviction caps local cache at kChatListMaxCached (551 input)',
       () async {
     final db = await freshInMemoryDb();
     try {
+      final seedCount = kChatListMaxCached + kEvictionThreshold + 1;
       final timings =
-          await seedLargeInbox(db, chatCount: 501, keep: kChatListMaxCached);
+          await seedLargeInbox(db, chatCount: seedCount, keep: kChatListMaxCached);
       // ignore: avoid_print
-      print('PERF chat-list-501: $timings');
+      print('PERF chat-list-seed: $timings');
 
       final count = await db.getChatCount();
       expect(count, kChatListMaxCached,

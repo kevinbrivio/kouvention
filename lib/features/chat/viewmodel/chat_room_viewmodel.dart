@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
@@ -255,9 +256,11 @@ class ChatRoomVM extends BaseNotifier {
   /// events can't double-fire mid-flight.
   Future<void> loadOlderMessages() async {
     if (_isLoadingOlder || !_hasMoreMessages) {
-      debugPrint(
-        '[loadOlder] SKIP isLoading=$_isLoadingOlder hasMore=$_hasMoreMessages',
-      );
+      if (kDebugMode) {
+        debugPrint(
+          '[loadOlder] SKIP isLoading=$_isLoadingOlder hasMore=$_hasMoreMessages',
+        );
+      }
       return;
     }
 
@@ -266,9 +269,12 @@ class ChatRoomVM extends BaseNotifier {
     bool fetchedRemote = false;
     int insertedCount = 0;
 
-    debugPrint(
-      '[loadOlder] ENTRY oldestLoaded=$_oldestLoadedSentAt loaded=${_loadedOlderMessages.length}',
-    );
+    if (kDebugMode) {
+      debugPrint(
+        '[loadOlder] ENTRY oldestLoaded=$_oldestLoadedSentAt '
+        'loaded=${_loadedOlderMessages.length}',
+      );
+    }
 
     try {
       _isLoadingOlder = true;
@@ -280,10 +286,12 @@ class ChatRoomVM extends BaseNotifier {
         limit: threshold,
       );
 
-      debugPrint(
-        '[loadOlder] LOCAL fetched=${older.length} '
-        'oldest=${older.isNotEmpty ? older.last.sentAt : "n/a"}',
-      );
+      if (kDebugMode) {
+        debugPrint(
+          '[loadOlder] LOCAL fetched=${older.length} '
+          'oldest=${older.isNotEmpty ? older.last.sentAt : "n/a"}',
+        );
+      }
 
       if (older.isNotEmpty) {
         _loadedOlderMessages = [..._loadedOlderMessages, ...older];
@@ -295,51 +303,56 @@ class ChatRoomVM extends BaseNotifier {
       //    short AND the 4-field sync state says the server still
       //    has older rows.
       final localExhausted = older.length < threshold;
-      debugPrint('[loadOlder] localExhausted=$localExhausted');
+      if (kDebugMode) {
+        debugPrint('[loadOlder] localExhausted=$localExhausted');
+      }
       if (localExhausted) {
         final chat = await db.getChatById(chatId);
-        debugPrint(
-          '[loadOlder] CHAT row '
-          'hasMoreOlderRemote=${chat?.hasMoreOlderRemote} '
-          'oldestCachedAt=${chat?.oldestCachedAt} '
-          'latestSeenRemoteAt=${chat?.latestSeenRemoteAt}',
-        );
+        if (kDebugMode) {
+          debugPrint(
+            '[loadOlder] CHAT row '
+            'hasMoreOlderRemote=${chat?.hasMoreOlderRemote} '
+            'oldestCachedAt=${chat?.oldestCachedAt} '
+            'latestSeenRemoteAt=${chat?.latestSeenRemoteAt}',
+          );
+        }
         if (chat?.hasMoreOlderRemote ?? false) {
           final remote = await _messageRepository.fetchOlderMessages(
             chatId,
           );
           fetchedRemote = remote.messages > 0;
           insertedCount += remote.messages;
-          debugPrint(
-            '[loadOlder] REMOTE fetched=${remote.messages} '
-            'insertedCount=$insertedCount',
-          );
+          if (kDebugMode) {
+            debugPrint(
+              '[loadOlder] REMOTE fetched=${remote.messages} '
+              'insertedCount=$insertedCount',
+            );
+          }
 
           // The Drift watch upstream will re-emit. Refresh the local
-          // cursor and bounds from the chat row.
+          // cursor and bounds from the chat row. Deduplicate by message
+          // ID to avoid inserting rows already in _loadedOlderMessages
+          // from step 1 (the local fetch just above).
           if (fetchedRemote) {
             final reRead = await db.fetchOlderMessages(
               chatId,
-              beforeSentAt: _oldestLoadedSentAt,  // still the old cursor
+              beforeSentAt: _oldestLoadedSentAt,
               limit: threshold,
             );
             if (reRead.isNotEmpty) {
-                _loadedOlderMessages = [..._loadedOlderMessages, ...reRead];
-                _oldestLoadedSentAt = reRead.last.sentAt;  // deepest loaded
-                insertedCount += reRead.length;
+              final existingIds = _loadedOlderMessages.map((m) => m.id).toSet();
+              final newRows =
+                  reRead.where((m) => !existingIds.contains(m.id)).toList();
+              if (newRows.isNotEmpty) {
+                _loadedOlderMessages = [..._loadedOlderMessages, ...newRows];
+                _oldestLoadedSentAt = newRows.last.sentAt;
+                insertedCount += newRows.length;
+              }
             }
-            // final updated = await db.getChatById(chatId);
-            // if (updated != null) {
-            //   _oldestLoadedSentAt = updated.oldestCachedAt;
-            //   debugPrint(
-            //     '[loadOlder] cursor updated to oldestCachedAt='
-            //     '${updated.oldestCachedAt}',
-            //   );
-            // }
+          } else if (kDebugMode) {
+            debugPrint('[loadOlder] remote not needed '
+                '(hasMoreOlderRemote=false or chat missing)');
           }
-        } else {
-          debugPrint('[loadOlder] remote not needed '
-              '(hasMoreOlderRemote=false or chat missing)');
         }
       }
 
@@ -350,10 +363,12 @@ class ChatRoomVM extends BaseNotifier {
           (insertedCount == 0 || (insertedCount < threshold && !fetchedRemote))) {
         _hasMoreMessages = false;
       }
-      debugPrint(
-        '[loadOlder] EXIT loaded=${_loadedOlderMessages.length} '
-        'hasMore=$_hasMoreMessages oldestLoaded=$_oldestLoadedSentAt',
-      );
+      if (kDebugMode) {
+        debugPrint(
+          '[loadOlder] EXIT loaded=${_loadedOlderMessages.length} '
+          'hasMore=$_hasMoreMessages oldestLoaded=$_oldestLoadedSentAt',
+        );
+      }
     } catch (e, st) {
       // Re-open the gate on error; the user can scroll up again.
       _hasMoreMessages = true;

@@ -153,11 +153,12 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
   }
 
   void _onVmChanged() {
-    final olderMessages = ref.watch(
-      chatRoomVMProvider(
-        widget.chatId,
-      ).select((vm) => vm.loadedOlderMessageModels),
-    );
+    // The VM already called notifyListeners(). We just need a rebuild so
+    // the widget reads the latest loadedOlderMessageModels from the VM
+    // that the ConsumerState already watches via ref.watch in build().
+    // If that ref.watch already covers the VM, this becomes a no-op
+    // guard; if not, setState forces the rebuild.
+    if (mounted) setState(() {});
   }
 
   Future<void> _handlePendingScroll() async {

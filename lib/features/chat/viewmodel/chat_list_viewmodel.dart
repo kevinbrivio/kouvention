@@ -12,7 +12,7 @@ import 'package:oktoast/oktoast.dart';
 
 enum ChatFilter { all, direct, group }
 
-const int kChatListPageSize = 10; // TEST VALUE (was 50)
+const int kChatListPageSize = 50;
 const int kChatListMaxCached = 500;
 
 class ChatListVM extends BaseNotifier {
@@ -151,19 +151,25 @@ class ChatListVM extends BaseNotifier {
   /// (§7, 200-chat cap).
   Future<void> fetchOlderChats() async {
     if (_currentUid == null || _isLoadingMore || !_hasMoreChats) {
-      debugPrint('⏸️ fetchOlderChats skipped: uid=${_currentUid != null}, loading=$_isLoadingMore, hasMore=$_hasMoreChats');
+      debugPrint(
+        '⏸️ fetchOlderChats skipped: uid=${_currentUid != null}, loading=$_isLoadingMore, hasMore=$_hasMoreChats',
+      );
       return;
     }
 
     final driftCount = await ref.read(messageDatabaseProvider).getChatCount();
-    debugPrint('🔍 Pagination check: Drift has $driftCount chats (cap: $kChatListMaxCached)');
+    debugPrint(
+      '🔍 Pagination check: Drift has $driftCount chats (cap: $kChatListMaxCached)',
+    );
 
     if (driftCount >= kChatListMaxCached) {
       debugPrint('⏸️ Drift is full, skipping Firestore fetch');
       return;
     }
 
-    debugPrint('➡️ Drift not full ($driftCount < $kChatListMaxCached), fetching from Firestore');
+    debugPrint(
+      '➡️ Drift not full ($driftCount < $kChatListMaxCached), fetching from Firestore',
+    );
     _isLoadingMore = true;
     notifyListeners();
 
@@ -203,7 +209,9 @@ class ChatListVM extends BaseNotifier {
         if (fetched.length < kChatListPageSize) {
           // Flag no more chat from remote
           _hasMoreChats = false;
-          debugPrint('🏁 Reached end of Firestore (got ${fetched.length} < $kChatListPageSize)');
+          debugPrint(
+            '🏁 Reached end of Firestore (got ${fetched.length} < $kChatListPageSize)',
+          );
           ref.read(chatCursorProvider.notifier).state = null;
         } else {
           // flag the cursor from oldest fetched chat
@@ -299,8 +307,9 @@ final chatListFilterProvider = StateProvider.autoDispose<ChatFilter>(
 /// Updated by [ChatListView]'s scroll listener. Read by [ChatListVM] when
 /// calling [ChatRepository.fetchOlderChatsPage] to exclude visible chats
 /// from the LRU eviction (see [MessageDatabase.evictOldestChats]).
-final visibleChatIdsProvider =
-    StateProvider.autoDispose<Set<String>>((ref) => const {});
+final visibleChatIdsProvider = StateProvider.autoDispose<Set<String>>(
+  (ref) => const {},
+);
 
 // =============================================================
 // SCREEN-SCOPED INBOX (top [kChatListPageSize] chats)
