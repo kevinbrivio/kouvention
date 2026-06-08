@@ -30,7 +30,7 @@ class ChatRoomVM extends BaseNotifier {
   StreamSubscription? _firestoreSubscription;
 
   // Pagination
-  static const messagePaginationThreshold = 50;
+  static const messagePaginationThreshold = 100;
   int _oldestLoadedSentAt = 0;
   bool _hasMoreMessages = true;
   bool _isLoadingOlder = false;
@@ -723,7 +723,7 @@ final chatMessagesStreamProvider = StreamProvider.autoDispose
         localStream = db.watchMessagesAround(
           chatId,
           targetSentAt: targetSentAt,
-          limit: 50,
+          limit: 100,
         );
       } else {
         // No target sent means nothing for us to jump
@@ -731,7 +731,7 @@ final chatMessagesStreamProvider = StreamProvider.autoDispose
         localStream = db.watchMessages(
           chatId,
           uid!,
-          limit: 50,
+          limit: 100,
         );
       }
 

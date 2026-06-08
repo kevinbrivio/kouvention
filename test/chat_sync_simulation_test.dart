@@ -37,7 +37,7 @@ void main() {
 
         final t0 = DateTime.now();
         final firstPage = await db
-            .watchMessages('deep', 'u1', limit: 50)
+            .watchMessages('deep', 'u1', limit: 100)
             .first;
         final watchMs = DateTime.now().difference(t0).inMilliseconds;
         expect(firstPage.length, 50,
@@ -84,7 +84,7 @@ void main() {
         );
 
         final latest = await db
-            .watchMessages('deep', 'u1', limit: 50)
+            .watchMessages('deep', 'u1', limit: 100)
             .first;
         int total = latest.length;
         int cursor = latest.last.sentAt;

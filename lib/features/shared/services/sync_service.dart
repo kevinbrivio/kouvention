@@ -266,8 +266,8 @@ class SyncService {
   /// the beginning of the chat, stop scrolling").
   Future<({int pages, int messages})> fetchOlderMessages(
     String chatId, {
-    int limit = 50,
-    int maxPages = 4,
+    int limit = 100,
+    int maxPages = 2,
   }) async {
     final chatRoom = await _db.getChatById(chatId);
     if (chatRoom == null) {

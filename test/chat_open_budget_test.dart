@@ -51,12 +51,12 @@ void main() {
 
       // First emit of the watch must be bounded.
       final t0 = DateTime.now();
-      final first = await db.watchMessages('deep', 'u1', limit: 50).first;
+      final first = await db.watchMessages('deep', 'u1', limit: 100).first;
       final watchMs = DateTime.now().difference(t0).inMilliseconds;
       // ignore: avoid_print
       print('PERF watch-first: ${first.length} rows in ${watchMs}ms');
 
-      expect(first.length, 50,
+      expect(first.length, 100,
           reason: 'AGENTS.md §11.2: latest 50-100 local messages');
 
       // Order is sentAt DESC, so the first row is the newest.

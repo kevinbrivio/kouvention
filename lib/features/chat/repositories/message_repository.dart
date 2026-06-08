@@ -38,14 +38,14 @@ class MessageRepository {
   Stream<List<Message>> watchLocalMessages(
     String chatId,
     String uid, {
-    int limit = 50,
+    int limit = 100,
   }) => _db.watchMessages(chatId, uid, limit: limit);
 
   /// Reactive local watch around a target `sentAt` (jump-to-message).
   Stream<List<Message>> watchLocalMessagesAround(
     String chatId, {
     required int targetSentAt,
-    int limit = 50,
+    int limit = 100,
   }) => _db.watchMessagesAround(chatId, targetSentAt: targetSentAt, limit: limit);
 
   // --- Read: remote sync -----------------------------

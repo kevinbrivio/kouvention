@@ -335,7 +335,7 @@ class MessageDatabase extends _$MessageDatabase {
   Stream<List<Message>> watchMessagesAround(
     String chatRoomId, {
     required int targetSentAt,
-    int limit = 50,
+    int limit = 100,
   }) {
     int half = limit ~/ 2;
 
@@ -382,7 +382,7 @@ class MessageDatabase extends _$MessageDatabase {
   Stream<List<Message>> watchMessages(
     String chatRoomId,
     String currentUid, {
-    int limit = 50,
+    int limit = 100,
   }) =>
       (select(messages)
             ..where((m) => m.chatRoomId.equals(chatRoomId))
