@@ -64,10 +64,10 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
     final pos = _scrollController.position;
     if (!pos.hasContentDimensions) return;
 
-    final firstIdx = ((pos.offset / _listItemHeight).floor() - _visibleIdMargin)
+    final firstIdx = ((pos.pixels / _listItemHeight).floor() - _visibleIdMargin)
         .clamp(0, chats.length - 1);
     final lastIdx =
-        (((pos.offset + pos.viewportDimension) / _listItemHeight).ceil() +
+        (((pos.pixels + pos.viewportDimension) / _listItemHeight).ceil() +
                 _visibleIdMargin)
             .clamp(firstIdx, chats.length - 1);
 
