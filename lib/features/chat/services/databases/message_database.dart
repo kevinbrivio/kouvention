@@ -117,6 +117,7 @@ class Messages extends Table {
   TextColumn get replyToId => text().nullable()();
   TextColumn get replyToText => text().nullable()();
   TextColumn get replyToSenderName => text().nullable()();
+  TextColumn get replyToSenderId => text().nullable()();
   IntColumn get replyToSentAt => integer().nullable()();
   TextColumn get replyToMediaUrl => text().nullable()();
   TextColumn get replyToMediaType => text().nullable()();
@@ -158,7 +159,7 @@ class MessageDatabase extends _$MessageDatabase {
   MessageDatabase.forExecutor(super.executor);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
