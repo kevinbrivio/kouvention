@@ -707,17 +707,13 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                 key: ValueKey('reply_thumb_${message.id}'),
                 alignment: Alignment.center,
                 children: [
-                  if (message.isImage ||
-                      message.type == MessageType.sticker ||
-                      message.isVideo) ...[
+                  if ((message.isImage ||
+                          message.type == MessageType.sticker) &&
+                      _isImageUrl(message.allMediaUrls.first)) ...[
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8.r),
                       child: CachedNetworkImage(
-                        imageUrl: message.isVideo
-                            ? vm.getCloudinaryThumbnail(
-                                message.allMediaUrls.first,
-                              )
-                            : message.allMediaUrls.first,
+                        imageUrl: message.allMediaUrls.first,
                         width: 76.h,
                         height: 76.h,
                         fit: BoxFit.cover,
@@ -739,32 +735,73 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                   ] else if (message.isVideo) ...[
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8.r),
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          CachedNetworkImage(
-                            imageUrl: vm.getCloudinaryThumbnail(
-                              message.allMediaUrls.first,
-                            ),
-                            height: 76.h,
-                            width: 76.h,
-                            fit: BoxFit.cover,
-                          ),
-                          Center(
-                            child: Container(
-                              padding: EdgeInsets.all(4.r),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.5),
-                                shape: BoxShape.circle,
+                      child: SizedBox(
+                        width: 76.h,
+                        height: 76.h,
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            CachedNetworkImage(
+                              imageUrl: vm.getCloudinaryThumbnail(
+                                message.allMediaUrls.first,
                               ),
-                              child: Icon(
-                                Icons.play_arrow_rounded,
-                                color: Colors.white,
-                                size: 20.w,
+                              fit: BoxFit.cover,
+                            ),
+                            Center(
+                              child: Container(
+                                padding: EdgeInsets.all(4.r),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.5),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.play_arrow_rounded,
+                                  color: Colors.white,
+                                  size: 20.w,
+                                ),
                               ),
                             ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ] else if (message.isFile && _isPdf(message.fileName)) ...[
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8.r),
+                      child: CachedNetworkImage(
+                        imageUrl: vm.getCloudinaryThumbnail(
+                          message.allMediaUrls.first,
+                        ),
+                        width: 76.h,
+                        height: 76.h,
+                        fit: BoxFit.cover,
+                        errorWidget: (context, url, error) => Container(
+                          width: 76.h,
+                          height: 76.h,
+                          decoration: BoxDecoration(
+                            color: AppColors.grey.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8.r),
                           ),
-                        ],
+                          child: Icon(
+                            _getReplyMediaIcon(message),
+                            size: 24.r,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ] else if (message.isFile) ...[
+                    Container(
+                      width: 76.h,
+                      height: 76.h,
+                      decoration: BoxDecoration(
+                        color: AppColors.grey.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8.r),
+                      ),
+                      child: Icon(
+                        _getReplyMediaIcon(message),
+                        size: 24.r,
+                        color: Colors.grey,
                       ),
                     ),
                   ],
@@ -775,6 +812,9 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
       ),
     );
   }
+
+  bool _isPdf(String? fileName) =>
+      (fileName ?? '').toLowerCase().endsWith('.pdf');
 
   IconData _getReplyMediaIcon(MessageModel message) {
     if (message.isFile) {
@@ -884,6 +924,15 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
       );
     }
   }
+}
+
+bool _isImageUrl(String url) {
+  final lower = url.toLowerCase();
+  return lower.endsWith('.jpg') ||
+      lower.endsWith('.jpeg') ||
+      lower.endsWith('.png') ||
+      lower.endsWith('.gif') ||
+      lower.endsWith('.webp');
 }
 
 /// Debug-only bar shown above the message list. Surfaces the 4-field
