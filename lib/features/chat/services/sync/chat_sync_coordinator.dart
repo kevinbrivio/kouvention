@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/repositories/chat_repository.dart';
 import 'package:kouvention/features/chat/repositories/message_repository.dart';
+import 'package:kouvention/features/chat/repositories/user_profile_repository.dart';
 import 'package:kouvention/features/chat/services/sync/chat_sync_queue.dart';
 import 'package:kouvention/features/shared/viewmodel/connectivity_viewmodel.dart';
 import 'package:kouvention/features/shared/services/sync_service.dart';
@@ -32,10 +33,12 @@ class ChatSyncCoordinator {
   ChatSyncCoordinator({
     required ChatRepository chatRepository,
     required MessageRepository messageRepository,
+    required UserProfileRepository userProfileRepository,
     required SyncService syncService,
     ChatSyncQueue? queue,
   }) : _chatRepository = chatRepository,
        _messageRepository = messageRepository,
+       _userProfileRepository = userProfileRepository,
        _syncService = syncService,
        _queue = queue ?? ChatSyncQueue() {
     _queue.inFlightLabels.listen((labels) {
@@ -46,6 +49,7 @@ class ChatSyncCoordinator {
 
   final ChatRepository _chatRepository;
   final MessageRepository _messageRepository;
+  final UserProfileRepository _userProfileRepository;
   final SyncService _syncService;
   final ChatSyncQueue _queue;
 
@@ -103,6 +107,9 @@ class ChatSyncCoordinator {
   /// once on initial app boot (no offline→online event yet).
   void onNetworkResumed() {
     _queue.enqueue('net:resume:flush-pending', _flushPending);
+    _queue.enqueue(
+      'user-profile:flush', () => _userProfileRepository.refreshAll(),
+    );
   }
 
   /// Awaits all currently-pending and in-flight jobs. Used by tests
@@ -126,6 +133,7 @@ final chatSyncCoordinatorProvider = Provider<ChatSyncCoordinator>((ref) {
   final coord = ChatSyncCoordinator(
     chatRepository: ref.watch(chatRepositoryProvider),
     messageRepository: ref.watch(messageRepositoryProvider),
+    userProfileRepository: ref.watch(userProfileRepositoryProvider),
     syncService: ref.watch(syncServiceProvider),
   );
   ref.onDispose(coord.close);

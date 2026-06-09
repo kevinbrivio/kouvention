@@ -8,6 +8,8 @@ import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/cores/utils/date_time_helper.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
+import 'package:kouvention/features/chat/utils/display_name_resolver.dart';
+import 'package:kouvention/features/chat/viewmodel/chat_list_profile_provider.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_list_viewmodel.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
 
@@ -24,16 +26,21 @@ class ChatListItem extends ConsumerWidget {
     final unread = vm.chatUnreadCount(chat);
     final lastMessage = chat.lastMessage;
     final isPinned = chat.isPinnedBy(vm.currentId!);
-    final typing = vm.typingText(chat);
     final isSelected = vm.selectedChatIds.contains(chat.id);
 
-    final displayName = vm.chatDisplayName(chat);
+    final resolver = ref.watch(chatListProfileResolverProvider);
+    final displayName = resolveDisplayName(chat: chat, currentUid: vm.currentId!, resolver: resolver);
+    final photoUrl = resolveDisplayPhotoUrl(chat: chat, currentUid: vm.currentId!, resolver: resolver);
     final initialLetter = displayName.isNotEmpty
         ? displayName[0].toUpperCase()
         : '?';
 
+    // Resolve typing indicator names from fresh profile cache
+    final typingText = _resolveTypingText(chat, vm.currentId!, resolver);
+
     bool showAvatarPhoto;
-    if (chat.isDirect) {
+    final isGroup = !chat.isDirect;
+    if (!isGroup) {
       final otherUid = chat.otherMemberUid(vm.currentId!);
       final otherUser = ref.watch(otherUserStreamProvider(otherUid)).value;
       showAvatarPhoto = otherUser?.privacy.showProfilePhoto ?? true;
@@ -63,9 +70,9 @@ class ChatListItem extends ConsumerWidget {
             padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
             child: Row(
               children: [
-                _buildAvatar(context, vm, initialLetter, showAvatarPhoto),
+                _buildAvatar(context, initialLetter, showAvatarPhoto, photoUrl, isGroup, isSelected),
                 Gap(12.w),
-                _buildMessagePreview(context, displayName, lastMessage, typing),
+                _buildMessagePreview(context, displayName, lastMessage, typingText),
                 Gap(4.w),
                 _buildTimeAndBadge(context, lastMessage, unread, isPinned),
               ],
@@ -85,18 +92,34 @@ class ChatListItem extends ConsumerWidget {
     );
   }
 
-  Widget _buildAvatar(BuildContext context, ChatListVM vm, String initialLetter, bool showAvatarPhoto) => Stack(
+  /// Resolves typing indicator names from the fresh profile cache,
+  /// falling back to [MemberInfo] (write-once snapshot from chat creation).
+  String? _resolveTypingText(ChatModel chat, String? currentUid, UserProfileResolver resolver) {
+    if (currentUid == null) return null;
+    final others = chat.typingUsers.where((uid) => uid != currentUid).toList();
+    if (others.isEmpty) return null;
+    final names = others
+        .map((uid) =>
+            resolver.lookupDisplayName(uid) ??
+            chat.memberInfo[uid]?.displayName ??
+            'Someone')
+        .toList();
+    if (names.length == 1) return '${names.first} is typing...';
+    return '${names.join(', ')} others are typing...';
+  }
+
+  Widget _buildAvatar(BuildContext context, String initialLetter, bool showAvatarPhoto, String? photoUrl, bool isGroup, bool isSelected) => Stack(
     children: [
       CircleAvatar(
         radius: 24.r,
         backgroundColor: AppColors.senderNameColor(
           chat.id,
         ).withValues(alpha: 0.25),
-        backgroundImage: vm.chatPhotoURL(chat) != null && showAvatarPhoto
-            ? NetworkImage(vm.chatPhotoURL(chat)!)
+        backgroundImage: photoUrl != null && showAvatarPhoto
+            ? NetworkImage(photoUrl)
             : null,
-        child: vm.chatPhotoURL(chat) == null || !showAvatarPhoto
-            ? (vm.isGroupType(chat)
+        child: photoUrl == null || !showAvatarPhoto
+            ? (isGroup
                   ? Icon(
                       Icons.people_alt_rounded,
                       color: AppColors.senderNameColor(
@@ -114,7 +137,7 @@ class ChatListItem extends ConsumerWidget {
                     ))
             : null,
       ),
-      if (vm.selectedChatIds.contains(chat.id))
+      if (isSelected)
         Positioned(
           right: 0,
           bottom: 0,

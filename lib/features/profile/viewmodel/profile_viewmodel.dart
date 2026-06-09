@@ -95,6 +95,8 @@ class ProfileVM extends BaseNotifier {
     try {
       isLoading = true;
       _isButtonLoading = true;
+
+      final presence = ref.read(presenceNotifierProvider);
       await presence.signOutWithPresence(_authService);
 
       // Clear search cache - prevent other user access previous search cache

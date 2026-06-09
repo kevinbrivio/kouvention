@@ -12,22 +12,33 @@ final recentUsersProvider = FutureProvider.autoDispose<List<UserModel>>((
   final chatService = ref.read(chatServiceProvider);
 
   final currentUid = authService.currentUser?.uid;
-
   if (currentUid == null) return [];
 
-  final chats = await chatService.streamChatList(currentUid, limit: 20).first;
+  // One-shot paged fetch — no live stream listener (AGENTS.md §9.2).
+  final chats = await chatService.fetchChatRoomsPage(
+    currentUid: currentUid,
+    limit: 20,
+  );
 
-  // Get other users with 'direct' type of chat
+  // Get other UIDs from direct chats, preserving recency order.
   final otherUids = chats
       .where((chat) => chat.type == 'direct')
       .map((chat) => chat.otherMemberUid(currentUid))
       .toList();
 
+  if (otherUids.isEmpty) return [];
+
+  // Batch Firestore read, chunked to respect whereIn ≤10.
   final users = <UserModel>[];
-  for (final uid in otherUids) {
-    final user = await userService.getUser(uid);
-    if (user != null) users.add(user);
+  for (var i = 0; i < otherUids.length; i += 10) {
+    final chunk = otherUids.sublist(
+      i,
+      i + 10 > otherUids.length ? otherUids.length : i + 10,
+    );
+    users.addAll(await userService.fetchUserByUids(chunk));
   }
 
-  return users;
+  // Re-sort into the same order as the chat list (most recent first).
+  final byUid = {for (final u in users) u.uid: u};
+  return otherUids.map((uid) => byUid[uid]).whereType<UserModel>().toList();
 });

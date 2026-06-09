@@ -7,6 +7,8 @@ import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
+import 'package:kouvention/features/chat/utils/display_name_resolver.dart';
+import 'package:kouvention/features/chat/viewmodel/chat_room_profile_provider.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/models/reply_to_model.dart';
 import 'package:kouvention/features/chat/models/sticker_model.dart';
@@ -221,7 +223,11 @@ class ChatRoomVM extends BaseNotifier {
       await _messageRepository.sendTextMessage(
         chatRoomId: chat.id,
         textContent: text,
-        senderName: chat.displayName(_currentUid),
+        senderName: resolveDisplayName(
+          chat: chat,
+          currentUid: _currentUid,
+          resolver: ref.read(chatRoomProfileResolverProvider(chatId)),
+        ),
         memberUids: chat.members,
         otherUserFcmTokens: otherUser?.fcmTokens,
         replyTo: replyTo,
@@ -453,7 +459,11 @@ class ChatRoomVM extends BaseNotifier {
       await _messageRepository.sendSticker(
         chatRoomId: chatId,
         stickerUrl: sticker.url,
-        senderName: chat.displayName(_currentUid),
+        senderName: resolveDisplayName(
+          chat: chat,
+          currentUid: _currentUid,
+          resolver: ref.read(chatRoomProfileResolverProvider(chatId)),
+        ),
         memberUids: chat.members,
         otherUserFcmTokens: otherUser?.fcmTokens,
         replyTo: replyTo,
@@ -605,7 +615,11 @@ class ChatRoomVM extends BaseNotifier {
     try {
       await _messageRepository.sendMediaMessageDirect(
         chatRoomId: chatId,
-        senderName: chat.displayName(_currentUid),
+        senderName: resolveDisplayName(
+          chat: chat,
+          currentUid: _currentUid,
+          resolver: ref.read(chatRoomProfileResolverProvider(chatId)),
+        ),
         memberUids: chat.members,
         caption: caption,
         uploadResults: files,
@@ -766,7 +780,9 @@ final chatMessagesStreamProvider = StreamProvider.autoDispose
                         senderId: '', // Sesuaikan jika lu butuh
                         senderName: m.replyToSenderName ?? '',
                         text: m.replyToText ?? '',
-                        sentAt: DateTime.now(),
+                        sentAt: m.replyToSentAt != null
+                            ? DateTime.fromMillisecondsSinceEpoch(m.replyToSentAt!)
+                            : DateTime.fromMillisecondsSinceEpoch(m.sentAt),
                         mediaType: m.replyToMediaType,
                         mediaUrl: m.replyToMediaUrl,
                       )

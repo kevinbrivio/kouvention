@@ -121,6 +121,14 @@ class UserService {
     });
   }
 
+  // --- Profile Chunks -----------------------
+  Future<List<UserModel>> fetchUserByUids(List<String> uids) async {
+    if (uids.isEmpty) return [];
+    final snapshot = await _userRef.where(FieldPath.documentId, whereIn: uids).get();
+
+    return snapshot.docs.map((doc) => UserModel.fromMap(doc.data())).toList();
+  }
+
   // --- FCM Token ----------------------------
   // Called on app startup or whenever the token refreshes
   Future<void> updateFcmToken(String uid, String token) async {

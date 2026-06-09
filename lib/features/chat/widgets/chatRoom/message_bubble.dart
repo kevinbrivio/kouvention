@@ -62,8 +62,15 @@ class MessageBubble extends ConsumerWidget {
     final status = message.getUIStatus(chat, currentUid);
 
     final sender = ref.watch(otherUserStreamProvider(message.senderId)).value;
+    final resolvedName = sender?.displayName ?? senderName;
     final showSenderPhoto = isGroup && !isMe && senderPhotoUrl != null &&
         (sender?.privacy.showProfilePhoto ?? true);
+
+    // Resolve fresh display name for the replied-to sender in the reply preview.
+    // Guard against empty senderId (Drift doesn't store reply_to_sender_id yet).
+    final resolvedReplyName = (replyMsg != null && replyMsg.senderId.isNotEmpty)
+        ? (ref.watch(otherUserStreamProvider(replyMsg.senderId)).value?.displayName ?? replyMsg.senderName)
+        : replyMsg?.senderName;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
@@ -90,12 +97,13 @@ class MessageBubble extends ConsumerWidget {
             context,
             scheme: ref.watch(bubbleSchemeProvider),
             time: time,
-            senderName: senderName,
+            senderName: resolvedName,
             senderPhotoUrl: senderPhotoUrl,
             showSenderPhoto: showSenderPhoto,
             replyMsg: replyMsg,
             currentUid: currentUid,
-            status: status, // Oper status ke bawah
+            status: status,
+            resolvedReplyName: resolvedReplyName,
           ),
         ),
       ),
@@ -112,6 +120,7 @@ class MessageBubble extends ConsumerWidget {
     required ReplyToModel? replyMsg,
     required String currentUid,
     required MessageStatus status,
+    String? resolvedReplyName,
   }) {
     final sentBubbleColor = scheme.sentBubble;
     final receivedBubbleColor = scheme.receivedBubble;
@@ -178,7 +187,7 @@ class MessageBubble extends ConsumerWidget {
                                       onTapReply!(replyMsg.messageId);
                                     }
                                   : null,
-                              child: _buildInBubbleReplyPreview(context, replyMsg, currentUid),
+                              child: _buildInBubbleReplyPreview(context, replyMsg, currentUid, resolvedReplyName!),
                             ),
                             Gap(6.h),
                           ],
@@ -268,8 +277,9 @@ class MessageBubble extends ConsumerWidget {
     }
   }
 
-  Widget _buildInBubbleReplyPreview(BuildContext context, ReplyToModel replyTo, String currentUid) {
-    final isRepliedMessageMine = replyTo.senderId == currentUid;
+  Widget _buildInBubbleReplyPreview(BuildContext context, ReplyToModel replyTo, String currentUid, String resolvedReplyName) {
+    // When senderId is empty (Drift mapping limitation), skip "You" check.
+    final isRepliedMessageMine = replyTo.senderId.isNotEmpty && replyTo.senderId == currentUid;
     final _hasValidMediaUrl = replyTo.mediaUrl != null &&
         replyTo.mediaUrl!.isNotEmpty &&
         replyTo.mediaUrl != '[]';
@@ -290,7 +300,7 @@ class MessageBubble extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            isRepliedMessageMine ? 'You' : replyTo.senderName,
+            isRepliedMessageMine ? 'You' : resolvedReplyName,
             style: TextStyle(
               fontWeight: FontWeight.w600,
               fontSize: 12.sp,

@@ -17,6 +17,8 @@ import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/models/message_status.dart';
+import 'package:kouvention/features/chat/utils/display_name_resolver.dart';
+import 'package:kouvention/features/chat/viewmodel/chat_room_profile_provider.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_selection_viewmodel.dart';
 import 'package:kouvention/features/chat/viewmodel/bubble_scheme_provider.dart';
@@ -294,7 +296,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
           ),
         ),
         if (chatAsync.value?.typingUsers.isNotEmpty == true)
-          _buildTypingIndicator(chatAsync.value!, currentUid),
+          _buildTypingIndicator(chatAsync.value!, currentUid, ref),
 
         _buildInputBar(chatAsync.value, currentUid),
         _buildMediaPanel(),
@@ -405,13 +407,22 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     }
   }
 
-  Widget _buildTypingIndicator(ChatModel? chat, String? currentUid) {
+  Widget _buildTypingIndicator(
+    ChatModel? chat,
+    String? currentUid,
+    WidgetRef ref,
+  ) {
     if (chat == null || currentUid == null) return const SizedBox.shrink();
     final others = chat.typingUsers.where((uid) => uid != currentUid).toList();
     if (others.isEmpty) return const SizedBox.shrink();
 
     final isGroup = chat.type == 'group';
-    final chatName = chat.displayName(currentUid);
+    final resolver = ref.watch(chatRoomProfileResolverProvider(chat.id));
+    final chatName = resolveDisplayName(
+      chat: chat,
+      currentUid: currentUid,
+      resolver: resolver,
+    );
     final scheme = ref.watch(bubbleSchemeProvider);
     final receivedColor = scheme.receivedBubble;
     final isLightReceived = receivedColor.computeLuminance() > 0.5;
@@ -619,6 +630,10 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     final isMe = vm.isMyMessage(message);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    // Resolve fresh display name for the replied-to sender
+    final replySender = ref.watch(otherUserStreamProvider(message.senderId)).value;
+    final resolvedReplyName = replySender?.displayName ?? message.senderName;
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(16.r),
       child: Container(
@@ -648,7 +663,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      isMe ? 'You' : message.senderName,
+                      isMe ? 'You' : resolvedReplyName,
                       style: AppTextTheme.of(context).senderName,
                     ),
                     Gap(4.h),

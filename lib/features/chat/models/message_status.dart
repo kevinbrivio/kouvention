@@ -8,7 +8,8 @@ extension MessageStatusExtension on MessageModel {
   MessageStatus getUIStatus(ChatModel? chat, String currentUid) {
     if (this.syncStatus == SyncStatus.pending) return MessageStatus.sending;
 
-    if (chat != null) {
+    // Read receipts only apply to direct chats (one other member).
+    if (chat != null && chat.isDirect) {
       final otherUid = chat.otherMemberUid(currentUid);
       final otherReadAt = chat.lastReadAt[otherUid];
 

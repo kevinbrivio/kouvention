@@ -4,6 +4,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
+import 'package:kouvention/features/chat/utils/display_name_resolver.dart';
+import 'package:kouvention/features/chat/viewmodel/chat_list_profile_provider.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
 
 class ContactResultTile extends ConsumerWidget {
@@ -22,8 +24,17 @@ class ContactResultTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final name = chat.displayName(currentUid);
-    final photoUrl = chat.displayPhotoUrl(currentUid);
+    final resolver = ref.watch(chatListProfileResolverProvider);
+    final name = resolveDisplayName(
+      chat: chat,
+      currentUid: currentUid,
+      resolver: resolver,
+    );
+    final photoUrl = resolveDisplayPhotoUrl(
+      chat: chat,
+      currentUid: currentUid,
+      resolver: resolver,
+    );
 
     bool showPhoto;
     if (chat.isDirect && photoUrl != null) {

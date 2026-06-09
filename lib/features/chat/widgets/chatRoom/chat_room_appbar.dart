@@ -8,6 +8,8 @@ import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
+import 'package:kouvention/features/chat/utils/display_name_resolver.dart';
+import 'package:kouvention/features/chat/viewmodel/chat_room_profile_provider.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
 
@@ -49,8 +51,17 @@ class ChatRoomAppBar extends ConsumerWidget implements PreferredSizeWidget {
         }
 
         final isDirect = chat.type == 'direct';
-        final chatDisplayName = chat.displayName(currentUid);
-        final chatPhotoUrl = chat.displayPhotoUrl(currentUid);
+        final resolver = ref.watch(chatRoomProfileResolverProvider(chatId));
+        final chatDisplayName = resolveDisplayName(
+          chat: chat,
+          currentUid: currentUid,
+          resolver: resolver,
+        );
+        final chatPhotoUrl = resolveDisplayPhotoUrl(
+          chat: chat,
+          currentUid: currentUid,
+          resolver: resolver,
+        );
 
         String? onlineStatusText;
         UserModel? otherUser;

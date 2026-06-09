@@ -136,7 +136,18 @@ class Messages extends Table {
   Set<Column<Object>>? get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [Chats, Messages])
+class UserProfiles extends Table {
+  TextColumn get uid => text()();
+  TextColumn get displayName => text()();
+  TextColumn get photoUrl => text().nullable()();
+  IntColumn get lastSeen => integer().nullable()();
+  IntColumn get updatedAt => integer()();
+
+  @override
+  Set<Column<Object>>? get primaryKey => {uid};
+}
+
+@DriftDatabase(tables: [Chats, Messages, UserProfiles])
 class MessageDatabase extends _$MessageDatabase {
   MessageDatabase() : super(_openConnection());
 
@@ -147,7 +158,7 @@ class MessageDatabase extends _$MessageDatabase {
   MessageDatabase.forExecutor(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -219,6 +230,10 @@ class MessageDatabase extends _$MessageDatabase {
         await customStatement(
           'UPDATE chats SET last_opened_at = COALESCE(updated_at, created_at)',
         );
+      }
+
+      if (from < 4) {
+        await m.createTable(userProfiles);
       }
     },
 
@@ -576,6 +591,56 @@ class MessageDatabase extends _$MessageDatabase {
       into(messages).insertOnConflictUpdate(message);
 
   // ============================
+  // USER PROFILES
+  // ============================
+  Future<void> upsertUserProfiles(List<UserProfilesCompanion> profiles) async {
+    await batch((b) {
+      for (final p in profiles) {
+        b.insert(userProfiles, p, onConflict: DoUpdate((old) => p));
+      }
+    });
+  }
+
+  Stream<List<UserProfile>> watchProfileByIds(Set<String> uids) {
+    if (uids.isEmpty) return Stream.value(const []);
+    return (select(userProfiles)..where((p) => p.uid.isIn(uids))).watch();
+  }
+
+  Future<List<UserProfile>> fetchProfileByIds(Set<String> uids) {
+    if (uids.isEmpty) return Future.value(const []);
+    return (select(userProfiles)..where((p) => p.uid.isIn(uids))).get();
+  }
+
+  Future<Set<String>> fetchAllProfileIds() async {
+    final rows = await (selectOnly(
+      userProfiles,
+    )..addColumns([userProfiles.uid])).get();
+
+    return rows.map((r) => r.read(userProfiles.uid)!).toSet();
+  }
+
+  // LRU eviction oldest profiles
+  Future<void> evictOldestProfiles({required int keep}) async {
+    final count = await customSelect(
+      'SELECT COUNT(*) as cnt FROM user_profiles',
+      readsFrom: {userProfiles},
+    ).getSingle();
+
+    final total = count.read<int>('cnt');
+    if (total < keep) return;
+    final limit = total - keep;
+
+    await customStatement(
+      'DELETE FROM user_profiles WHERE uid IN ('
+      ' SELECT uid FROM user_profiles'
+      ' ORDER BY updated_at ASC, uid ASC'
+      ' LIMIT ?'
+      ')',
+      [limit],
+    );
+  }
+
+  // ============================
   // UPDATE
   // ============================
   Future<void> updateMessageStatus(String messageId, SyncStatus newStatus) =>
@@ -775,6 +840,7 @@ class MessageDatabase extends _$MessageDatabase {
     await transaction(() async {
       await delete(messages).go();
       await delete(chats).go();
+      await delete(userProfiles).go();
     });
   }
 

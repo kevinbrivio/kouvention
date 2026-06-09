@@ -65,6 +65,21 @@ class _NewGroupChatBodyState extends State<_NewGroupChatBody> {
 
       _buildSelectedChips(),
 
+      // Hint: group includes you + selected friends
+      if (vm.selectedUsers.isNotEmpty)
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
+          child: Text(
+            vm.selectedUsers.length == 1
+                ? 'Group will include you and 1 other person'
+                : 'Group will include you and '
+                    '${vm.selectedUsers.length} other people',
+            style: AppTextTheme.of(context).subDescription3.copyWith(
+              color: AppColors.primary,
+            ),
+          ),
+        ),
+
       Expanded(
         child: vm.isSearching
             ? const Center(
@@ -86,8 +101,8 @@ class _NewGroupChatBodyState extends State<_NewGroupChatBody> {
               )
             : _buildResultsList(),
       ),
-      // Create group button — only in group mode with 2+ selected
-      if (vm.selectedUsers.length >= 2) _buildCreateGroupButton(),
+      // Create group button — group with you + at least 1 other person
+      if (vm.selectedUsers.isNotEmpty) _buildCreateGroupButton(),
     ],
   );
 

@@ -70,7 +70,6 @@ class ChatListVM extends BaseNotifier {
   Future<void> pinSelectedChats() async {
     if (_currentUid == null) return;
 
-    final db = ref.read(messageDatabaseProvider);
     final allChats = _currentChatFromStream;
     final selectedChats = allChats
         .where((c) => _selectedChatIds.contains(c.id))
@@ -262,27 +261,7 @@ class ChatListVM extends BaseNotifier {
     clearSelection();
   }
 
-  String chatDisplayName(ChatModel chat) => chat.displayName(_currentUid!);
-
-  String? chatPhotoURL(ChatModel chat) => chat.displayPhotoUrl(_currentUid!);
-
   int chatUnreadCount(ChatModel chat) => chat.unreadCountFor(_currentUid!);
-
-  String? typingText(ChatModel chat) {
-    final others = chat.typingUsers.where((uid) => uid != _currentUid).toList();
-
-    if (others.isEmpty) return null;
-
-    final names = others
-        .map((uid) => chat.memberInfo[uid]?.displayName ?? 'Someone')
-        .toList();
-
-    if (names.length == 1) {
-      return '${names.first} is typing...';
-    } else {
-      return '${names.join(', ')} others are typing...';
-    }
-  }
 }
 
 final chatListVM = ChangeNotifierProvider.autoDispose<ChatListVM>(
