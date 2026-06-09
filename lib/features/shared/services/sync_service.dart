@@ -536,6 +536,9 @@ class SyncService {
       replyToId: Value(replyTo?.messageId),
       replyToText: Value(replyTo?.text),
       replyToSenderName: Value(replyTo?.senderName),
+      replyToMediaType: Value(replyTo?.mediaType),
+      replyToMediaUrl: Value(replyTo?.mediaUrl),
+      replyToSentAt: Value(replyTo?.sentAt.millisecondsSinceEpoch),
     );
 
     await _db.upsertMessage(localMsg);

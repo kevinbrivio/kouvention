@@ -177,9 +177,7 @@ class ChatRoomVM extends BaseNotifier {
       // 5. Update lastOpenedAt so the LRU eviction ranks this chat as
       //    recently used and preserves it from eviction. Non-critical.
       try {
-        await ref
-            .read(messageDatabaseProvider)
-            .updateLastOpenedAt(chatId);
+        await ref.read(messageDatabaseProvider).updateLastOpenedAt(chatId);
       } catch (e) {
         debugPrint('lastOpenedAt update skipped ($e)');
       }
@@ -215,7 +213,7 @@ class ChatRoomVM extends BaseNotifier {
               senderName: _replyMessage!.senderName,
               text: _replyMessage!.text,
               sentAt: _replyMessage!.sentAt,
-              mediaUrl: _replyMessage!.allMediaUrls.toString(),
+              mediaUrl: _replyMessage!.allMediaUrls.firstOrNull,
               mediaType: _replyMessage!.type.name,
             )
           : null;
@@ -317,9 +315,7 @@ class ChatRoomVM extends BaseNotifier {
           );
         }
         if (chat?.hasMoreOlderRemote ?? false) {
-          final remote = await _messageRepository.fetchOlderMessages(
-            chatId,
-          );
+          final remote = await _messageRepository.fetchOlderMessages(chatId);
           fetchedRemote = remote.messages > 0;
           insertedCount += remote.messages;
           if (kDebugMode) {
@@ -341,8 +337,9 @@ class ChatRoomVM extends BaseNotifier {
             );
             if (reRead.isNotEmpty) {
               final existingIds = _loadedOlderMessages.map((m) => m.id).toSet();
-              final newRows =
-                  reRead.where((m) => !existingIds.contains(m.id)).toList();
+              final newRows = reRead
+                  .where((m) => !existingIds.contains(m.id))
+                  .toList();
               if (newRows.isNotEmpty) {
                 _loadedOlderMessages = [..._loadedOlderMessages, ...newRows];
                 _oldestLoadedSentAt = newRows.last.sentAt;
@@ -350,8 +347,10 @@ class ChatRoomVM extends BaseNotifier {
               }
             }
           } else if (kDebugMode) {
-            debugPrint('[loadOlder] remote not needed '
-                '(hasMoreOlderRemote=false or chat missing)');
+            debugPrint(
+              '[loadOlder] remote not needed '
+              '(hasMoreOlderRemote=false or chat missing)',
+            );
           }
         }
       }
@@ -360,7 +359,8 @@ class ChatRoomVM extends BaseNotifier {
       final chat = await db.getChatById(chatId);
       final remoteExhausted = !(chat?.hasMoreOlderRemote ?? false);
       if (remoteExhausted &&
-          (insertedCount == 0 || (insertedCount < threshold && !fetchedRemote))) {
+          (insertedCount == 0 ||
+              (insertedCount < threshold && !fetchedRemote))) {
         _hasMoreMessages = false;
       }
       if (kDebugMode) {
@@ -439,7 +439,7 @@ class ChatRoomVM extends BaseNotifier {
               senderName: _replyMessage!.senderName,
               text: _replyMessage!.text,
               sentAt: _replyMessage!.sentAt,
-              mediaUrl: _replyMessage!.allMediaUrls.toString(),
+              mediaUrl: _replyMessage!.allMediaUrls.firstOrNull,
               mediaType: _replyMessage!.type.name,
             )
           : null;
@@ -670,6 +670,7 @@ class ChatRoomVM extends BaseNotifier {
   }
 
   String getCloudinaryThumbnail(String videoUrl) {
+    print('========== GETTING THUMBNAIL FOR VIDEO: $videoUrl');
     if (videoUrl.isEmpty) return '';
     return videoUrl.replaceAll(RegExp(r'\.[^.]+$'), '.jpg');
   }
@@ -728,11 +729,7 @@ final chatMessagesStreamProvider = StreamProvider.autoDispose
       } else {
         // No target sent means nothing for us to jump
         final uid = ref.read(currentUidProvider);
-        localStream = db.watchMessages(
-          chatId,
-          uid!,
-          limit: 100,
-        );
+        localStream = db.watchMessages(chatId, uid!, limit: 100);
       }
 
       return localStream.map((localMsgs) {

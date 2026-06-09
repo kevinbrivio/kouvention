@@ -22,26 +22,25 @@ class UploadResultModel {
   });
 
   factory UploadResultModel.fromJson(Map<String, dynamic> json) {
-    final resourceType = json['resource_type'] as String?;
     final format = json['format'] as String?;
-    final isDocument =
-        format == 'pdf' ||
-        format == 'doc' ||
-        format == 'docx' ||
-        format == 'xls' ||
-        format == 'xlsx' ||
-        format == 'ppt' ||
-        format == 'pptx';
+    final originalFilename = json['original_filename'] as String? ?? '';
+    final url = json['secure_url'] as String? ?? '';
+
+    // Cloudinary's original_filename doesn't include extension,
+    // reconstruct full filename from original_filename + format
+    final fileName = originalFilename.isNotEmpty && format != null
+        ? '$originalFilename.$format'
+        : originalFilename;
+
+    // Determine type from file extension, not Cloudinary's resource_type.
+    // resource_type:'auto' can misclassify files (e.g. .txt as "image").
+    final messageType = _typeFromExtension(fileName, url, format);
 
     return UploadResultModel(
-      url: json['secure_url'],
-      fileName: json['original_filename'],
-      mimeType: isDocument
-          ? _rawMimeType(format!)
-          : _buildMimeType(resourceType, format),
-      messageType: isDocument
-          ? MessageType.file
-          : MessageType.fromString(resourceType!),
+      url: url,
+      fileName: fileName,
+      mimeType: _buildMimeType(messageType, format),
+      messageType: messageType,
       fileSizeBytes: json['bytes'],
       mediaDuration: json['duration'] != null
           ? (json['duration'] as double).round()
@@ -71,16 +70,63 @@ class UploadResultModel {
     localPath: localPath ?? this.localPath,
   );
 
-  static String _buildMimeType(String? resourceType, String? format) {
-    if (resourceType == null || format == null)
-      return 'application/octet-stream';
+  /// Determine [MessageType] from file extension.
+  /// Checks [fileName] first, then Cloudinary [format] (reliable extension).
+  /// Falls back to [MessageType.file] for unknown extensions.
+  static MessageType _typeFromExtension(
+    String fileName,
+    String url,
+    String? format,
+  ) {
+    // Prefer original file name extension
+    String? ext;
+    if (fileName.isNotEmpty) {
+      ext = fileName.split('.').last.toLowerCase();
+    }
 
-    switch (resourceType) {
-      case 'image':
+    // Fallback: extract from URL path (strip query params)
+    if (ext == null && url.isNotEmpty) {
+      final urlPath = url.split('?').first;
+      ext = urlPath.split('.').last.toLowerCase();
+    }
+
+    // Final fallback: Cloudinary format field
+    ext ??= format?.toLowerCase();
+    if (ext == null) return MessageType.file;
+
+    // Image extensions
+    if (ext == 'jpg' || ext == 'jpeg' || ext == 'png' || ext == 'gif' ||
+        ext == 'webp' || ext == 'bmp' || ext == 'svg' || ext == 'heic') {
+      return MessageType.image;
+    }
+
+    // Video extensions
+    if (ext == 'mp4' || ext == 'mov' || ext == 'avi' || ext == 'mkv' ||
+        ext == 'webm' || ext == 'flv' || ext == 'wmv') {
+      return MessageType.video;
+    }
+
+    // Audio extensions
+    if (ext == 'mp3' || ext == 'wav' || ext == 'ogg' || ext == 'm4a' ||
+        ext == 'aac' || ext == 'flac' || ext == 'wma') {
+      return MessageType.audio;
+    }
+
+    // Everything else is a file (pdf, docx, txt, zip, rar, etc.)
+    return MessageType.file;
+  }
+
+  static String _buildMimeType(MessageType type, String? format) {
+    if (format == null) return 'application/octet-stream';
+
+    switch (type) {
+      case MessageType.image:
         return 'image/${format == 'jpg' ? 'jpeg' : format}';
-      case 'video':
+      case MessageType.video:
         return 'video/$format';
-      case 'raw':
+      case MessageType.audio:
+        return 'audio/$format';
+      case MessageType.file:
         return _rawMimeType(format);
       default:
         return 'application/octet-stream';

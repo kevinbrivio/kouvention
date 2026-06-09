@@ -270,6 +270,9 @@ class MessageBubble extends ConsumerWidget {
 
   Widget _buildInBubbleReplyPreview(BuildContext context, ReplyToModel replyTo, String currentUid) {
     final isRepliedMessageMine = replyTo.senderId == currentUid;
+    final _hasValidMediaUrl = replyTo.mediaUrl != null &&
+        replyTo.mediaUrl!.isNotEmpty &&
+        replyTo.mediaUrl != '[]';
 
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
@@ -295,7 +298,7 @@ class MessageBubble extends ConsumerWidget {
             ),
           ),
           Gap(2.h),
-          if (replyTo.mediaType == 'text')
+          if (replyTo.mediaType == 'text' || !_hasValidMediaUrl)
             Text(
               replyTo.text,
               maxLines: 2,
@@ -304,9 +307,10 @@ class MessageBubble extends ConsumerWidget {
                 fontSize: 12.sp,
                 color: isMe ? Colors.white70 : Colors.grey[600],
               ),
-            ),
-
-          if (replyTo.mediaUrl != null) ...[_buildReplyMediaPreview(context, replyTo)],
+            )
+          else ...[
+            _buildReplyMediaPreview(context, replyTo),
+          ],
         ],
       ),
     );
@@ -318,7 +322,7 @@ class MessageBubble extends ConsumerWidget {
     final filename = url.split('/').last.toLowerCase().split('?').first;
     final ext = filename.split('.').last.toLowerCase();
 
-    if (ext == 'pdf') return _iconBox(context, Icons.picture_as_pdf, filename);
+    if (ext == 'pdf') return _pdfThumbnailOrIcon(context, url, filename);
     if (ext == 'docx' || ext == 'doc')
       return _iconBox(context, Icons.description, 'Document');
     if (ext == 'xlsx' || ext == 'xls')
@@ -364,6 +368,23 @@ class MessageBubble extends ConsumerWidget {
       ],
     ),
   );
+
+  Widget _pdfThumbnailOrIcon(BuildContext context, String url, String filename) {
+    final thumbUrl = url.replaceAll(RegExp(r'\.[^.]+$'), '.jpg');
+    return SizedBox(
+      width: 80.w,
+      height: 80.w,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(4.r),
+        child: Image.network(
+          thumbUrl,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) =>
+              _iconBox(context, Icons.picture_as_pdf, filename),
+        ),
+      ),
+    );
+  }
 
   Widget _iconBox(BuildContext context, IconData icon, String label) => Padding(
     padding: EdgeInsets.all(4.w),
