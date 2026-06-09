@@ -274,7 +274,18 @@ class FcmService {
       return;
     }
 
-    final token = await _messaging.getToken();
+    final String? token;
+    try {
+      token = await _messaging.getToken();
+    } catch (e) {
+      debugPrint('Error on getting token: $e');
+
+      _tokenRefreshSub?.cancel();
+      _tokenRefreshSub = null;
+      await _prefs.removeFcmToken();
+      return;
+    }
+
     if (token == null) {
       debugPrint('[FcmService] removeToken() skipped — no token');
       return;

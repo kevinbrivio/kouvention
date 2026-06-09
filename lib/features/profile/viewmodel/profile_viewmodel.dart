@@ -95,18 +95,6 @@ class ProfileVM extends BaseNotifier {
     try {
       isLoading = true;
       _isButtonLoading = true;
-
-      // Remove FCM Token — invalidate SDK token first, then clean Firestore
-      try {
-        await FirebaseMessaging.instance.deleteToken();
-      } catch (e) {
-        debugPrint('FCM deleteToken on sign out failed: $e');
-      }
-      final fcmService = ref.read(fcmServiceProvider);
-      await fcmService.removeToken();
-
-      // Update user offline status
-      final presence = ref.read(presenceNotifierProvider);
       await presence.signOutWithPresence(_authService);
 
       // Clear search cache - prevent other user access previous search cache
