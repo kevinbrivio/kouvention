@@ -1,3 +1,5 @@
+// ⚠️ DEPRECATED — Migrating to tokens.dart extension: context.text.xxx
+// Phase 2-3 will replace all AppTextTheme.of(context) → context.text.xxx.
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:kouvention/cores/constants/colors.dart';

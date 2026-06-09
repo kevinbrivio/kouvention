@@ -1,11 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:kouvention/cores/constants/button_theme.dart/cancel_button_theme.dart';
-import 'package:kouvention/cores/constants/button_theme.dart/elevated_button_theme.dart';
-import 'package:kouvention/cores/constants/button_theme.dart/secondary_button_theme.dart';
-import 'package:kouvention/cores/constants/button_theme.dart/white_button_theme.dart';
-import 'package:kouvention/cores/constants/colors.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/widgets/loading_indicator.dart';
 
 class Button extends StatefulWidget {
@@ -53,19 +49,95 @@ class Button extends StatefulWidget {
 class _ButtonState extends State<Button> {
   bool isButtonPressed = false;
 
+  // Inlined button styles replacing the deleted button_theme.dart files.
+  // All 4 variants share shape, padding, elevation, splash, minSize.
+  // Differences: backgroundColor, foregroundColor.
+
+  TextStyle get _buttonTextStyle => TextStyle(
+    fontFamily: 'Asap',
+    fontSize: 12.sp,
+    fontWeight: FontWeight.w500,
+    height: 1.5,
+    color: Colors.white,
+  );
+
+  ButtonStyle _elevatedStyle(ColorScheme scheme) => ElevatedButton.styleFrom(
+        backgroundColor: scheme.primary,
+        foregroundColor: scheme.onPrimary,
+        disabledBackgroundColor: AppColorTokens.disabled,
+        disabledForegroundColor: AppColorTokens.disabledText,
+        elevation: 0,
+        padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm.w),
+        minimumSize: Size(double.minPositive, AppSizing.buttonHeight.h),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.button.r),
+        ),
+        textStyle: _buttonTextStyle,
+        splashFactory: InkRipple.splashFactory,
+      );
+
+  ButtonStyle _secondaryStyle(ColorScheme scheme) => ElevatedButton.styleFrom(
+        backgroundColor: scheme.primary,
+        foregroundColor: scheme.primary,
+        disabledBackgroundColor: AppColorTokens.disabled,
+        disabledForegroundColor: AppColorTokens.disabledText,
+        elevation: 0,
+        padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm.w),
+        minimumSize: Size(double.minPositive, AppSizing.buttonHeight.h),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.button.r),
+        ),
+        textStyle: _buttonTextStyle,
+        splashFactory: InkRipple.splashFactory,
+      );
+
+  ButtonStyle _cancelStyle(ColorScheme scheme) => ElevatedButton.styleFrom(
+        backgroundColor: scheme.primary,
+        foregroundColor: scheme.onPrimary,
+        disabledBackgroundColor: AppColorTokens.disabled,
+        disabledForegroundColor: AppColorTokens.disabledText,
+        elevation: 0,
+        padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm.w),
+        minimumSize: Size(double.minPositive, AppSizing.buttonHeight.h),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.button.r),
+        ),
+        textStyle: _buttonTextStyle,
+        splashFactory: InkRipple.splashFactory,
+      );
+
+  ButtonStyle _whiteStyle() => ElevatedButton.styleFrom(
+        backgroundColor: AppSurfaceLight.surface,
+        foregroundColor: AppSurfaceLight.surface,
+        disabledBackgroundColor: AppColorTokens.disabled,
+        disabledForegroundColor: AppColorTokens.disabledText,
+        elevation: 0,
+        padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm.w),
+        minimumSize: Size(double.minPositive, AppSizing.buttonHeight.h),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.button.r),
+        ),
+        textStyle: _buttonTextStyle,
+        splashFactory: InkRipple.splashFactory,
+      );
+
   @override
   build(BuildContext context) {
-    ButtonStyle style = widget.isWhiteBackground
-        ? whiteButtonTheme.style!
+    final scheme = Theme.of(context).colorScheme;
+
+    final ButtonStyle style = widget.isWhiteBackground
+        ? _whiteStyle()
         : widget.isCancel
-            ? cancelButtonTheme.style!
+            ? _cancelStyle(scheme)
             : widget.isSecondary
-                ? secondaryElevatedButtonTheme.style!
-                : elevatedButtonTheme.style!;
-    TextStyle textStyle = style.textStyle!.resolve({})!;
+                ? _secondaryStyle(scheme)
+                : _elevatedStyle(scheme);
+
+    final TextStyle textStyle = _buttonTextStyle;
+
     return SizedBox(
       width: widget.width,
-      height: widget.height ?? 48.h,
+      height: widget.height ?? AppSizing.buttonHeight.h,
       child: ElevatedButton(
         onPressed: widget.onPressed != null
             ? () async {
@@ -80,7 +152,7 @@ class _ButtonState extends State<Button> {
         style: widget.loading
             ? style.copyWith(
                 splashFactory: NoSplash.splashFactory,
-                overlayColor: MaterialStateProperty.all(Colors.transparent),
+                overlayColor: WidgetStateProperty.all(Colors.transparent),
               )
             : style,
         child: Row(
@@ -90,8 +162,8 @@ class _ButtonState extends State<Button> {
           children: [
             if (widget.loading) ...[
               LoadingIndicator(
-                indicatorSize: 48.w,
-                indicatorColor: AppColors.white,
+                indicatorSize: AppSizing.touchMin.w,
+                indicatorColor: AppSurfaceLight.surface,
                 strokeWidth: 2,
               ),
             ] else ...[
@@ -111,15 +183,6 @@ class _ButtonState extends State<Button> {
                 ),
               ),
             ]
-
-            // if (widget.showArrow)
-            //   Padding(
-            //     padding: EdgeInsets.only(left: widget.widgetSpacing),
-            //     child: SvgPicture.asset(
-            //       images.next,
-            //       color: widget.isSecondary ? colors.primary : null,
-            //     ),
-            //   ),
           ],
         ),
       ),

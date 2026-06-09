@@ -1,3 +1,7 @@
+// ⚠️ DEPRECATED — Migrating to lib/cores/constants/tokens.dart
+// Phase 2-3 will replace all imports with tokens.dart.
+// Use Theme.of(context).colorScheme.xxx for theme-aware colors.
+// Use AppColorTokens (in tokens.dart) only when no scheme equivalent exists.
 import 'package:flutter/material.dart';
 
 class AppColors {
