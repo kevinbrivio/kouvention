@@ -56,7 +56,12 @@ class MediaBubble extends StatelessWidget {
     if (isSticker) return _StickerMedia(urls: urls, isMe: isMe);
     if (isPdf) return _FileMedia(message: message, isMe: isMe);
     if (isImage)
-      return _ImageMedia(caption: message.text, captions: message.mediaCaptions, urls: urls, isMe: isMe);
+      return _ImageMedia(
+        caption: message.text,
+        captions: message.mediaCaptions,
+        urls: urls,
+        isMe: isMe,
+      );
     if (isAudio)
       return _AudioMedia(urls: urls, isMe: isMe, byteSizes: bytesSizes);
     if (isVideo) return _VideoMedia(urls: urls, isMe: isMe);
@@ -86,29 +91,24 @@ class _ImageMedia extends StatelessWidget {
       final c = captions?.isNotEmpty == true ? captions![0] : caption;
       return _buildSingleImage(context, urls.first, 0, caption: c);
     } else {
-      final nonEmptyCaptions = captions?.where((c) => c.isNotEmpty).toList() ?? [];
-      final effectiveCaption = nonEmptyCaptions.isNotEmpty ? nonEmptyCaptions.first : caption;
+      final nonEmptyCaptions =
+          captions?.where((c) => c.isNotEmpty).toList() ?? [];
+      final effectiveCaption = nonEmptyCaptions.isNotEmpty
+          ? nonEmptyCaptions.first
+          : caption;
       return ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: Stack(
+        borderRadius: BorderRadius.circular(12.r),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildCollage(context, urls),
             if (effectiveCaption.isNotEmpty)
-              Positioned(
-                bottom: 0, left: 0, right: 0,
-                child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Colors.transparent, Colors.black54],
-                    ),
-                  ),
-                  child: Text(
-                    effectiveCaption,
-                    style: TextStyle(color: Colors.white, fontSize: 14.sp),
-                    textAlign: TextAlign.center,
+              Container(
+                padding: EdgeInsets.symmetric(vertical: 8.h),
+                child: Text(
+                  effectiveCaption,
+                  style: AppTextTheme.of(context).senderName.copyWith(
+                    color: isMe ? AppColors.white : AppColors.black,
                   ),
                 ),
               ),
@@ -118,48 +118,44 @@ class _ImageMedia extends StatelessWidget {
     }
   }
 
-  Widget _buildSingleImage(BuildContext context, String url, int index, {String caption = ''}) =>
-      GestureDetector(
-        onTap: () => _openFullscreen(context, index),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Stack(
-            children: [
-              CachedNetworkImage(
-                imageUrl: url,
-                fit: BoxFit.cover,
-                width: double.infinity,
-                height: 200.h,
-                placeholder: (_, __) => const Center(child: LoadingIndicator()),
-                errorWidget: (_, __, ___) => Container(
-                  height: 200.h,
-                  color: AppColors.grey,
-                  child: const Icon(Icons.broken_image),
+  Widget _buildSingleImage(
+    BuildContext context,
+    String url,
+    int index, {
+    String caption = '',
+  }) => GestureDetector(
+    onTap: () => _openFullscreen(context, index),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(12.r),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CachedNetworkImage(
+            imageUrl: url,
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: 200.h,
+            placeholder: (_, __) => const Center(child: LoadingIndicator()),
+            errorWidget: (_, __, ___) => Container(
+              height: 200.h,
+              color: AppColors.grey,
+              child: const Icon(Icons.broken_image),
+            ),
+          ),
+          if (caption.isNotEmpty)
+            Container(
+              padding: EdgeInsets.symmetric(vertical: 8.h),
+              child: Text(
+                caption,
+                style: AppTextTheme.of(context).senderName.copyWith(
+                  color: isMe ? AppColors.white : AppColors.black,
                 ),
               ),
-              if (caption.isNotEmpty)
-                Positioned(
-                  bottom: 0, left: 0, right: 0,
-                  child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [Colors.transparent, Colors.black54],
-                      ),
-                    ),
-                    child: Text(
-                      caption,
-                      style: TextStyle(color: Colors.white, fontSize: 14.sp),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      );
+            ),
+        ],
+      ),
+    ),
+  );
 
   Widget _buildCollage(BuildContext context, List<String> urls) {
     final count = urls.length;
@@ -168,9 +164,9 @@ class _ImageMedia extends StatelessWidget {
         height: 150.h,
         child: Row(
           children: [
-            Expanded(child: _buildCollageTile(context, urls[0], 0)),
+            Expanded(child: _buildCollageTile(context, count, urls[0], 0)),
             Gap(2.w),
-            Expanded(child: _buildCollageTile(context, urls[1], 1)),
+            Expanded(child: _buildCollageTile(context, count, urls[1], 1)),
           ],
         ),
       );
@@ -179,16 +175,22 @@ class _ImageMedia extends StatelessWidget {
         children: [
           SizedBox(
             height: 120.h,
-            child: _buildCollageTile(context, urls[0], 0, fullWidth: true),
+            child: _buildCollageTile(
+              context,
+              count,
+              urls[0],
+              0,
+              fullWidth: true,
+            ),
           ),
           Gap(2.h),
           SizedBox(
             height: 120.h,
             child: Row(
               children: [
-                Expanded(child: _buildCollageTile(context, urls[1], 1)),
+                Expanded(child: _buildCollageTile(context, count, urls[1], 1)),
                 Gap(2.w),
-                Expanded(child: _buildCollageTile(context, urls[2], 2)),
+                Expanded(child: _buildCollageTile(context, count, urls[2], 2)),
               ],
             ),
           ),
@@ -201,9 +203,9 @@ class _ImageMedia extends StatelessWidget {
             height: 100.h,
             child: Row(
               children: [
-                Expanded(child: _buildCollageTile(context, urls[0], 0)),
+                Expanded(child: _buildCollageTile(context, count, urls[0], 0)),
                 Gap(2.w),
-                Expanded(child: _buildCollageTile(context, urls[1], 1)),
+                Expanded(child: _buildCollageTile(context, count, urls[1], 1)),
               ],
             ),
           ),
@@ -212,9 +214,17 @@ class _ImageMedia extends StatelessWidget {
             height: 100.h,
             child: Row(
               children: [
-                Expanded(child: _buildCollageTile(context, urls[2], 2)),
+                Expanded(child: _buildCollageTile(context, count, urls[2], 2)),
                 Gap(2.w),
-                Expanded(child: _buildCollageTile(context, urls[3], 3, last: count > 4)),
+                Expanded(
+                  child: _buildCollageTile(
+                    context,
+                    count,
+                    urls[3],
+                    3,
+                    last: count > 4,
+                  ),
+                ),
               ],
             ),
           ),
@@ -223,51 +233,58 @@ class _ImageMedia extends StatelessWidget {
     }
   }
 
-  Widget _buildCollageTile(BuildContext context, String url, int index, {bool fullWidth = false, bool last = false}) =>
-      GestureDetector(
-        onTap: () => _openFullscreen(context, index),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(6.r),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              CachedNetworkImage(
-                imageUrl: url,
-                fit: BoxFit.cover,
-                width: double.infinity,
-                height: double.infinity,
-                placeholder: (_, __) => const Center(child: LoadingIndicator()),
-                errorWidget: (_, __, ___) => Container(
-                  color: Colors.grey[300],
-                  child: const Icon(Icons.broken_image),
+  Widget _buildCollageTile(
+    BuildContext context,
+    int count,
+    String url,
+    int index, {
+    bool fullWidth = false,
+    bool last = false,
+  }) => GestureDetector(
+    onTap: () => _openFullscreen(context, index),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(6.r),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          CachedNetworkImage(
+            imageUrl: url,
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            placeholder: (_, __) => const Center(child: LoadingIndicator()),
+            errorWidget: (_, __, ___) => Container(
+              color: Colors.grey[300],
+              child: const Icon(Icons.broken_image),
+            ),
+          ),
+          if (last)
+            Container(
+              color: Colors.black45,
+              child: Center(
+                child: Text(
+                  '+${count - 4}',
+                  style: AppTextTheme.of(
+                    context,
+                  ).subheadline1.copyWith(color: AppColors.grey),
                 ),
               ),
-              if (last)
-                Container(
-                  color: Colors.black45,
-                  child: const Center(
-                    child: Text(
-                      '+N',
-                      style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      );
+            ),
+        ],
+      ),
+    ),
+  );
 
   void _openFullscreen(BuildContext context, int initialIndex) {
     Navigator.push(
       context,
       PageRouteBuilder(
         opaque: false,
-        pageBuilder: (_, __, ___) =>
-            FullScreenViewer(
-              urls: urls,
-              initialIndex: initialIndex,
-              captions: captions ?? [caption],
-            ),
+        pageBuilder: (_, __, ___) => FullScreenViewer(
+          urls: urls,
+          initialIndex: initialIndex,
+          captions: captions ?? [caption],
+        ),
       ),
     );
   }
@@ -324,23 +341,23 @@ class _FullScreenViewerState extends State<FullScreenViewer> {
             itemCount: widget.urls.length,
             onPageChanged: (index) => setState(() => _currentIndex = index),
             itemBuilder: (context, index) => Center(
-                child: InteractiveViewer(
-                  panEnabled: true,
-                  minScale: 0.8,
-                  maxScale: 4.0,
-                  child: CachedNetworkImage(
-                    imageUrl: widget.urls[index],
-                    fit: BoxFit.contain,
-                    placeholder: (_, __) =>
-                        const Center(child: LoadingIndicator()),
-                    errorWidget: (_, __, ___) => const Icon(
-                      Icons.broken_image,
-                      color: Colors.white,
-                      size: 50,
-                    ),
+              child: InteractiveViewer(
+                panEnabled: true,
+                minScale: 0.8,
+                maxScale: 4.0,
+                child: CachedNetworkImage(
+                  imageUrl: widget.urls[index],
+                  fit: BoxFit.contain,
+                  placeholder: (_, __) =>
+                      const Center(child: LoadingIndicator()),
+                  errorWidget: (_, __, ___) => const Icon(
+                    Icons.broken_image,
+                    color: Colors.white,
+                    size: 50,
                   ),
                 ),
               ),
+            ),
           ),
         ),
         if (_showControls) ...[
@@ -368,7 +385,10 @@ class _FullScreenViewerState extends State<FullScreenViewer> {
                       ),
                       child: Text(
                         '${_currentIndex + 1} / ${widget.urls.length}',
-                        style: const TextStyle(color: Colors.white, fontSize: 14),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
                       ),
                     ),
                   const SizedBox(width: 48),
@@ -376,7 +396,8 @@ class _FullScreenViewerState extends State<FullScreenViewer> {
               ),
             ),
           ),
-          if (widget.captions.length > _currentIndex && widget.captions[_currentIndex].isNotEmpty)
+          if (widget.captions.length > _currentIndex &&
+              widget.captions[_currentIndex].isNotEmpty)
             Positioned(
               bottom: 40,
               left: 0,
@@ -385,7 +406,10 @@ class _FullScreenViewerState extends State<FullScreenViewer> {
                 child: Center(
                   child: Container(
                     constraints: BoxConstraints(maxWidth: 300.w),
-                    padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 16.w,
+                      vertical: 10.h,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.black54,
                       borderRadius: BorderRadius.circular(20),
@@ -418,7 +442,10 @@ class _VideoMedia extends StatelessWidget {
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       if (urls.length > 1)
-        Text('${urls.length} videos', style: AppTextTheme.of(context).subDescription),
+        Text(
+          '${urls.length} videos',
+          style: AppTextTheme.of(context).subDescription,
+        ),
       Gap(6.h),
       if (urls.length == 1)
         _VideoTile(url: urls[0], isMe: isMe)
@@ -462,15 +489,17 @@ class _VideoTileState extends State<_VideoTile> {
       imageFormat: ImageFormat.JPEG,
       quality: 75,
     );
-    if (result != null) {
+    if (result != null && mounted) {
       final codec = await ui.instantiateImageCodec(result);
       final frame = await codec.getNextFrame();
       final image = frame.image;
 
-      setState(() {
-        _thumbnail = result;
-        _aspectRatio = (image.width / image.height);
-      });
+      if (mounted) {
+        setState(() {
+          _thumbnail = result;
+          _aspectRatio = (image.width / image.height);
+        });
+      }
     }
   }
 
@@ -499,7 +528,7 @@ class _VideoTileState extends State<_VideoTile> {
             )
           else
             Container(width: 160.w, height: 180.w, color: Colors.grey[800]),
-            
+
           Container(
             decoration: BoxDecoration(
               color: Colors.black45,
@@ -538,6 +567,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   Future<void> _initializePlayer() async {
     _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl));
     await _controller.initialize();
+    if (!mounted) return;
     _controller.addListener(_videoListener);
     setState(() {
       _isInitialized = true;
@@ -686,12 +716,13 @@ class _StickerMedia extends StatelessWidget {
         child: CachedNetworkImage(
           imageUrl: url,
           fit: BoxFit.cover,
-          placeholder: (_, __) => Container(
-            color: Colors.grey.shade100,
-          ),
+          placeholder: (_, __) => Container(color: Colors.grey.shade100),
           errorWidget: (_, __, ___) => Container(
             color: Colors.grey.shade100,
-            child: Icon(Icons.sticky_note_2_outlined, color: Colors.grey.shade400),
+            child: Icon(
+              Icons.sticky_note_2_outlined,
+              color: Colors.grey.shade400,
+            ),
           ),
         ),
       ),
@@ -825,13 +856,18 @@ class _AudioTileState extends State<_AudioTile> with RouteAware {
             // Durasi
             Text(
               _formatDuration(_position),
-              style: AppTextTheme.of(context).subDescription2.copyWith(color: AppColors.white),
+              style: AppTextTheme.of(
+                context,
+              ).subDescription2.copyWith(color: AppColors.white),
             ),
           ],
         ),
       ),
       if (widget.byteSizes != null && widget.byteSizes != 0)
-        Text(formatBytes(widget.byteSizes!), style: AppTextTheme.of(context).subDescription3),
+        Text(
+          formatBytes(widget.byteSizes!),
+          style: AppTextTheme.of(context).subDescription3,
+        ),
     ],
   );
 }
@@ -993,13 +1029,32 @@ class _FileTileState extends State<_FileTile> {
   double _downloadProgress = 0.0;
 
   Future<void> _downloadAndOpen() async {
+    if (!mounted) return;
     if (_isDownloading) return;
     setState(() => _isDownloading = true);
 
     try {
       final dir = await getTemporaryDirectory();
-      final file = File('${dir.path}/${widget.name}');
-      final mimeType = _getMimeType(widget.url);
+
+      // Legacy fileName may lack extension (pre-Fix 1 data).
+      // Recover extension from Cloudinary URL so iOS can open the file.
+      var name = widget.name;
+      if (!name.contains('.')) {
+        try {
+          final uri = Uri.parse(widget.url);
+          final fromUrl = Uri.decodeComponent(
+            uri.pathSegments.last,
+          ).split('/').last;
+          if (fromUrl.contains('.')) {
+            name = '$name.${fromUrl.split('.').last}';
+          }
+        } catch (_) {
+          // Malformed URL — keep name as-is.
+        }
+      }
+
+      final file = File('${dir.path}/$name');
+      final mimeType = _getMimeType(name); // extension present → correct MIME
 
       if (await file.exists()) {
         print('=============================================');
@@ -1232,7 +1287,7 @@ class _FileTileState extends State<_FileTile> {
             size: 32,
             color: widget.isMe ? Colors.white70 : AppColors.grey,
           ),
-          const SizedBox(width: 12),
+          Gap(12.w),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
