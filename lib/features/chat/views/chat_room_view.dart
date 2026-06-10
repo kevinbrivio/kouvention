@@ -631,8 +631,10 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     // Resolve fresh display name for the replied-to sender
-    final replySender = ref.watch(otherUserStreamProvider(message.senderId)).value;
-    final resolvedReplyName = replySender?.displayName ?? message.senderName;
+    //
+    final resolver = ref.watch(chatRoomProfileResolverProvider(widget.chatId));
+    final resolvedReplyName =
+        resolver.lookupDisplayName(message.senderId) ?? message.senderName;
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(16.r),
