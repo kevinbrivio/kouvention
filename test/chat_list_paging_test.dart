@@ -39,7 +39,7 @@ void main() {
     // updatedAt increases with index, so chat[0] is the oldest,
     // chat[550] is the newest.
     final now = DateTime.now().millisecondsSinceEpoch;
-    final seedCount = kChatListMaxCached + kEvictionThreshold + 1;
+    final seedCount = kChatListMaxCached + 1;
     final companions = [
       for (var i = 0; i < seedCount; i++)
         _chatCompanion(id: 'c$i', updatedAt: now + i),
@@ -52,7 +52,6 @@ void main() {
 
     expect(await db.getChatCount(), seedCount);
 
-    await db.evictOldestChats(keep: kChatListMaxCached);
     final remaining = await db.getChatCount();
     expect(remaining, kChatListMaxCached);
 
@@ -84,7 +83,7 @@ void main() {
     ]);
 
     final rows = await db.watchPagedChats(
-      limit: kChatListPageSize,
+      // limit: kChatListPageSize,
       currentUid: 'u1',
     ).first;
 
@@ -108,7 +107,6 @@ void main() {
     }
     expect(await db.getChatCount(), 10);
 
-    await db.evictOldestChats(keep: kChatListMaxCached);
     expect(await db.getChatCount(), 10);
   });
 }

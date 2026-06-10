@@ -46,7 +46,6 @@ class UserProfileRepository {
     final companions = fetched.map((c) => _toCompanion(c, now)).toList();
 
     await _db.upsertUserProfiles(companions);
-    await _db.evictOldestProfiles(keep: kProfileMaxCached);
 
     return _db.fetchProfileByIds(uids);
   }
@@ -108,7 +107,8 @@ class UserProfileRepository {
       final memberDisplayName = memberInfo[uid]?.displayName;
       if (memberDisplayName == null) continue;
       final cachedProfile = cachedByUid[uid];
-      if (cachedProfile == null) continue; // missing → handled by refreshStaleAndMissing
+      if (cachedProfile == null)
+        continue; // missing → handled by refreshStaleAndMissing
       if (memberDisplayName != cachedProfile.displayName) {
         mismatched.add(uid);
       }
@@ -121,6 +121,10 @@ class UserProfileRepository {
       await fetchProfileByIds(mismatched);
     }
   }
+
+  /// Fetch only display name from Database for showing into message bubble
+  Future<String> fetchUserDisplayName({required String uid}) =>
+      _db.fetchProfileDisplayName(uid);
 
   // ----- Helpers ---------------------------
   static UserProfilesCompanion _toCompanion(UserModel u, int fetchedAtMs) =>

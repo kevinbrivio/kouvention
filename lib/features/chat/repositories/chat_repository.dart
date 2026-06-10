@@ -45,6 +45,7 @@ class ChatRepository {
         latestSeenRemoteAt: existing?.latestSeenRemoteAt ?? 0,
       ),
     ]);
+    
     return remote;
   }
 
@@ -68,27 +69,14 @@ class ChatRepository {
     void Function(List<ChatModel> initial)? onInitial,
   }) async* {
     try {
-      final initial = await _chatService.fetchChatRoomsPage(
-        currentUid: uid,
-        limit: limit,
-      );
+      final initial = await _chatService.fetchChatRoomsPage(currentUid: uid);
       if (initial.isNotEmpty) {
         await _persistChats(initial);
-        await _db.evictOldestChats(keep: kChatListMaxCached);
         onInitial?.call(initial);
       }
     } catch (e) {
       debugPrint('firstPageStream: initial fetch failed: $e');
     }
-    yield* _chatService.streamChatList(uid, limit: limit).asyncMap((
-      chats,
-    ) async {
-      final hasNew = await _persistChats(chats);
-      if (hasNew) {
-        await _db.evictOldestChats(keep: kChatListMaxCached);
-      }
-      return chats;
-    });
   }
 
   // --- Inbox (older pages) ---------------------------
@@ -102,16 +90,14 @@ class ChatRepository {
   /// eviction after a successful write.
   Future<List<ChatModel>> fetchOlderChatsPage({
     required String uid,
-    required int limit,
     ChatCursor? cursor,
     Set<String> excludeIds = const {},
   }) async {
     debugPrint(
-      '🌐 Firestore: fetching $limit chats (cursor: ${cursor?.chatId ?? "none"})',
+      '🌐 Firestore: fetching chats (cursor: ${cursor?.chatId ?? "none"})',
     );
     final fetched = await _chatService.fetchChatRoomsPage(
       currentUid: uid,
-      limit: limit,
       cursor: cursor,
     );
     debugPrint('🌐 Firestore: got ${fetched.length} chats from remote');
@@ -122,7 +108,6 @@ class ChatRepository {
     }
 
     await _persistChats(fetched);
-    await _db.evictOldestChats(keep: kChatListMaxCached, excludeIds: excludeIds);
     final total = await _db.getChatCount();
     debugPrint(
       '💾 Drift: persisted ${fetched.length} chats, total in Drift: $total',

@@ -67,7 +67,6 @@ class ChatSyncCoordinator {
     _queue.enqueue('login:inbox-first-page', () async {
       await _chatRepository.fetchOlderChatsPage(
         uid: uid,
-        limit: chatListPageSize,
       );
     });
     _queue.enqueue('login:flush-pending', _flushPending);

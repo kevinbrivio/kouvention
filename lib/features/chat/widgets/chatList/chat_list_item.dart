@@ -29,8 +29,16 @@ class ChatListItem extends ConsumerWidget {
     final isSelected = vm.selectedChatIds.contains(chat.id);
 
     final resolver = ref.watch(chatListProfileResolverProvider);
-    final displayName = resolveDisplayName(chat: chat, currentUid: vm.currentId!, resolver: resolver);
-    final photoUrl = resolveDisplayPhotoUrl(chat: chat, currentUid: vm.currentId!, resolver: resolver);
+    final displayName = resolveDisplayName(
+      chat: chat,
+      currentUid: vm.currentId!,
+      resolver: resolver,
+    );
+    final photoUrl = resolveDisplayPhotoUrl(
+      chat: chat,
+      currentUid: vm.currentId!,
+      resolver: resolver,
+    );
     final initialLetter = displayName.isNotEmpty
         ? displayName[0].toUpperCase()
         : '?';
@@ -70,9 +78,21 @@ class ChatListItem extends ConsumerWidget {
             padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
             child: Row(
               children: [
-                _buildAvatar(context, initialLetter, showAvatarPhoto, photoUrl, isGroup, isSelected),
+                _buildAvatar(
+                  context,
+                  initialLetter,
+                  showAvatarPhoto,
+                  photoUrl,
+                  isGroup,
+                  isSelected,
+                ),
                 Gap(12.w),
-                _buildMessagePreview(context, displayName, lastMessage, typingText),
+                _buildMessagePreview(
+                  context,
+                  displayName,
+                  lastMessage,
+                  typingText,
+                ),
                 Gap(4.w),
                 _buildTimeAndBadge(context, lastMessage, unread, isPinned),
               ],
@@ -94,21 +114,34 @@ class ChatListItem extends ConsumerWidget {
 
   /// Resolves typing indicator names from the fresh profile cache,
   /// falling back to [MemberInfo] (write-once snapshot from chat creation).
-  String? _resolveTypingText(ChatModel chat, String? currentUid, UserProfileResolver resolver) {
+  String? _resolveTypingText(
+    ChatModel chat,
+    String? currentUid,
+    UserProfileResolver resolver,
+  ) {
     if (currentUid == null) return null;
     final others = chat.typingUsers.where((uid) => uid != currentUid).toList();
     if (others.isEmpty) return null;
     final names = others
-        .map((uid) =>
-            resolver.lookupDisplayName(uid) ??
-            chat.memberInfo[uid]?.displayName ??
-            'Someone')
+        .map(
+          (uid) =>
+              resolver.lookupDisplayName(uid) ??
+              chat.memberInfo[uid]?.displayName ??
+              'Someone',
+        )
         .toList();
     if (names.length == 1) return '${names.first} is typing...';
     return '${names.join(', ')} others are typing...';
   }
 
-  Widget _buildAvatar(BuildContext context, String initialLetter, bool showAvatarPhoto, String? photoUrl, bool isGroup, bool isSelected) => Stack(
+  Widget _buildAvatar(
+    BuildContext context,
+    String initialLetter,
+    bool showAvatarPhoto,
+    String? photoUrl,
+    bool isGroup,
+    bool isSelected,
+  ) => Stack(
     children: [
       CircleAvatar(
         radius: 24.r,
@@ -150,30 +183,39 @@ class ChatListItem extends ConsumerWidget {
     ],
   );
 
-  Widget _buildMessagePreview(BuildContext context, String displayName, lastMessage, typing) =>
-      Expanded(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              displayName,
-              style: AppTextTheme.of(context).senderName,
-              overflow: TextOverflow.ellipsis,
-            ),
-            if (lastMessage != null)
-              Text(
-                typing ?? lastMessage.text,
-                style: AppTextTheme.of(context).subDescription2.copyWith(
-                  color: typing != null ? AppColors.primary : AppColors.grey,
-                ),
-                overflow: TextOverflow.ellipsis,
-                softWrap: true,
-              ),
-          ],
+  Widget _buildMessagePreview(
+    BuildContext context,
+    String displayName,
+    lastMessage,
+    typing,
+  ) => Expanded(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          displayName,
+          style: AppTextTheme.of(context).senderName,
+          overflow: TextOverflow.ellipsis,
         ),
-      );
+        if (lastMessage != null)
+          Text(
+            typing ?? lastMessage.text,
+            style: AppTextTheme.of(context).subDescription2.copyWith(
+              color: typing != null ? AppColors.primary : AppColors.grey,
+            ),
+            overflow: TextOverflow.ellipsis,
+            softWrap: true,
+          ),
+      ],
+    ),
+  );
 
-  Widget _buildTimeAndBadge(BuildContext context, LastMessage? lastMessage, int unread, bool isPinned) => Column(
+  Widget _buildTimeAndBadge(
+    BuildContext context,
+    LastMessage? lastMessage,
+    int unread,
+    bool isPinned,
+  ) => Column(
     crossAxisAlignment: CrossAxisAlignment.end,
     children: [
       if (lastMessage != null)
@@ -195,9 +237,9 @@ class ChatListItem extends ConsumerWidget {
               backgroundColor: AppColors.primary,
               child: Text(
                 '$unread',
-                style: AppTextTheme.of(context).subDescription3.copyWith(
-                  color: AppColors.white,
-                ),
+                style: AppTextTheme.of(
+                  context,
+                ).subDescription3.copyWith(color: AppColors.white),
               ),
             ),
           ],

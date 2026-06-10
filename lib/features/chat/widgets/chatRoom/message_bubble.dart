@@ -74,7 +74,6 @@ class MessageBubble extends ConsumerWidget {
     final repliedSenderName = resolver.lookupDisplayName(
       message.replyTo?.senderId ?? '',
     );
-    print('======= resolved reply name: $repliedSenderName');
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),

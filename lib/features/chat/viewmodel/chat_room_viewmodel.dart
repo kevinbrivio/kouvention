@@ -120,7 +120,7 @@ class ChatRoomVM extends BaseNotifier {
     replyTo: m.replyToId != null
         ? ReplyToModel(
             messageId: m.replyToId!,
-            senderId: '',
+            senderId: m.replyToSenderId ?? '',
             senderName: m.replyToSenderName ?? '',
             text: m.replyToText ?? '',
             sentAt: m.replyToSentAt != null
@@ -777,7 +777,7 @@ final chatMessagesStreamProvider = StreamProvider.autoDispose
                 replyTo: m.replyToId != null
                     ? ReplyToModel(
                         messageId: m.replyToId!,
-                        senderId: '', // Sesuaikan jika lu butuh
+                        senderId: m.replyToSenderId ?? '',
                         senderName: m.replyToSenderName ?? '',
                         text: m.replyToText ?? '',
                         sentAt: m.replyToSentAt != null

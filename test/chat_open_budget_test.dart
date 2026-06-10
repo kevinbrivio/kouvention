@@ -1,6 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:kouvention/features/chat/services/databases/message_database.dart'
-    show kEvictionThreshold;
 import 'package:kouvention/features/chat/viewmodel/chat_list_viewmodel.dart'
     show kChatListMaxCached;
 import 'performance_helpers.dart';
@@ -11,7 +9,7 @@ void main() {
       () async {
     final db = await freshInMemoryDb();
     try {
-      final seedCount = kChatListMaxCached + kEvictionThreshold + 1;
+      final seedCount = kChatListMaxCached + 1;
       final timings =
           await seedLargeInbox(db, chatCount: seedCount, keep: kChatListMaxCached);
       // ignore: avoid_print

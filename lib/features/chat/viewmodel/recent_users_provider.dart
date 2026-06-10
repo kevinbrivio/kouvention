@@ -15,10 +15,7 @@ final recentUsersProvider = FutureProvider.autoDispose<List<UserModel>>((
   if (currentUid == null) return [];
 
   // One-shot paged fetch — no live stream listener (AGENTS.md §9.2).
-  final chats = await chatService.fetchChatRoomsPage(
-    currentUid: currentUid,
-    limit: 20,
-  );
+  final chats = await chatService.fetchChatRoomsPage(currentUid: currentUid);
 
   // Get other UIDs from direct chats, preserving recency order.
   final otherUids = chats
