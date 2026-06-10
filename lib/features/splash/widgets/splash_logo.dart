@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:kouvention/cores/constants/colors.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/constants/image_paths.dart';
-import 'package:kouvention/cores/constants/text_theme.dart';
 
 class SplashLogo extends StatelessWidget {
   const SplashLogo({super.key});
@@ -23,20 +22,20 @@ class SplashLogo extends StatelessWidget {
       Text.rich(
         TextSpan(
           text: 'Kouvent',
-          style: AppTextTheme.of(context).headline1,
+          style: context.text.headline1,
           children: [
             TextSpan(
               text: 'ion',
-              style: AppTextTheme.of(context).headline1.copyWith(
+              style: context.text.headline1.copyWith(
                 fontWeight: FontWeight.w300,
-                color: AppColors.white.withAlpha(200),
+                color: Colors.white.withAlpha(200),
               ),
             ),
           ],
         ),
       ),
 
-      Text('Connect instantly, anywhere.', style: AppTextTheme.of(context).body2),
+      Text('Connect instantly, anywhere.', style: context.text.body2),
     ],
   );
 }

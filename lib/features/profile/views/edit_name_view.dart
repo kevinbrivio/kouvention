@@ -3,7 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/bases/base_view.dart';
-import 'package:kouvention/cores/constants/text_theme.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/cores/widgets/custom_app_bar.dart';
 import 'package:kouvention/cores/widgets/custom_button.dart';
@@ -30,8 +30,8 @@ class _EditNameViewState extends State<EditNameView> {
   Widget _buildBody(BuildContext context, EditNameVM vm) => SafeArea(
     child: Padding(
       padding: EdgeInsets.only(
-        left: 24.w,
-        right: 24.w,
+        left: AppRadius.xl.w,
+        right: AppRadius.xl.w,
         top: MediaQuery.of(context).padding.top,
         bottom: MediaQuery.of(context).padding.bottom,
       ),
@@ -51,10 +51,10 @@ class _EditNameViewState extends State<EditNameView> {
                     onSubmit: (val) => vm.editName(context),
                   ),
                 ),
-                Gap(8.h),
+                Gap(AppSpacing.xs.h),
                 Text(
                   'People will see this name if you interact with them.',
-                  style: AppTextTheme.of(context).subDescription3,
+                  style: context.text.subDescription3,
                 ),
               ],
             ),
@@ -66,7 +66,7 @@ class _EditNameViewState extends State<EditNameView> {
   );
 
   PreferredSizeWidget _buildAppBar() => CustomAppBar(
-    body: Text('Name', style: AppTextTheme.of(context).appBar),
+    body: Text('Name', style: context.text.appBar),
     onBack: () => context.go(RouterRoutes.profile.path),
   );
 }

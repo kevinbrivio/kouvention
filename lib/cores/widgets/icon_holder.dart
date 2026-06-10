@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:kouvention/cores/constants/colors.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 
 class IconHolder extends StatelessWidget {
   final Widget icon;
@@ -11,15 +11,18 @@ class IconHolder extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     decoration: BoxDecoration(
-      color: AppColors.primary.withValues(alpha: 0.8),
-      borderRadius: radius ?? BorderRadius.circular(50.r),
+      color: Theme.of(context)
+          .colorScheme
+          .primary
+          .withValues(alpha: 0.8),
+      borderRadius: radius ?? BorderRadius.circular(AppRadius.full.r),
       border: Border.all(
-        color: AppColors.primary2.withValues(alpha: 0.2),
+        color: AppColorTokens.primaryLighter.withValues(alpha: 0.2),
         style: BorderStyle.solid,
         width: 1.sp,
       ),
     ),
-    padding: EdgeInsets.all(12.w),
+    padding: EdgeInsets.all(AppSpacing.sm.w),
     child: icon,
   );
 }

@@ -4,8 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/bases/base_view.dart';
-import 'package:kouvention/cores/constants/colors.dart';
-import 'package:kouvention/cores/constants/text_theme.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/cores/widgets/custom_button.dart';
 import 'package:kouvention/cores/widgets/liquid_glass_box.dart';
@@ -27,10 +26,10 @@ class ProfileView extends StatelessWidget {
       elevation: 0,
       scrolledUnderElevation: 0,
       leading: IconButton(
-        icon: Icon(Icons.arrow_back, color: AppColors.primary,),
+        icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.primary,),
         onPressed: () => context.go(RouterRoutes.chatList.path),
       ),
-      title: Text('Profile', style: AppTextTheme.of(context).appBar),
+      title: Text('Profile', style: context.text.appBar),
       centerTitle: false,
     ),
     builder: (context, vm) => _ProfileBody(viewmodel: vm),
@@ -49,7 +48,7 @@ class _ProfileBody extends ConsumerWidget {
 
     if (user == null) {
       return Container(
-        color: AppColors.backdrop,
+        color: Theme.of(context).colorScheme.surface,
         child: const Center(child: LoadingIndicator()),
       );
     }
@@ -73,12 +72,7 @@ class _ProfileBody extends ConsumerWidget {
             Gap(32.h),
             Text(
               'PERSONAL INFO',
-              style: TextStyle(
-                fontSize: 12.sp,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey.shade500,
-                letterSpacing: 1.0,
-              ),
+              style: context.text.body1,
             ),
             Gap(12.h),
             PersonalInfoSection(
@@ -90,24 +84,19 @@ class _ProfileBody extends ConsumerWidget {
             Gap(24.h),
             Text(
               'SETTINGS',
-              style: TextStyle(
-                fontSize: 12.sp,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey.shade500,
-                letterSpacing: 1.0,
-              ),
+              style: context.text.body1,
             ),
             Gap(12.h),
             SettingsTile(
               icon: Icons.shield_outlined,
-              iconColor: AppColors.primary,
+              iconColor: Theme.of(context).colorScheme.primary,
               title: 'Privacy & Security',
               subtitle: 'Manage your data and visibility',
               onTap: () => context.push(RouterRoutes.privacySettings.path),
             ),
             SettingsTile(
               icon: Icons.notifications_outlined,
-              iconColor: AppColors.primary,
+              iconColor: Theme.of(context).colorScheme.primary,
               title: 'Notifications',
               subtitle: 'Message alerts and sounds',
               onTap: () =>
@@ -115,7 +104,7 @@ class _ProfileBody extends ConsumerWidget {
             ),
             SettingsTile(
               icon: Icons.brightness_6,
-              iconColor: AppColors.primary,
+              iconColor: Theme.of(context).colorScheme.primary,
               title: 'Appearance',
               subtitle: switch (themeMode) {
                 ThemeMode.system => 'System default',

@@ -9,7 +9,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
-import 'package:kouvention/cores/constants/colors.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
@@ -135,7 +135,7 @@ class ProfileVM extends BaseNotifier {
         context: context,
         useRootNavigator: true,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12.r),
+          borderRadius: BorderRadius.circular(AppRadius.md.r),
         ),
         builder: (sheetContext) => SafeArea(
           child: Column(
@@ -174,8 +174,8 @@ class ProfileVM extends BaseNotifier {
         uiSettings: [
           AndroidUiSettings(
             toolbarTitle: 'Crop Photo',
-            toolbarColor: AppColors.primary,
-            toolbarWidgetColor: AppColors.white,
+            toolbarColor: AppColorTokens.primary,
+            toolbarWidgetColor: Colors.white,
             lockAspectRatio: true,
           ),
           IOSUiSettings(

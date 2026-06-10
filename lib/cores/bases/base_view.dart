@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
-import 'package:kouvention/cores/constants/colors.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/widgets/loading_indicator.dart';
 
 class BaseView<T extends BaseNotifier> extends ConsumerWidget {
@@ -49,8 +49,11 @@ class BaseView<T extends BaseNotifier> extends ConsumerWidget {
                     decoration: useGradient
                         ? BoxDecoration(
                             gradient: LinearGradient(
-                              colors: [AppColors.primary, AppColors.primary2],
-                              stops: [0.6, 0.9],
+                              colors: [
+                                AppColorTokens.primary,
+                                AppColorTokens.primaryLighter,
+                              ],
+                              stops: const [0.6, 0.9],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
@@ -94,7 +97,7 @@ class BaseView<T extends BaseNotifier> extends ConsumerWidget {
       repeat: original.repeat,
       matchTextDirection: original.matchTextDirection,
       colorFilter: const ColorFilter.mode(
-        Color(0xFF1A1A1A),
+        AppSurfaceDark.surfaceInputBar,
         BlendMode.multiply,
       ),
       onError: original.onError,

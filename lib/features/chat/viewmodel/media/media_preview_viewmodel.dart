@@ -2,11 +2,11 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
-import 'package:kouvention/cores/constants/colors.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/models/upload_result_model.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
@@ -115,8 +115,8 @@ class MediaPreviewVM extends BaseNotifier {
       uiSettings: [
         AndroidUiSettings(
           toolbarTitle: 'Crop Photo',
-          toolbarColor: AppColors.primary,
-          toolbarWidgetColor: AppColors.white,
+          toolbarColor: AppColorTokens.primary,
+          toolbarWidgetColor: const Color(0xFFFFFFFF),
           lockAspectRatio: true,
         ),
         IOSUiSettings(

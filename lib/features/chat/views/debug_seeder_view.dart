@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
-import 'package:kouvention/cores/constants/colors.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/services/debug/debug_chat_seeder.dart';
 
@@ -92,7 +92,7 @@ class _DebugSeederViewState extends ConsumerState<DebugSeederView> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Debug Seeder'),
-        backgroundColor: AppColors.primary,
+        backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
       ),
       body: SafeArea(
@@ -126,7 +126,7 @@ class _DebugSeederViewState extends ConsumerState<DebugSeederView> {
                       icon: const Icon(Icons.bolt),
                       label: const Text('Seed 250 messages'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
+                        backgroundColor: Theme.of(context).colorScheme.primary,
                         foregroundColor: Colors.white,
                       ),
                     ),
@@ -138,7 +138,7 @@ class _DebugSeederViewState extends ConsumerState<DebugSeederView> {
                       icon: const Icon(Icons.flash_on),
                       label: const Text('Seed 1000 messages'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
+                        backgroundColor: Theme.of(context).colorScheme.primary,
                         foregroundColor: Colors.white,
                       ),
                     ),
@@ -216,7 +216,7 @@ class _ProgressCard extends StatelessWidget {
     return Container(
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.08),
+        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12.r),
       ),
       child: Column(
@@ -230,7 +230,7 @@ class _ProgressCard extends StatelessWidget {
           LinearProgressIndicator(
             value: pct,
             backgroundColor: Colors.grey[300],
-            valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+            valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary),
           ),
         ],
       ),

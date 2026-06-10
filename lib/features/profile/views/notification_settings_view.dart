@@ -7,8 +7,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/bases/base_view.dart';
-import 'package:kouvention/cores/constants/colors.dart';
-import 'package:kouvention/cores/constants/text_theme.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/cores/widgets/custom_app_bar.dart';
 import 'package:kouvention/features/notification/services/notification_sound.dart';
@@ -24,7 +23,7 @@ class NotificationSettingsView extends StatelessWidget {
     provider: notificationSettingsVM,
     useGradient: false,
     appBar: (_) => CustomAppBar(
-      body: Text('Notifications', style: AppTextTheme.of(context).appBar),
+      body: Text('Notifications', style: context.text.appBar),
       onBack: () => context.go(RouterRoutes.profile.path),
     ),
     builder: (context, vm) => _Body(viewmodel: vm),
@@ -77,17 +76,17 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Gap(24.h),
+          Gap(AppSpacing.lg.h),
 
           Text(
             'NOTIFICATIONS',
-            style: AppTextTheme.of(context).subDescription
+            style: context.text.subDescription
           ),
-          Gap(12.h),
+          Gap(AppSpacing.sm.h),
 
           if (!widget.viewmodel.osPermissionGranted) ...[
             _buildPermissionBanner(),
-            Gap(16.h),
+            Gap(AppSpacing.md.h),
           ],
 
           Opacity(
@@ -104,7 +103,7 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
             ),
           ),
 
-          Gap(4.h),
+          Gap(AppSpacing.xxs.h),
 
           Opacity(
             opacity: widget.viewmodel.osPermissionGranted ? 1.0 : 0.25,
@@ -112,7 +111,7 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
               absorbing: !widget.viewmodel.osPermissionGranted,
               child: SettingsTile(
                 icon: Icons.music_note_outlined,
-                iconColor: AppColors.primary,
+                iconColor: AppColorTokens.primary,
                 title: 'Default Sound',
                 subtitle: widget.viewmodel.currentSoundDisplayName,
                 onTap: () => _showSoundPicker(context),
@@ -120,7 +119,7 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
             ),
           ),
 
-          Gap(4.h),
+          Gap(AppSpacing.xxs.h),
 
           Opacity(
             opacity: widget.viewmodel.osPermissionGranted ? 1.0 : 0.25,
@@ -128,7 +127,7 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
               absorbing: !widget.viewmodel.osPermissionGranted,
               child: SettingsTile(
                 icon: Icons.groups_outlined,
-                iconColor: AppColors.primary,
+                iconColor: AppColorTokens.primary,
                 title: 'Group Sound',
                 subtitle: widget.viewmodel.currentGroupSoundDisplayName,
                 onTap: () => _showGroupSoundPicker(context),
@@ -136,7 +135,7 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
             ),
           ),
 
-          Gap(4.h),
+          Gap(AppSpacing.xxs.h),
 
           Opacity(
             opacity: widget.viewmodel.osPermissionGranted ? 1.0 : 0.25,
@@ -154,19 +153,19 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
             ),
           ),
 
-          Gap(16.h),
+          Gap(AppSpacing.md.h),
 
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: 4.w),
+            padding: EdgeInsets.symmetric(horizontal: AppSpacing.xxs.w),
             child: Text(
               widget.viewmodel.osPermissionGranted
                   ? 'You can also manage notification sounds and vibration from your device\'s Settings app.'
                   : 'Notifications are disabled at the system level. Tap "Open Settings" to enable them.',
-              style: AppTextTheme.of(context).subDescription3
+              style: context.text.subDescription3
             ),
           ),
 
-          Gap(32.h),
+          Gap(AppSpacing.xl.h),
         ],
       ),
     ),
@@ -177,7 +176,7 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
       context: context,
       useRootNavigator: true,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg.r)),
       ),
       builder: (sheetContext) {
         final initialId = widget.viewmodel.currentSoundId;
@@ -186,7 +185,7 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
         return StatefulBuilder(
           builder: (context, setDialogState) => SafeArea(
             child: Padding(
-              padding: EdgeInsets.symmetric(vertical: 16.h),
+              padding: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -196,10 +195,10 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
                       padding: EdgeInsets.symmetric(horizontal: 20.w),
                       child: Text(
                         'Notification Sound',
-                        style: AppTextTheme.of(context).subDescription2
+                        style: context.text.subDescription2
                       ),
                     ),
-                    Gap(8.h),
+                    Gap(AppSpacing.xs.h),
                     ...NotificationSound.bundled.map(
                       (sound) => _SoundTile(
                         label: sound.displayName,
@@ -217,7 +216,7 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
                         () => selectedId = NotificationSound.systemId,
                       ),
                     ),
-                    Gap(16.h),
+                    Gap(AppSpacing.md.h),
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: 20.w),
                       child: SizedBox(
@@ -230,16 +229,16 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
                             Navigator.pop(sheetContext);
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
+                            backgroundColor: Theme.of(context).colorScheme.primary,
                             foregroundColor: Colors.white,
                             padding: EdgeInsets.symmetric(vertical: 14.h),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12.r),
+                              borderRadius: BorderRadius.circular(AppRadius.md.r),
                             ),
                           ),
                           child: Text(
                             'Done',
-                            style: AppTextTheme.of(context).subDescription2
+                            style: context.text.subDescription2
                           ),
                         ),
                       ),
@@ -262,12 +261,12 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
       context: context,
       useRootNavigator: true,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg.r)),
       ),
       builder: (sheetContext) => StatefulBuilder(
           builder: (context, setDialogState) => SafeArea(
             child: Padding(
-              padding: EdgeInsets.symmetric(vertical: 16.h),
+              padding: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -277,22 +276,22 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
                       padding: EdgeInsets.symmetric(horizontal: 20.w),
                       child: Text(
                         'Group Notification Sound',
-                        style: AppTextTheme.of(context).subDescription2
+                        style: context.text.subDescription2
                       ),
                     ),
-                    Gap(8.h),
+                    Gap(AppSpacing.xs.h),
                     ListTile(
                       leading: Icon(
                         selectedId == null
                             ? Icons.radio_button_checked
                             : Icons.radio_button_unchecked,
                         color: selectedId == null
-                            ? AppColors.primary
+                            ? Theme.of(context).colorScheme.primary
                             : Colors.grey.shade400,
                       ),
                       title: Text(
                         'Default (same as direct)',
-                        style: AppTextTheme.of(context).subDescription2
+                        style: context.text.subDescription2
                       ),
                       onTap: () => setDialogState(() => selectedId = null),
                     ),
@@ -313,7 +312,7 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
                         () => selectedId = NotificationSound.systemId,
                       ),
                     ),
-                    Gap(16.h),
+                    Gap(AppSpacing.md.h),
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: 20.w),
                       child: SizedBox(
@@ -330,16 +329,16 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
                             if (sheetContext.mounted) Navigator.pop(sheetContext);
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
+                            backgroundColor: Theme.of(context).colorScheme.primary,
                             foregroundColor: Colors.white,
                             padding: EdgeInsets.symmetric(vertical: 14.h),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12.r),
+                              borderRadius: BorderRadius.circular(AppRadius.md.r),
                             ),
                           ),
                           child: Text(
                             'Done',
-                            style: AppTextTheme.of(context).subDescription2
+                            style: context.text.subDescription2
                           ),
                         ),
                       ),
@@ -354,10 +353,10 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
   }
 
   Widget _buildPermissionBanner() => Container(
-    padding: EdgeInsets.all(16.w),
+    padding: EdgeInsets.all(AppSpacing.md.w),
     decoration: BoxDecoration(
       color: Colors.amber.shade50,
-      borderRadius: BorderRadius.circular(12.r),
+      borderRadius: BorderRadius.circular(AppRadius.md.r),
       border: Border.all(color: Colors.amber.shade200),
     ),
     child: Row(
@@ -367,7 +366,7 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
           color: Colors.amber.shade700,
           size: 24.sp,
         ),
-        Gap(12.w),
+        Gap(AppSpacing.sm.w),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -380,7 +379,7 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
                   color: Colors.brown.shade800,
                 ),
               ),
-              Gap(4.h),
+              Gap(AppSpacing.xxs.h),
               Text(
                 'Notifications are disabled in your device settings.',
                 style: TextStyle(fontSize: 12.sp, color: Colors.brown.shade600),
@@ -388,12 +387,12 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
             ],
           ),
         ),
-        Gap(8.w),
+        Gap(AppSpacing.xs.w),
         TextButton(
           onPressed: widget.viewmodel.openAppSettings,
           style: TextButton.styleFrom(
-            foregroundColor: AppColors.primary,
-            padding: EdgeInsets.symmetric(horizontal: 12.w),
+            foregroundColor: Theme.of(context).colorScheme.primary,
+            padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm.w),
           ),
           child: Text(
             'Open Settings',
@@ -420,9 +419,9 @@ class _SoundTile extends StatelessWidget {
   Widget build(BuildContext context) => ListTile(
     leading: Icon(
       isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-      color: isSelected ? AppColors.primary : Colors.grey.shade400,
+      color: isSelected ? Theme.of(context).colorScheme.primary : Colors.grey.shade400,
     ),
-    title: Text(label, style: AppTextTheme.of(context).subDescription2),
+    title: Text(label, style: context.text.subDescription2),
     onTap: onTap,
   );
 }

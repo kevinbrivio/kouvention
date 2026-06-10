@@ -38,6 +38,27 @@ class AppColorTokens {
   static const Color info = Color(0xFF4490ED);
   static const Color disabled = Color(0xFFB3B3B3);
   static const Color disabledText = Color(0xFF8C8C8C);
+
+  // Avatar / sender identifier color palette
+  static const List<Color> _senderNameColors = [
+    Color(0xFF0FBA39), // green
+    Color(0xFF4490ED), // blue
+    Color(0xFFFF8040), // orange
+    Color(0xFFFF0033), // red
+    Color(0xFF9C27B0), // purple
+    Color(0xFF00BCD4), // cyan
+    Color(0xFF795548), // brown
+  ];
+
+  /// Deterministic color for a sender, used as avatar tint / sender name accent.
+  static Color senderNameColor(String senderId) {
+    final index = senderId.hashCode.abs() % _senderNameColors.length;
+    return _senderNameColors[index];
+  }
+
+  // Form / search bar surface tints (for compatibility with legacy code)
+  static const Color formField = Colors.white38;
+  static const Color searchBar = Color(0xFFF5F5F0);
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

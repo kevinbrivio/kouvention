@@ -4,8 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/bases/base_view.dart';
-import 'package:kouvention/cores/constants/colors.dart';
-import 'package:kouvention/cores/constants/text_theme.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/models/text_input_model.dart';
 import 'package:kouvention/cores/widgets/custom_text_field.dart';
 import 'package:kouvention/cores/widgets/loading_indicator.dart';
@@ -45,16 +44,16 @@ class _GroupSetupViewState extends ConsumerState<GroupSetupView> {
     useGradient: false,
     provider: newGroupChatVM,
     appBar: (vm) => AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       elevation: 0.5,
       leading: IconButton(
-        icon: Icon(Icons.arrow_back, color: AppColors.primary),
+        icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.primary),
         onPressed: () => context.pop(),
       ),
       title: Text(
         'New Group',
         style: TextStyle(
-          color: Colors.black,
+          color: Theme.of(context).colorScheme.onSurface,
           fontSize: 18.sp,
           fontWeight: FontWeight.w600,
         ),
@@ -68,7 +67,7 @@ class _GroupSetupViewState extends ConsumerState<GroupSetupView> {
             bottom: 12.h,
             right: 16.w,
             child: FloatingActionButton(
-              backgroundColor: AppColors.primary,
+              backgroundColor: Theme.of(context).colorScheme.primary,
               onPressed: () async {
                 if (!_formKey.currentState!.validate()) return;
 
@@ -91,7 +90,7 @@ class _GroupSetupViewState extends ConsumerState<GroupSetupView> {
                     )
                   : Icon(
                       Icons.check_rounded,
-                      color: AppColors.white,
+                      color: Colors.white,
                       size: 24.sp,
                     ),
             ),
@@ -111,7 +110,7 @@ class _GroupSetupViewState extends ConsumerState<GroupSetupView> {
         _buildGroupNameTextField(),
 
         // Members List
-        Text('Members: ${members.length}', style: AppTextTheme.of(context).subDescription3),
+        Text('Members: ${members.length}', style: context.text.subDescription3),
         Gap(8.h),
         _buildMemberList(vm),
       ],
@@ -123,7 +122,7 @@ class _GroupSetupViewState extends ConsumerState<GroupSetupView> {
     padding: EdgeInsets.symmetric(vertical: 12.h),
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(12.r),
-      color: AppColors.formField,
+      color: AppColorTokens.formField,
     ),
     child: Form(
       key: _formKey,
@@ -132,7 +131,7 @@ class _GroupSetupViewState extends ConsumerState<GroupSetupView> {
         hint: 'Group name',
         shakeOnError: true,
         onSubmit: (val) {},
-        borderColor: AppColors.primary,
+        borderColor: Theme.of(context).colorScheme.primary,
       ),
     ),
   );
@@ -146,7 +145,7 @@ class _GroupSetupViewState extends ConsumerState<GroupSetupView> {
             children: [
               CircleAvatar(
                 radius: 28.r,
-                backgroundColor: AppColors.senderNameColor(user.uid).withValues(alpha: 0.2),
+                backgroundColor: AppColorTokens.senderNameColor(user.uid).withValues(alpha: 0.2),
                 backgroundImage: user.photoUrl != null
                     ? NetworkImage(user.photoUrl!)
                     : null,
@@ -155,7 +154,7 @@ class _GroupSetupViewState extends ConsumerState<GroupSetupView> {
                         user.displayName.isNotEmpty
                             ? user.displayName[0].toUpperCase()
                             : '?',
-                        style: AppTextTheme.of(context).subDescription,
+                        style: context.text.subDescription,
                       )
                     : null,
               ),

@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:kouvention/cores/constants/colors.dart';
-import 'package:kouvention/cores/constants/text_theme.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/utils/display_name_resolver.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_list_profile_provider.dart';
@@ -47,20 +46,20 @@ class ContactResultTile extends ConsumerWidget {
 
     return ListTile(
       contentPadding: EdgeInsetsGeometry.symmetric(
-        horizontal: 16.w,
+        horizontal: AppSpacing.md.w,
         vertical: 6.h,
       ),
       leading: CircleAvatar(
-        radius: 24.r,
+        radius: AppRadius.xl.r,
         backgroundColor: showPhoto
             ? null
-            : AppColors.senderNameColor(chat.id).withValues(alpha: 0.3),
+            : AppColorTokens.senderNameColor(chat.id).withValues(alpha: 0.3),
         backgroundImage: showPhoto ? NetworkImage(photoUrl!) : null,
         child: !showPhoto
             ? Text(
                 name[0].toUpperCase(),
-                style: AppTextTheme.of(context).senderName.copyWith(
-                  color: AppColors.senderNameColor(chat.id),
+                style: context.text.senderName.copyWith(
+                  color: AppColorTokens.senderNameColor(chat.id),
                 ),
               )
             : null,
@@ -83,7 +82,7 @@ class ContactResultTile extends ConsumerWidget {
 
     return RichText(
       text: TextSpan(
-        style: AppTextTheme.of(context).contactName,
+        style: context.text.contactName,
         children: [
           TextSpan(text: before),
           TextSpan(

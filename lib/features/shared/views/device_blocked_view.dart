@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
-import 'package:kouvention/cores/constants/colors.dart';
-import 'package:kouvention/cores/constants/text_theme.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 
 class DeviceBlockedView extends StatelessWidget {
   final String threatType;
@@ -32,10 +31,10 @@ class DeviceBlockedView extends StatelessWidget {
   Widget build(BuildContext context) => Scaffold(
     body: Container(
       width: double.infinity,
-      padding: EdgeInsets.symmetric(horizontal: 32.w),
+      padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.w),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppColors.primary, AppColors.primary2],
+          colors: [Theme.of(context).colorScheme.primary, AppColorTokens.primaryLighter],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         ),
@@ -44,25 +43,25 @@ class DeviceBlockedView extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.shield_outlined, size: 80.r, color: Colors.redAccent),
-          Gap(24.h),
+          Gap(AppSpacing.lg.h),
           Text(
             'Access Refused',
-            style: AppTextTheme.of(context).subheadline1
+            style: context.text.subheadline1
           ),
-          Gap(16.h),
+          Gap(AppSpacing.md.h),
           Text(
             _threatMessage,
             textAlign: TextAlign.center,
-            style: AppTextTheme.of(context).subDescription2
+            style: context.text.subDescription2
           ),
-          Gap(8.h),
+          Gap(AppSpacing.xs.h),
           Text(
             'Kouvention cannot be used in this device '
             ' for your own data safety.',
             textAlign: TextAlign.center,
-            style: AppTextTheme.of(context).subDescription2
+            style: context.text.subDescription2
           ),
-          Gap(32.h),
+          Gap(AppSpacing.xl.h),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
@@ -71,12 +70,12 @@ class DeviceBlockedView extends StatelessWidget {
                 backgroundColor: Colors.redAccent,
                 padding: EdgeInsets.symmetric(vertical: 14.h),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12.r),
+                  borderRadius: BorderRadius.circular(AppRadius.md.r),
                 ),
               ),
               child: Text(
                 'Close App',
-                style: AppTextTheme.of(context).subDescription,
+                style: context.text.subDescription,
               ),
             ),
           ),

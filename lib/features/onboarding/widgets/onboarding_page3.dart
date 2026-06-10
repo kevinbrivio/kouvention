@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
-import 'package:kouvention/cores/constants/colors.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/constants/image_paths.dart';
-import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/cores/widgets/floating_widget.dart';
 import 'package:kouvention/cores/widgets/transparent_box.dart';
@@ -23,29 +22,29 @@ class OnboardingPage3 extends StatelessWidget {
               width: 320.w,
               height: 320.w,
               child: TransparentBox(
-                borderColor: AppColors.primary,
-                color: AppColors.white.withValues(alpha: 0.3),
+                borderColor: Theme.of(context).colorScheme.primary,
+                color: Colors.white.withValues(alpha: 0.3),
                 child: Image.asset(images.onboarding3, fit: BoxFit.cover),
               ),
             ),
           ),
-          Gap(16.h),
+          Gap(AppSpacing.md.h),
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: 32.w),
+            padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.w),
             child: Column(
               children: [
-                Gap(12.h),
+                Gap(AppSpacing.sm.h),
                 Text(
                   'Your Privacy, Guaranteed',
-                  style: AppTextTheme.of(context).subheadline1.copyWith(
+                  style: context.text.subheadline1.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
                   textAlign: TextAlign.center,
                 ),
-                Gap(12.h),
+                Gap(AppSpacing.sm.h),
                 Text(
                   'End-to-end encryption and secure Google Oauth sign-in keeps your chats and data fully protected.',
-                  style: AppTextTheme.of(context).subDescription2,
+                  style: context.text.subDescription2,
                   textAlign: TextAlign.center,
                   softWrap: true,
                 ),
@@ -56,10 +55,10 @@ class OnboardingPage3 extends StatelessWidget {
                   },
                   child: Text(
                     'Read our Privacy Policy',
-                    style: AppTextTheme.of(context).subDescription3.copyWith(
-                      color: AppColors.white.withValues(alpha: 0.5),
+                    style: context.text.subDescription3.copyWith(
+                      color: Colors.white.withValues(alpha: 0.5),
                       decoration: TextDecoration.underline,
-                      decorationColor: AppColors.white.withValues(alpha: 0.5),
+                      decorationColor: Colors.white.withValues(alpha: 0.5),
                     ),
                   ),
                 ),

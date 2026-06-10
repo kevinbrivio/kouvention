@@ -6,8 +6,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/bases/base_view.dart';
-import 'package:kouvention/cores/constants/colors.dart';
-import 'package:kouvention/cores/constants/text_theme.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/cores/widgets/hidden_app_bar.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
@@ -27,8 +26,8 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
   final _scrollController = ScrollController();
   Timer? _visibleIdsDebounce;
   static const _visibleIdDebounceWindow = Duration(milliseconds: 250);
-  static const _listItemHeight = 80.0; // approximate px per chat list item
-  static const _visibleIdMargin = 2; // safety margin past computed bounds
+  static const _listItemHeight = 80.0;
+  static const _visibleIdMargin = 2;
 
   @override
   void initState() {
@@ -50,14 +49,10 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
       ref.read(chatListVM).fetchOlderChats();
     }
 
-    // Debounced tracking of visible chat IDs for eviction protection.
     _visibleIdsDebounce?.cancel();
     _visibleIdsDebounce = Timer(_visibleIdDebounceWindow, _trackVisibleIds);
   }
 
-  /// Computes which chat IDs are currently visible in the viewport and
-  /// writes them to [visibleChatIdsProvider]. The LRU eviction reads this
-  /// set to avoid deleting a chat the user can see.
   void _trackVisibleIds() {
     final chats = ref.read(chatListVM).visibleChats;
     if (chats.isEmpty) return;
@@ -80,6 +75,7 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
   Widget build(BuildContext context) {
     final vm = ref.watch(chatListVM);
     final searchVm = ref.watch(searchVMProvider);
+    final scheme = Theme.of(context).colorScheme;
 
     return PopScope(
       canPop: !vm.isSelectionMode && !searchVm.isActive,
@@ -100,7 +96,7 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
             return HiddenAppBar();
           }
           if (vm.isSelectionMode) {
-            return _buildSelectionAppBar(context, vm);
+            return _buildSelectionAppBar(context, vm, scheme);
           }
           return HiddenAppBar();
         },
@@ -109,7 +105,7 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
             if (searchVm.isActive)
               Column(
                 children: [
-                  _buildSearchBar(context, searchVm, ref),
+                  _buildSearchBar(context, searchVm, ref, scheme),
                   Expanded(child: SearchBody()),
                 ],
               )
@@ -118,17 +114,17 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
 
             if (!searchVm.isActive)
               Positioned(
-                right: 16.w,
+                right: AppSpacing.md.w,
                 bottom: MediaQuery.of(context).padding.bottom + 12.h,
                 child: FloatingActionButton(
-                  backgroundColor: AppColors.primary,
+                  backgroundColor: scheme.primary,
                   onPressed: () {
                     context.push(RouterRoutes.newChat.path);
                   },
                   child: Icon(
                     Icons.edit,
-                    color: Theme.of(context).colorScheme.surface,
-                    size: 20.sp,
+                    color: scheme.surface,
+                    size: AppSizing.iconSm.sp,
                   ),
                 ),
               ),
@@ -153,12 +149,10 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (!vm.isSelectionMode) ...[
-            ChatHeader(),
-          ] else ...[
+          if (!vm.isSelectionMode)
+            ChatHeader()
+          else
             ChatHeader(compact: true),
-          ],
-
           Expanded(
             child: filteredChatAsync.when(
               loading: () => const Center(child: ChatListSkeleton()),
@@ -177,11 +171,13 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
                   itemBuilder: (context, index) {
                     if (index == chats.length) {
                       return Padding(
-                        padding: EdgeInsets.symmetric(vertical: 16.h),
+                        padding: EdgeInsets.symmetric(
+                          vertical: AppSpacing.md.h,
+                        ),
                         child: Center(
                           child: SizedBox(
-                            width: 20.w,
-                            height: 20.w,
+                            width: AppSpacing.lg.w,
+                            height: AppSpacing.lg.w,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           ),
                         ),
@@ -205,19 +201,20 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
     BuildContext context,
     SearchVM searchVM,
     WidgetRef ref,
+    ColorScheme scheme,
   ) {
     final chatRooms =
         ref.watch(pagedChatListProvider).value ?? const <ChatModel>[];
     return Container(
       padding: EdgeInsets.only(
-        top: MediaQuery.of(context).padding.top + 8.h,
-        bottom: 8.h,
-        right: 8.w,
+        top: MediaQuery.of(context).padding.top + AppSpacing.xs.h,
+        bottom: AppSpacing.xs.h,
+        right: AppSpacing.xs.w,
       ),
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back, color: AppColors.primary),
+            icon: Icon(Icons.arrow_back, color: scheme.primary),
             onPressed: () => searchVM.clearSearch(),
           ),
           Expanded(
@@ -229,27 +226,33 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
                 onChanged: (value) => searchVM.onTextChanged(value, chatRooms),
                 decoration: InputDecoration(
                   hintText: 'Search...',
-                  hintStyle: TextStyle(color: AppColors.grey, fontSize: 14.sp),
+                  hintStyle: TextStyle(
+                    color: scheme.onSurface.withValues(alpha: 0.5),
+                    fontSize: 14.sp,
+                  ),
                   filled: true,
-                  counterStyle: TextStyle(color: AppColors.primary),
-                  fillColor: AppColors.grey.withValues(alpha: 0.1),
+                  counterStyle: TextStyle(color: scheme.primary),
+                  fillColor: scheme.onSurface.withValues(alpha: 0.1),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(20.r),
                     borderSide: BorderSide.none,
                   ),
                   contentPadding: EdgeInsets.symmetric(
-                    horizontal: 16.w,
-                    vertical: 8.h,
+                    horizontal: AppSpacing.md.w,
+                    vertical: AppSpacing.xs.h,
                   ),
                 ),
                 showCursor: true,
-                cursorColor: AppColors.primary,
+                cursorColor: scheme.primary,
               ),
             ),
           ),
           if (searchVM.query.isNotEmpty)
             IconButton(
-              icon: const Icon(Icons.close, color: AppColors.grey),
+              icon: Icon(
+                Icons.close,
+                color: scheme.onSurface.withValues(alpha: 0.5),
+              ),
               onPressed: () => searchVM.clearSearch(),
             ),
         ],
@@ -260,28 +263,29 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
   PreferredSizeWidget _buildSelectionAppBar(
     BuildContext context,
     ChatListVM vm,
+    ColorScheme scheme,
   ) {
     final allPinned = vm.isSelectedChatsPinned;
 
     return AppBar(
       leading: IconButton(
-        icon: const Icon(Icons.close, color: AppColors.primary),
+        icon: Icon(Icons.close, color: scheme.primary),
         onPressed: () => vm.clearSelection(),
       ),
       title: Text(
         '${vm.selectedChatIds.length}',
-        style: TextStyle(color: AppColors.primary, fontSize: 18.sp),
+        style: TextStyle(color: scheme.primary, fontSize: 18.sp),
       ),
       actions: [
         IconButton(
           icon: Icon(
             allPinned ? Icons.push_pin_outlined : Icons.push_pin,
-            color: AppColors.primary,
+            color: scheme.primary,
           ),
           onPressed: () => vm.pinSelectedChats(),
         ),
         IconButton(
-          icon: const Icon(Icons.delete_outline, color: AppColors.primary),
+          icon: Icon(Icons.delete_outline, color: scheme.primary),
           onPressed: () => _confirmDelete(context, vm),
         ),
       ],
@@ -292,36 +296,30 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(
-          'Delete this chat?',
-          style: AppTextTheme.of(context).subheadline1,
-        ),
+        title: Text('Delete this chat?', style: context.text.subheadline1),
         content: Text(
           'This chat will be removed from your list. It will reappear if someone sends a new message.',
-          style: AppTextTheme.of(context).subDescription3,
+          style: context.text.subDescription3,
         ),
-        actionsPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+        actionsPadding: EdgeInsets.symmetric(
+          horizontal: AppSpacing.md.w,
+          vertical: AppSpacing.sm.h,
+        ),
         actions: [
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: Text(
-                  'Cancel',
-                  style: AppTextTheme.of(context).subDescription3,
-                ),
+                child: Text('Cancel', style: context.text.subDescription3),
               ),
-              Gap(12.w),
+              Gap(AppSpacing.sm.w),
               TextButton(
                 onPressed: () {
                   Navigator.pop(context);
                   vm.deleteSelectedChat();
                 },
-                child: Text(
-                  'Delete chat',
-                  style: AppTextTheme.of(context).subDescription3,
-                ),
+                child: Text('Delete chat', style: context.text.subDescription3),
               ),
             ],
           ),

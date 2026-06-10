@@ -4,8 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
-import 'package:kouvention/cores/constants/colors.dart';
-import 'package:kouvention/cores/constants/text_theme.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/utils/display_name_resolver.dart';
@@ -34,7 +33,7 @@ class ChatRoomAppBar extends ConsumerWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentUid = ref.watch(authServiceProvider).currentUser?.uid;
-    final textTheme = AppTextTheme.of(context);
+    final scheme = Theme.of(context).colorScheme;
 
     final chatAsync = ref.watch(chatMetadataStreamProvider(chatId));
 
@@ -83,28 +82,25 @@ class ChatRoomAppBar extends ConsumerWidget implements PreferredSizeWidget {
             ? (otherUser?.privacy.showProfilePhoto ?? true) && chatPhotoUrl != null
             : chatPhotoUrl != null;
 
-        // =====================================
-        // RENDER UI APPBAR
-        // =====================================
         return AppBar(
           elevation: 0.5,
           scrolledUnderElevation: 0,
           leading: IconButton(
-            icon: Icon(Icons.arrow_back, color: AppColors.primary, size: 36.w,),
+            icon: Icon(Icons.arrow_back, color: scheme.primary, size: 36.w),
             onPressed: () => context.go(RouterRoutes.chatList.path),
           ),
           title: InkWell(
             onTap: () {
               if (context.mounted) context.push('/chats/${chat.id}/detail');
             },
-            borderRadius: BorderRadius.circular(8.r),
+            borderRadius: BorderRadius.circular(AppRadius.sm.r),
             child: Row(
               children: [
                 ClipOval(
                   child: Container(
-                    width: 36.r, // Diameter (2 * radius 18)
+                    width: 36.r,
                     height: 36.r,
-                    color: AppColors.primary.withValues(alpha: 0.2),
+                    color: scheme.primary.withValues(alpha: 0.2),
                     child: showPhoto
                         ? CachedNetworkImage(
                             imageUrl: chatPhotoUrl,
@@ -116,7 +112,7 @@ class ChatRoomAppBar extends ConsumerWidget implements PreferredSizeWidget {
                                     ? chatDisplayName[0].toUpperCase()
                                     : '?',
                                 style: TextStyle(
-                                  color: AppColors.primary,
+                                  color: scheme.primary,
                                   fontWeight: FontWeight.w600,
                                   fontSize: 14.sp,
                                 ),
@@ -129,7 +125,7 @@ class ChatRoomAppBar extends ConsumerWidget implements PreferredSizeWidget {
                                   ? chatDisplayName[0].toUpperCase()
                                   : '?',
                               style: TextStyle(
-                                color: AppColors.primary,
+                                color: scheme.primary,
                                 fontWeight: FontWeight.w600,
                                 fontSize: 14.sp,
                               ),
@@ -147,19 +143,18 @@ class ChatRoomAppBar extends ConsumerWidget implements PreferredSizeWidget {
                         overflow: TextOverflow.ellipsis,
                         softWrap: true,
                         style: TextStyle(
-                          color: textTheme.primaryText,
+                          color: scheme.onSurface,
                           fontSize: 16.sp,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-
                       if (onlineStatusText != null)
                         Text(
                           onlineStatusText,
                           style: TextStyle(
                             color: onlineStatusText == 'Online'
-                                ? AppColors.primary
-                                : textTheme.greyText,
+                                ? scheme.primary
+                                : scheme.onSurface.withValues(alpha: 0.6),
                             fontSize: 12.sp,
                           ),
                         ),
@@ -171,11 +166,11 @@ class ChatRoomAppBar extends ConsumerWidget implements PreferredSizeWidget {
           ),
           actions: [
             IconButton(
-              icon: Icon(Icons.phone, color: AppColors.primary, size: 24.w,),
+              icon: Icon(Icons.phone, color: scheme.primary, size: AppSizing.iconMd.w),
               onPressed: () {},
             ),
             IconButton(
-              icon: Icon(Icons.info_outline, color: AppColors.primary, size: 24.w,),
+              icon: Icon(Icons.info_outline, color: scheme.primary, size: AppSizing.iconMd.w),
               onPressed: () {},
             ),
           ],

@@ -1,8 +1,9 @@
 import 'dart:io';
 
+import 'package:flutter/material.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:kouvention/cores/constants/colors.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
@@ -28,8 +29,8 @@ class WallpaperService {
       uiSettings: [
         AndroidUiSettings(
           toolbarTitle: 'Crop Wallpaper',
-          toolbarColor: AppColors.primary,
-          toolbarWidgetColor: AppColors.white,
+          toolbarColor: AppColorTokens.primary,
+          toolbarWidgetColor: const Color(0xFFFFFFFF),
           lockAspectRatio: false,
         ),
         IOSUiSettings(

@@ -5,8 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/bases/base_view.dart';
-import 'package:kouvention/cores/constants/colors.dart';
-import 'package:kouvention/cores/constants/text_theme.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/cores/widgets/custom_divider.dart';
 import 'package:kouvention/cores/widgets/loading_indicator.dart';
@@ -37,11 +36,11 @@ class ChatProfileView extends StatelessWidget {
   );
 
   PreferredSizeWidget _buildAppBar(BuildContext context) => AppBar(
-    backgroundColor: Colors.white,
+    backgroundColor: Theme.of(context).colorScheme.surface,
     elevation: 0.5,
     scrolledUnderElevation: 0,
     leading: IconButton(
-      icon: Icon(Icons.arrow_back, color: AppColors.primary),
+      icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.primary),
       onPressed: () => context.pop(),
     ),
   );
@@ -65,8 +64,8 @@ class _ChatProfileBodyState extends ConsumerState<_ChatProfileBody> {
     return SizedBox.expand(
       child: Padding(
         padding: EdgeInsetsGeometry.only(
-          left: 16.w,
-          right: 16.w,
+          left: AppSpacing.md.w,
+          right: AppSpacing.md.w,
           top: MediaQuery.of(context).padding.top,
         ),
         child: Column(
@@ -75,8 +74,8 @@ class _ChatProfileBodyState extends ConsumerState<_ChatProfileBody> {
             // Avatar
             Center(
               child: CircleAvatar(
-                radius: 56.r,
-                backgroundColor: AppColors.senderNameColor(
+                radius: AppRadius.full.r,
+                backgroundColor: AppColorTokens.senderNameColor(
                   chat.id,
                 ).withValues(alpha: 0.25),
                 backgroundImage: vm.chatPhotoURL != null
@@ -86,7 +85,7 @@ class _ChatProfileBodyState extends ConsumerState<_ChatProfileBody> {
                     ? vm.isGroupType
                           ? Icon(
                               Icons.people_alt_rounded,
-                              color: AppColors.senderNameColor(
+                              color: AppColorTokens.senderNameColor(
                                 chat.id,
                               ).withValues(alpha: 0.7),
                             )
@@ -94,9 +93,9 @@ class _ChatProfileBodyState extends ConsumerState<_ChatProfileBody> {
                               vm.chatDisplayName.isNotEmpty
                                   ? vm.chatDisplayName[0].toUpperCase()
                                   : '?',
-                              style: AppTextTheme.of(context).senderName.copyWith(
+                              style: context.text.senderName.copyWith(
                                 fontSize: 48.sp,
-                                color: AppColors.senderNameColor(
+                                color: AppColorTokens.senderNameColor(
                                   chat.id,
                                 ).withValues(alpha: 0.7),
                               ),
@@ -110,7 +109,7 @@ class _ChatProfileBodyState extends ConsumerState<_ChatProfileBody> {
             Center(
               child: Text(
                 vm.chatDisplayName,
-                style: AppTextTheme.of(context).subheadline1,
+                style: context.text.subheadline1,
               ),
             ),
             Gap(4.h),
@@ -119,27 +118,27 @@ class _ChatProfileBodyState extends ConsumerState<_ChatProfileBody> {
                 child: Text.rich(
                   TextSpan(
                     text: 'Group · ',
-                    style: AppTextTheme.of(context).senderName,
+                    style: context.text.senderName,
                     children: [
                       TextSpan(
                         text: '${vm.members.length} members',
-                        style: AppTextTheme.of(context).senderName,
+                        style: context.text.senderName,
                       ),
                     ],
                   ),
                 ),
               ),
-              Gap(12.h),
+              Gap(AppSpacing.sm.h),
               Text(
                 'Created by ${vm.chat?.createdBy?['name']}, ${DateTimeHelper.formatDateMonthYear(vm.chat?.createdAt ?? DateTime.now())}',
-                style: AppTextTheme.of(context).senderName
+                style: context.text.senderName
               ),
-              Gap(12.h),
+              Gap(AppSpacing.sm.h),
               CustomDivider(),
-              Gap(12.h),
+              Gap(AppSpacing.sm.h),
               Text(
                 '${vm.members.length} members',
-                style: AppTextTheme.of(context).senderName,
+                style: context.text.senderName,
               ),
               Gap(6.h),
 
@@ -148,7 +147,7 @@ class _ChatProfileBodyState extends ConsumerState<_ChatProfileBody> {
               Center(
                 child: Text(
                   vm.otherUserEmail ?? '',
-                  style: AppTextTheme.of(context).subDescription2,
+                  style: context.text.subDescription2,
                 ),
               ),
             ],
@@ -157,7 +156,7 @@ class _ChatProfileBodyState extends ConsumerState<_ChatProfileBody> {
               Gap(18.h),
               Text(
                 '${vm.groupsInCommon.length} Groups in common',
-                style: AppTextTheme.of(context).subDescription3,
+                style: context.text.subDescription3,
               ),
               Gap(6.h),
               _buildGroupInCommonList(),
@@ -188,34 +187,34 @@ class _ChatProfileBodyState extends ConsumerState<_ChatProfileBody> {
 
       return InkWell(
         onTap: () => _showMemberSheet(context, vm.members[index]),
-        borderRadius: BorderRadius.circular(8.r),
+        borderRadius: BorderRadius.circular(AppRadius.sm.r),
         child: Row(
           children: [
             CircleAvatar(
-              radius: 24.r,
+              radius: AppRadius.xl.r,
               backgroundColor: showPhoto
-                  ? AppColors.senderNameColor(uid).withValues(alpha: 0.25)
+                  ? AppColorTokens.senderNameColor(uid).withValues(alpha: 0.25)
                   : null,
               backgroundImage: showPhoto ? NetworkImage(photoUrl) : null,
               child: !showPhoto
                   ? Text(
                       name[0].toUpperCase(),
-                      style: AppTextTheme.of(context).senderName.copyWith(
-                        color: AppColors.senderNameColor(
+                      style: context.text.senderName.copyWith(
+                        color: AppColorTokens.senderNameColor(
                           uid,
                         ).withValues(alpha: 0.7),
                       ),
                     )
                   : null,
             ),
-            Gap(16.w),
+            Gap(AppSpacing.md.w),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     name,
-                    style: AppTextTheme.of(context).senderName,
+                    style: context.text.senderName,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
@@ -240,12 +239,12 @@ class _ChatProfileBodyState extends ConsumerState<_ChatProfileBody> {
           RouterRoutes.chatRoom.name,
           pathParameters: {'chatId': group.id},
         ),
-        borderRadius: BorderRadius.circular(8.r),
+        borderRadius: BorderRadius.circular(AppRadius.sm.r),
         child: Row(
           children: [
             CircleAvatar(
-              radius: 24.r,
-              backgroundColor: AppColors.senderNameColor(
+              radius: AppRadius.xl.r,
+              backgroundColor: AppColorTokens.senderNameColor(
                 group.id,
               ).withValues(alpha: 0.25),
               backgroundImage: group.groupPhotoUrl != null
@@ -254,25 +253,25 @@ class _ChatProfileBodyState extends ConsumerState<_ChatProfileBody> {
               child: group.groupPhotoUrl == null
                   ? Icon(
                       Icons.people_alt_rounded,
-                      color: AppColors.senderNameColor(
+                      color: AppColorTokens.senderNameColor(
                         group.id,
                       ).withValues(alpha: 0.7),
                     )
                   : null,
             ),
-            Gap(12.w),
+            Gap(AppSpacing.sm.w),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     group.groupName ?? '',
-                    style: AppTextTheme.of(context).senderName,
+                    style: context.text.senderName,
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
                     '${group.members.length} members',
-                    style: AppTextTheme.of(context).subDescription3,
+                    style: context.text.subDescription3,
                   ),
                 ],
               ),
@@ -295,19 +294,19 @@ class _ChatProfileBodyState extends ConsumerState<_ChatProfileBody> {
     context: context,
     showDragHandle: true,
     shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl.r)),
     ),
-    backgroundColor: AppColors.backdrop,
+    backgroundColor: Theme.of(context).colorScheme.surface,
     builder: (sheetContext) => SafeArea(
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
+        padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w, vertical: AppSpacing.md.h),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             CircleAvatar(
-              radius: 56.r,
+              radius: AppRadius.full.r,
               backgroundColor: showPhoto
-                  ? AppColors.senderNameColor(member.key).withValues(alpha: 0.25)
+                  ? AppColorTokens.senderNameColor(member.key).withValues(alpha: 0.25)
                   : null,
               backgroundImage: showPhoto
                   ? NetworkImage(member.value.photoUrl!)
@@ -319,28 +318,28 @@ class _ChatProfileBodyState extends ConsumerState<_ChatProfileBody> {
                     )
                   : null,
             ),
-            Gap(8.h),
+            Gap(AppSpacing.xs.h),
             Text(
               member.value.displayName,
-              style: AppTextTheme.of(context).subheadline1,
+              style: context.text.subheadline1,
             ),
-            Gap(16.h),
+            Gap(AppSpacing.md.h),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 InkWell(
-                  borderRadius: BorderRadius.circular(16.r),
+                  borderRadius: BorderRadius.circular(AppRadius.lg.r),
                   onTap: () async {
                     HapticFeedback.selectionClick();
                     Navigator.pop(sheetContext);
                     await vm.navigateTo(context, RouterRoutes.chatRoom, member.key);
                   },
                   child: TransparentBox(
-                    radius: BorderRadius.circular(16.r),
-                    borderColor: AppColors.primary,
+                    radius: BorderRadius.circular(AppRadius.lg.r),
+                    borderColor: Theme.of(context).colorScheme.primary,
                     child: Row(
                       children: [
-                        Icon(Icons.chat, color: AppColors.primary),
+                        Icon(Icons.chat, color: Theme.of(context).colorScheme.primary),
                         Gap(6.w),
                         Text('Message'),
                       ],
@@ -348,18 +347,18 @@ class _ChatProfileBodyState extends ConsumerState<_ChatProfileBody> {
                   ),
                 ),
                 InkWell(
-                  borderRadius: BorderRadius.circular(16.r),
+                  borderRadius: BorderRadius.circular(AppRadius.lg.r),
                   onTap: () async {
                     HapticFeedback.selectionClick();
                     Navigator.pop(sheetContext);
                     await vm.navigateTo(context, RouterRoutes.chatDetail, member.key);
                   },
                   child: TransparentBox(
-                    radius: BorderRadius.circular(16.r),
-                    borderColor: AppColors.primary,
+                    radius: BorderRadius.circular(AppRadius.lg.r),
+                    borderColor: Theme.of(context).colorScheme.primary,
                     child: Row(
                       children: [
-                        Icon(Icons.person, color: AppColors.primary),
+                        Icon(Icons.person, color: Theme.of(context).colorScheme.primary),
                         Gap(6.w),
                         Text('View Profile'),
                       ],
@@ -391,8 +390,8 @@ class _ChatWallpaperSection extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         CustomDivider(),
-        Gap(12.h),
-        Text('WALLPAPER', style: AppTextTheme.of(context).subDescription3),
+        Gap(AppSpacing.sm.h),
+        Text('WALLPAPER', style: context.text.subDescription3),
         Gap(10.h),
         _WallpaperRow(
           wallpaper: wallpaper,
@@ -413,16 +412,16 @@ class _ChatWallpaperSection extends ConsumerWidget {
       context: context,
       showDragHandle: true,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl.r)),
       ),
-      backgroundColor: AppColors.backdrop,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       builder: (sheetContext) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
               leading:
-                  Icon(Icons.photo_library_outlined, color: AppColors.primary),
+                  Icon(Icons.photo_library_outlined, color: Theme.of(context).colorScheme.primary),
               title: const Text('Pick from Gallery'),
               subtitle: const Text('Choose an image for this chat'),
               onTap: () async {
@@ -432,7 +431,7 @@ class _ChatWallpaperSection extends ConsumerWidget {
             ),
             if (hasOverride)
               ListTile(
-                leading: Icon(Icons.public, color: AppColors.primary),
+                leading: Icon(Icons.public, color: Theme.of(context).colorScheme.primary),
                 title: const Text('Use Global Wallpaper'),
                 subtitle: const Text('Follow the global setting'),
                 onTap: () async {
@@ -474,12 +473,12 @@ class _WallpaperRow extends StatelessWidget {
     final status = hasOverride ? 'Custom' : 'Using global';
 
     return InkWell(
-      borderRadius: BorderRadius.circular(12.r),
+      borderRadius: BorderRadius.circular(AppRadius.md.r),
       onTap: onTap,
       child: Container(
-        padding: EdgeInsets.all(8.r),
+        padding: EdgeInsets.all(AppRadius.sm.r),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12.r),
+          borderRadius: BorderRadius.circular(AppRadius.md.r),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),
@@ -494,7 +493,7 @@ class _WallpaperRow extends StatelessWidget {
               width: 56.w,
               height: 56.w,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8.r),
+                borderRadius: BorderRadius.circular(AppRadius.sm.r),
                 image: image == null
                     ? null
                     : DecorationImage(image: image, fit: BoxFit.cover),
@@ -509,19 +508,19 @@ class _WallpaperRow extends StatelessWidget {
                     )
                   : null,
             ),
-            Gap(12.w),
+            Gap(AppSpacing.sm.w),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     'Wallpaper',
-                    style: AppTextTheme.of(context).subDescription2,
+                    style: context.text.subDescription2,
                   ),
                   Gap(2.h),
                   Text(
                     status,
-                    style: AppTextTheme.of(context).subDescription3,
+                    style: context.text.subDescription3,
                   ),
                 ],
               ),

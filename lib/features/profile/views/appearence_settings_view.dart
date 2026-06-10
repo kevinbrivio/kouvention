@@ -3,8 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
-import 'package:kouvention/cores/constants/colors.dart';
-import 'package:kouvention/cores/constants/text_theme.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/widgets/custom_app_bar.dart';
 import 'package:kouvention/features/chat/models/bubble_color_scheme.dart';
 import 'package:kouvention/features/chat/viewmodel/bubble_scheme_provider.dart';
@@ -21,7 +20,7 @@ class AppearanceSettingsView extends ConsumerWidget {
 
     return Scaffold(
       appBar: CustomAppBar(
-        body: Text('Appearance', style: AppTextTheme.of(context).appBar),
+        body: Text('Appearance', style: context.text.appBar),
         onBack: () => context.go('/profile'),
       ),
       body: SafeArea(
@@ -30,9 +29,9 @@ class AppearanceSettingsView extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Gap(24.h),
-              _SectionHeader(title: 'THEMES'),
-              Gap(12.h),
+              Gap(AppSpacing.lg.h),
+              const _SectionHeader(title: 'THEMES'),
+              Gap(AppSpacing.sm.h),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -40,44 +39,35 @@ class AppearanceSettingsView extends ConsumerWidget {
                     children: [
                       Icon(
                         Icons.brightness_6,
-                        color: AppColors.primary,
-                        size: 24.w,
+                        color: Theme.of(context).colorScheme.primary,
+                        size: AppSizing.iconMd.w,
                       ),
-                      Gap(16.w),
+                      Gap(AppSpacing.md.w),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Theme',
-                            style: AppTextTheme.of(context).subDescription2,
-                          ),
+                          Text('Theme', style: context.text.subDescription2),
                           Gap(2.h),
-                          Text(switch (themeMode) {
-                            ThemeMode.system => 'System default',
-                            ThemeMode.light => 'Light',
-                            ThemeMode.dark => 'Dark',
-                          }, style: AppTextTheme.of(context).subDescription3),
+                          Text(
+                            switch (themeMode) {
+                              ThemeMode.system => 'System default',
+                              ThemeMode.light => 'Light',
+                              ThemeMode.dark => 'Dark',
+                            },
+                            style: context.text.subDescription3,
+                          ),
                         ],
                       ),
                     ],
                   ),
-                  Gap(12.h),
+                  Gap(AppSpacing.sm.h),
                   SizedBox(
                     width: double.infinity,
                     child: SegmentedButton<ThemeMode>(
                       segments: const [
-                        ButtonSegment(
-                          value: ThemeMode.system,
-                          label: Text('System'),
-                        ),
-                        ButtonSegment(
-                          value: ThemeMode.light,
-                          label: Text('Light'),
-                        ),
-                        ButtonSegment(
-                          value: ThemeMode.dark,
-                          label: Text('Dark'),
-                        ),
+                        ButtonSegment(value: ThemeMode.system, label: Text('System')),
+                        ButtonSegment(value: ThemeMode.light, label: Text('Light')),
+                        ButtonSegment(value: ThemeMode.dark, label: Text('Dark')),
                       ],
                       selected: {themeMode},
                       onSelectionChanged: (set) => ref
@@ -87,11 +77,11 @@ class AppearanceSettingsView extends ConsumerWidget {
                   ),
                 ],
               ),
-              Gap(32.h),
+              Gap(AppSpacing.xl.h),
               _BubbleStyleSection(),
-              Gap(32.h),
+              Gap(AppSpacing.xl.h),
               _WallpaperSection(),
-              Gap(32.h),
+              Gap(AppSpacing.xl.h),
             ],
           ),
         ),
@@ -128,12 +118,12 @@ class _BubbleStyleSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _SectionHeader(title: 'CUSTOMIZE CHAT BUBBLE'),
-        Gap(12.h),
-        Gap(16.h),
+        const _SectionHeader(title: 'CUSTOMIZE CHAT BUBBLE'),
+        Gap(AppSpacing.sm.h),
+        Gap(AppSpacing.md.h),
         Wrap(
-          spacing: 8.w,
-          runSpacing: 8.h,
+          spacing: AppSpacing.xs.w,
+          runSpacing: AppSpacing.xs.h,
           children: filteredPresets
               .map(
                 (scheme) => _ColorSchemeCard(
@@ -162,64 +152,67 @@ class _ColorSchemeCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      width: 72.w,
-      padding: EdgeInsets.symmetric(vertical: 8.h),
-      decoration: BoxDecoration(
-        // color: Colors.white,
-        borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(
-          color: isSelected ? AppColors.primary : Colors.transparent,
-          width: 2.w,
+  Widget build(BuildContext context) {
+    final schemeColor = Theme.of(context).colorScheme.primary;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 72.w,
+        padding: EdgeInsets.symmetric(vertical: AppSpacing.xs.h),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppRadius.md.r),
+          border: Border.all(
+            color: isSelected ? schemeColor : Colors.transparent,
+            width: 2.w,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 20.w,
-                height: 20.w,
-                decoration: BoxDecoration(
-                  color: scheme.sentBubble,
-                  borderRadius: BorderRadius.circular(4.r),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 20.w,
+                  height: 20.w,
+                  decoration: BoxDecoration(
+                    color: scheme.sentBubble,
+                    borderRadius: BorderRadius.circular(4.r),
+                  ),
                 ),
-              ),
-              Gap(4.w),
-              Container(
-                width: 20.w,
-                height: 20.w,
-                decoration: BoxDecoration(
-                  color: scheme.receivedBubble,
-                  borderRadius: BorderRadius.circular(4.r),
-                  border: scheme.receivedBubble == Colors.white
-                      ? Border.all(color: Colors.grey.shade300)
-                      : null,
+                Gap(4.w),
+                Container(
+                  width: 20.w,
+                  height: 20.w,
+                  decoration: BoxDecoration(
+                    color: scheme.receivedBubble,
+                    borderRadius: BorderRadius.circular(4.r),
+                    border: scheme.receivedBubble == Colors.white
+                        ? Border.all(color: Colors.grey.shade300)
+                        : null,
+                  ),
                 ),
-              ),
-            ],
-          ),
-          Gap(4.h),
-          Text(
-            scheme.name,
-            style: TextStyle(fontSize: 9.sp, color: Colors.grey.shade600),
-            textAlign: TextAlign.center,
-          ),
-        ],
+              ],
+            ),
+            Gap(4.h),
+            Text(
+              scheme.name,
+              style: TextStyle(fontSize: 9.sp, color: Colors.grey.shade600),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _WallpaperSection extends ConsumerWidget {
@@ -227,17 +220,18 @@ class _WallpaperSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final wallpaper = ref.watch(wallpaperProvider.select((s) => s.global));
     final hasUserFile = wallpaper.isFile;
+    final scheme = Theme.of(context).colorScheme;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _SectionHeader(title: 'CUSTOMIZE CHAT WALLPAPER'),
-        Gap(12.h),
+        const _SectionHeader(title: 'CUSTOMIZE CHAT WALLPAPER'),
+        Gap(AppSpacing.sm.h),
         const _ChatRoomWallpaperPreview(),
-        Gap(12.h),
+        Gap(AppSpacing.sm.h),
         SettingsTile(
           icon: Icons.photo_library_outlined,
-          iconColor: AppColors.primary,
+          iconColor: scheme.primary,
           title: 'Pick from Gallery',
           subtitle: 'Choose an image from your device',
           onTap: () =>
@@ -245,7 +239,7 @@ class _WallpaperSection extends ConsumerWidget {
         ),
         SettingsTile(
           icon: Icons.restart_alt,
-          iconColor: AppColors.primary,
+          iconColor: scheme.primary,
           title: 'Use Default',
           subtitle: 'Reset to the default wallpaper',
           onTap: () => ref.read(wallpaperProvider.notifier).setDefault(),
@@ -264,8 +258,6 @@ class _WallpaperSection extends ConsumerWidget {
 }
 
 /// Mini chat-room mockup that previews the current wallpaper in context.
-/// Reactive: updates when wallpaper or bubble scheme changes. Adapts to
-/// dark mode with the same overlay used by BaseView.
 class _ChatRoomWallpaperPreview extends ConsumerWidget {
   const _ChatRoomWallpaperPreview();
 
@@ -285,7 +277,7 @@ class _ChatRoomWallpaperPreview extends ConsumerWidget {
       height: 260.h,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12.r),
+        borderRadius: BorderRadius.circular(AppRadius.md.r),
         image: image == null
             ? null
             : DecorationImage(
@@ -302,8 +294,8 @@ class _ChatRoomWallpaperPreview extends ConsumerWidget {
           ),
         ],
       ),
-      child: Column(
-        children: const [
+      child: const Column(
+        children: [
           _PreviewAppBar(),
           Expanded(child: _PreviewMessages()),
           _PreviewInputBar(),
@@ -319,34 +311,31 @@ class _PreviewAppBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
 
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 6.w),
       decoration: BoxDecoration(
         color: isDark
-            ? AppColors.black.withValues(alpha: 0.85)
-            : AppColors.white.withValues(alpha: 0.85),
-        // color: AppColors.white.withValues(alpha: 0.85),
-        // border: Border(
-        //   bottom: BorderSide(color: Colors.grey.shade300, width: 0.5),
-        // ),
+            ? Colors.black.withValues(alpha: 0.85)
+            : Colors.white.withValues(alpha: 0.85),
       ),
       child: Row(
         children: [
-          Icon(Icons.arrow_back, size: 16.w, color: AppColors.primary),
+          Icon(Icons.arrow_back, size: AppSpacing.md.w, color: scheme.primary),
           Gap(6.w),
           Container(
             width: 36.r,
             height: 36.r,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: AppColors.primary.withValues(alpha: 0.2),
+              color: scheme.primary.withValues(alpha: 0.2),
             ),
             alignment: Alignment.center,
             child: Text(
               'A',
               style: TextStyle(
-                color: AppColors.primary,
+                color: scheme.primary,
                 fontWeight: FontWeight.w600,
                 fontSize: 14.sp,
               ),
@@ -360,16 +349,19 @@ class _PreviewAppBar extends StatelessWidget {
               children: [
                 Text(
                   'Alex',
-                  style: AppTextTheme.of(context).senderName,
+                  style: context.text.senderName,
                   overflow: TextOverflow.ellipsis,
                 ),
-                Text('Online', style: AppTextTheme.of(context).subDescription3.copyWith(color: AppColors.primary)),
+                Text(
+                  'Online',
+                  style: context.text.subDescription3.copyWith(color: scheme.primary),
+                ),
               ],
             ),
           ),
-          Icon(Icons.phone, size: 20.w, color: AppColors.primary),
+          Icon(Icons.phone, size: AppSizing.iconSm.w, color: scheme.primary),
           Gap(10.w),
-          Icon(Icons.info_outline, size: 20.w, color: AppColors.primary),
+          Icon(Icons.info_outline, size: AppSizing.iconSm.w, color: scheme.primary),
         ],
       ),
     );
@@ -384,7 +376,10 @@ class _PreviewMessages extends ConsumerWidget {
     final scheme = ref.watch(bubbleSchemeProvider);
 
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacing.xs.w,
+        vertical: AppSpacing.xs.h,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisAlignment: MainAxisAlignment.end,
@@ -443,24 +438,21 @@ class _PreviewBubble extends StatelessWidget {
         decoration: BoxDecoration(
           color: color,
           borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(isMe ? 12.r : 3.r),
-            topRight: Radius.circular(isMe ? 3.r : 12.r),
-            bottomRight: Radius.circular(12.r),
-            bottomLeft: Radius.circular(12.r),
+            topLeft: Radius.circular(isMe ? AppRadius.md.r : 3.r),
+            topRight: Radius.circular(isMe ? 3.r : AppRadius.md.r),
+            bottomRight: Radius.circular(AppRadius.md.r),
+            bottomLeft: Radius.circular(AppRadius.md.r),
           ),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: isMe
-              ? CrossAxisAlignment.end
-              : CrossAxisAlignment.start,
+          crossAxisAlignment:
+              isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
             Flexible(
               child: Text(
                 text,
-                style: AppTextTheme.of(
-                  context,
-                ).subDescription3.copyWith(color: textColor),
+                style: context.text.subDescription3.copyWith(color: textColor),
               ),
             ),
             Row(
@@ -469,7 +461,7 @@ class _PreviewBubble extends StatelessWidget {
               children: [
                 Text(
                   time,
-                  style: AppTextTheme.of(context).subDescription3.copyWith(
+                  style: context.text.subDescription3.copyWith(
                     color: timeColor,
                     fontSize: 9.sp,
                   ),
@@ -493,11 +485,15 @@ class _PreviewInputBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
+
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
-      // color: Color(0xFF2e2e2e),
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacing.xs.w,
+        vertical: 6.h,
+      ),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.black : Colors.transparent,
+        color: isDark ? Colors.black : Colors.transparent,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.05),
@@ -511,41 +507,44 @@ class _PreviewInputBar extends StatelessWidget {
         children: [
           Flexible(
             child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
+              padding: EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm.w,
+                vertical: 4.h,
+              ),
               decoration: BoxDecoration(
                 color: isDark
-                    ? AppColors.darkInputBarSurface
-                    : AppColors.white.withValues(alpha: 0.85),
-                borderRadius: BorderRadius.circular(24.r),
+                    ? AppSurfaceDark.surfaceInputBar
+                    : Colors.white.withValues(alpha: 0.85),
+                borderRadius: BorderRadius.circular(AppRadius.lg.r),
               ),
               child: Row(
                 children: [
                   Icon(
                     Icons.emoji_emotions_outlined,
                     size: 14.sp,
-                    color: AppColors.primary,
+                    color: scheme.primary,
                   ),
-                  Gap(8.w),
+                  Gap(AppSpacing.xs.w),
                   Expanded(
                     child: Text(
                       'Type a message...',
-                      style: AppTextTheme.of(context).typeMessage.copyWith(
-                        color: AppColors.grey,
+                      style: context.text.typeMessage.copyWith(
+                        color: scheme.onSurface.withValues(alpha: 0.5),
                         fontSize: 11.sp,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  Icon(Icons.add, size: 14.sp, color: AppColors.primary),
+                  Icon(Icons.add, size: 14.sp, color: scheme.primary),
                 ],
               ),
             ),
           ),
-          Gap(8.w),
+          Gap(AppSpacing.xs.w),
           CircleAvatar(
             radius: 15.r,
-            backgroundColor: AppColors.primary,
+            backgroundColor: scheme.primary,
             child: Icon(Icons.mic, size: 14.sp, color: Colors.white),
           ),
         ],

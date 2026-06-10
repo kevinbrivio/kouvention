@@ -3,8 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:kouvention/cores/bases/base_view.dart';
-import 'package:kouvention/cores/constants/colors.dart';
-import 'package:kouvention/cores/constants/text_theme.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/widgets/hidden_app_bar.dart';
 import 'package:kouvention/features/onboarding/viewmodel/onboarding_viewmodel.dart';
 import 'package:kouvention/features/onboarding/widgets/bottom_indicator_button.dart';
@@ -35,7 +34,7 @@ class OnboardingView extends StatelessWidget {
               alignment: Alignment.centerRight,
               child: GestureDetector(
                 onTap: vm.goToPrivacyPolicy,
-                child: Text('Skip', style: AppTextTheme.of(context).subDescription),
+                child: Text('Skip', style: context.text.subDescription),
               ),
             ),
           ),
@@ -81,8 +80,8 @@ class OnboardingView extends StatelessWidget {
         margin: EdgeInsets.symmetric(horizontal: 4.w),
         decoration: BoxDecoration(
           color: isActive
-              ? AppColors.white
-              : AppColors.white.withValues(alpha: 0.35),
+              ? Colors.white
+              : Colors.white.withValues(alpha: 0.35),
           borderRadius: BorderRadius.circular(6.r),
         ),
       );

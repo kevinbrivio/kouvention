@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
-import 'package:kouvention/cores/constants/colors.dart';
-import 'package:kouvention/cores/constants/text_theme.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/widgets/custom_button.dart';
 import 'package:kouvention/features/onboarding/viewmodel/onboarding_viewmodel.dart';
 
@@ -27,14 +26,14 @@ class BottomIndicatorButton extends ConsumerWidget {
               text: '',
             ),
           ),
-        if (vm.currentPage > 0) Gap(12.w),
+        if (vm.currentPage > 0) Gap(AppSpacing.sm.w),
         SizedBox(
           height: 56.h,
           child: Button(
             isWhiteBackground: true,
             text: vm.currentPage == 2 ? 'Get Started' : 'Next',
-            textStyle: AppTextTheme.of(context).subDescription.copyWith(
-              color: AppColors.black,
+            textStyle: context.text.subDescription.copyWith(
+              color: Theme.of(context).colorScheme.onSurface,
             ),
             showArrow: true,
             width: 224.w,

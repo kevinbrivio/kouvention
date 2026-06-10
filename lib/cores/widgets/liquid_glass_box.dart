@@ -1,7 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:kouvention/cores/constants/colors.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 
 class LiquidGlassBox extends StatelessWidget {
   final Widget child;
@@ -25,14 +25,14 @@ class LiquidGlassBox extends StatelessWidget {
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
         child: Container(
-          padding: padding ?? EdgeInsets.all(16.r),
+          padding: padding ?? EdgeInsets.all(AppRadius.lg.r),
           decoration: BoxDecoration(
             color: Colors.transparent,
             border: Border.all(
               color: isDark
-                ? AppColors.lightBackground
-                : AppColors.darkBackground
-                .withValues(alpha: 0.15),
+                  ? AppSurfaceDark.surface
+                  : AppSurfaceLight.surface
+                      .withValues(alpha: 0.15),
               width: 1.2,
             ),
             borderRadius: BorderRadius.circular(borderRadius),

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
-import 'package:kouvention/cores/constants/text_theme.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/widgets/custom_divider.dart';
 import 'package:kouvention/features/search/models/search_result_model.dart';
 import 'package:kouvention/features/search/viewmodel/search_viewmodel.dart';
@@ -44,10 +44,10 @@ class SearchBody extends ConsumerWidget {
             if (vm.matchingContacts.isNotEmpty) ...[
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                  padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w, vertical: AppSpacing.sm.h),
                   child: Text(
                     'Contacts',
-                    style: AppTextTheme.of(context).subDescription,
+                    style: context.text.subDescription,
                   ),
                 ),
               ),
@@ -72,10 +72,10 @@ class SearchBody extends ConsumerWidget {
             if (vm.groups.isNotEmpty) ...[
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                  padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w, vertical: AppSpacing.sm.h),
                   child: Text(
                     'Messages',
-                    style: AppTextTheme.of(context).subDescription,
+                    style: context.text.subDescription,
                   ),
                 ),
               ),
@@ -105,7 +105,7 @@ class SearchBody extends ConsumerWidget {
               if (vm.query.isNotEmpty)
                 Text(
                   'No results for "${vm.query}"',
-                  style: AppTextTheme.of(context).subDescription3,
+                  style: context.text.subDescription3,
                 ),
             ],
           ),

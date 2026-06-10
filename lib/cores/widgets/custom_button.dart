@@ -58,7 +58,7 @@ class _ButtonState extends State<Button> {
     fontSize: 12.sp,
     fontWeight: FontWeight.w500,
     height: 1.5,
-    color: Colors.white,
+    color: Theme.of(context).colorScheme.onPrimary,
   );
 
   ButtonStyle _elevatedStyle(ColorScheme scheme) => ElevatedButton.styleFrom(

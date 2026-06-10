@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/constants/image_paths.dart';
-import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/cores/widgets/floating_widget.dart';
 
 class OnboardingPage1 extends StatelessWidget {
@@ -14,7 +14,7 @@ class OnboardingPage1 extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Gap(48.h),
+          Gap(AppSizing.touchMin.h),
           FloatingWidget(
             child: SizedBox(
               width: 320.w,
@@ -22,18 +22,18 @@ class OnboardingPage1 extends StatelessWidget {
               child: Image.asset(images.onboarding1, fit: BoxFit.cover),
             ),
           ),
-          Gap(12.h),
+          Gap(AppSpacing.sm.h),
           Padding(
-            padding: EdgeInsetsGeometry.symmetric(horizontal: 4.w),
-            child: Text('Fast & Secure', style: AppTextTheme.of(context).subheadline1),
+            padding: EdgeInsetsGeometry.symmetric(horizontal: AppSpacing.xxs.w),
+            child: Text('Fast & Secure', style: context.text.subheadline1),
           ),
-          Gap(12.h),
+          Gap(AppSpacing.sm.h),
 
           Padding(
             padding: EdgeInsetsGeometry.symmetric(horizontal: 36.w),
             child: Text(
               'Experience lightning-fast messaging with end-to-end encryption. Your privacy is our priority',
-              style: AppTextTheme.of(context).subDescription,
+              style: context.text.subDescription,
               textAlign: TextAlign.center,
             ),
           ),

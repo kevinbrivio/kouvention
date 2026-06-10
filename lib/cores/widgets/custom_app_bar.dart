@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:kouvention/cores/constants/colors.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 
 class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final Widget? body;
@@ -20,7 +20,10 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     elevation: 0.5,
     scrolledUnderElevation: 0,
     leading: IconButton(
-      icon: Icon(Icons.arrow_back, color: AppColors.primary),
+      icon: Icon(
+        Icons.arrow_back,
+        color: Theme.of(context).colorScheme.primary,
+      ),
       onPressed: () => onBack(),
     ),
     title: InkWell(
@@ -28,7 +31,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
         HapticFeedback.selectionClick();
         onBack();
       },
-      borderRadius: BorderRadius.circular(8.r),
+      borderRadius: BorderRadius.circular(AppRadius.sm.r),
       child: body,
     ),
     actions: trailing,

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:kouvention/cores/constants/colors.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/search/widgets/search_body.dart';
 
@@ -60,7 +60,7 @@ class _SearchOverlayState extends State<SearchOverlay> {
 
   Widget _buildDragHandle() => Center(
     child: Container(
-      margin: EdgeInsets.only(top: 12.h, bottom: 8.h),
+      margin: EdgeInsets.only(top: AppSpacing.sm.h, bottom: AppSpacing.xs.h),
       width: 40.w,
       height: 4.h,
       decoration: BoxDecoration(
@@ -71,11 +71,11 @@ class _SearchOverlayState extends State<SearchOverlay> {
   );
 
   Widget _buildSearchBar() => Padding(
-    padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+    padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w, vertical: AppSpacing.xs.h),
     child: Row(
       children: [
         IconButton(
-          icon: Icon(Icons.arrow_back, size: 20.sp, color: AppColors.grey),
+          icon: Icon(Icons.arrow_back, size: 20.sp, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)),
           onPressed: () {
             widget.onSearchChanged('');
             _controller.clear();
@@ -86,9 +86,9 @@ class _SearchOverlayState extends State<SearchOverlay> {
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20.r),
-              border: Border.all(color: AppColors.primary, width: 2.w),
+              border: Border.all(color: Theme.of(context).colorScheme.primary, width: 2.w),
             ),
-            padding: EdgeInsets.symmetric(horizontal: 16.w),
+            padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w),
             child: TextField(
               onChanged: (query) {
                 setState(() => _text = query);

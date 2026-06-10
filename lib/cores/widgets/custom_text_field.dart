@@ -4,8 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
-import 'package:kouvention/cores/constants/colors.dart';
-import 'package:kouvention/cores/constants/text_theme.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/models/text_input_model.dart';
 
 class CustomTextField extends StatefulWidget {
@@ -33,7 +32,7 @@ class CustomTextField extends StatefulWidget {
   final bool isLarge;
   final bool isRequired;
   final TextStyle? style;
-  final Color labelColor;
+  final Color? labelColor;
   final Color? errorMsgColor;
   final String? description;
   final BorderRadius? borderRadius;
@@ -64,10 +63,10 @@ class CustomTextField extends StatefulWidget {
     this.autoFocus = false,
     this.inputFormatters,
     this.textAlign = TextAlign.start,
-    this.isLarge = false, // Default is not large,
+    this.isLarge = false,
     this.isRequired = false,
     this.style,
-    this.labelColor = AppColors.black,
+    this.labelColor,
     this.errorMsgColor,
     this.description,
     this.borderRadius,
@@ -106,12 +105,11 @@ class _CustomTextFieldState extends State<CustomTextField>
     super.dispose();
   }
 
-  InputBorder getBorder(Color color) => OutlineInputBorder(
-    borderRadius: widget.borderRadius ?? BorderRadius.circular(12.r),
+  InputBorder getBorder(Color color, ColorScheme scheme) => OutlineInputBorder(
+    borderRadius: widget.borderRadius ?? BorderRadius.circular(AppRadius.md.r),
     borderSide: BorderSide(
-      color:
-          widget.borderColor ??
-          (errorMessage != null ? AppColors.errorLight : color),
+      color: widget.borderColor ??
+          (errorMessage != null ? AppColorTokens.error : color),
       width: 2.sp,
     ),
   );
@@ -129,148 +127,168 @@ class _CustomTextFieldState extends State<CustomTextField>
   }
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      if (widget.label != null) ...[
-        Row(
-          children: [
-            Text.rich(
-              TextSpan(
-                style: AppTextTheme.of(context).body2.copyWith(
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.w500,
-                  fontFamily: AppTextTheme.of(context).body2.fontFamily,
-                  color: widget.labelColor,
-                ),
-                children: [
-                  TextSpan(text: widget.label),
-                  if (widget.isRequired)
-                    TextSpan(
-                      text: '*',
-                      style: TextStyle(
-                        color: AppColors.red1,
-                        fontWeight: FontWeight.w500,
-                        fontFamily: AppTextTheme.of(context).body2.fontFamily,
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final body2Style = context.text.body2;
+    final defaultLabelColor = widget.labelColor ?? scheme.onSurface;
+    final defaultHintColor =
+        widget.hintColor ?? scheme.onSurface.withValues(alpha: 0.5);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (widget.label != null) ...[
+          Row(
+            children: [
+              Text.rich(
+                TextSpan(
+                  style: body2Style.copyWith(
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w500,
+                    color: defaultLabelColor,
+                  ),
+                  children: [
+                    TextSpan(text: widget.label),
+                    if (widget.isRequired)
+                      TextSpan(
+                        text: '*',
+                        style: TextStyle(
+                          color: AppColorTokens.error,
+                          fontWeight: FontWeight.w500,
+                          fontFamily: body2Style.fontFamily,
+                        ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
-        ),
-        Gap(6.h),
-      ],
-      AnimatedBuilder(
-        animation: _shakeAnimation,
-        builder: (context, child) {
-          final offset = sin(_shakeAnimation.value * pi * 3) * 8;
-          return Transform.translate(offset: Offset(offset, 0), child: child);
-        },
-        child: SizedBox(
-          height: widget.isLarge ? 125.h : 46.h,
-          child: TextFormField(
-            expands: widget.isLarge,
-            maxLines: widget.isLarge ? null : 1,
-            textAlignVertical: widget.isLarge
-                ? TextAlignVertical.top
-                : TextAlignVertical.center,
-            focusNode: widget.focusNode,
-            onTapOutside: (_) {
-              widget.onTapOutside?.call();
-            },
-            autofocus: widget.autoFocus,
-            textInputAction: widget.inputAction,
-            enabled: widget.enabled,
-            keyboardType: widget.keyboardType,
-            controller: widget.inputModel.controller,
-            onChanged: (value) {
-              setState(() {
-                errorMessage = null;
-              });
-              widget.onChanged?.call(value);
-            },
-            textAlign: widget.textAlign,
-            decoration: InputDecoration(
-              alignLabelWithHint: true,
-              contentPadding:
-                  widget.contentPadding ??
-                  EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 12.h),
-              hintText: widget.hint,
-              hintStyle: AppTextTheme.of(context).body2.copyWith(
-                color: widget.hintColor ?? AppColors.grey,
-                fontWeight: FontWeight.w400,
-              ),
-              filled: true,
-              fillColor: widget.enabled ? AppColors.white : AppColors.grey,
-              focusedBorder: getBorder(AppColors.primary2),
-              enabledBorder: getBorder(AppColors.primary2),
-              disabledBorder: getBorder(AppColors.grey),
-              border: getBorder(AppColors.grey),
-              errorBorder: getBorder(AppColors.red1),
-              focusedErrorBorder: getBorder(AppColors.primary),
-              errorStyle: AppTextTheme.of(context).body2.copyWith(
-                fontSize: 0,
-                color: Colors.transparent,
-              ),
-              prefixIcon: widget.prefixWidget,
-              prefixIconConstraints: BoxConstraints(
-                maxWidth: 120.w,
-                maxHeight: 23.h,
-              ),
-              suffixIcon: widget.suffixWidget,
-              suffixIconConstraints: BoxConstraints(
-                maxWidth: 56.w,
-                maxHeight: 23.h,
-              ),
-            ),
-            style: (widget.style ?? AppTextTheme.of(context).body2).copyWith(
-              color: !widget.enabled
-                  ? AppColors.grey
-                  : (errorMessage != null
-                        ? AppColors.errorLight
-                        : AppColors.black),
-            ),
-            showCursor: true,
-            cursorColor: errorMessage != null
-                ? AppColors.errorLight
-                : AppColors.primary,
-            cursorErrorColor: errorMessage != null
-                ? AppColors.errorLight
-                : AppColors.primary,
-            validator: (value) {
-              String? message = widget.inputModel.validator?.call(value ?? '');
-              if (message != null) {
+            ],
+          ),
+          Gap(6.h),
+        ],
+        AnimatedBuilder(
+          animation: _shakeAnimation,
+          builder: (context, child) {
+            final offset = sin(_shakeAnimation.value * pi * 3) * 8;
+            return Transform.translate(offset: Offset(offset, 0), child: child);
+          },
+          child: SizedBox(
+            height:
+                widget.isLarge ? AppSizing.inputLargeHeight.h : AppSizing.inputHeight.h,
+            child: TextFormField(
+              expands: widget.isLarge,
+              maxLines: widget.isLarge ? null : 1,
+              textAlignVertical: widget.isLarge
+                  ? TextAlignVertical.top
+                  : TextAlignVertical.center,
+              focusNode: widget.focusNode,
+              onTapOutside: (_) {
+                widget.onTapOutside?.call();
+              },
+              autofocus: widget.autoFocus,
+              textInputAction: widget.inputAction,
+              enabled: widget.enabled,
+              keyboardType: widget.keyboardType,
+              controller: widget.inputModel.controller,
+              onChanged: (value) {
                 setState(() {
-                  errorMessage = message;
+                  errorMessage = null;
                 });
-                if (widget.shakeOnError) _triggerShake();
-              }
-              widget.onValidate?.call(message!);
-              return message;
-            },
-            onFieldSubmitted: widget.onSubmit,
-            inputFormatters: [...?widget.inputFormatters],
+                widget.onChanged?.call(value);
+              },
+              textAlign: widget.textAlign,
+              decoration: InputDecoration(
+                alignLabelWithHint: true,
+                contentPadding:
+                    widget.contentPadding ??
+                    EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 12.h),
+                hintText: widget.hint,
+                hintStyle: body2Style.copyWith(
+                  color: defaultHintColor,
+                  fontWeight: FontWeight.w400,
+                ),
+                filled: true,
+                fillColor:
+                    widget.enabled ? AppSurfaceLight.surface : AppSurfaceLight.surfaceInput,
+                focusedBorder: getBorder(
+                  AppColorTokens.primaryLighter,
+                  scheme,
+                ),
+                enabledBorder: getBorder(
+                  AppColorTokens.primaryLighter,
+                  scheme,
+                ),
+                disabledBorder: getBorder(
+                  scheme.onSurface.withValues(alpha: 0.5),
+                  scheme,
+                ),
+                border: getBorder(
+                  scheme.onSurface.withValues(alpha: 0.5),
+                  scheme,
+                ),
+                errorBorder: getBorder(AppColorTokens.error, scheme),
+                focusedErrorBorder: getBorder(scheme.primary, scheme),
+                errorStyle: body2Style.copyWith(
+                  fontSize: 0,
+                  color: Colors.transparent,
+                ),
+                prefixIcon: widget.prefixWidget,
+                prefixIconConstraints: BoxConstraints(
+                  maxWidth: 120.w,
+                  maxHeight: 23.h,
+                ),
+                suffixIcon: widget.suffixWidget,
+                suffixIconConstraints: BoxConstraints(
+                  maxWidth: 56.w,
+                  maxHeight: 23.h,
+                ),
+              ),
+              style: (widget.style ?? body2Style).copyWith(
+                color: !widget.enabled
+                    ? scheme.onSurface.withValues(alpha: 0.5)
+                    : (errorMessage != null
+                          ? AppColorTokens.error
+                          : scheme.onSurface),
+              ),
+              showCursor: true,
+              cursorColor:
+                  errorMessage != null ? AppColorTokens.error : scheme.primary,
+              cursorErrorColor:
+                  errorMessage != null ? AppColorTokens.error : scheme.primary,
+              validator: (value) {
+                String? message =
+                    widget.inputModel.validator?.call(value ?? '');
+                if (message != null) {
+                  setState(() {
+                    errorMessage = message;
+                  });
+                  if (widget.shakeOnError) _triggerShake();
+                }
+                widget.onValidate?.call(message!);
+                return message;
+              },
+              onFieldSubmitted: widget.onSubmit,
+              inputFormatters: [...?widget.inputFormatters],
+            ),
           ),
         ),
-      ),
-      if (errorMessage == null && widget.description != null) ...[
-        Gap(3.h),
-        Text(
-          widget.description!,
-          style: AppTextTheme.of(context).body2,
-        ),
-      ],
-      if (errorMessage != null) ...[
-        Gap(3.h),
-        Text(
-          errorMessage!,
-          style: AppTextTheme.of(context).body2.copyWith(
-            fontWeight: FontWeight.w400,
-            color: widget.errorMsgColor ?? AppColors.errorLight,
+        if (errorMessage == null && widget.description != null) ...[
+          Gap(3.h),
+          Text(
+            widget.description!,
+            style: body2Style,
           ),
-        ),
+        ],
+        if (errorMessage != null) ...[
+          Gap(3.h),
+          Text(
+            errorMessage!,
+            style: body2Style.copyWith(
+              fontWeight: FontWeight.w400,
+              color: widget.errorMsgColor ?? AppColorTokens.error,
+            ),
+          ),
+        ],
       ],
-    ],
-  );
+    );
+  }
 }

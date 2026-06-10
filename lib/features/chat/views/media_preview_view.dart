@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:kouvention/cores/constants/colors.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/viewmodel/media/media_picker_helper.dart';
 import 'package:kouvention/features/chat/viewmodel/media/media_preview_viewmodel.dart';
@@ -44,7 +44,7 @@ class _MediaPreviewViewState extends ConsumerState<MediaPreviewView> {
     final vm = ref.watch(mediaPreviewProvider(widget.args));
 
     return Scaffold(
-      backgroundColor: AppColors.black,
+      backgroundColor: Colors.black,
       appBar: _buildAppBar(context, vm),
       body: Column(
         children: [
@@ -114,7 +114,7 @@ class _MediaPreviewViewState extends ConsumerState<MediaPreviewView> {
           onTap: vm.isSending ? null : () => vm.send(context),
           child: CircleAvatar(
             radius: 24.r,
-            backgroundColor: AppColors.primary,
+            backgroundColor: Theme.of(context).colorScheme.primary,
             child: vm.isSending
                 ? SizedBox(
                     width: 20.sp,
