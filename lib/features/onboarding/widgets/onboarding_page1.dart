@@ -25,7 +25,9 @@ class OnboardingPage1 extends StatelessWidget {
           Gap(AppSpacing.sm.h),
           Padding(
             padding: EdgeInsetsGeometry.symmetric(horizontal: AppSpacing.xxs.w),
-            child: Text('Fast & Secure', style: context.text.headlineSmall),
+            child: Text('Fast & Secure', style: context.text.headlineSmall.copyWith(
+              color: AppColorTokens.info
+            )),
           ),
           Gap(AppSpacing.sm.h),
 
@@ -33,7 +35,9 @@ class OnboardingPage1 extends StatelessWidget {
             padding: EdgeInsetsGeometry.symmetric(horizontal: 36.w),
             child: Text(
               'Experience lightning-fast messaging with end-to-end encryption. Your privacy is our priority',
-              style: context.text.titleMedium.copyWith(color: context.text.secondaryText),
+              style: context.text.titleMedium.copyWith(
+                color: AppColorTokens.info
+              ),
               textAlign: TextAlign.center,
             ),
           ),

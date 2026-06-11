@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 
 class FloatingWidget extends StatefulWidget {
   const FloatingWidget({super.key, required this.child});
@@ -50,7 +51,7 @@ class _FloatingWidgetState extends State<FloatingWidget>
         );
       },
       child: Padding(
-        padding: EdgeInsetsGeometry.all(12.w),
+        padding: EdgeInsetsGeometry.all(AppSpacing.md.w),
         child: widget.child
       ),
     );

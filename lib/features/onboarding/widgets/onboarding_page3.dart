@@ -22,8 +22,8 @@ class OnboardingPage3 extends StatelessWidget {
               width: 320.w,
               height: 320.w,
               child: TransparentBox(
-                borderColor: Theme.of(context).colorScheme.primary,
-                color: Colors.white.withValues(alpha: 0.3),
+                borderColor: AppColorTokens.info,
+                color: AppColorTokens.info.withValues(alpha: 0.3),
                 child: Image.asset(images.onboarding3, fit: BoxFit.cover),
               ),
             ),
@@ -36,26 +36,28 @@ class OnboardingPage3 extends StatelessWidget {
                 Gap(AppSpacing.sm.h),
                 Text(
                   'Your Privacy, Guaranteed',
-                  style: context.text.headlineSmall.copyWith(
-                    fontWeight: FontWeight.w600,
+                  style: context.text.titleMedium.copyWith(
+                    color: AppColorTokens.info,
                   ),
                   textAlign: TextAlign.center,
                 ),
                 Gap(AppSpacing.sm.h),
                 Text(
                   'End-to-end encryption and secure Google Oauth sign-in keeps your chats and data fully protected.',
-                  style: context.text.bodyMedium.copyWith(fontSize: 13.sp, color: context.text.secondaryText),
+                  style: context.text.bodyMedium.copyWith(
+                    color: AppColorTokens.info,
+                  ),
                   textAlign: TextAlign.center,
                   softWrap: true,
                 ),
-                Gap(20.h),
+                Gap(AppSpacing.sm.h),
                 GestureDetector(
                   onTap: () {
                     context.go(RouterRoutes.privacyPolicy.path);
                   },
                   child: Text(
                     'Read our Privacy Policy',
-                    style: context.text.labelSmall.copyWith(
+                    style: context.text.labelMedium.copyWith(
                       color: Colors.white.withValues(alpha: 0.5),
                       decoration: TextDecoration.underline,
                       decorationColor: Colors.white.withValues(alpha: 0.5),

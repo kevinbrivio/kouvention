@@ -21,10 +21,10 @@ class PasswordField extends StatelessWidget {
     obscureText: obscure,
     controller: controller,
     validator: validator,
-    style: context.text.titleMedium.copyWith(color: context.text.secondaryText),
+    style: context.text.titleMedium.copyWith(color: AppColorTokens.info),
     decoration: InputDecoration(
       hintText: 'Password',
-      hintStyle: const TextStyle(color: Colors.white54),
+      hintStyle: context.text.typeMessage.copyWith(color: Colors.white54),
       prefixIcon: Icon(
         Icons.lock_outline,
         color: Colors.white70,
@@ -39,17 +39,31 @@ class PasswordField extends StatelessWidget {
         ),
       ),
       filled: true,
-      fillColor: Colors.white.withValues(alpha: 0.1),
+      fillColor: AppColorTokens.primary.withValues(alpha: 0.5),
       contentPadding: EdgeInsets.symmetric(
         horizontal: AppSpacing.md.w,
-        vertical: 14.h,
+        vertical: AppSpacing.md.h,
       ),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md.r),
         borderSide: BorderSide.none,
       ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppRadius.md.r),
+        borderSide: BorderSide(
+          color: Colors.white.withValues(alpha: 0.3), 
+          width: 1.0,
+        ),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppRadius.md.r),
+        borderSide: const BorderSide(
+          color: Colors.white, 
+          width: 1.5,
+        ),
+      ),
       errorMaxLines: 2,
-      errorStyle: const TextStyle(color: Colors.orangeAccent, fontSize: 12),
+      errorStyle: context.text.labelMedium.copyWith(color: Colors.orangeAccent),
     ),
   );
 }

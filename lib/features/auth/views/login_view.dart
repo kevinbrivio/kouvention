@@ -7,6 +7,7 @@ import 'package:kouvention/cores/constants/icon_paths.dart';
 import 'package:kouvention/cores/constants/image_paths.dart';
 import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/widgets/floating_widget.dart';
+import 'package:kouvention/cores/widgets/tap_detector.dart';
 import 'package:kouvention/cores/widgets/transparent_box.dart';
 import 'package:kouvention/features/auth/viewmodel/login_viewmodel.dart';
 import 'package:kouvention/features/auth/widgets/connectivity_banner.dart';
@@ -39,8 +40,8 @@ class LoginView extends ConsumerWidget {
   Widget _buildLogo() => Center(
     child: FloatingWidget(
       child: SizedBox(
-        width: 220.w,
-        height: 220.w,
+        width: 240.w,
+        height: 240.w,
         child: Image.asset(images.splash, fit: BoxFit.cover),
       ),
     ),
@@ -52,12 +53,21 @@ class LoginView extends ConsumerWidget {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Center(child: Text('Welcome Back', style: context.text.headlineSmall)),
+        Center(
+          child: Text(
+            'Welcome Back',
+            style: context.text.headlineSmall.copyWith(
+              color: AppColorTokens.info,
+            ),
+          ),
+        ),
         Gap(AppSpacing.xs.h),
         Center(
           child: Text(
             'Sign in to continue to your messages',
-            style: context.text.bodyMedium.copyWith(fontSize: 13.sp, color: context.text.secondaryText),
+            style: context.text.bodyMedium.copyWith(
+              color: AppColorTokens.info,
+            ),
             textAlign: TextAlign.center,
           ),
         ),
@@ -81,13 +91,14 @@ class LoginView extends ConsumerWidget {
     width: double.infinity,
     child: ElevatedButton.icon(
       onPressed: vm.isLoading ? null : () => vm.signInWithGoogle(),
-      icon: Image.asset(icons.google, height: 24.h, width: 24.h),
+      icon: Image.asset(
+        icons.google,
+        width: AppSizing.iconMd.r,
+        height: AppSizing.iconMd.r,
+      ),
       label: Text(
         'Continue with Google',
-        style: context.text.bodyMedium.copyWith(
-          fontWeight: FontWeight.w600,
-          color: Colors.black,
-        ),
+        style: context.text.bodyMedium.copyWith(color: Colors.black87),
       ),
       style: ElevatedButton.styleFrom(
         shape: RoundedRectangleBorder(
@@ -99,21 +110,32 @@ class LoginView extends ConsumerWidget {
     ),
   );
 
-  Widget _buildEmailButton(BuildContext context, LoginVM vm) => SizedBox(
-    height: AppSizing.buttonHeight.h,
-    width: double.infinity,
-    child: OutlinedButton.icon(
-      onPressed: vm.isLoading ? null : () => vm.goToEmailSignIn(context),
-      icon: Icon(Icons.email_outlined, color: Colors.white, size: 22.sp),
-      label: Text(
-        'Sign in with Email',
-        style: context.text.bodyMedium,
+  Widget _buildEmailButton(BuildContext context, LoginVM vm) => TapDetector(
+    enabled: !vm.isLoading,
+    borderRadius: AppRadius.md,
+    splashColor: Colors.black,
+    onTap: () => vm.goToEmailSignIn(context),
+    child: Container(
+      height: AppSizing.buttonHeight.h,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.white38),
+        borderRadius: BorderRadius.circular(AppRadius.md.r),
       ),
-      style: OutlinedButton.styleFrom(
-        side: const BorderSide(color: Colors.white38),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md.r),
-        ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.email_outlined,
+            color: Colors.white,
+            size: AppSizing.iconSm.r,
+          ),
+          Gap(AppSpacing.sm.w),
+          Text(
+            'Sign in with Email',
+            style: context.text.bodyMedium.copyWith(color: Colors.white),
+          ),
+        ],
       ),
     ),
   );
@@ -125,8 +147,8 @@ class LoginView extends ConsumerWidget {
         padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w),
         child: Text(
           'OR',
-          style: context.text.bodyMedium.copyWith(fontSize: 13.sp, color: context.text.secondaryText, 
-            fontWeight: FontWeight.w600,
+          style: context.text.bodyMedium.copyWith(
+            color: AppColorTokens.info,
           ),
         ),
       ),
@@ -139,11 +161,14 @@ class LoginView extends ConsumerWidget {
     child: Text.rich(
       TextSpan(
         text: 'Don\'t have an account? ',
-        style: context.text.bodyMedium.copyWith(fontSize: 13.sp, color: context.text.secondaryText),
+        style: context.text.bodyMedium.copyWith(
+          color: AppColorTokens.info,
+        ),
         children: [
           TextSpan(
             text: 'Sign up',
-            style: context.text.bodyMedium.copyWith(fontSize: 13.sp, color: context.text.secondaryText, 
+            style: context.text.bodyMedium.copyWith(
+              color: AppColorTokens.info,
               fontWeight: FontWeight.w600,
             ),
           ),

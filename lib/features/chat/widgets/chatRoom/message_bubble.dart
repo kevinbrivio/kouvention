@@ -62,13 +62,20 @@ class MessageBubble extends ConsumerWidget {
 
     final sender = ref.watch(otherUserStreamProvider(message.senderId)).value;
     final resolvedName = sender?.displayName ?? senderName;
-    final showSenderPhoto = isGroup && !isMe && senderPhotoUrl != null &&
+    final showSenderPhoto =
+        isGroup &&
+        !isMe &&
+        senderPhotoUrl != null &&
         (sender?.privacy.showProfilePhoto ?? true);
 
     // Resolve fresh display name for the replied-to sender in the reply preview.
     // Guard against empty senderId (Drift doesn't store reply_to_sender_id yet).
     final resolvedReplyName = (replyMsg != null && replyMsg.senderId.isNotEmpty)
-        ? (ref.watch(otherUserStreamProvider(replyMsg.senderId)).value?.displayName ?? replyMsg.senderName)
+        ? (ref
+                  .watch(otherUserStreamProvider(replyMsg.senderId))
+                  .value
+                  ?.displayName ??
+              replyMsg.senderName)
         : replyMsg?.senderName;
 
     return AnimatedContainer(
@@ -76,11 +83,15 @@ class MessageBubble extends ConsumerWidget {
       color: isSelected
           ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.22)
           : isHighlighted
-              ? Colors.amber.withValues(alpha: 0.2)
-              : Colors.transparent,
+          ? Colors.amber.withValues(alpha: 0.2)
+          : Colors.transparent,
       child: SwipeTo(
-        onRightSwipe: !message.isDeleted && !isMe ? (_) => onReplyMessage() : null,
-        onLeftSwipe: !message.isDeleted && isMe ? (_) => onReplyMessage() : null,
+        onRightSwipe: !message.isDeleted && !isMe
+            ? (_) => onReplyMessage()
+            : null,
+        onLeftSwipe: !message.isDeleted && isMe
+            ? (_) => onReplyMessage()
+            : null,
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onLongPress: () {
@@ -91,7 +102,9 @@ class MessageBubble extends ConsumerWidget {
               selectionVM.startSelection(message.id);
             }
           },
-          onTap: isSelecting ? () => selectionVM.toggleSelection(message.id) : null,
+          onTap: isSelecting
+              ? () => selectionVM.toggleSelection(message.id)
+              : null,
           child: _buildBubbleContent(
             context,
             scheme: ref.watch(bubbleSchemeProvider),
@@ -125,12 +138,19 @@ class MessageBubble extends ConsumerWidget {
     final receivedBubbleColor = scheme.receivedBubble;
     final isLightReceived = receivedBubbleColor.computeLuminance() > 0.5;
     return Column(
-      crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      crossAxisAlignment: isMe
+          ? CrossAxisAlignment.end
+          : CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: EdgeInsets.symmetric(vertical: AppSpacing.xs.h, horizontal: AppSpacing.md.w),
+          padding: EdgeInsets.symmetric(
+            vertical: AppSpacing.xs.h,
+            horizontal: AppSpacing.md.w,
+          ),
           child: Row(
-            mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+            mainAxisAlignment: isMe
+                ? MainAxisAlignment.end
+                : MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (!isMe) ...[
@@ -138,21 +158,23 @@ class MessageBubble extends ConsumerWidget {
                   CircleAvatar(
                     radius: AppSizing.avatarSm.r,
                     backgroundColor: showSenderPhoto
-                        ? AppColorTokens.senderNameColor(message.senderId)
-                            .withValues(alpha: 0.25)
+                        ? AppColorTokens.senderNameColor(
+                            message.senderId,
+                          ).withValues(alpha: 0.25)
                         : null,
                     backgroundImage: showSenderPhoto
                         ? NetworkImage(senderPhotoUrl!)
                         : null,
-                    onBackgroundImageError: showSenderPhoto
-                        ? (_, __) {}
-                        : null,
+                    onBackgroundImageError: showSenderPhoto ? (_, __) {} : null,
                     child: !showSenderPhoto
                         ? Text(
-                            senderName.isNotEmpty ? senderName[0].toUpperCase() : '?',
+                            senderName.isNotEmpty
+                                ? senderName[0].toUpperCase()
+                                : '?',
                             style: context.text.senderName.copyWith(
-                              color: AppColorTokens.senderNameColor(message.senderId)
-                                  .withValues(alpha: 0.7),
+                              color: AppColorTokens.senderNameColor(
+                                message.senderId,
+                              ).withValues(alpha: 0.7),
                             ),
                           )
                         : null,
@@ -165,12 +187,19 @@ class MessageBubble extends ConsumerWidget {
                   children: [
                     Container(
                       constraints: BoxConstraints(maxWidth: 260.w),
-                      padding: EdgeInsets.symmetric(horizontal: AppSpacing.xs.w, vertical: AppSpacing.xs.w),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: AppSpacing.xs.w,
+                        vertical: AppSpacing.xs.w,
+                      ),
                       decoration: BoxDecoration(
                         color: isMe ? sentBubbleColor : receivedBubbleColor,
                         borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(isMe ? AppRadius.sm.r : AppRadius.xs.r),
-                          topRight: Radius.circular(isMe ? AppRadius.xs.r : AppRadius.sm.r),
+                          topLeft: Radius.circular(
+                            isMe ? AppRadius.sm.r : AppRadius.xs.r,
+                          ),
+                          topRight: Radius.circular(
+                            isMe ? AppRadius.xs.r : AppRadius.sm.r,
+                          ),
                           bottomRight: Radius.circular(AppRadius.sm.r),
                           bottomLeft: Radius.circular(AppRadius.sm.r),
                         ),
@@ -186,7 +215,12 @@ class MessageBubble extends ConsumerWidget {
                                       onTapReply!(replyMsg.messageId);
                                     }
                                   : null,
-                              child: _buildInBubbleReplyPreview(context, replyMsg, currentUid, resolvedReplyName!),
+                              child: _buildInBubbleReplyPreview(
+                                context,
+                                replyMsg,
+                                currentUid,
+                                resolvedReplyName!,
+                              ),
                             ),
                             Gap(6.h),
                           ],
@@ -194,7 +228,9 @@ class MessageBubble extends ConsumerWidget {
                             Text(
                               senderName,
                               style: context.text.senderName.copyWith(
-                                color: AppColorTokens.senderNameColor(message.senderId),
+                                color: AppColorTokens.senderNameColor(
+                                  message.senderId,
+                                ),
                               ),
                             ),
                             Gap(4.h),
@@ -203,19 +239,30 @@ class MessageBubble extends ConsumerWidget {
                             Text(
                               (message.text == '' && message.isDeleted)
                                   ? isMe
-                                      ? 'You deleted this message'
-                                      : 'This message was deleted'
+                                        ? 'You deleted this message'
+                                        : 'This message was deleted'
                                   : message.text,
                               style: context.text.bodySmall.copyWith(
                                 color: isMe
-                                    ? message.isDeleted ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5) : Colors.white
+                                    ? message.isDeleted
+                                          ? Theme.of(context)
+                                                .colorScheme
+                                                .onSurface
+                                                .withValues(alpha: 0.5)
+                                          : Colors.white
                                     : message.isDeleted
-                                        ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)
-                                        : (isLightReceived ? Colors.black87 : Colors.white),
-                                fontStyle: message.isDeleted ? FontStyle.italic : FontStyle.normal,
+                                    ? Theme.of(context).colorScheme.onSurface
+                                          .withValues(alpha: 0.5)
+                                    : (isLightReceived
+                                          ? Colors.black87
+                                          : Colors.white),
+                                fontStyle: message.isDeleted
+                                    ? FontStyle.italic
+                                    : FontStyle.normal,
                               ),
                             ),
-                          ] else if (message.mediaUrls != null && message.mediaUrls!.isNotEmpty) ...[
+                          ] else if (message.mediaUrls != null &&
+                              message.mediaUrls!.isNotEmpty) ...[
                             MediaBubble(message: message, isMe: isMe),
                           ],
                           Gap(4.h),
@@ -228,8 +275,8 @@ class MessageBubble extends ConsumerWidget {
                                   color: isMe
                                       ? Colors.white70
                                       : (isLightReceived
-                                          ? Colors.grey[500]
-                                          : Colors.white60),
+                                            ? Colors.grey[500]
+                                            : Colors.white60),
                                 ),
                               ),
                               if (isMe) ...[
@@ -275,21 +322,32 @@ class MessageBubble extends ConsumerWidget {
     }
   }
 
-  Widget _buildInBubbleReplyPreview(BuildContext context, ReplyToModel replyTo, String currentUid, String resolvedReplyName) {
+  Widget _buildInBubbleReplyPreview(
+    BuildContext context,
+    ReplyToModel replyTo,
+    String currentUid,
+    String resolvedReplyName,
+  ) {
     // When senderId is empty (Drift mapping limitation), skip "You" check.
-    final isRepliedMessageMine = replyTo.senderId.isNotEmpty && replyTo.senderId == currentUid;
-    final _hasValidMediaUrl = replyTo.mediaUrl != null &&
+    final isRepliedMessageMine =
+        replyTo.senderId.isNotEmpty && replyTo.senderId == currentUid;
+    final _hasValidMediaUrl =
+        replyTo.mediaUrl != null &&
         replyTo.mediaUrl!.isNotEmpty &&
         replyTo.mediaUrl != '[]';
 
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
       decoration: BoxDecoration(
-        color: isMe ? Colors.white.withValues(alpha: 0.2) : Colors.black.withValues(alpha: 0.15),
+        color: isMe
+            ? Colors.white.withValues(alpha: 0.2)
+            : Colors.black.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(AppRadius.sm.r),
         border: Border(
           left: BorderSide(
-            color: isMe ? Colors.white : AppColorTokens.senderNameColor(replyTo.senderId),
+            color: isMe
+                ? Colors.white
+                : AppColorTokens.senderNameColor(replyTo.senderId),
             width: 3.w,
           ),
         ),
@@ -302,7 +360,9 @@ class MessageBubble extends ConsumerWidget {
             style: TextStyle(
               fontWeight: FontWeight.w600,
               fontSize: 12.sp,
-              color: isMe ? Colors.white : AppColorTokens.senderNameColor(replyTo.senderId),
+              color: isMe
+                  ? Colors.white
+                  : AppColorTokens.senderNameColor(replyTo.senderId),
             ),
           ),
           Gap(2.h),
@@ -377,7 +437,11 @@ class MessageBubble extends ConsumerWidget {
     ),
   );
 
-  Widget _pdfThumbnailOrIcon(BuildContext context, String url, String filename) {
+  Widget _pdfThumbnailOrIcon(
+    BuildContext context,
+    String url,
+    String filename,
+  ) {
     final thumbUrl = url.replaceAll(RegExp(r'\.[^.]+$'), '.jpg');
     return SizedBox(
       width: 80.w,
@@ -399,14 +463,20 @@ class MessageBubble extends ConsumerWidget {
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 20.sp, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),),
+        Icon(
+          icon,
+          size: 20.sp,
+          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+        ),
         Gap(4.w),
         Flexible(
           child: Text(
-            label, 
-            style: context.text.labelSmall.copyWith(color: context.text.tertiaryText),
+            label,
+            style: context.text.labelSmall.copyWith(
+              color: context.text.tertiaryText,
+            ),
           ),
-        )
+        ),
       ],
     ),
   );

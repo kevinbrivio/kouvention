@@ -10,6 +10,7 @@ class TapDetector extends StatelessWidget {
   final double borderRadius;
   final bool enableHaptic;
   final bool enabled;
+  final Color? splashColor;
 
   const TapDetector({
     super.key,
@@ -19,6 +20,7 @@ class TapDetector extends StatelessWidget {
     this.borderRadius = AppRadius.lg,
     this.enableHaptic = true,
     this.enabled = true,
+    this.splashColor
   });
 
   @override
@@ -38,7 +40,7 @@ class TapDetector extends StatelessWidget {
               onLongPress?.call();
             }
           : null,
-      splashColor: scheme.primary.withValues(alpha: 0.1),
+      splashColor: (splashColor ?? scheme.primary).withValues(alpha: 0.1),
       highlightColor: scheme.primary.withValues(alpha: 0.05),
       borderRadius: BorderRadius.circular(borderRadius.r),
       child: child,

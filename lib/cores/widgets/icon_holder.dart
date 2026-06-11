@@ -22,7 +22,7 @@ class IconHolder extends StatelessWidget {
         width: 1.sp,
       ),
     ),
-    padding: EdgeInsets.all(AppSpacing.sm.w),
+    padding: EdgeInsets.all(AppSpacing.xxs.w),
     child: icon,
   );
 }

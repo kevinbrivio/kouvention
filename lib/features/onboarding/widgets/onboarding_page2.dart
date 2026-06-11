@@ -77,7 +77,6 @@ class OnboardingPage2 extends StatelessWidget {
   Widget _buildContent(BuildContext context, String title, String description, IconData icon) => Row(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      // TODO: Change hardcoded icons to params
       IconHolder(icon: Icon(icon, color: Colors.white)),
       Gap(AppSpacing.sm.w),
       Expanded(
@@ -88,14 +87,13 @@ class OnboardingPage2 extends StatelessWidget {
             Text(
               title,
               style: context.text.titleMedium.copyWith(
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
+                color: AppColorTokens.info,
               ),
             ),
             Gap(AppSpacing.xxs.h),
             Text(
               description,
-              style: context.text.titleMedium.copyWith(color: context.text.secondaryText, fontSize: 13.sp),
+              style: context.text.bodySmall.copyWith(color: AppColorTokens.info),
               textAlign: TextAlign.left,
               softWrap: true,
             ),

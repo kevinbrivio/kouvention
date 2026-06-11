@@ -27,15 +27,15 @@ class AppColorTokens {
 
   // Brand
   static const Color primary = Color(0xFF0FBA39);
-  static const Color primaryLighter = Color(0xFF80D58B); // dark mode variant
-  static const Color primaryDark = Color(0xFF4490ED); // blue (legacy, min use)
-  static const Color secondary = Color(0xFFFF8040); // orange (legacy, min use)
+  static const Color primaryLighter = Color(0xFFADFFB0); // dark mode variant
+  static const Color primaryDark = Color(0xFF02410E); // blue (legacy, min use)
+  static const Color secondary = Color(0xFFEF17BA); // orange (legacy, min use)
 
   // Functional
   static const Color error = Color(0xFFFF0033);
   static const Color success = Color(0xFF0FBA39);
   static const Color warning = Color(0xFFFF8040);
-  static const Color info = Color(0xFF4490ED);
+  static const Color info = Color(0xFFE7FDED);
   static const Color disabled = Color(0xFFB3B3B3);
   static const Color disabledText = Color(0xFF8C8C8C);
 
@@ -70,10 +70,10 @@ class AppSurfaceLight {
   AppSurfaceLight._();
 
   /// Scaffold / page background
-  static const Color background = Color(0xFFF6F4E8);
+  static const Color background = Color(0xFFFAEEE7);
 
   /// Surface containers (cards, list items, dialogs)
-  static const Color surface = Color(0xFFFFFFFF);
+  static const Color surface = Color(0xFFF9ECE5);
 
   /// Elevated surfaces (sheets, menus)
   static const Color surfaceElevated = Color(0xFFFFFFFF);
@@ -85,7 +85,7 @@ class AppSurfaceLight {
   static const Color surfaceBubbleReceived = Color(0xFFF5F5F0);
 
   /// Navigation bars, app bars
-  static const Color surfaceBar = Color(0xFFF6F4E8);
+  static const Color surfaceBar = Color(0xFFF9ECE5);
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -378,7 +378,7 @@ class AppTheme {
       scaffoldBackgroundColor: AppSurfaceLight.background,
       appBarTheme: AppBarTheme(
         backgroundColor: AppSurfaceLight.surfaceBar,
-        foregroundColor: scheme.onSurface,
+        foregroundColor: scheme.surface,
         elevation: 0.5,
       ),
       elevatedButtonTheme: _elevatedButtonTheme(scheme),
@@ -411,7 +411,7 @@ class AppTheme {
       scaffoldBackgroundColor: AppSurfaceDark.background,
       appBarTheme: AppBarTheme(
         backgroundColor: AppSurfaceDark.surfaceBar,
-        foregroundColor: scheme.onSurface.withValues(alpha: 0.9),
+        foregroundColor: scheme.surface.withValues(alpha: 0.9),
         elevation: 0.5,
       ),
       elevatedButtonTheme: _elevatedButtonTheme(scheme),

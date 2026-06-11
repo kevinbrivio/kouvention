@@ -282,7 +282,7 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
                   ),
                   filled: true,
                   counterStyle: TextStyle(color: scheme.primary),
-                  fillColor: scheme.onSurface.withValues(alpha: 0.1),
+                  fillColor: scheme.surface.withValues(alpha: 0.1),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(AppRadius.full.r),
                     borderSide: BorderSide(

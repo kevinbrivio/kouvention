@@ -25,8 +25,6 @@ class NewGroupChatVM extends BaseNotifier {
   Timer? _debounceTimer;
   bool _isSearching = false;
 
-  // Recent Users
-  List<UserModel> _recentUsers = [];
 
   // Group chat selection
   final List<UserModel> _selectedUsers = [];

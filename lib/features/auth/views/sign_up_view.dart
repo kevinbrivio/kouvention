@@ -27,8 +27,7 @@ class SignUpView extends StatelessWidget {
         child: Column(
           children: [
             const ConnectivityBanner(),
-            Gap(40.h),
-            _buildLogo(),
+            Image.asset(images.splash, height: 180.w, width: 180.w),
             Gap(AppSpacing.xl.h),
             _buildCard(context, signUpVM),
           ],
@@ -37,36 +36,29 @@ class SignUpView extends StatelessWidget {
     ),
   );
 
-  Widget _buildLogo() => Column(
-    children: [
-      Image.asset(images.logo, height: AppSizing.touchMin.h),
-      Gap(AppSpacing.xs.h),
-      const Text(
-        'Kouvention',
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    ],
-  );
-
   Widget _buildCard(BuildContext context, SignUpVM vm) => TransparentBox(
-    color: AppColorTokens.primary.withValues(alpha: 0.3),
-    borderColor: Colors.white.withValues(alpha: 0.7),
+    color: AppColorTokens.primary.withValues(alpha: 0.7),
     child: Form(
       key: vm.formKey,
       child: Column(
         children: [
-          Text('Create account', style: context.text.bodyMedium),
+          Text(
+            'Create account',
+            style: context.text.headlineSmall.copyWith(
+              color: AppColorTokens.info
+            ),
+          ),
           Gap(AppSpacing.xs.h),
           Text(
             'Sign up to start messaging.',
-            style: context.text.bodyMedium.copyWith(fontSize: 13.sp, color: context.text.secondaryText),
+            style: context.text.bodySmall.copyWith(
+              color: AppColorTokens.info
+            ),
             textAlign: TextAlign.center,
           ),
-          Gap(AppSpacing.xl.h),
+          
+          Gap(AppSpacing.xxl.h),
+
           _buildEmailField(context, vm),
           Gap(AppSpacing.md.h),
           PasswordField(
@@ -75,10 +67,15 @@ class SignUpView extends StatelessWidget {
             controller: vm.form.password.controller,
             validator: (val) => vm.form.password.validator?.call(val ?? ''),
           ),
-          Gap(AppSpacing.xs.h),
-          if (vm.isOffline) _buildOfflineWarning(),
-          Gap(AppSpacing.lg.h),
-          _buildSignUpButton(vm),
+          
+          if (vm.isOffline) ...[
+            Gap(AppSpacing.md.h),
+            _buildOfflineWarning(),
+          ],
+
+          Gap(AppSpacing.xxl.h),
+
+          _buildSignUpButton(context, vm),
           Gap(AppSpacing.lg.h),
           _buildLoginLink(context),
         ],
@@ -89,27 +86,41 @@ class SignUpView extends StatelessWidget {
   Widget _buildEmailField(BuildContext context, SignUpVM vm) => TextFormField(
     keyboardType: TextInputType.emailAddress,
     controller: vm.form.email.controller,
-    style: context.text.bodyMedium.copyWith(fontSize: 13.sp, color: context.text.secondaryText),
+    style: context.text.bodyMedium.copyWith(color: Colors.white),
     validator: (val) => vm.form.email.validator?.call(val ?? ''),
     decoration: InputDecoration(
       hintText: 'Email',
-      hintStyle: const TextStyle(color: Colors.white54),
+      hintStyle: context.text.bodyMedium.copyWith(color: Colors.white54),
       prefixIcon: Icon(
         Icons.email_outlined,
         color: Colors.white70,
         size: AppSizing.iconSm.sp,
       ),
       filled: true,
-      fillColor: Colors.white.withValues(alpha: 0.1),
+      fillColor: AppColorTokens.primary.withValues(alpha: 0.5),
       contentPadding: EdgeInsets.symmetric(
         horizontal: AppSpacing.md.w,
-        vertical: 14.h,
+        vertical: AppSpacing.md.h,
       ),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md.r),
         borderSide: BorderSide.none,
       ),
-      errorStyle: const TextStyle(color: Colors.orangeAccent, fontSize: 12),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppRadius.md.r),
+        borderSide: BorderSide(
+          color: Colors.white.withValues(alpha: 0.3), 
+          width: 1.0,
+        ),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppRadius.md.r),
+        borderSide: const BorderSide(
+          color: Colors.white, 
+          width: 1.5,
+        ),
+      ),
+      errorStyle: context.text.labelMedium.copyWith(color: Colors.orangeAccent),
     ),
   );
 
@@ -118,6 +129,7 @@ class SignUpView extends StatelessWidget {
     decoration: BoxDecoration(
       color: Colors.orange.shade800.withValues(alpha: 0.3),
       borderRadius: BorderRadius.circular(AppRadius.sm.r),
+      border: Border.all(color: Colors.orangeAccent.withValues(alpha: 0.5)),
     ),
     child: Row(
       children: [
@@ -133,12 +145,14 @@ class SignUpView extends StatelessWidget {
     ),
   );
 
-  Widget _buildSignUpButton(SignUpVM vm) => SizedBox(
+  Widget _buildSignUpButton(BuildContext context, SignUpVM vm) => SizedBox(
+    width: double.infinity,
     height: AppSizing.buttonHeight.h,
     child: Button(
       onPressed: vm.isLoading ? null : () => vm.signUp(),
       isWhiteBackground: true,
       text: 'Sign Up',
+      textStyle: context.text.labelLarge.copyWith(color: AppColorTokens.primary),
     ),
   );
 
@@ -152,7 +166,7 @@ class SignUpView extends StatelessWidget {
         children: [
           TextSpan(
             text: 'Sign In',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           ),
         ],
       ),

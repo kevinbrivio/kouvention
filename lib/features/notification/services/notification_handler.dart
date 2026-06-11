@@ -21,7 +21,9 @@ import 'package:kouvention/firebase_options.dart';
 
 @pragma('vm:entry-point')
 void onBackgroundNotificationResponse(NotificationResponse response) async {
-  debugPrint('[BackgroundReply] Notification response: action=${response.actionId}, payload=${response.payload}');
+  debugPrint(
+    '[BackgroundReply] Notification response: action=${response.actionId}, payload=${response.payload}',
+  );
 
   final String? replyText = response.input;
   final String? chatId = response.payload;
@@ -31,7 +33,9 @@ void onBackgroundNotificationResponse(NotificationResponse response) async {
     debugPrint('[BackgroundReply] Missing replyText or chatId');
     return;
   }
-  debugPrint('[BackgroundReply] Direct reply text: "$replyText" for chat: $chatId');
+  debugPrint(
+    '[BackgroundReply] Direct reply text: "$replyText" for chat: $chatId',
+  );
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
@@ -51,11 +55,11 @@ void onBackgroundNotificationResponse(NotificationResponse response) async {
   }
 
   final docId = FirebaseFirestore.instance
-    .collection('chats')
-    .doc(chatId)
-    .collection('messages')
-    .doc()
-    .id;
+      .collection('chats')
+      .doc(chatId)
+      .collection('messages')
+      .doc()
+      .id;
 
   await chatService.sendMessage(
     chatId: chatId,
@@ -71,7 +75,9 @@ void onBackgroundNotificationResponse(NotificationResponse response) async {
 
 @pragma('vm:entry-point')
 Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
-  debugPrint('[BackgroundHandler] ENTERED — Received FCM data: ${message.data}');
+  debugPrint(
+    '[BackgroundHandler] ENTERED — Received FCM data: ${message.data}',
+  );
   try {
     await Firebase.initializeApp();
     debugPrint('[BackgroundHandler] Firebase.initializeApp() OK');
@@ -123,7 +129,9 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
   final data = message.data;
   final sentBy = data['sentBy'] ?? 'unknown';
   final isGroup = data['chatType'] == 'group';
-  debugPrint('[BackgroundHandler] Notification sent by: $sentBy, isGroup=$isGroup');
+  debugPrint(
+    '[BackgroundHandler] Notification sent by: $sentBy, isGroup=$isGroup',
+  );
 
   String channelId;
   try {
@@ -307,7 +315,9 @@ class NotificationHandler {
     // 5. Check if the app is opened via notification (from killed state)
     final initialMsg = await FirebaseMessaging.instance.getInitialMessage();
     if (initialMsg != null) {
-      debugPrint('[NotificationHandler] App opened from killed state via notification');
+      debugPrint(
+        '[NotificationHandler] App opened from killed state via notification',
+      );
       _handleNotificationTapped(initialMsg);
     } else {
       debugPrint('[NotificationHandler] No initial notification message');
@@ -345,9 +355,9 @@ class NotificationHandler {
         // Route through the coordinator so the lightweight sync goes
         // through the bounded queue. The coordinator decides whether
         // to enqueue an immediate `fetchMissedMessages` job.
-        _ref.read(chatSyncCoordinatorProvider).onNotificationReceived(
-              incomingChatId,
-            );
+        _ref
+            .read(chatSyncCoordinatorProvider)
+            .onNotificationReceived(incomingChatId);
         debugPrint('[ForegroundHandler] Synced messages for $incomingChatId');
       } catch (e) {
         debugPrint('[ForegroundHandler] Sync failed for $incomingChatId: $e');
@@ -397,7 +407,9 @@ class NotificationHandler {
     }
 
     final iosSoundFilename = NotificationSound.iosSoundForChannel(channelId);
-    final vibration = _ref.read(prefsServiceProvider).notificationVibrationEnabled;
+    final vibration = _ref
+        .read(prefsServiceProvider)
+        .notificationVibrationEnabled;
 
     await _showChatNotification(
       plugin: _localNotifications,
@@ -417,7 +429,9 @@ class NotificationHandler {
   // Tap in a local notification (foreground)
   void _onNotificationTapped(NotificationResponse response) {
     final chatId = response.payload;
-    debugPrint('[NotificationHandler] Foreground notification tapped, chatId=$chatId');
+    debugPrint(
+      '[NotificationHandler] Foreground notification tapped, chatId=$chatId',
+    );
     if (chatId == null || chatId.isEmpty) return;
     _navigateToChat(chatId);
   }
@@ -426,7 +440,9 @@ class NotificationHandler {
   void _handleNotificationTapped(RemoteMessage message) {
     final chatId = message.data['chatId'];
     final sentBy = message.data['sentBy'] ?? 'unknown';
-    debugPrint('[NotificationHandler] Background notification tapped, chatId=$chatId, sentBy=$sentBy');
+    debugPrint(
+      '[NotificationHandler] Background notification tapped, chatId=$chatId, sentBy=$sentBy',
+    );
     if (chatId != null) {
       _navigateToChat(chatId);
     }

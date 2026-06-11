@@ -50,10 +50,10 @@ class BaseView<T extends BaseNotifier> extends ConsumerWidget {
                         ? BoxDecoration(
                             gradient: LinearGradient(
                               colors: [
+                                AppColorTokens.primaryDark,
                                 AppColorTokens.primary,
-                                AppColorTokens.primaryLighter,
                               ],
-                              stops: const [0.6, 0.9],
+                              stops: const [0.1, 1.0],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),

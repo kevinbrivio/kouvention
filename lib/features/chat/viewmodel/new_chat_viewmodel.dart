@@ -25,9 +25,6 @@ class NewChatVM extends BaseNotifier {
   Timer? _debounceTimer;
   bool _isSearching = false;
 
-  // Recent List
-  List<UserModel> _recentUsers = [];
-
   // Group chat selection
   final List<UserModel> _selectedUsers = [];
   bool _isGroupMode = false;
@@ -68,11 +65,14 @@ class NewChatVM extends BaseNotifier {
     if (query.trim().isEmpty) {
       _searchResults = [];
       _isSearching = false;
+      _error = null; // clear any stale error from a previous failed search
       notifyListeners();
       return;
     }
 
     _isSearching = true;
+    _error = null; // clear previous error so the UI doesn't show it
+    // while the new search is in flight
     notifyListeners();
 
     _debounceTimer = Timer(const Duration(milliseconds: 500), () {
@@ -88,6 +88,7 @@ class NewChatVM extends BaseNotifier {
         query: query,
         currentUid: _currentUid,
       );
+      
       _error = null;
     } catch (e) {
       _error = 'Search failed';

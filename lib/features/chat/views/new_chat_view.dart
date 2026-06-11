@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
@@ -56,8 +55,9 @@ class _NewChatBodyState extends State<_NewChatBody> {
       mainAxisSize: MainAxisSize.min,
       children: [
         _buildSearchBar(),
-        Gap(4.h),
+        Gap(AppSpacing.md.h),
         _buildGroupButton(),
+        Gap(AppSpacing.md.h),
         Flexible(
           child: vm.isSearching
               ? Center(
@@ -65,6 +65,15 @@ class _NewChatBodyState extends State<_NewChatBody> {
                     width: AppSizing.iconMd.w,
                     height: AppSizing.iconMd.w,
                     child: LoadingIndicator(),
+                  ),
+                )
+              : _searchController.text.isNotEmpty && vm.error != null
+              ? Center(
+                  child: Text(
+                    vm.error!,
+                    style: context.text.labelSmall.copyWith(
+                      color: context.text.tertiaryText,
+                    ),
                   ),
                 )
               : _searchController.text.isNotEmpty && vm.searchResults.isEmpty
@@ -106,7 +115,7 @@ class _NewChatBodyState extends State<_NewChatBody> {
           ),
           filled: true,
           counterStyle: TextStyle(color: scheme.primary),
-          fillColor: scheme.onSurface.withValues(alpha: 0.1),
+          fillColor: scheme.surface.withValues(alpha: 0.1),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(AppRadius.full.r),
             borderSide: BorderSide(
@@ -142,8 +151,8 @@ class _NewChatBodyState extends State<_NewChatBody> {
   Widget _buildGroupButton() {
     final scheme = Theme.of(context).colorScheme;
     return Material(
-      color: scheme.surface,
-      borderRadius: BorderRadius.circular(AppRadius.lg.r),
+      color: scheme.onSurface.withValues(alpha: 0.1),
+      borderRadius: BorderRadius.circular(AppRadius.md.r),
       child: TapDetector(
         onTap: () {
           if (context.mounted) context.push(RouterRoutes.newGroupChat.path);
@@ -187,7 +196,7 @@ class _NewChatBodyState extends State<_NewChatBody> {
 
   Widget _buildUserTile(UserModel user) {
     final scheme = Theme.of(context).colorScheme;
-    return InkWell(
+    return TapDetector(
       onTap: () async {
         final chatId = await vm.createDirectChat(user);
         if (chatId != null && mounted) {
@@ -196,8 +205,7 @@ class _NewChatBodyState extends State<_NewChatBody> {
       },
       child: Padding(
         padding: EdgeInsets.symmetric(
-          horizontal: AppSpacing.md.w,
-          vertical: 10.h,
+          vertical: AppSpacing.betweenCards.h,
         ),
         child: Row(
           children: [
