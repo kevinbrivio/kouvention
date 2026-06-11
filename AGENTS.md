@@ -14,17 +14,17 @@ This is a **Flutter mobile chat app** modeled after Kouventa's shared-inbox UI, 
 
 ## 2. Project context
 
-| | |
-|---|---|
-| App type | Mobile chat app (Flutter, iOS + Android) |
-| Auth model | Single-account per device (one logged-in user at a time) |
-| Channels | Single channel (direct + group chat); no WhatsApp/IG/FB integration yet |
-| Tenant model | Single tenant; no `organizationId` scoping yet |
-| AI / agents | None. Do not add. |
-| Backend | Firebase (Firestore + Cloud Functions + FCM) |
-| Local DB | Drift (SQLite), encrypted with `sqlite3mc` |
-| State | Riverpod (`ChangeNotifierProvider`, `StreamProvider`, `StateProvider`) |
-| User base | Indonesian market; Bahasa Indonesia is a first-class language |
+|              |                                                                         |
+| ------------ | ----------------------------------------------------------------------- |
+| App type     | Mobile chat app (Flutter, iOS + Android)                                |
+| Auth model   | Single-account per device (one logged-in user at a time)                |
+| Channels     | Single channel (direct + group chat); no WhatsApp/IG/FB integration yet |
+| Tenant model | Single tenant; no `organizationId` scoping yet                          |
+| AI / agents  | None. Do not add.                                                       |
+| Backend      | Firebase (Firestore + Cloud Functions + FCM)                            |
+| Local DB     | Drift (SQLite), encrypted with `sqlite3mc`                              |
+| State        | Riverpod (`ChangeNotifierProvider`, `StreamProvider`, `StateProvider`)  |
+| User base    | Indonesian market; Bahasa Indonesia is a first-class language           |
 
 The project is intentionally **not** cloning the full Kouventa multi-channel system. It proves the mobile chat core first, while leaving room for multi-channel fields later without rewriting the core sync architecture.
 
@@ -182,12 +182,12 @@ Add new compound indexes via `firestore.indexes.json` only. Do not add single-fi
 
 ### What this means in practice
 
-| Operation | Wrong | Right |
-|---|---|---|
-| Send a message | Write the message + `lastMessage` + `unreadCount++` in a non-atomic batch | Use a transaction: read `messages/{messageId}` first; if exists, mark local `sent` and skip; else write atomically |
-| Update chat timestamp | `updatedAt: FieldValue.serverTimestamp()` inside a retry loop | Set `updatedAt` to the original `sentAt` value (already in the message) on every retry; never re-fetch server time |
-| Mark as read | `resetUnreadCount` + `markChatAsRead` as two separate writes | Merge into a single chat update: `{ unreadCount.uid: 0, lastReadAt.uid: now }` |
-| Increment unread | `FieldValue.increment(1)` on a retry | Transaction-guarded, keyed on `messageId` existence check |
+| Operation             | Wrong                                                                     | Right                                                                                                              |
+| --------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Send a message        | Write the message + `lastMessage` + `unreadCount++` in a non-atomic batch | Use a transaction: read `messages/{messageId}` first; if exists, mark local `sent` and skip; else write atomically |
+| Update chat timestamp | `updatedAt: FieldValue.serverTimestamp()` inside a retry loop             | Set `updatedAt` to the original `sentAt` value (already in the message) on every retry; never re-fetch server time |
+| Mark as read          | `resetUnreadCount` + `markChatAsRead` as two separate writes              | Merge into a single chat update: `{ unreadCount.uid: 0, lastReadAt.uid: now }`                                     |
+| Increment unread      | `FieldValue.increment(1)` on a retry                                      | Transaction-guarded, keyed on `messageId` existence check                                                          |
 
 The "retry" path is critical. The offline-pending flush (§7) WILL retry. Every write on that path must produce the same result whether it runs once or twenty times.
 
@@ -251,12 +251,12 @@ This prevents: duplicate message bubbles, double unread increments, stale retry 
 
 Stored in Drift only (not in Firestore). Add to the `Chats` table or a per-chat sync-state table:
 
-| Field | Meaning |
-|---|---|
-| `latestSeenRemoteAt` | Highest `sentAt` the client has confirmed from the server. |
-| `oldestCachedAt` | Lowest `sentAt` present in the local message cache. |
-| `hasMoreOlderRemote` | True if the server has messages older than `oldestCachedAt`. |
-| `hasLocalGap` | True if a partial range was received and a follow-up fetch is needed. |
+| Field                | Meaning                                                               |
+| -------------------- | --------------------------------------------------------------------- |
+| `latestSeenRemoteAt` | Highest `sentAt` the client has confirmed from the server.            |
+| `oldestCachedAt`     | Lowest `sentAt` present in the local message cache.                   |
+| `hasMoreOlderRemote` | True if the server has messages older than `oldestCachedAt`.          |
+| `hasLocalGap`        | True if a partial range was received and a follow-up fetch is needed. |
 
 ### Rules
 
@@ -466,7 +466,7 @@ removed.
   fixed.
 - The latest local window is bumped from 10 to 50 rows
   (`chatMessagesStreamProvider` in `chat_room_viewmodel.dart:557-561,
-  549-553`), matching the AGENTS.md §11.2 budget.
+549-553`), matching the AGENTS.md §11.2 budget.
 - No Firestore schema change; the 4-field state is still Drift-only.
 
 ### Phase 6 — Add sync coordinator and queue [DONE 2026-06-05]
@@ -589,13 +589,13 @@ These are the exact step sequences the implementation must produce. Use them as 
 
 Target per active user session:
 
-| Event | Budget |
-|---|---|
-| Login | 20-50 chat reads |
-| Open chat | 100 message reads |
-| Scroll older | 50 message reads per page |
+| Event        | Budget                                                       |
+| ------------ | ------------------------------------------------------------ |
+| Login        | 20-50 chat reads                                             |
+| Open chat    | 100 message reads                                            |
+| Scroll older | 50 message reads per page                                    |
 | Send message | 1 message write + 1 transaction-guarded chat metadata update |
-| Typing | near-zero writes (debounced) |
+| Typing       | near-zero writes (debounced)                                 |
 
 If a code change is observed to exceed these numbers in a single user action, it is a regression. Surface it.
 
@@ -607,91 +607,91 @@ One-line purpose for every chat file. Keep this in sync when adding files.
 
 ### Models (`lib/features/chat/models/`)
 
-| File | Purpose |
-|---|---|
-| `chat_model.dart` | `ChatModel` + `MemberInfo` + `LastMessage`. Used everywhere a chat is rendered. |
-| `message_model.dart` | `MessageModel`. Holds text, media, reply, sync state. Contains `toMap()` and factory `fromMap()`. |
-| `message_status.dart` | Enum: pending, sent, delivered, read, failed. |
-| `message_type.dart` | Enum: text, image, video, document, sticker, audio. |
-| `reply_to_model.dart` | Denormalized reply-to reference. |
-| `bubble_color_scheme.dart` | Per-chat bubble theming. |
-| `sticker_model.dart` | Sticker asset reference. |
-| `upload_result_model.dart` | Result of a media upload (used by the send-media path). |
+| File                       | Purpose                                                                                           |
+| -------------------------- | ------------------------------------------------------------------------------------------------- |
+| `chat_model.dart`          | `ChatModel` + `MemberInfo` + `LastMessage`. Used everywhere a chat is rendered.                   |
+| `message_model.dart`       | `MessageModel`. Holds text, media, reply, sync state. Contains `toMap()` and factory `fromMap()`. |
+| `message_status.dart`      | Enum: pending, sent, delivered, read, failed.                                                     |
+| `message_type.dart`        | Enum: text, image, video, document, sticker, audio.                                               |
+| `reply_to_model.dart`      | Denormalized reply-to reference.                                                                  |
+| `bubble_color_scheme.dart` | Per-chat bubble theming.                                                                          |
+| `sticker_model.dart`       | Sticker asset reference.                                                                          |
+| `upload_result_model.dart` | Result of a media upload (used by the send-media path).                                           |
 
 ### Services (`lib/features/chat/services/`)
 
-| File | Purpose |
-|---|---|
-| `chat_service.dart` | **All** Firestore reads/writes for chats and messages. The only file that should import `cloud_firestore` in the chat feature. |
-| `wallpaper_service.dart` | Per-chat wallpaper asset. |
-| `sticker_service.dart` | Sticker pack metadata. |
-| `databases/message_database.dart` | Drift schema, queries, FTS5, message-window pagination. |
-| `databases/message_database.g.dart` | Generated; do not edit. |
-| `databases/cached_messages.g.dart` | Generated; do not edit. |
-| `media/cloud_media_service.dart` | Cloud upload of media. |
-| `media/media_picker_service.dart` | Device gallery picker. |
-| `sync/chat_sync_queue.dart` | Bounded-concurrency FIFO queue. Default 4 jobs in flight, broadcast `inFlightLabels` stream. |
-| `sync/chat_sync_coordinator.dart` | Single owner of "what needs to sync when". Exposes `onLogin`, `onChatOpened`, `onChatClosed`, `onNotificationReceived`, `onNetworkResumed` hooks. Owns the queue and the two repositories. |
+| File                                | Purpose                                                                                                                                                                                    |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `chat_service.dart`                 | **All** Firestore reads/writes for chats and messages. The only file that should import `cloud_firestore` in the chat feature.                                                             |
+| `wallpaper_service.dart`            | Per-chat wallpaper asset.                                                                                                                                                                  |
+| `sticker_service.dart`              | Sticker pack metadata.                                                                                                                                                                     |
+| `databases/message_database.dart`   | Drift schema, queries, FTS5, message-window pagination.                                                                                                                                    |
+| `databases/message_database.g.dart` | Generated; do not edit.                                                                                                                                                                    |
+| `databases/cached_messages.g.dart`  | Generated; do not edit.                                                                                                                                                                    |
+| `media/cloud_media_service.dart`    | Cloud upload of media.                                                                                                                                                                     |
+| `media/media_picker_service.dart`   | Device gallery picker.                                                                                                                                                                     |
+| `sync/chat_sync_queue.dart`         | Bounded-concurrency FIFO queue. Default 4 jobs in flight, broadcast `inFlightLabels` stream.                                                                                               |
+| `sync/chat_sync_coordinator.dart`   | Single owner of "what needs to sync when". Exposes `onLogin`, `onChatOpened`, `onChatClosed`, `onNotificationReceived`, `onNetworkResumed` hooks. Owns the queue and the two repositories. |
 
 ### Repositories (`lib/features/chat/repositories/`)
 
-| File | Purpose |
-|---|---|
-| `chat_repository.dart` | View-model-facing wrapper over `ChatService` + `MessageDatabase` for chat-list / chat-room I/O (first-page stream, older-page fetch, pin/unpin/delete, get-chat). |
-| `message_repository.dart` | View-model-facing wrapper over `SyncService` + `ChatService` + `MessageDatabase` for message-level I/O (read, send, realtime, read-receipts, typing, delete). |
+| File                      | Purpose                                                                                                                                                           |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `chat_repository.dart`    | View-model-facing wrapper over `ChatService` + `MessageDatabase` for chat-list / chat-room I/O (first-page stream, older-page fetch, pin/unpin/delete, get-chat). |
+| `message_repository.dart` | View-model-facing wrapper over `SyncService` + `ChatService` + `MessageDatabase` for message-level I/O (read, send, realtime, read-receipts, typing, delete).     |
 
 ### View models (`lib/features/chat/viewmodel/`)
 
-| File | Purpose |
-|---|---|
-| `chat_list_viewmodel.dart` | Global state for the chat list: filter, selection, pagination, pin/delete actions. **Highest-priority refactor target.** |
-| `chat_room_viewmodel.dart` | Per-chat state: messages, typing, sending, selection. **Second refactor target** (cursor semantics + write coalescing). |
-| `chat_selection_viewmodel.dart` | Multi-select mode for chat list. |
-| `chat_profile_viewmodel.dart` | Chat detail / settings screen. |
-| `new_chat_viewmodel.dart` | New direct chat flow. |
-| `new_group_chat_viewmodel.dart` | New group chat flow. |
-| `recent_users_provider.dart` | Recently contacted users. |
-| `wallpaper_provider.dart` | Wallpaper selection state. |
-| `bubble_scheme_provider.dart` | Bubble color scheme state. |
-| `audio_manager.dart` | Audio message playback. |
-| `media/media_picker_helper.dart` | UI-facing media picker. |
-| `media/media_preview_viewmodel.dart` | Media preview state. |
+| File                                 | Purpose                                                                                                                  |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| `chat_list_viewmodel.dart`           | Global state for the chat list: filter, selection, pagination, pin/delete actions. **Highest-priority refactor target.** |
+| `chat_room_viewmodel.dart`           | Per-chat state: messages, typing, sending, selection. **Second refactor target** (cursor semantics + write coalescing).  |
+| `chat_selection_viewmodel.dart`      | Multi-select mode for chat list.                                                                                         |
+| `chat_profile_viewmodel.dart`        | Chat detail / settings screen.                                                                                           |
+| `new_chat_viewmodel.dart`            | New direct chat flow.                                                                                                    |
+| `new_group_chat_viewmodel.dart`      | New group chat flow.                                                                                                     |
+| `recent_users_provider.dart`         | Recently contacted users.                                                                                                |
+| `wallpaper_provider.dart`            | Wallpaper selection state.                                                                                               |
+| `bubble_scheme_provider.dart`        | Bubble color scheme state.                                                                                               |
+| `audio_manager.dart`                 | Audio message playback.                                                                                                  |
+| `media/media_picker_helper.dart`     | UI-facing media picker.                                                                                                  |
+| `media/media_preview_viewmodel.dart` | Media preview state.                                                                                                     |
 
 ### Views (`lib/features/chat/views/`)
 
-| File | Purpose |
-|---|---|
-| `chat_list_view.dart` | Main inbox screen. Hosts the scroll listener, filter, and ListView. |
-| `chat_room_view.dart` | Single chat screen. |
-| `chat_profile_view.dart` | Chat info / settings. |
-| `new_chat_view.dart` | New direct chat. |
-| `new_group_chat_view.dart` | New group chat. |
-| `group_setup_view.dart` | Group details after creation. |
-| `media_preview_view.dart` | Full-screen media viewer. |
+| File                       | Purpose                                                             |
+| -------------------------- | ------------------------------------------------------------------- |
+| `chat_list_view.dart`      | Main inbox screen. Hosts the scroll listener, filter, and ListView. |
+| `chat_room_view.dart`      | Single chat screen.                                                 |
+| `chat_profile_view.dart`   | Chat info / settings.                                               |
+| `new_chat_view.dart`       | New direct chat.                                                    |
+| `new_group_chat_view.dart` | New group chat.                                                     |
+| `group_setup_view.dart`    | Group details after creation.                                       |
+| `media_preview_view.dart`  | Full-screen media viewer.                                           |
 
 ### Widgets (`lib/features/chat/widgets/`)
 
-| File | Purpose |
-|---|---|
-| `chatList/chat_list_item.dart` | One row in the chat list. |
-| `chatList/chat_header.dart` | Search + filter bar. |
-| `chatList/chat_list_skeleton.dart` | Loading skeleton. |
-| `chatRoom/message_bubble.dart` | Single message bubble. |
-| `chatRoom/chat_room_appbar.dart` / `chat_room_appbar_skeleton.dart` | Chat header. |
-| `chatRoom/chat_room_skeleton.dart` | Loading skeleton. |
-| `chatRoom/media_bubble.dart` | Media message bubble. |
-| `chatRoom/media_sheet.dart` | Media picker sheet. |
-| `chatRoom/typing_dots.dart` | Typing indicator animation. |
-| `chatRoom/bubble_tail_painter.dart` | CustomPainter for bubble tail. |
-| `preview/image_preview.dart`, `video_preview.dart`, `audio_preview.dart`, `document_preview.dart` | Media previews. |
-| `selection_app_bar.dart` | Multi-select app bar. |
-| `recent_users_list.dart` | Recently contacted users list. |
-| `sticker_picker.dart` | Sticker picker sheet. |
+| File                                                                                              | Purpose                        |
+| ------------------------------------------------------------------------------------------------- | ------------------------------ |
+| `chatList/chat_list_item.dart`                                                                    | One row in the chat list.      |
+| `chatList/chat_header.dart`                                                                       | Search + filter bar.           |
+| `chatList/chat_list_skeleton.dart`                                                                | Loading skeleton.              |
+| `chatRoom/message_bubble.dart`                                                                    | Single message bubble.         |
+| `chatRoom/chat_room_appbar.dart` / `chat_room_appbar_skeleton.dart`                               | Chat header.                   |
+| `chatRoom/chat_room_skeleton.dart`                                                                | Loading skeleton.              |
+| `chatRoom/media_bubble.dart`                                                                      | Media message bubble.          |
+| `chatRoom/media_sheet.dart`                                                                       | Media picker sheet.            |
+| `chatRoom/typing_dots.dart`                                                                       | Typing indicator animation.    |
+| `chatRoom/bubble_tail_painter.dart`                                                               | CustomPainter for bubble tail. |
+| `preview/image_preview.dart`, `video_preview.dart`, `audio_preview.dart`, `document_preview.dart` | Media previews.                |
+| `selection_app_bar.dart`                                                                          | Multi-select app bar.          |
+| `recent_users_list.dart`                                                                          | Recently contacted users list. |
+| `sticker_picker.dart`                                                                             | Sticker picker sheet.          |
 
 ### Utils
 
-| File | Purpose |
-|---|---|
+| File                       | Purpose                                |
+| -------------------------- | -------------------------------------- |
 | `utils/message_label.dart` | Helpers for last-message preview text. |
 
 ---
@@ -882,6 +882,7 @@ Before merging any change that touches the chat sync path, verify all of these:
   - 500-message chat → `fetchOlderMessages(limit: 50)` returns 50 rows in single-digit ms.
 
 Run with:
+
 ```bash
 flutter test test/chat_list_paging_test.dart \
             test/sync_cursor_test.dart \
