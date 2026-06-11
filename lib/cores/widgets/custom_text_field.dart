@@ -129,7 +129,7 @@ class _CustomTextFieldState extends State<CustomTextField>
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final body2Style = context.text.body2;
+    final bodyStyle = context.text.bodyMedium;
     final defaultLabelColor = widget.labelColor ?? scheme.onSurface;
     final defaultHintColor =
         widget.hintColor ?? scheme.onSurface.withValues(alpha: 0.5);
@@ -142,7 +142,7 @@ class _CustomTextFieldState extends State<CustomTextField>
             children: [
               Text.rich(
                 TextSpan(
-                  style: body2Style.copyWith(
+                  style: bodyStyle.copyWith(
                     fontSize: 14.sp,
                     fontWeight: FontWeight.w500,
                     color: defaultLabelColor,
@@ -155,7 +155,7 @@ class _CustomTextFieldState extends State<CustomTextField>
                         style: TextStyle(
                           color: AppColorTokens.error,
                           fontWeight: FontWeight.w500,
-                          fontFamily: body2Style.fontFamily,
+                          fontFamily: bodyStyle.fontFamily,
                         ),
                       ),
                   ],
@@ -202,7 +202,7 @@ class _CustomTextFieldState extends State<CustomTextField>
                     widget.contentPadding ??
                     EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 12.h),
                 hintText: widget.hint,
-                hintStyle: body2Style.copyWith(
+                hintStyle: bodyStyle.copyWith(
                   color: defaultHintColor,
                   fontWeight: FontWeight.w400,
                 ),
@@ -227,7 +227,7 @@ class _CustomTextFieldState extends State<CustomTextField>
                 ),
                 errorBorder: getBorder(AppColorTokens.error, scheme),
                 focusedErrorBorder: getBorder(scheme.primary, scheme),
-                errorStyle: body2Style.copyWith(
+                errorStyle: bodyStyle.copyWith(
                   fontSize: 0,
                   color: Colors.transparent,
                 ),
@@ -242,7 +242,7 @@ class _CustomTextFieldState extends State<CustomTextField>
                   maxHeight: 23.h,
                 ),
               ),
-              style: (widget.style ?? body2Style).copyWith(
+              style: (widget.style ?? bodyStyle).copyWith(
                 color: !widget.enabled
                     ? scheme.onSurface.withValues(alpha: 0.5)
                     : (errorMessage != null
@@ -275,14 +275,14 @@ class _CustomTextFieldState extends State<CustomTextField>
           Gap(3.h),
           Text(
             widget.description!,
-            style: body2Style,
+            style: bodyStyle,
           ),
         ],
         if (errorMessage != null) ...[
           Gap(3.h),
           Text(
             errorMessage!,
-            style: body2Style.copyWith(
+            style: bodyStyle.copyWith(
               fontWeight: FontWeight.w400,
               color: widget.errorMsgColor ?? AppColorTokens.error,
             ),

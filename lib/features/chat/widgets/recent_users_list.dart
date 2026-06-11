@@ -32,14 +32,14 @@ class RecentUsersList extends ConsumerWidget {
         ),
       ),
       error: (_, __) => Center(
-        child: Text('Search users by name', style: context.text.subDescription),
+        child: Text('Search users by name', style: context.text.titleMedium.copyWith(color: context.text.secondaryText)),
       ),
       data: (users) {
         if (users.isEmpty) {
           return Center(
             child: Text(
               'Search users by name',
-              style: context.text.subDescription,
+              style: context.text.titleMedium.copyWith(color: context.text.secondaryText),
             ),
           );
         }
@@ -62,7 +62,7 @@ class RecentUsersList extends ConsumerWidget {
                   ),
                   child: Text(
                     'Sorted by latest message',
-                    style: context.text.subDescription3.copyWith(
+                    style: context.text.labelSmall.copyWith(
                       color: AppColorTokens.primaryLighter,
                     ),
                   ),

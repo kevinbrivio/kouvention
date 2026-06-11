@@ -9,6 +9,8 @@ import 'package:kouvention/cores/bases/base_view.dart';
 import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/cores/widgets/hidden_app_bar.dart';
+import 'package:kouvention/cores/widgets/loading_indicator.dart';
+import 'package:kouvention/cores/widgets/tap_detector.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_list_viewmodel.dart';
 import 'package:kouvention/features/chat/widgets/chatList/chat_header.dart';
@@ -18,6 +20,8 @@ import 'package:kouvention/features/search/viewmodel/search_viewmodel.dart';
 import 'package:kouvention/features/search/widgets/search_body.dart';
 
 class ChatListView extends ConsumerStatefulWidget {
+  const ChatListView({super.key});
+
   @override
   ConsumerState<ChatListView> createState() => _ChatListViewState();
 }
@@ -66,8 +70,7 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
                 _visibleIdMargin)
             .clamp(firstIdx, chats.length - 1);
 
-    final ids =
-        chats.sublist(firstIdx, lastIdx + 1).map((c) => c.id).toSet();
+    final ids = chats.sublist(firstIdx, lastIdx + 1).map((c) => c.id).toSet();
     ref.read(visibleChatIdsProvider.notifier).state = ids;
   }
 
@@ -115,9 +118,11 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
             if (!searchVm.isActive)
               Positioned(
                 right: AppSpacing.md.w,
-                bottom: MediaQuery.of(context).padding.bottom + 12.h,
+                bottom: MediaQuery.of(context).padding.bottom + AppSpacing.md.h,
                 child: FloatingActionButton(
                   backgroundColor: scheme.primary,
+                  foregroundColor: scheme.onPrimary.withValues(alpha: 0.1),
+                  splashColor: scheme.onPrimary.withValues(alpha: 0.3),
                   onPressed: () {
                     context.push(RouterRoutes.newChat.path);
                   },
@@ -144,15 +149,14 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
     final chats = vm.visibleChats;
     final isChatListReady =
         filteredChatAsync.hasValue && filteredChatAsync.value != null;
+    final chatVM = ref.watch(chatListVM);
+    final scheme = Theme.of(context).colorScheme;
 
     return SafeArea(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (!vm.isSelectionMode)
-            ChatHeader()
-          else
-            ChatHeader(compact: true),
+          if (!vm.isSelectionMode) ChatHeader() else ChatHeader(compact: true),
           Expanded(
             child: filteredChatAsync.when(
               loading: () => const Center(child: ChatListSkeleton()),
@@ -161,15 +165,18 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
                 if (chats.isEmpty && !isChatListReady) {
                   return const ChatListSkeleton();
                 }
+                if (chats.isEmpty) Center(child: Text('No conversations yet.'));
 
-                if (chats.isEmpty)
-                  return const Center(child: Text('No conversations yet.'));
                 return ListView.builder(
                   controller: _scrollController,
-                  padding: EdgeInsets.zero,
-                  itemCount: chats.length + (vm.isLoadingMore ? 1 : 0),
+                  itemCount: chats.length + (vm.isLoadingMore ? 1 : 0) + 1,
                   itemBuilder: (context, index) {
-                    if (index == chats.length) {
+                    if (index == 0) {
+                      return _buildFilterButtons(chatVM, scheme);
+                    }
+                    
+                    final chatIndex = index - 1;
+                    if (chatIndex == chats.length) {
                       return Padding(
                         padding: EdgeInsets.symmetric(
                           vertical: AppSpacing.md.h,
@@ -178,14 +185,14 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
                           child: SizedBox(
                             width: AppSpacing.lg.w,
                             height: AppSpacing.lg.w,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+                            child: LoadingIndicator(),
                           ),
                         ),
                       );
                     }
                     return ChatListItem(
-                      chat: chats[index],
-                      isLastItem: index == chats.length - 1,
+                      chat: chats[chatIndex],
+                      isLastItem: chatIndex == chats.length - 1,
                     );
                   },
                 );
@@ -196,6 +203,50 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
       ),
     );
   }
+
+  Widget _buildFilterButtons(ChatListVM vm, ColorScheme scheme) => Padding(
+    padding: EdgeInsets.symmetric(
+      horizontal: AppSpacing.screenH.w,
+      vertical: AppSpacing.sm.h,
+    ),
+    child: Row(
+      children: ChatFilter.values.map((filter) {
+        final isSelected = vm.filter == filter;
+
+        final label = switch (filter) {
+          ChatFilter.all => 'All',
+          ChatFilter.direct => 'Direct',
+          ChatFilter.group => 'Groups',
+        };
+
+        return Padding(
+          padding: EdgeInsets.only(right: AppSpacing.sm.w),
+          child: TapDetector(
+            onTap: () => vm.setFilter(filter),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: EdgeInsets.symmetric(
+                horizontal: AppSpacing.md.w,
+                vertical: AppSpacing.xs.h,
+              ),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? scheme.primary
+                    : scheme.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(20.r),
+              ),
+              child: Text(
+                label,
+                style: context.text.labelMedium.copyWith(
+                  color: isSelected ? Colors.white : scheme.primary,
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    ),
+  );
 
   Widget _buildSearchBar(
     BuildContext context,
@@ -226,20 +277,30 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
                 onChanged: (value) => searchVM.onTextChanged(value, chatRooms),
                 decoration: InputDecoration(
                   hintText: 'Search...',
-                  hintStyle: TextStyle(
-                    color: scheme.onSurface.withValues(alpha: 0.5),
-                    fontSize: 14.sp,
+                  hintStyle: context.text.bodySmall.copyWith(
+                    color: context.text.tertiaryText,
                   ),
                   filled: true,
                   counterStyle: TextStyle(color: scheme.primary),
                   fillColor: scheme.onSurface.withValues(alpha: 0.1),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(20.r),
-                    borderSide: BorderSide.none,
+                    borderRadius: BorderRadius.circular(AppRadius.full.r),
+                    borderSide: BorderSide(
+                      color: scheme.outline.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.full.r),
+                    borderSide: BorderSide(
+                      color: scheme.outline.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.full.r),
+                    borderSide: BorderSide(color: scheme.primary),
                   ),
                   contentPadding: EdgeInsets.symmetric(
                     horizontal: AppSpacing.md.w,
-                    vertical: AppSpacing.xs.h,
                   ),
                 ),
                 showCursor: true,
@@ -296,10 +357,12 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Delete this chat?', style: context.text.subheadline1),
+        title: Text('Delete this chat?', style: context.text.headlineSmall),
         content: Text(
           'This chat will be removed from your list. It will reappear if someone sends a new message.',
-          style: context.text.subDescription3,
+          style: context.text.labelSmall.copyWith(
+            color: context.text.tertiaryText,
+          ),
         ),
         actionsPadding: EdgeInsets.symmetric(
           horizontal: AppSpacing.md.w,
@@ -311,7 +374,12 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
             children: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: Text('Cancel', style: context.text.subDescription3),
+                child: Text(
+                  'Cancel',
+                  style: context.text.labelSmall.copyWith(
+                    color: context.text.tertiaryText,
+                  ),
+                ),
               ),
               Gap(AppSpacing.sm.w),
               TextButton(
@@ -319,7 +387,12 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
                   Navigator.pop(context);
                   vm.deleteSelectedChat();
                 },
-                child: Text('Delete chat', style: context.text.subDescription3),
+                child: Text(
+                  'Delete chat',
+                  style: context.text.labelSmall.copyWith(
+                    color: context.text.tertiaryText,
+                  ),
+                ),
               ),
             ],
           ),

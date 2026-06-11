@@ -137,7 +137,7 @@ class SearchResultTile extends StatelessWidget {
     if (result.isImage) {
       return Text(
         'Photo',
-        style: context.text.body2,
+        style: context.text.bodyMedium,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       );
@@ -145,7 +145,7 @@ class SearchResultTile extends StatelessWidget {
     if (result.isVideo) {
       return Text(
         'Video',
-        style: context.text.body2,
+        style: context.text.bodyMedium,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       );
@@ -153,7 +153,7 @@ class SearchResultTile extends StatelessWidget {
     if (result.isFile) {
       return Text(
         result.fileName ?? 'File',
-        style: context.text.body2,
+        style: context.text.bodyMedium,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       );
@@ -168,7 +168,7 @@ class SearchResultTile extends StatelessWidget {
               '· ${DateTimeHelper.formatDateMonthYear(result.sentAt)}',
     style: context
         .text
-        .subDescription3.copyWith(fontSize: 9.sp, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)),
+        .labelSmall.copyWith(fontSize: 9.sp, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)),
   );
 
   Widget _buildHighlightedText(
@@ -192,12 +192,12 @@ class SearchResultTile extends StatelessWidget {
       maxLines: 2,
       overflow: TextOverflow.ellipsis,
       text: TextSpan(
-        style: context.text.body1,
+        style: context.text.bodyMedium,
         children: [
           TextSpan(text: before),
           TextSpan(
             text: match,
-            style: context.text.body1.copyWith(
+            style: context.text.bodyMedium.copyWith(
               fontWeight: FontWeight.bold,
               backgroundColor: Color(0x33FFC107),
             ),

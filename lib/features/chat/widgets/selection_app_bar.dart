@@ -23,7 +23,7 @@ class SelectionAppBar extends ConsumerWidget implements PreferredSizeWidget {
       ),
       title: Text(
         '${vm.selectedCount}',
-        style: context.text.subDescription.copyWith(color: Theme.of(context).colorScheme.primary),
+        style: context.text.titleMedium.copyWith(color: Theme.of(context).colorScheme.primary),
       ),
       actions: [
         IconButton(
@@ -47,7 +47,7 @@ class SelectionAppBar extends ConsumerWidget implements PreferredSizeWidget {
                 ),
                 title: Text(
                   'Delete ${vm.selectedCount} message${vm.selectedCount > 1 ? 's' : ''}?',
-                  style: context.text.subDescription2.copyWith(
+                  style: context.text.bodyMedium.copyWith(fontSize: 13.sp, 
                     color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
@@ -62,8 +62,7 @@ class SelectionAppBar extends ConsumerWidget implements PreferredSizeWidget {
                       },
                       child: Text(
                         'Cancel',
-                        style: context.text.subDescription3.copyWith(
-                          color: AppColorTokens.primaryLighter,
+                        style: context.text.labelSmall.copyWith(color: AppColorTokens.primaryLighter,
                         ),
                       ),
                     ),
@@ -74,8 +73,7 @@ class SelectionAppBar extends ConsumerWidget implements PreferredSizeWidget {
                       },
                       child: Text(
                         'Delete for me',
-                        style: context.text.subDescription3.copyWith(
-                          color: AppColorTokens.primaryLighter,
+                        style: context.text.labelSmall.copyWith(color: AppColorTokens.primaryLighter,
                         ),
                       ),
                     ),
@@ -87,8 +85,7 @@ class SelectionAppBar extends ConsumerWidget implements PreferredSizeWidget {
                         },
                         child: Text(
                           'Delete for everyone',
-                          style: context.text.subDescription3.copyWith(
-                            color: AppColorTokens.primaryLighter,
+                          style: context.text.labelSmall.copyWith(color: AppColorTokens.primaryLighter,
                           ),
                         ),
                       ),

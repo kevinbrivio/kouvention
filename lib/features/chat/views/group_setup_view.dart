@@ -110,7 +110,7 @@ class _GroupSetupViewState extends ConsumerState<GroupSetupView> {
         _buildGroupNameTextField(),
 
         // Members List
-        Text('Members: ${members.length}', style: context.text.subDescription3),
+        Text('Members: ${members.length}', style: context.text.labelSmall.copyWith(color: context.text.tertiaryText)),
         Gap(8.h),
         _buildMemberList(vm),
       ],
@@ -154,7 +154,7 @@ class _GroupSetupViewState extends ConsumerState<GroupSetupView> {
                         user.displayName.isNotEmpty
                             ? user.displayName[0].toUpperCase()
                             : '?',
-                        style: context.text.subDescription,
+                        style: context.text.titleMedium.copyWith(color: context.text.secondaryText),
                       )
                     : null,
               ),

@@ -48,7 +48,7 @@ class SearchResultGroupTile extends StatelessWidget {
                 style: context.text.contactName,
               ),
             ),
-            Text('${group.results.length}', style: context.text.subDescription3),
+            Text('${group.results.length}', style: context.text.labelSmall.copyWith(color: context.text.tertiaryText)),
           ],
         ),
       ),

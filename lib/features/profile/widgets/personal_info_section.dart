@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/widgets/liquid_glass_box.dart';
+import 'package:kouvention/cores/widgets/tap_detector.dart';
 
 class PersonalInfoSection extends StatelessWidget {
   final String displayName;
@@ -10,7 +11,8 @@ class PersonalInfoSection extends StatelessWidget {
   final Function() onEditName;
   final Function() onEditStatus;
 
-  PersonalInfoSection({
+  const PersonalInfoSection({
+    super.key,
     required this.displayName,
     required this.status,
     required this.onEditName,
@@ -29,21 +31,30 @@ class PersonalInfoSection extends StatelessWidget {
       child: Column(
         children: [
           // Display Name
-          InkWell(
+          TapDetector(
             onTap: onEditName,
-            splashColor: scheme.onSurface.withValues(alpha: 0.5),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Display Name', style: context.text.subDescription3),
+                Text(
+                  'Display Name',
+                  style: context.text.labelMedium.copyWith(
+                    color: context.text.tertiaryText,
+                  ),
+                ),
                 Gap(4.h),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(displayName, style: context.text.subDescription2),
+                    Text(
+                      displayName,
+                      style: context.text.titleMedium.copyWith(
+                        color: context.text.secondaryText,
+                      ),
+                    ),
                     Icon(
                       Icons.create_rounded,
-                      size: AppSizing.iconMd.sp,
+                      size: AppSizing.iconSm.r,
                       color: scheme.primary,
                     ),
                   ],
@@ -52,25 +63,32 @@ class PersonalInfoSection extends StatelessWidget {
             ),
           ),
           Gap(AppSpacing.sm.h),
-          Divider(
-            color: scheme.onSurface.withValues(alpha: 0.15),
-          ),
+          Divider(color: scheme.onSurface.withValues(alpha: 0.15)),
           Gap(6.h),
-          InkWell(
+          TapDetector(
             onTap: onEditStatus,
-            splashColor: scheme.onSurface.withValues(alpha: 0.5),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Status', style: context.text.subDescription3),
+                Text(
+                  'Status',
+                  style: context.text.labelSmall.copyWith(
+                    color: context.text.tertiaryText,
+                  ),
+                ),
                 Gap(4.h),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(status, style: context.text.subDescription2),
+                    Text(
+                      status,
+                      style: context.text.titleMedium.copyWith(
+                        color: context.text.secondaryText,
+                      ),
+                    ),
                     Icon(
                       Icons.create_rounded,
-                      size: AppSizing.iconMd.sp,
+                      size: AppSizing.iconSm.r,
                       color: scheme.primary,
                     ),
                   ],

@@ -53,12 +53,12 @@ class SettingsToggleTile extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: context.text.subDescription2
+                style: context.text.bodyMedium.copyWith(fontSize: 13.sp, color: context.text.secondaryText)
               ),
               Gap(2.h),
               Text(
                 subtitle,
-                style: context.text.subDescription3
+                style: context.text.labelSmall.copyWith(color: context.text.tertiaryText)
               ),
             ],
           ),

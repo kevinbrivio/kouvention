@@ -6,6 +6,7 @@ import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
+import 'package:kouvention/cores/widgets/tap_detector.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/utils/display_name_resolver.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_profile_provider.dart';
@@ -42,8 +43,10 @@ class ChatRoomAppBar extends ConsumerWidget implements PreferredSizeWidget {
         elevation: 0.5,
         title: const CircularProgressIndicator.adaptive(),
       ),
-      error: (err, stack) =>
-          AppBar(backgroundColor: Colors.transparent, title: Text('Error: $err')),
+      error: (err, stack) => AppBar(
+        backgroundColor: Colors.transparent,
+        title: Text('Error: $err'),
+      ),
       data: (chat) {
         if (chat == null || currentUid == null) {
           return AppBar();
@@ -79,27 +82,33 @@ class ChatRoomAppBar extends ConsumerWidget implements PreferredSizeWidget {
         }
 
         final showPhoto = isDirect
-            ? (otherUser?.privacy.showProfilePhoto ?? true) && chatPhotoUrl != null
+            ? (otherUser?.privacy.showProfilePhoto ?? true) &&
+                  chatPhotoUrl != null
             : chatPhotoUrl != null;
 
         return AppBar(
           elevation: 0.5,
           scrolledUnderElevation: 0,
+          
           leading: IconButton(
-            icon: Icon(Icons.arrow_back, color: scheme.primary, size: 36.w),
+            icon: Icon(
+              Icons.arrow_back,
+              color: scheme.primary,
+              size: AppSizing.iconSm.r,
+            ),
             onPressed: () => context.go(RouterRoutes.chatList.path),
           ),
-          title: InkWell(
+          title: TapDetector(
             onTap: () {
               if (context.mounted) context.push('/chats/${chat.id}/detail');
             },
-            borderRadius: BorderRadius.circular(AppRadius.sm.r),
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 ClipOval(
                   child: Container(
-                    width: 36.r,
-                    height: 36.r,
+                    width: AppSizing.avatarSm.r,
+                    height: AppSizing.avatarSm.r,
                     color: scheme.primary.withValues(alpha: 0.2),
                     child: showPhoto
                         ? CachedNetworkImage(
@@ -111,10 +120,8 @@ class ChatRoomAppBar extends ConsumerWidget implements PreferredSizeWidget {
                                 chatDisplayName.isNotEmpty
                                     ? chatDisplayName[0].toUpperCase()
                                     : '?',
-                                style: TextStyle(
+                                style: context.text.senderName.copyWith(
                                   color: scheme.primary,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14.sp,
                                 ),
                               ),
                             ),
@@ -124,16 +131,14 @@ class ChatRoomAppBar extends ConsumerWidget implements PreferredSizeWidget {
                               chatDisplayName.isNotEmpty
                                   ? chatDisplayName[0].toUpperCase()
                                   : '?',
-                              style: TextStyle(
+                              style: context.text.senderName.copyWith(
                                 color: scheme.primary,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 14.sp,
                               ),
                             ),
                           ),
                   ),
                 ),
-                Gap(10.w),
+                Gap(AppSpacing.avatarGap.w),
                 Flexible(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -142,20 +147,15 @@ class ChatRoomAppBar extends ConsumerWidget implements PreferredSizeWidget {
                         chatDisplayName,
                         overflow: TextOverflow.ellipsis,
                         softWrap: true,
-                        style: TextStyle(
-                          color: scheme.onSurface,
-                          fontSize: 16.sp,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: context.text.senderName,
                       ),
                       if (onlineStatusText != null)
                         Text(
                           onlineStatusText,
-                          style: TextStyle(
+                          style: context.text.bodySmall.copyWith(
                             color: onlineStatusText == 'Online'
-                                ? scheme.primary
-                                : scheme.onSurface.withValues(alpha: 0.6),
-                            fontSize: 12.sp,
+                              ? scheme.primary
+                              : scheme.onSurface.withValues(alpha: 0.6),
                           ),
                         ),
                     ],
@@ -166,11 +166,19 @@ class ChatRoomAppBar extends ConsumerWidget implements PreferredSizeWidget {
           ),
           actions: [
             IconButton(
-              icon: Icon(Icons.phone, color: scheme.primary, size: AppSizing.iconMd.w),
+              icon: Icon(
+                Icons.phone,
+                color: scheme.primary,
+                size: AppSizing.iconMd.w,
+              ),
               onPressed: () {},
             ),
             IconButton(
-              icon: Icon(Icons.info_outline, color: scheme.primary, size: AppSizing.iconMd.w),
+              icon: Icon(
+                Icons.info_outline,
+                color: scheme.primary,
+                size: AppSizing.iconMd.w,
+              ),
               onPressed: () {},
             ),
           ],

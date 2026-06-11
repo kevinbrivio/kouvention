@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,6 +7,8 @@ import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/utils/date_time_helper.dart';
+import 'package:kouvention/cores/widgets/custom_divider.dart';
+import 'package:kouvention/cores/widgets/tap_detector.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/utils/display_name_resolver.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_list_profile_provider.dart';
@@ -29,8 +32,16 @@ class ChatListItem extends ConsumerWidget {
     final isSelected = vm.selectedChatIds.contains(chat.id);
 
     final resolver = ref.watch(chatListProfileResolverProvider);
-    final displayName = resolveDisplayName(chat: chat, currentUid: vm.currentId!, resolver: resolver);
-    final photoUrl = resolveDisplayPhotoUrl(chat: chat, currentUid: vm.currentId!, resolver: resolver);
+    final displayName = resolveDisplayName(
+      chat: chat,
+      currentUid: vm.currentId!,
+      resolver: resolver,
+    );
+    final photoUrl = resolveDisplayPhotoUrl(
+      chat: chat,
+      currentUid: vm.currentId!,
+      resolver: resolver,
+    );
     final initialLetter = displayName.isNotEmpty
         ? displayName[0].toUpperCase()
         : '?';
@@ -50,7 +61,7 @@ class ChatListItem extends ConsumerWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        InkWell(
+          TapDetector(
           onLongPress: () => vm.selectChat(chat.id),
           onTap: () {
             HapticFeedback.selectionClick();
@@ -60,23 +71,42 @@ class ChatListItem extends ConsumerWidget {
               context.push('/chats/${chat.id}');
             }
           },
-          splashColor: scheme.onSurface.withValues(alpha: 0.2),
-          highlightColor: scheme.onSurface.withValues(alpha: 0.1),
           child: Container(
             color: isSelected
                 ? scheme.primary.withValues(alpha: 0.2)
                 : Colors.transparent,
             padding: EdgeInsets.symmetric(
-              horizontal: AppSpacing.md.w,
-              vertical: AppSpacing.sm.h,
+              horizontal: AppSpacing.screenH.w,
+              vertical: AppSpacing.xs.h,
             ),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildAvatar(context, initialLetter, showAvatarPhoto, photoUrl, isGroup, isSelected, scheme),
+                _buildAvatar(
+                  context,
+                  initialLetter,
+                  showAvatarPhoto,
+                  photoUrl,
+                  isGroup,
+                  isSelected,
+                  scheme,
+                ),
                 Gap(AppSpacing.sm.w),
-                _buildMessagePreview(context, displayName, lastMessage, typingText, scheme),
-                Gap(4.w),
-                _buildTimeAndBadge(context, lastMessage, unread, isPinned, scheme),
+                _buildMessagePreview(
+                  context,
+                  displayName,
+                  lastMessage,
+                  typingText,
+                  scheme,
+                ),
+                Gap(AppSpacing.sm.w),
+                _buildTimeAndBadge(
+                  context,
+                  lastMessage,
+                  unread,
+                  isPinned,
+                  scheme,
+                ),
               ],
             ),
           ),
@@ -84,11 +114,9 @@ class ChatListItem extends ConsumerWidget {
         if (!isLastItem)
           Center(
             child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.w),
-              child: Divider(
-                height: 1,
-                color: scheme.onSurface.withValues(alpha: 0.5),
-                thickness: 0.2,
+              padding: EdgeInsets.symmetric(horizontal: AppSpacing.screenH.w),
+              child: CustomDivider(
+                color: scheme.onSurface.withValues(alpha: 0.1),
               ),
             ),
           ),
@@ -96,15 +124,21 @@ class ChatListItem extends ConsumerWidget {
     );
   }
 
-  String? _resolveTypingText(ChatModel chat, String? currentUid, UserProfileResolver resolver) {
+  String? _resolveTypingText(
+    ChatModel chat,
+    String? currentUid,
+    UserProfileResolver resolver,
+  ) {
     if (currentUid == null) return null;
     final others = chat.typingUsers.where((uid) => uid != currentUid).toList();
     if (others.isEmpty) return null;
     final names = others
-        .map((uid) =>
-            resolver.lookupDisplayName(uid) ??
-            chat.memberInfo[uid]?.displayName ??
-            'Someone')
+        .map(
+          (uid) =>
+              resolver.lookupDisplayName(uid) ??
+              chat.memberInfo[uid]?.displayName ??
+              'Someone',
+        )
         .toList();
     if (names.length == 1) return '${names.first} is typing...';
     return '${names.join(', ')} others are typing...';
@@ -118,45 +152,52 @@ class ChatListItem extends ConsumerWidget {
     bool isGroup,
     bool isSelected,
     ColorScheme scheme,
-  ) =>
-      Stack(
-        children: [
-          CircleAvatar(
-            radius: AppRadius.xl.r,
-            backgroundColor: AppColorTokens.senderNameColor(chat.id)
-                .withValues(alpha: 0.25),
-            backgroundImage: photoUrl != null && showAvatarPhoto
-                ? NetworkImage(photoUrl)
-                : null,
-            child: photoUrl == null || !showAvatarPhoto
-                ? (isGroup
-                    ? Icon(
-                        Icons.people_alt_rounded,
-                        color: AppColorTokens.senderNameColor(chat.id)
-                            .withValues(alpha: 0.75),
-                      )
-                    : Text(
-                        initialLetter,
-                        style: context.text.senderName.copyWith(
-                          fontSize: 18.sp,
-                          color: AppColorTokens.senderNameColor(chat.id)
-                              .withValues(alpha: 0.75),
-                        ),
-                      ))
-                : null,
-          ),
-          if (isSelected)
-            Positioned(
-              right: 0,
-              bottom: 0,
-              child: CircleAvatar(
-                radius: AppRadius.sm.r,
-                backgroundColor: scheme.primary,
-                child: Icon(Icons.check, size: AppSpacing.md.sp, color: Colors.white),
+  ) => Stack(
+    children: [
+      CircleAvatar(
+        radius: AppRadius.xl.r,
+        backgroundColor: AppColorTokens.senderNameColor(
+          chat.id,
+        ).withValues(alpha: 0.3),
+        child: isGroup
+          ? Icon(
+              Icons.people_alt_rounded,
+              color: AppColorTokens.senderNameColor(chat.id).withValues(alpha: 0.7),
+            )
+          : Text(
+              initialLetter,
+              style: context.text.senderName.copyWith(
+                color: AppColorTokens.senderNameColor(chat.id).withValues(alpha: 0.7),
               ),
             ),
-        ],
-      );
+      ),
+      if (photoUrl != null && showAvatarPhoto)
+        Positioned.fill(
+          child: ClipOval(
+            child: CachedNetworkImage(
+              imageUrl: photoUrl,
+              fit: BoxFit.cover,
+              errorWidget: (_, __, ___) => const SizedBox.shrink(),
+              placeholder: (_, __) => const SizedBox.shrink(),
+            ),
+          ),
+        ),
+      if (isSelected)
+        Positioned(
+          right: 0,
+          bottom: 0,
+          child: CircleAvatar(
+            radius: AppRadius.sm.r,
+            backgroundColor: scheme.primary,
+            child: Icon(
+              Icons.check,
+              size: AppSizing.iconXxs.r,
+              color: scheme.outline,
+            ),
+          ),
+        ),
+    ],
+  );
 
   Widget _buildMessagePreview(
     BuildContext context,
@@ -164,30 +205,31 @@ class ChatListItem extends ConsumerWidget {
     lastMessage,
     typing,
     ColorScheme scheme,
-  ) =>
-      Expanded(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              displayName,
-              style: context.text.senderName,
-              overflow: TextOverflow.ellipsis,
-            ),
-            if (lastMessage != null)
-              Text(
-                typing ?? lastMessage.text,
-                style: context.text.subDescription2.copyWith(
-                  color: typing != null
-                      ? scheme.primary
-                      : scheme.onSurface.withValues(alpha: 0.5),
-                ),
-                overflow: TextOverflow.ellipsis,
-                softWrap: true,
-              ),
-          ],
+  ) => Expanded(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          displayName,
+          style: context.text.bodyMedium,
+          overflow: TextOverflow.ellipsis,
         ),
-      );
+        if (lastMessage != null) ...[
+          Gap(AppSpacing.xs.h),
+          Text(
+            typing ?? lastMessage.text,
+            style: context.text.bodySmall.copyWith(
+              color: typing != null
+                  ? scheme.primary
+                  : scheme.onSurface.withValues(alpha: 0.5),
+            ),
+            overflow: TextOverflow.ellipsis,
+            softWrap: true,
+          ),
+        ],
+      ],
+    ),
+  );
 
   Widget _buildTimeAndBadge(
     BuildContext context,
@@ -195,37 +237,45 @@ class ChatListItem extends ConsumerWidget {
     int unread,
     bool isPinned,
     ColorScheme scheme,
-  ) =>
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          if (lastMessage != null)
-            Text(
-              DateTimeHelper.formatChatTime(lastMessage.sentAt),
-              style: context.text.subDescription3.copyWith(
-                color: unread > 0 ? scheme.primary : Colors.grey,
-              ),
+  ) => Expanded(
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        if (lastMessage != null) ...[
+          Text(
+            DateTimeHelper.formatChatTime(lastMessage.sentAt),
+            style: context.text.bodySmall.copyWith(
+              color: unread > 0 ? scheme.primary : Colors.grey,
             ),
-          Gap(4.h),
-          Row(
-            children: [
-              if (isPinned)
-                Icon(Icons.push_pin_rounded, color: scheme.primary, size: AppSpacing.md.sp),
-              if (unread > 0) ...[
-                Gap(6.h),
-                CircleAvatar(
-                  radius: 10.r,
-                  backgroundColor: scheme.primary,
-                  child: Text(
-                    '$unread',
-                    style: context.text.subDescription3.copyWith(
-                      color: Colors.white,
-                    ),
+          ),
+          Gap(AppSpacing.xs.h),
+        ],
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isPinned)
+              Icon(
+                Icons.push_pin_rounded,
+                color: scheme.primary,
+                size: AppSizing.iconSm,
+              ),
+            if (unread > 0) ...[
+              Gap(AppSpacing.xs.h),
+              CircleAvatar(
+                radius: AppSpacing.xs.r,
+                backgroundColor: scheme.primary,
+                child: Text(
+                  '$unread',
+                  style: context.text.labelSmall.copyWith(
+                    color: Colors.white,
                   ),
                 ),
-              ],
+              ),
             ],
-          ),
-        ],
-      );
+          ],
+        ),
+      ],
+    ),
+  );
 }

@@ -15,6 +15,7 @@ class Button extends StatefulWidget {
   final bool isSecondary;
   final bool isWhiteBackground;
   final bool isCancel;
+  final bool isDelete;
   final bool showArrow;
   final TextStyle? textStyle;
   final bool loading;
@@ -36,6 +37,7 @@ class Button extends StatefulWidget {
     this.alignment,
     this.isSecondary = false,
     this.isCancel = false,
+    this.isDelete = false,
     this.showArrow = false,
     this.isWhiteBackground = false,
     this.textStyle,
@@ -54,7 +56,7 @@ class _ButtonState extends State<Button> {
   // Differences: backgroundColor, foregroundColor.
 
   TextStyle get _buttonTextStyle => TextStyle(
-    fontFamily: 'Asap',
+    fontFamily: 'Nunito',
     fontSize: 12.sp,
     fontWeight: FontWeight.w500,
     height: 1.5,
@@ -62,76 +64,95 @@ class _ButtonState extends State<Button> {
   );
 
   ButtonStyle _elevatedStyle(ColorScheme scheme) => ElevatedButton.styleFrom(
-        backgroundColor: scheme.primary,
-        foregroundColor: scheme.onPrimary,
-        disabledBackgroundColor: AppColorTokens.disabled,
-        disabledForegroundColor: AppColorTokens.disabledText,
-        elevation: 0,
-        padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm.w),
-        minimumSize: Size(double.minPositive, AppSizing.buttonHeight.h),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.button.r),
-        ),
-        textStyle: _buttonTextStyle,
-        splashFactory: InkRipple.splashFactory,
-      );
+    backgroundColor: scheme.primary,
+    foregroundColor: scheme.onPrimary,
+    disabledBackgroundColor: AppColorTokens.disabled,
+    disabledForegroundColor: AppColorTokens.disabledText,
+    elevation: 0,
+    padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm.w),
+    minimumSize: Size(double.minPositive, AppSizing.buttonHeight.h),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AppRadius.button.r),
+    ),
+    textStyle: _buttonTextStyle,
+    splashFactory: InkRipple.splashFactory,
+  );
 
   ButtonStyle _secondaryStyle(ColorScheme scheme) => ElevatedButton.styleFrom(
-        backgroundColor: scheme.primary,
-        foregroundColor: scheme.primary,
-        disabledBackgroundColor: AppColorTokens.disabled,
-        disabledForegroundColor: AppColorTokens.disabledText,
-        elevation: 0,
-        padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm.w),
-        minimumSize: Size(double.minPositive, AppSizing.buttonHeight.h),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.button.r),
-        ),
-        textStyle: _buttonTextStyle,
-        splashFactory: InkRipple.splashFactory,
-      );
+    backgroundColor: scheme.primary,
+    foregroundColor: scheme.primary,
+    disabledBackgroundColor: AppColorTokens.disabled,
+    disabledForegroundColor: AppColorTokens.disabledText,
+    elevation: 0,
+    padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm.w),
+    minimumSize: Size(double.minPositive, AppSizing.buttonHeight.h),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AppRadius.button.r),
+    ),
+    textStyle: _buttonTextStyle,
+    splashFactory: InkRipple.splashFactory,
+  );
 
   ButtonStyle _cancelStyle(ColorScheme scheme) => ElevatedButton.styleFrom(
-        backgroundColor: scheme.primary,
-        foregroundColor: scheme.onPrimary,
-        disabledBackgroundColor: AppColorTokens.disabled,
-        disabledForegroundColor: AppColorTokens.disabledText,
-        elevation: 0,
-        padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm.w),
-        minimumSize: Size(double.minPositive, AppSizing.buttonHeight.h),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.button.r),
-        ),
-        textStyle: _buttonTextStyle,
-        splashFactory: InkRipple.splashFactory,
-      );
+    backgroundColor: scheme.primary,
+    foregroundColor: scheme.onPrimary,
+    disabledBackgroundColor: AppColorTokens.disabled,
+    disabledForegroundColor: AppColorTokens.disabledText,
+    elevation: 0,
+    padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm.w),
+    minimumSize: Size(double.minPositive, AppSizing.buttonHeight.h),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AppRadius.button.r),
+    ),
+    textStyle: _buttonTextStyle,
+    splashFactory: InkRipple.splashFactory,
+  );
+
+  ButtonStyle _deleteStyle(ColorScheme scheme) => ElevatedButton.styleFrom(
+    backgroundColor: scheme.error,
+    foregroundColor: scheme.onError,
+    disabledBackgroundColor: AppColorTokens.disabled,
+    disabledForegroundColor: AppColorTokens.disabledText,
+    elevation: 0,
+    padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm.w),
+    minimumSize: Size(double.minPositive, AppSizing.buttonHeight.h),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AppRadius.button.r),
+    ),
+    textStyle: _buttonTextStyle,
+    splashFactory: InkRipple.splashFactory,
+  );
+
 
   ButtonStyle _whiteStyle() => ElevatedButton.styleFrom(
-        backgroundColor: AppSurfaceLight.surface,
-        foregroundColor: AppSurfaceLight.surface,
-        disabledBackgroundColor: AppColorTokens.disabled,
-        disabledForegroundColor: AppColorTokens.disabledText,
-        elevation: 0,
-        padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm.w),
-        minimumSize: Size(double.minPositive, AppSizing.buttonHeight.h),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.button.r),
-        ),
-        textStyle: _buttonTextStyle,
-        splashFactory: InkRipple.splashFactory,
-      );
+    backgroundColor: AppSurfaceLight.surface,
+    foregroundColor: AppSurfaceLight.surface,
+    disabledBackgroundColor: AppColorTokens.disabled,
+    disabledForegroundColor: AppColorTokens.disabledText,
+    elevation: 0,
+    padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm.w),
+    minimumSize: Size(double.minPositive, AppSizing.buttonHeight.h),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(AppRadius.button.r),
+    ),
+    textStyle: _buttonTextStyle,
+    splashFactory: InkRipple.splashFactory,
+  );
 
   @override
   build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
     final ButtonStyle style = widget.isWhiteBackground
-        ? _whiteStyle()
-        : widget.isCancel
-            ? _cancelStyle(scheme)
-            : widget.isSecondary
-                ? _secondaryStyle(scheme)
-                : _elevatedStyle(scheme);
+      ? _whiteStyle()
+      : widget.isDelete
+          ? _deleteStyle(scheme)  // ← tambahin
+          : widget.isCancel
+              ? _cancelStyle(scheme)
+              : widget.isSecondary
+                  ? _secondaryStyle(scheme)
+                  : _elevatedStyle(scheme);
+
 
     final TextStyle textStyle = _buttonTextStyle;
 
@@ -173,16 +194,14 @@ class _ButtonState extends State<Button> {
                   child: widget.leadingWidget!,
                 ),
               Padding(
-                padding: EdgeInsets.symmetric(
-                  vertical: 4.h,
-                ),
+                padding: EdgeInsets.symmetric(vertical: 4.h),
                 child: Text(
                   widget.text,
                   style: widget.textStyle ?? textStyle,
                   textAlign: TextAlign.center,
                 ),
               ),
-            ]
+            ],
           ],
         ),
       ),

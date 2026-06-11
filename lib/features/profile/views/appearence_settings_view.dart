@@ -20,17 +20,16 @@ class AppearanceSettingsView extends ConsumerWidget {
 
     return Scaffold(
       appBar: CustomAppBar(
-        body: Text('Appearance', style: context.text.appBar),
+        body: Text('Appearance', style: context.text.appBarTitle),
         onBack: () => context.go('/profile'),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: EdgeInsets.symmetric(horizontal: 20.w),
+          padding: EdgeInsets.symmetric(horizontal: AppSpacing.screenH.w),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Gap(AppSpacing.lg.h),
-              const _SectionHeader(title: 'THEMES'),
+              const _SectionHeader(title: 'Themes'),
               Gap(AppSpacing.sm.h),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -46,7 +45,13 @@ class AppearanceSettingsView extends ConsumerWidget {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Theme', style: context.text.subDescription2),
+                          Text(
+                            'Theme',
+                            style: context.text.bodyMedium.copyWith(
+                              fontSize: 13.sp,
+                              color: context.text.secondaryText,
+                            ),
+                          ),
                           Gap(2.h),
                           Text(
                             switch (themeMode) {
@@ -54,7 +59,9 @@ class AppearanceSettingsView extends ConsumerWidget {
                               ThemeMode.light => 'Light',
                               ThemeMode.dark => 'Dark',
                             },
-                            style: context.text.subDescription3,
+                            style: context.text.labelSmall.copyWith(
+                              color: context.text.tertiaryText,
+                            ),
                           ),
                         ],
                       ),
@@ -65,9 +72,18 @@ class AppearanceSettingsView extends ConsumerWidget {
                     width: double.infinity,
                     child: SegmentedButton<ThemeMode>(
                       segments: const [
-                        ButtonSegment(value: ThemeMode.system, label: Text('System')),
-                        ButtonSegment(value: ThemeMode.light, label: Text('Light')),
-                        ButtonSegment(value: ThemeMode.dark, label: Text('Dark')),
+                        ButtonSegment(
+                          value: ThemeMode.system,
+                          label: Text('System'),
+                        ),
+                        ButtonSegment(
+                          value: ThemeMode.light,
+                          label: Text('Light'),
+                        ),
+                        ButtonSegment(
+                          value: ThemeMode.dark,
+                          label: Text('Dark'),
+                        ),
                       ],
                       selected: {themeMode},
                       onSelectionChanged: (set) => ref
@@ -97,12 +113,7 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Text(
     title,
-    style: TextStyle(
-      fontSize: 12.sp,
-      fontWeight: FontWeight.w600,
-      color: Colors.grey.shade500,
-      letterSpacing: 1.0,
-    ),
+    style: context.text.labelMedium.copyWith(color: context.text.tertiaryText),
   );
 }
 
@@ -118,7 +129,7 @@ class _BubbleStyleSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionHeader(title: 'CUSTOMIZE CHAT BUBBLE'),
+        const _SectionHeader(title: 'Customize Chat Bubble'),
         Gap(AppSpacing.sm.h),
         Gap(AppSpacing.md.h),
         Wrap(
@@ -225,7 +236,7 @@ class _WallpaperSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionHeader(title: 'CUSTOMIZE CHAT WALLPAPER'),
+        const _SectionHeader(title: 'Customize Chat Wallpaper'),
         Gap(AppSpacing.sm.h),
         const _ChatRoomWallpaperPreview(),
         Gap(AppSpacing.sm.h),
@@ -354,14 +365,20 @@ class _PreviewAppBar extends StatelessWidget {
                 ),
                 Text(
                   'Online',
-                  style: context.text.subDescription3.copyWith(color: scheme.primary),
+                  style: context.text.labelSmall.copyWith(
+                    color: scheme.primary,
+                  ),
                 ),
               ],
             ),
           ),
           Icon(Icons.phone, size: AppSizing.iconSm.w, color: scheme.primary),
           Gap(10.w),
-          Icon(Icons.info_outline, size: AppSizing.iconSm.w, color: scheme.primary),
+          Icon(
+            Icons.info_outline,
+            size: AppSizing.iconSm.w,
+            color: scheme.primary,
+          ),
         ],
       ),
     );
@@ -446,13 +463,14 @@ class _PreviewBubble extends StatelessWidget {
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment:
-              isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          crossAxisAlignment: isMe
+              ? CrossAxisAlignment.end
+              : CrossAxisAlignment.start,
           children: [
             Flexible(
               child: Text(
                 text,
-                style: context.text.subDescription3.copyWith(color: textColor),
+                style: context.text.labelSmall.copyWith(color: textColor),
               ),
             ),
             Row(
@@ -461,7 +479,7 @@ class _PreviewBubble extends StatelessWidget {
               children: [
                 Text(
                   time,
-                  style: context.text.subDescription3.copyWith(
+                  style: context.text.labelSmall.copyWith(
                     color: timeColor,
                     fontSize: 9.sp,
                   ),
@@ -488,10 +506,7 @@ class _PreviewInputBar extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
 
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: AppSpacing.xs.w,
-        vertical: 6.h,
-      ),
+      padding: EdgeInsets.symmetric(horizontal: AppSpacing.xs.w, vertical: 6.h),
       decoration: BoxDecoration(
         color: isDark ? Colors.black : Colors.transparent,
         boxShadow: [
@@ -509,7 +524,7 @@ class _PreviewInputBar extends StatelessWidget {
             child: Container(
               padding: EdgeInsets.symmetric(
                 horizontal: AppSpacing.sm.w,
-                vertical: 4.h,
+                vertical: AppSpacing.xs.h,
               ),
               decoration: BoxDecoration(
                 color: isDark
@@ -529,23 +544,27 @@ class _PreviewInputBar extends StatelessWidget {
                     child: Text(
                       'Type a message...',
                       style: context.text.typeMessage.copyWith(
-                        color: scheme.onSurface.withValues(alpha: 0.5),
-                        fontSize: 11.sp,
+                        color: context.text.tertiaryText,
+                        fontSize: 9.sp,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  Icon(Icons.add, size: 14.sp, color: scheme.primary),
+                  Icon(
+                    Icons.add,
+                    size: AppSizing.iconXs,
+                    color: scheme.primary,
+                  ),
                 ],
               ),
             ),
           ),
           Gap(AppSpacing.xs.w),
           CircleAvatar(
-            radius: 15.r,
+            radius: 16.r,
             backgroundColor: scheme.primary,
-            child: Icon(Icons.mic, size: 14.sp, color: Colors.white),
+            child: Icon(Icons.mic, size: 11.sp, color: Colors.white),
           ),
         ],
       ),

@@ -109,7 +109,7 @@ class _ChatProfileBodyState extends ConsumerState<_ChatProfileBody> {
             Center(
               child: Text(
                 vm.chatDisplayName,
-                style: context.text.subheadline1,
+                style: context.text.headlineSmall,
               ),
             ),
             Gap(4.h),
@@ -147,7 +147,7 @@ class _ChatProfileBodyState extends ConsumerState<_ChatProfileBody> {
               Center(
                 child: Text(
                   vm.otherUserEmail ?? '',
-                  style: context.text.subDescription2,
+                  style: context.text.bodyMedium.copyWith(fontSize: 13.sp, color: context.text.secondaryText),
                 ),
               ),
             ],
@@ -156,7 +156,7 @@ class _ChatProfileBodyState extends ConsumerState<_ChatProfileBody> {
               Gap(18.h),
               Text(
                 '${vm.groupsInCommon.length} Groups in common',
-                style: context.text.subDescription3,
+                style: context.text.labelSmall.copyWith(color: context.text.tertiaryText),
               ),
               Gap(6.h),
               _buildGroupInCommonList(),
@@ -271,7 +271,7 @@ class _ChatProfileBodyState extends ConsumerState<_ChatProfileBody> {
                   ),
                   Text(
                     '${group.members.length} members',
-                    style: context.text.subDescription3,
+                    style: context.text.labelSmall.copyWith(color: context.text.tertiaryText),
                   ),
                 ],
               ),
@@ -321,7 +321,7 @@ class _ChatProfileBodyState extends ConsumerState<_ChatProfileBody> {
             Gap(AppSpacing.xs.h),
             Text(
               member.value.displayName,
-              style: context.text.subheadline1,
+              style: context.text.headlineSmall,
             ),
             Gap(AppSpacing.md.h),
             Row(
@@ -391,7 +391,7 @@ class _ChatWallpaperSection extends ConsumerWidget {
       children: [
         CustomDivider(),
         Gap(AppSpacing.sm.h),
-        Text('WALLPAPER', style: context.text.subDescription3),
+        Text('WALLPAPER', style: context.text.labelSmall.copyWith(color: context.text.tertiaryText)),
         Gap(10.h),
         _WallpaperRow(
           wallpaper: wallpaper,
@@ -515,12 +515,12 @@ class _WallpaperRow extends StatelessWidget {
                 children: [
                   Text(
                     'Wallpaper',
-                    style: context.text.subDescription2,
+                    style: context.text.bodyMedium.copyWith(fontSize: 13.sp, color: context.text.secondaryText),
                   ),
                   Gap(2.h),
                   Text(
                     status,
-                    style: context.text.subDescription3,
+                    style: context.text.labelSmall.copyWith(color: context.text.tertiaryText),
                   ),
                 ],
               ),

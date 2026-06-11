@@ -87,7 +87,7 @@ class OnboardingPage2 extends StatelessWidget {
           children: [
             Text(
               title,
-              style: context.text.subDescription.copyWith(
+              style: context.text.titleMedium.copyWith(
                 fontWeight: FontWeight.w600,
                 color: Colors.white,
               ),
@@ -95,7 +95,7 @@ class OnboardingPage2 extends StatelessWidget {
             Gap(AppSpacing.xxs.h),
             Text(
               description,
-              style: context.text.subDescription.copyWith(fontSize: 13.sp),
+              style: context.text.titleMedium.copyWith(color: context.text.secondaryText, fontSize: 13.sp),
               textAlign: TextAlign.left,
               softWrap: true,
             ),

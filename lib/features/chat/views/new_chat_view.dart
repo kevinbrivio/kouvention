@@ -6,7 +6,9 @@ import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/bases/base_view.dart';
 import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
+import 'package:kouvention/cores/widgets/custom_app_bar.dart';
 import 'package:kouvention/cores/widgets/loading_indicator.dart';
+import 'package:kouvention/cores/widgets/tap_detector.dart';
 import 'package:kouvention/features/chat/viewmodel/new_chat_viewmodel.dart';
 import 'package:kouvention/features/chat/widgets/recent_users_list.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
@@ -18,24 +20,9 @@ class NewChatView extends StatelessWidget {
   Widget build(BuildContext context) => BaseView<NewChatVM>(
     provider: newChatVM,
     useGradient: false,
-    appBar: (vm) => AppBar(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      elevation: 0.5,
-      leading: IconButton(
-        icon: Icon(
-          Icons.arrow_back,
-          color: Theme.of(context).colorScheme.primary,
-        ),
-        onPressed: () => context.pop(),
-      ),
-      title: Text(
-        'New Chat',
-        style: TextStyle(
-          color: Colors.black,
-          fontSize: 18.sp,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
+    appBar: (_) => CustomAppBar(
+      onBack: () => context.pop(),
+      body: Text('New Chat', style: context.text.appBarTitle),
     ),
     builder: (context, viewmodel) =>
         SafeArea(child: _NewChatBody(viewmodel: viewmodel)),
@@ -63,62 +50,90 @@ class _NewChatBodyState extends State<_NewChatBody> {
   }
 
   @override
-  Widget build(BuildContext context) => Column(
-    children: [
-      _buildSearchBar(),
-      Gap(4.h),
-      _buildGroupButton(),
-      Flexible(
-        child: vm.isSearching
-            ? Center(
-                child: SizedBox(
-                  width: AppSizing.iconMd.w,
-                  height: AppSizing.iconMd.w,
-                  child: LoadingIndicator(strokeWidth: 2),
-                ),
-              )
-            : _searchController.text.isNotEmpty && vm.searchResults.isEmpty
-            ? Center(
-                child: Text(
-                  'No users found',
-                  style: context.text.subDescription3,
-                ),
-              )
-            : _searchController.text.isEmpty
-            ? RecentUsersList(
-                onUserTap: (user) async {
-                  final chatId = await vm.createDirectChat(user);
-                  if (chatId != null && mounted) {
-                    context.go('/chats/$chatId');
-                  }
-                },
-              )
-            : _buildResultsList(),
-      ),
-    ],
+  Widget build(BuildContext context) => Padding(
+    padding: EdgeInsets.symmetric(horizontal: AppSpacing.screenH.w),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildSearchBar(),
+        Gap(4.h),
+        _buildGroupButton(),
+        Flexible(
+          child: vm.isSearching
+              ? Center(
+                  child: SizedBox(
+                    width: AppSizing.iconMd.w,
+                    height: AppSizing.iconMd.w,
+                    child: LoadingIndicator(),
+                  ),
+                )
+              : _searchController.text.isNotEmpty && vm.searchResults.isEmpty
+              ? Center(
+                  child: Text(
+                    'No users found',
+                    style: context.text.labelSmall.copyWith(
+                      color: context.text.tertiaryText,
+                    ),
+                  ),
+                )
+              : _searchController.text.isEmpty
+              ? RecentUsersList(
+                  onUserTap: (user) async {
+                    final chatId = await vm.createDirectChat(user);
+                    if (chatId != null && mounted) {
+                      context.go('/chats/$chatId');
+                    }
+                  },
+                )
+              : _buildResultsList(),
+        ),
+      ],
+    ),
   );
 
   Widget _buildSearchBar() {
     final scheme = Theme.of(context).colorScheme;
+
     return Padding(
-      padding: EdgeInsets.all(AppSpacing.md.w),
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 14.w),
-        decoration: BoxDecoration(
-          color: AppColorTokens.searchBar,
-          borderRadius: BorderRadius.circular(AppRadius.xl.r),
-        ),
-        child: TextField(
-          controller: _searchController,
-          onChanged: vm.onSearchChanged,
-          decoration: InputDecoration(
-            hintText: 'Search people by name',
-            hintStyle: context.text.subDescription3,
-            border: InputBorder.none,
-            icon: Icon(Icons.search, color: Colors.grey[400], size: AppSpacing.lg.sp),
-            contentPadding: EdgeInsets.symmetric(vertical: AppSpacing.sm.h),
+      padding: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
+      child: TextFormField(
+        controller: _searchController,
+        onChanged: vm.onSearchChanged,
+        decoration: InputDecoration(
+          hintText: 'Search people by name',
+          hintStyle: context.text.bodySmall.copyWith(
+            color: context.text.tertiaryText,
           ),
-          style: context.text.subDescription3,
+          filled: true,
+          counterStyle: TextStyle(color: scheme.primary),
+          fillColor: scheme.onSurface.withValues(alpha: 0.1),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppRadius.full.r),
+            borderSide: BorderSide(
+              color: scheme.outline.withValues(alpha: 0.2),
+            ),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppRadius.full.r),
+            borderSide: BorderSide(
+              color: scheme.outline.withValues(alpha: 0.2),
+            ),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppRadius.full.r),
+            borderSide: BorderSide(color: scheme.primary),
+          ),
+          contentPadding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w),
+          prefixIcon: Icon(
+            Icons.search,
+            size: AppSpacing.lg.sp,
+            color: context.text.tertiaryText,
+          ),
+        ),
+        showCursor: true,
+        cursorColor: scheme.primary,
+        style: context.text.labelSmall.copyWith(
+          color: context.text.tertiaryText,
         ),
       ),
     );
@@ -126,30 +141,35 @@ class _NewChatBodyState extends State<_NewChatBody> {
 
   Widget _buildGroupButton() {
     final scheme = Theme.of(context).colorScheme;
-    return InkWell(
-      onTap: () {
-        HapticFeedback.lightImpact();
-        if (context.mounted) context.push(RouterRoutes.newGroupChat.path);
-      },
-      child: Padding(
-        padding: EdgeInsets.all(AppSpacing.md.w),
-        child: Container(
+    return Material(
+      color: scheme.surface,
+      borderRadius: BorderRadius.circular(AppRadius.lg.r),
+      child: TapDetector(
+        onTap: () {
+          if (context.mounted) context.push(RouterRoutes.newGroupChat.path);
+        },
+        child: Padding(
           padding: EdgeInsets.symmetric(
             horizontal: AppSpacing.md.w,
-            vertical: 10.h,
-          ),
-          decoration: BoxDecoration(
-            color: AppColorTokens.searchBar,
-            borderRadius: BorderRadius.circular(AppRadius.md.r),
+            vertical: AppSpacing.sm.h,
           ),
           child: Row(
             children: [
               CircleAvatar(
                 backgroundColor: scheme.primary,
-                child: Icon(Icons.group_add_rounded, color: Colors.white),
+                child: Icon(
+                  Icons.group_add_rounded,
+                  size: AppSizing.iconSm.r,
+                  color: scheme.surface,
+                ),
               ),
               Gap(AppSpacing.sm.w),
-              Text('New Group', style: context.text.subDescription2),
+              Text(
+                'New Group',
+                style: context.text.bodyMedium.copyWith(
+                  color: context.text.secondaryText,
+                ),
+              ),
             ],
           ),
         ),
@@ -192,7 +212,7 @@ class _NewChatBodyState extends State<_NewChatBody> {
                       user.displayName.isNotEmpty
                           ? user.displayName[0].toUpperCase()
                           : '?',
-                      style: context.text.body2.copyWith(
+                      style: context.text.bodyMedium.copyWith(
                         color: scheme.primary,
                         fontWeight: FontWeight.w600,
                       ),
@@ -206,10 +226,15 @@ class _NewChatBodyState extends State<_NewChatBody> {
                 children: [
                   Text(
                     user.displayName,
-                    style: context.text.body2.copyWith(color: Colors.black),
+                    style: context.text.bodyMedium,
                   ),
                   Gap(2.h),
-                  Text(user.email, style: context.text.subDescription3),
+                  Text(
+                    user.email,
+                    style: context.text.labelSmall.copyWith(
+                      color: context.text.tertiaryText,
+                    ),
+                  ),
                 ],
               ),
             ),

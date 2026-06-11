@@ -37,7 +37,7 @@ class _MainShellState extends ConsumerState<MainShell> {
       padding: EdgeInsets.only(
         left: 60.w,
         right: 60.w,
-        bottom: MediaQuery.of(context).padding.bottom + AppSpacing.md.h,
+        bottom: MediaQuery.of(context).padding.bottom + AppSpacing.xxs.h,
       ),
       child: Container(
         decoration: BoxDecoration(

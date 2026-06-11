@@ -52,12 +52,12 @@ class LoginView extends ConsumerWidget {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Center(child: Text('Welcome Back', style: context.text.subheadline1)),
+        Center(child: Text('Welcome Back', style: context.text.headlineSmall)),
         Gap(AppSpacing.xs.h),
         Center(
           child: Text(
             'Sign in to continue to your messages',
-            style: context.text.subDescription2,
+            style: context.text.bodyMedium.copyWith(fontSize: 13.sp, color: context.text.secondaryText),
             textAlign: TextAlign.center,
           ),
         ),
@@ -84,7 +84,7 @@ class LoginView extends ConsumerWidget {
       icon: Image.asset(icons.google, height: 24.h, width: 24.h),
       label: Text(
         'Continue with Google',
-        style: context.text.body1.copyWith(
+        style: context.text.bodyMedium.copyWith(
           fontWeight: FontWeight.w600,
           color: Colors.black,
         ),
@@ -107,9 +107,7 @@ class LoginView extends ConsumerWidget {
       icon: Icon(Icons.email_outlined, color: Colors.white, size: 22.sp),
       label: Text(
         'Sign in with Email',
-        style: context.text.body1.copyWith(
-          fontWeight: FontWeight.w600,
-        ),
+        style: context.text.bodyMedium,
       ),
       style: OutlinedButton.styleFrom(
         side: const BorderSide(color: Colors.white38),
@@ -127,7 +125,7 @@ class LoginView extends ConsumerWidget {
         padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w),
         child: Text(
           'OR',
-          style: context.text.subDescription2.copyWith(
+          style: context.text.bodyMedium.copyWith(fontSize: 13.sp, color: context.text.secondaryText, 
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -141,11 +139,11 @@ class LoginView extends ConsumerWidget {
     child: Text.rich(
       TextSpan(
         text: 'Don\'t have an account? ',
-        style: context.text.subDescription2,
+        style: context.text.bodyMedium.copyWith(fontSize: 13.sp, color: context.text.secondaryText),
         children: [
           TextSpan(
             text: 'Sign up',
-            style: context.text.subDescription2.copyWith(
+            style: context.text.bodyMedium.copyWith(fontSize: 13.sp, color: context.text.secondaryText, 
               fontWeight: FontWeight.w600,
             ),
           ),

@@ -63,11 +63,11 @@ class EmailSignInView extends StatelessWidget {
       key: vm.formKey,
       child: Column(
         children: [
-          Text('Welcome back', style: context.text.body1),
+          Text('Welcome back', style: context.text.bodyMedium),
           Gap(AppSpacing.xs.h),
           Text(
             'Sign in to continue messaging.',
-            style: context.text.subDescription2,
+            style: context.text.bodyMedium.copyWith(fontSize: 13.sp, color: context.text.secondaryText),
             textAlign: TextAlign.center,
           ),
           Gap(AppSpacing.xl.h),
@@ -93,7 +93,7 @@ class EmailSignInView extends StatelessWidget {
   Widget _buildEmailField(BuildContext context, EmailSignInVM vm) => TextFormField(
     keyboardType: TextInputType.emailAddress,
     controller: vm.form.email.controller,
-    style: context.text.subDescription2,
+    style: context.text.bodyMedium.copyWith(fontSize: 13.sp, color: context.text.secondaryText),
     validator: (val) => vm.form.email.validator?.call(val ?? ''),
     decoration: InputDecoration(
       hintText: 'Email',

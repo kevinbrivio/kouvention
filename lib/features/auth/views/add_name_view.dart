@@ -58,11 +58,11 @@ class AddNameView extends StatelessWidget {
       key: vm.formKey,
       child: Column(
         children: [
-          Text('One last thing', style: context.text.body1),
+          Text('One last thing', style: context.text.bodyMedium),
           Gap(AppSpacing.xs.h),
           Text(
             'What should others call you?',
-            style: context.text.subDescription2,
+            style: context.text.bodyMedium.copyWith(fontSize: 13.sp, color: context.text.secondaryText),
             textAlign: TextAlign.center,
           ),
           Gap(AppSpacing.xl.h),
@@ -77,7 +77,7 @@ class AddNameView extends StatelessWidget {
   Widget _buildNameField(BuildContext context, AddNameVM vm) => TextFormField(
     controller: vm.form.displayName.controller,
     textCapitalization: TextCapitalization.words,
-    style: context.text.subDescription2,
+    style: context.text.bodyMedium.copyWith(fontSize: 13.sp, color: context.text.secondaryText),
     validator: (val) => vm.form.displayName.validator?.call(val ?? ''),
     decoration: InputDecoration(
       hintText: 'Display name',

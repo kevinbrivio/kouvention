@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
+import 'package:kouvention/cores/constants/icon_paths.dart';
 import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/features/profile/widgets/bubble_container.dart';
 
@@ -74,7 +75,7 @@ class ProfileHeader extends StatelessWidget {
                   child: BubbleContainer(
                     child: Text(
                       bio!,
-                      style: context.text.body2.copyWith(
+                      style: context.text.bodyMedium.copyWith(
                         color: scheme.onSurface,
                       ),
                     ),
@@ -84,38 +85,42 @@ class ProfileHeader extends StatelessWidget {
           ),
           Gap(AppSpacing.md.h),
           // Display name
-          Text(displayName, style: context.text.subheadline1),
-          Gap(4.h),
-          // Email
-          Text(
-            email,
-            style: TextStyle(fontSize: 14.sp, color: Colors.grey.shade600),
-          ),
+          Text(displayName, style: context.text.headlineSmall.copyWith(
+            color: context.text.tertiaryText
+          )),
           Gap(AppSpacing.xs.h),
+
           // Auth provider badge
           Container(
             padding: EdgeInsets.symmetric(
               horizontal: AppSpacing.sm.w,
-              vertical: 6.h,
+              vertical: AppSpacing.xxs.h,
             ),
             decoration: BoxDecoration(
-              color: isGoogleLinked
-                  ? scheme.primary.withValues(alpha: 0.2)
-                  : Colors.grey.shade100,
+              color: scheme.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(20.r),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (isGoogleLinked) ...[
-                  Icon(Icons.check_circle, size: AppSpacing.md.r, color: scheme.primary),
-                  Gap(4.w),
+                  Image.asset(
+                    icons.google,
+                    width: AppSizing.iconMd.r,
+                    height: AppSizing.iconMd.r,
+                  ),
+                ] else ...[
+                  Icon(
+                    Icons.email_outlined,
+                    size: AppSizing.iconMd.r,
+                    color: scheme.primary,
+                  ),
                 ],
+                Gap(AppSpacing.betweenSections.w),
                 Text(
-                  authProviderLabel,
-                  style: context.text.subDescription3.copyWith(
-                    color: isGoogleLinked ? scheme.primary : Colors.grey.shade700,
-                    fontWeight: FontWeight.w500,
+                  email,
+                  style: context.text.labelLarge.copyWith(
+                    color: context.text.secondaryText,
                   ),
                 ),
               ],

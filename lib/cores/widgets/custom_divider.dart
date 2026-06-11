@@ -12,11 +12,9 @@ class CustomDivider extends StatelessWidget {
     children: [
       Expanded(
         child: Divider(
-          color: color ??
-              Theme.of(context)
-                  .colorScheme
-                  .onSurface
-                  .withValues(alpha: 0.3),
+          color:
+              color ??
+              Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
           thickness: 1,
         ),
       ),
@@ -25,18 +23,16 @@ class CustomDivider extends StatelessWidget {
           padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w),
           child: Text(
             text!,
-            style: context.text.subDescription2.copyWith(
-              fontWeight: FontWeight.w600,
+            style: context.text.bodyMedium.copyWith(
+              color: context.text.secondaryText,
             ),
           ),
         ),
         Expanded(
           child: Divider(
-            color: color ??
-                Theme.of(context)
-                    .colorScheme
-                    .onSurface
-                    .withValues(alpha: 0.3),
+            color:
+                color ??
+                Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
             thickness: 1,
           ),
         ),

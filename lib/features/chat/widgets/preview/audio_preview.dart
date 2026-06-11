@@ -38,14 +38,14 @@ class AudioPreview extends StatelessWidget {
                 Gap(AppSpacing.sm.h),
                 Text(
                   fileName,
-                  style: context.text.subheadline1.copyWith(
+                  style: context.text.headlineSmall.copyWith(
                     color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                     fontWeight: FontWeight.w400,
                   ),
                   textAlign: TextAlign.center,
                 ),
                 Gap(AppSpacing.sm.h),
-                Text('$fileSizes · MP3', style: context.text.subDescription),
+                Text('$fileSizes · MP3', style: context.text.titleMedium.copyWith(color: context.text.secondaryText)),
               ],
             ),
           ),

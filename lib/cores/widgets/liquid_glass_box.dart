@@ -17,29 +17,23 @@ class LiquidGlassBox extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(borderRadius),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
-        child: Container(
-          padding: padding ?? EdgeInsets.all(AppRadius.lg.r),
-          decoration: BoxDecoration(
-            color: Colors.transparent,
-            border: Border.all(
-              color: isDark
-                  ? AppSurfaceDark.surface
-                  : AppSurfaceLight.surface
-                      .withValues(alpha: 0.15),
-              width: 1.2,
-            ),
-            borderRadius: BorderRadius.circular(borderRadius),
+  Widget build(BuildContext context) => ClipRRect(
+    borderRadius: BorderRadius.circular(borderRadius),
+    child: BackdropFilter(
+      filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
+      child: Container(
+        padding: padding ?? EdgeInsets.all(AppRadius.lg.r),
+        decoration: BoxDecoration(
+          color: Colors.transparent,
+          border: Border.all(
+            color: context.text.tertiaryText
+              .withValues(alpha: 0.05),
+            width: 1.2,
           ),
-          child: child,
+          borderRadius: BorderRadius.circular(borderRadius),
         ),
+        child: child,
       ),
-    );
-  }
+    ),
+  );
 }

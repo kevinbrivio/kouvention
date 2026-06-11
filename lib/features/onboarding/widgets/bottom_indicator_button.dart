@@ -32,8 +32,7 @@ class BottomIndicatorButton extends ConsumerWidget {
           child: Button(
             isWhiteBackground: true,
             text: vm.currentPage == 2 ? 'Get Started' : 'Next',
-            textStyle: context.text.subDescription.copyWith(
-              color: Theme.of(context).colorScheme.onSurface,
+            textStyle: context.text.titleMedium.copyWith(color: Theme.of(context).colorScheme.onSurface,
             ),
             showArrow: true,
             width: 224.w,

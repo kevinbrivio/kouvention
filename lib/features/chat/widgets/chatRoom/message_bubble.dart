@@ -136,7 +136,7 @@ class MessageBubble extends ConsumerWidget {
               if (!isMe) ...[
                 if (isGroup && isFirstSequence)
                   CircleAvatar(
-                    radius: 14.r,
+                    radius: AppSizing.avatarSm.r,
                     backgroundColor: showSenderPhoto
                         ? AppColorTokens.senderNameColor(message.senderId)
                             .withValues(alpha: 0.25)
@@ -165,18 +165,18 @@ class MessageBubble extends ConsumerWidget {
                   children: [
                     Container(
                       constraints: BoxConstraints(maxWidth: 260.w),
-                      padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm.w, vertical: 10.h),
+                      padding: EdgeInsets.symmetric(horizontal: AppSpacing.xs.w, vertical: AppSpacing.xs.w),
                       decoration: BoxDecoration(
                         color: isMe ? sentBubbleColor : receivedBubbleColor,
                         borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(isMe ? AppRadius.lg.r : 4.r),
-                          topRight: Radius.circular(isMe ? 4.r : AppRadius.lg.r),
-                          bottomRight: Radius.circular(AppRadius.lg.r),
-                          bottomLeft: Radius.circular(AppRadius.lg.r),
+                          topLeft: Radius.circular(isMe ? AppRadius.sm.r : AppRadius.xs.r),
+                          topRight: Radius.circular(isMe ? AppRadius.xs.r : AppRadius.sm.r),
+                          bottomRight: Radius.circular(AppRadius.sm.r),
+                          bottomLeft: Radius.circular(AppRadius.sm.r),
                         ),
                       ),
                       child: Column(
-                        crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           if (replyMsg != null) ...[
                             InkWell(
@@ -206,7 +206,7 @@ class MessageBubble extends ConsumerWidget {
                                       ? 'You deleted this message'
                                       : 'This message was deleted'
                                   : message.text,
-                              style: context.text.senderName.copyWith(
+                              style: context.text.bodySmall.copyWith(
                                 color: isMe
                                     ? message.isDeleted ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5) : Colors.white
                                     : message.isDeleted
@@ -224,13 +224,12 @@ class MessageBubble extends ConsumerWidget {
                             children: [
                               Text(
                                 time,
-                                style: TextStyle(
+                                style: context.text.labelSmall.copyWith(
                                   color: isMe
                                       ? Colors.white70
                                       : (isLightReceived
                                           ? Colors.grey[500]
                                           : Colors.white60),
-                                  fontSize: 11.sp,
                                 ),
                               ),
                               if (isMe) ...[
@@ -363,7 +362,7 @@ class MessageBubble extends ConsumerWidget {
       fit: StackFit.expand,
       children: [
         ClipRRect(
-          borderRadius: BorderRadius.circular(4.r),
+          borderRadius: BorderRadius.circular(AppRadius.sm.r),
           child: Image.network(
             imageUrl!,
             fit: BoxFit.cover,
@@ -405,7 +404,7 @@ class MessageBubble extends ConsumerWidget {
         Flexible(
           child: Text(
             label, 
-            style: context.text.subDescription3,
+            style: context.text.labelSmall.copyWith(color: context.text.tertiaryText),
           ),
         )
       ],

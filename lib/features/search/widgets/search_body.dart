@@ -47,7 +47,7 @@ class SearchBody extends ConsumerWidget {
                   padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w, vertical: AppSpacing.sm.h),
                   child: Text(
                     'Contacts',
-                    style: context.text.subDescription,
+                    style: context.text.titleMedium.copyWith(color: context.text.secondaryText),
                   ),
                 ),
               ),
@@ -75,7 +75,7 @@ class SearchBody extends ConsumerWidget {
                   padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w, vertical: AppSpacing.sm.h),
                   child: Text(
                     'Messages',
-                    style: context.text.subDescription,
+                    style: context.text.titleMedium.copyWith(color: context.text.secondaryText),
                   ),
                 ),
               ),
@@ -105,7 +105,7 @@ class SearchBody extends ConsumerWidget {
               if (vm.query.isNotEmpty)
                 Text(
                   'No results for "${vm.query}"',
-                  style: context.text.subDescription3,
+                  style: context.text.labelSmall.copyWith(color: context.text.tertiaryText),
                 ),
             ],
           ),

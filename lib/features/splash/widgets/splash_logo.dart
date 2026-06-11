@@ -22,11 +22,11 @@ class SplashLogo extends StatelessWidget {
       Text.rich(
         TextSpan(
           text: 'Kouvent',
-          style: context.text.headline1,
+          style: context.text.headlineLarge,
           children: [
             TextSpan(
               text: 'ion',
-              style: context.text.headline1.copyWith(
+              style: context.text.headlineLarge.copyWith(
                 fontWeight: FontWeight.w300,
                 color: Colors.white.withAlpha(200),
               ),
@@ -35,7 +35,7 @@ class SplashLogo extends StatelessWidget {
         ),
       ),
 
-      Text('Connect instantly, anywhere.', style: context.text.body2),
+      Text('Connect instantly, anywhere.', style: context.text.bodyMedium),
     ],
   );
 }

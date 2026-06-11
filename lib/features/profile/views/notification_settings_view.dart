@@ -23,7 +23,7 @@ class NotificationSettingsView extends StatelessWidget {
     provider: notificationSettingsVM,
     useGradient: false,
     appBar: (_) => CustomAppBar(
-      body: Text('Notifications', style: context.text.appBar),
+      body: Text('Notifications', style: context.text.appBarTitle),
       onBack: () => context.go(RouterRoutes.profile.path),
     ),
     builder: (context, vm) => _Body(viewmodel: vm),
@@ -80,7 +80,7 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
 
           Text(
             'NOTIFICATIONS',
-            style: context.text.subDescription
+            style: context.text.titleMedium.copyWith(color: context.text.secondaryText)
           ),
           Gap(AppSpacing.sm.h),
 
@@ -161,7 +161,7 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
               widget.viewmodel.osPermissionGranted
                   ? 'You can also manage notification sounds and vibration from your device\'s Settings app.'
                   : 'Notifications are disabled at the system level. Tap "Open Settings" to enable them.',
-              style: context.text.subDescription3
+              style: context.text.labelSmall.copyWith(color: context.text.tertiaryText)
             ),
           ),
 
@@ -195,7 +195,7 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
                       padding: EdgeInsets.symmetric(horizontal: 20.w),
                       child: Text(
                         'Notification Sound',
-                        style: context.text.subDescription2
+                        style: context.text.bodyMedium.copyWith(fontSize: 13.sp, color: context.text.secondaryText)
                       ),
                     ),
                     Gap(AppSpacing.xs.h),
@@ -238,7 +238,7 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
                           ),
                           child: Text(
                             'Done',
-                            style: context.text.subDescription2
+                            style: context.text.bodyMedium.copyWith(fontSize: 13.sp, color: context.text.secondaryText)
                           ),
                         ),
                       ),
@@ -276,7 +276,7 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
                       padding: EdgeInsets.symmetric(horizontal: 20.w),
                       child: Text(
                         'Group Notification Sound',
-                        style: context.text.subDescription2
+                        style: context.text.bodyMedium.copyWith(fontSize: 13.sp, color: context.text.secondaryText)
                       ),
                     ),
                     Gap(AppSpacing.xs.h),
@@ -291,7 +291,7 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
                       ),
                       title: Text(
                         'Default (same as direct)',
-                        style: context.text.subDescription2
+                        style: context.text.bodyMedium.copyWith(fontSize: 13.sp, color: context.text.secondaryText)
                       ),
                       onTap: () => setDialogState(() => selectedId = null),
                     ),
@@ -338,7 +338,7 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
                           ),
                           child: Text(
                             'Done',
-                            style: context.text.subDescription2
+                            style: context.text.bodyMedium.copyWith(fontSize: 13.sp, color: context.text.secondaryText)
                           ),
                         ),
                       ),
@@ -421,7 +421,7 @@ class _SoundTile extends StatelessWidget {
       isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
       color: isSelected ? Theme.of(context).colorScheme.primary : Colors.grey.shade400,
     ),
-    title: Text(label, style: context.text.subDescription2),
+    title: Text(label, style: context.text.bodyMedium.copyWith(fontSize: 13.sp, color: context.text.secondaryText)),
     onTap: onTap,
   );
 }

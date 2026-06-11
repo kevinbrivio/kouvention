@@ -56,12 +56,12 @@ class _EditNameViewState extends State<EditStatusView> {
                   Gap(AppSpacing.xs.h),
                   Text(
                     'Visible in chats',
-                    style: context.text.subDescription3,
+                    style: context.text.labelSmall.copyWith(color: context.text.tertiaryText),
                   ),
                   Gap(AppSpacing.xs.h),
                   CustomDivider(),
                   Gap(AppSpacing.xs.h),
-                  Text('Select', style: context.text.subDescription3),
+                  Text('Select', style: context.text.labelSmall.copyWith(color: context.text.tertiaryText)),
                   Gap(AppSpacing.xs.h),
                   _buildDefaultStatus(vm),
                   Gap(AppSpacing.md.h),
@@ -76,7 +76,7 @@ class _EditNameViewState extends State<EditStatusView> {
   );
 
   PreferredSizeWidget _buildAppBar() => CustomAppBar(
-    body: Text('About', style: context.text.appBar),
+    body: Text('About', style: context.text.appBarTitle),
     onBack: () => context.go(RouterRoutes.profile.path),
   );
 
@@ -103,10 +103,10 @@ class _EditNameViewState extends State<EditStatusView> {
                 shape: BoxShape.circle,
               ),
               alignment: Alignment.center,
-              child: Text(status.emoji, style: context.text.subDescription3),
+              child: Text(status.emoji, style: context.text.labelSmall.copyWith(color: context.text.tertiaryText)),
             ),
             Gap(AppSpacing.sm.w),
-            Text(status.label, style: context.text.subDescription3),
+            Text(status.label, style: context.text.labelSmall.copyWith(color: context.text.tertiaryText)),
           ],
         ),
       );

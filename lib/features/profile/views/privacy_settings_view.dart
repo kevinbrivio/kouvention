@@ -17,7 +17,7 @@ class PrivacySettingsView extends StatelessWidget {
     provider: privacySettingsVM,
     useGradient: false,
     appBar: (_) => CustomAppBar(
-      body: Text('Privacy', style: context.text.appBar),
+      body: Text('Privacy', style: context.text.appBarTitle),
       onBack: () => context.go(RouterRoutes.profile.path),
     ),
     builder: (context, vm) => _Body(viewmodel: vm),
@@ -44,7 +44,7 @@ class _Body extends StatelessWidget {
 
             Text(
               'PRIVACY',
-              style: context.text.subDescription
+              style: context.text.titleMedium.copyWith(color: context.text.secondaryText)
             ),
             Gap(AppSpacing.sm.h),
 

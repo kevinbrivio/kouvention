@@ -54,7 +54,7 @@ class _EditNameViewState extends State<EditNameView> {
                 Gap(AppSpacing.xs.h),
                 Text(
                   'People will see this name if you interact with them.',
-                  style: context.text.subDescription3,
+                  style: context.text.labelSmall.copyWith(color: context.text.tertiaryText),
                 ),
               ],
             ),
@@ -66,7 +66,7 @@ class _EditNameViewState extends State<EditNameView> {
   );
 
   PreferredSizeWidget _buildAppBar() => CustomAppBar(
-    body: Text('Name', style: context.text.appBar),
+    body: Text('Name', style: context.text.appBarTitle),
     onBack: () => context.go(RouterRoutes.profile.path),
   );
 }

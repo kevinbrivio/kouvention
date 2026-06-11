@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:kouvention/cores/constants/tokens.dart';
+import 'package:kouvention/cores/widgets/tap_detector.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_list_viewmodel.dart';
 import 'package:kouvention/features/chat/views/debug_seeder_view.dart';
@@ -41,7 +42,9 @@ class ChatHeader extends ConsumerWidget {
                     if (!compact)
                       Text(
                         'Kouvéntion',
-                        style: context.text.subheadline1.copyWith(color: scheme.primary),
+                        style: context.text.headlineSmall.copyWith(
+                          color: scheme.primary,
+                        ),
                       ),
                     if (!compact) Gap(6.h),
                     _buildSearchBox(context, ref, chatVM, searchVM, scheme),
@@ -55,7 +58,9 @@ class ChatHeader extends ConsumerWidget {
                   tooltip: 'Open debug seeder',
                   onPressed: () {
                     Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const DebugSeederView()),
+                      MaterialPageRoute(
+                        builder: (_) => const DebugSeederView(),
+                      ),
                     );
                   },
                 ),
@@ -63,8 +68,6 @@ class ChatHeader extends ConsumerWidget {
             ],
           ),
         ),
-        _buildFilterButtons(chatVM, scheme),
-        Gap(4.h),
       ],
     );
   }
@@ -75,80 +78,39 @@ class ChatHeader extends ConsumerWidget {
     ChatListVM chatVM,
     SearchVM searchVM,
     ColorScheme scheme,
-  ) =>
-      InkWell(
-        onTap: () {
-          HapticFeedback.selectionClick();
-          final chatRooms =
-              ref.read(pagedChatListProvider).value ?? const <ChatModel>[];
-          searchVM.openSearch(chatRooms);
-        },
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20.r),
-            border: Border.all(color: scheme.primary, width: 2.w),
+  ) => TapDetector(
+    borderRadius: AppRadius.full.r,
+    onTap: () {
+      HapticFeedback.selectionClick();
+      final chatRooms =
+          ref.read(pagedChatListProvider).value ?? const <ChatModel>[];
+      searchVM.openSearch(chatRooms);
+    },
+    child: Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppRadius.full.r),
+        border: Border.all(color: scheme.outline.withValues(alpha: 0.2)),
+      ),
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm.w,
+        vertical: AppSpacing.sm.h,
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.search,
+            color: scheme.onSurface.withValues(alpha: 0.5),
+            size: AppSpacing.md.sp,
           ),
-          padding: EdgeInsets.symmetric(
-            horizontal: AppSpacing.sm.w,
-            vertical: 10.h,
-          ),
-          child: Row(
-            children: [
-              Icon(
-                Icons.search,
-                color: scheme.onSurface.withValues(alpha: 0.5),
-                size: AppSpacing.md.sp,
-              ),
-              Gap(AppSpacing.xs.w),
-              Text('Search something...', style: context.text.subDescription3),
-            ],
-          ),
-        ),
-      );
-
-  Widget _buildFilterButtons(ChatListVM vm, ColorScheme scheme) => Padding(
-    padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w),
-    child: Row(
-      children: ChatFilter.values.map((filter) {
-        final isSelected = vm.filter == filter;
-
-        final label = switch (filter) {
-          ChatFilter.all => 'All',
-          ChatFilter.direct => 'Direct',
-          ChatFilter.group => 'Groups',
-        };
-
-        return Padding(
-          padding: EdgeInsets.only(right: AppSpacing.sm.w),
-          child: GestureDetector(
-            onTap: () {
-              HapticFeedback.selectionClick();
-              vm.setFilter(filter);
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: EdgeInsets.symmetric(
-                horizontal: AppSpacing.md.w,
-                vertical: AppSpacing.xs.h,
-              ),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? scheme.primary
-                    : scheme.primary.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(20.r),
-              ),
-              child: Text(
-                label,
-                style: TextStyle(
-                  color: isSelected ? Colors.white : scheme.primary,
-                  fontSize: 13.sp,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
+          Gap(AppSpacing.xs.w),
+          Text(
+            'Search something...',
+            style: context.text.labelMedium.copyWith(
+              color: context.text.tertiaryText,
             ),
           ),
-        );
-      }).toList(),
+        ],
+      ),
     ),
   );
 }

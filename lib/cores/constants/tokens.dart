@@ -6,7 +6,7 @@
 // Usage:
 //   Colors:    Theme.of(context).colorScheme.primary  (preferred)
 //              AppColorTokens.primary                  (only when no scheme equivalent)
-//   Text:      context.text.body1
+//   Text:      context.text.bodyMedium
 //   Spacing:   AppSpacing.md.w
 //   Sizing:    AppSizing.buttonHeight.h
 //   Radius:    AppRadius.button.r
@@ -189,12 +189,14 @@ class AppSizing {
   static const double inputLargeHeight = 125.0;
 
   // Icons
+  static const double iconXxs = 12.0;
   static const double iconXs = 16.0;
   static const double iconSm = 20.0;
   static const double iconMd = 24.0;
   static const double iconLg = 32.0;
 
   // Avatars
+  static const double avatarXs = 24.0;
   static const double avatarSm = 32.0;
   static const double avatarMd = 40.0;
   static const double avatarLg = 48.0;
@@ -235,8 +237,9 @@ class AppRadius {
 // LAYER 7: AppTextTheme — resolved text styles
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-// Replaces the old AppTextTheme.of(context) pattern.
-// Resolves colors from ColorScheme (context-aware) instead of hardcoded hex.
+// Follows Material 3 type scale: display, headline, title, body, label.
+// Deviations from M3 spec: headlineSmall keeps w500 (M3 default is w400).
+// Color variants live in call sites via .copyWith(), not in getter names.
 
 extension AppTextTheme on BuildContext {
   _AppTextStyles get text => _AppTextStyles.of(this);
@@ -246,103 +249,104 @@ class _AppTextStyles {
   _AppTextStyles._(this._scheme);
   final ColorScheme _scheme;
 
-  // Color resolvers (read from ColorScheme, not hardcoded)
-  Color get _primaryText => _scheme.onSurface;
-  Color get _secondaryText => _scheme.onSurface.withValues(alpha: 0.7);
-  Color get _tertiaryText => _scheme.onSurface.withValues(alpha: 0.5);
-  Color get _accentText => _scheme.primary;
+  // ── Public color resolvers (for .copyWith at call sites) ──
+  Color get primaryText => _scheme.onSurface;
+  Color get secondaryText => _scheme.onSurface.withValues(alpha: 0.7);
+  Color get tertiaryText => _scheme.onSurface.withValues(alpha: 0.5);
+  Color get accentText => _scheme.primary;
 
   static _AppTextStyles of(BuildContext context) {
     return _AppTextStyles._(Theme.of(context).colorScheme);
   }
 
-  // ── Headlines ──
-  TextStyle get headline1 => TextStyle(
-        fontSize: 42.sp,
-        fontWeight: FontWeight.bold,
-        color: _primaryText,
-        height: 1.5,
+  // ── Display ──
+  TextStyle get displayLarge => TextStyle(
+        fontSize: 57.sp, fontWeight: FontWeight.w400,
+        color: primaryText, height: 1.5,
+      );
+  TextStyle get displayMedium => TextStyle(
+        fontSize: 45.sp, fontWeight: FontWeight.w400,
+        color: primaryText, height: 1.5,
+      );
+  TextStyle get displaySmall => TextStyle(
+        fontSize: 36.sp, fontWeight: FontWeight.w400,
+        color: primaryText, height: 1.5,
       );
 
-  TextStyle get subheadline1 => TextStyle(
-        fontSize: 24.sp,
-        fontWeight: FontWeight.w500,
-        color: _primaryText,
-        height: 1.5,
+  // ── Headline ──
+  TextStyle get headlineLarge => TextStyle(
+        fontSize: 32.sp, fontWeight: FontWeight.w500,
+        color: primaryText, height: 1.5,
+      );
+  TextStyle get headlineMedium => TextStyle(
+        fontSize: 28.sp, fontWeight: FontWeight.w500,
+        color: primaryText, height: 1.5,
+      );
+  /// Keeps w500 (M3 spec is w400) — matches existing visual weight.
+  TextStyle get headlineSmall => TextStyle(
+        fontSize: 24.sp, fontWeight: FontWeight.w500,
+        color: primaryText, height: 1.5,
+      );
+
+  // ── Title ──
+  TextStyle get titleLarge => TextStyle(
+        fontSize: 22.sp, fontWeight: FontWeight.w500,
+        color: primaryText, height: 1.5,
+      );
+  TextStyle get titleMedium => TextStyle(
+        fontSize: 16.sp, fontWeight: FontWeight.w500,
+        color: primaryText, height: 1.5,
+      );
+  TextStyle get titleSmall => TextStyle(
+        fontSize: 14.sp, fontWeight: FontWeight.w500,
+        color: primaryText, height: 1.5,
       );
 
   // ── Body ──
-  TextStyle get body1 => TextStyle(
-        fontSize: 16.sp,
-        fontWeight: FontWeight.w400,
-        color: _primaryText,
-        height: 1.5,
+  TextStyle get bodyLarge => TextStyle(
+        fontSize: 16.sp, fontWeight: FontWeight.w400,
+        color: primaryText, height: 1.5,
+      );
+  TextStyle get bodyMedium => TextStyle(
+        fontSize: 14.sp, fontWeight: FontWeight.w500,
+        color: primaryText, height: 1.5,
+      );
+  TextStyle get bodySmall => TextStyle(
+        fontSize: 12.sp, fontWeight: FontWeight.w400,
+        color: primaryText, height: 1.5,
       );
 
-  TextStyle get body2 => TextStyle(
-        fontSize: 12.sp,
-        fontWeight: FontWeight.w400,
-        color: _primaryText,
-        height: 1.5,
+  // ── Label ──
+  TextStyle get labelLarge => TextStyle(
+        fontSize: 14.sp, fontWeight: FontWeight.w500,
+        color: primaryText, height: 1.5,
+      );
+  TextStyle get labelMedium => TextStyle(
+        fontSize: 12.sp, fontWeight: FontWeight.w500,
+        color: primaryText, height: 1.5,
+      );
+  TextStyle get labelSmall => TextStyle(
+        fontSize: 11.sp, fontWeight: FontWeight.w500,
+        color: primaryText, height: 1.5,
       );
 
-  // ── Descriptions (secondary) ──
-  TextStyle get subDescription => TextStyle(
-        fontSize: 16.sp,
-        fontWeight: FontWeight.w500,
-        color: _secondaryText,
-        height: 1.5,
+  // ── Semantic aliases (for high-frequency reusable patterns) ──
+  TextStyle get appBarTitle => titleMedium.copyWith(color: accentText);
+  TextStyle get senderName => bodyMedium.copyWith(
+        fontWeight: FontWeight.w600, color: secondaryText,
       );
-
-  TextStyle get subDescription2 => TextStyle(
-        fontSize: 13.sp,
-        fontWeight: FontWeight.w500,
-        color: _secondaryText,
-        height: 1.5,
-      );
-
-  TextStyle get subDescription3 => TextStyle(
-        fontSize: 11.sp,
-        fontWeight: FontWeight.w500,
-        color: _tertiaryText,
-        height: 1.5,
-      );
-
-  // ── Specialized ──
-  TextStyle get appBar => TextStyle(
-        fontSize: 16.sp,
-        fontWeight: FontWeight.w500,
-        color: _accentText,
-        height: 1.5,
-      );
-
-  TextStyle get buttonText => TextStyle(
-        fontSize: 12.sp,
-        fontWeight: FontWeight.w500,
-        color: _scheme.onPrimary,
-        height: 1.5,
-      );
-
-  TextStyle get contactName => TextStyle(
-        fontSize: 13.sp,
-        fontWeight: FontWeight.w600,
-        color: _tertiaryText,
-        height: 1.5,
-      );
-
-  TextStyle get senderName => TextStyle(
-        fontSize: 14.sp,
-        fontWeight: FontWeight.w600,
-        color: _secondaryText,
-        height: 1.5,
-      );
-
   TextStyle get typeMessage => TextStyle(
-        fontSize: 13.sp,
-        fontWeight: FontWeight.w500,
-        color: _secondaryText,
-        height: 1.5,
+        fontSize: 13.sp, fontWeight: FontWeight.w500,
+        color: secondaryText, height: 1.5,
         decoration: TextDecoration.none,
+      );
+  TextStyle get contactName => TextStyle(
+        fontSize: 13.sp, fontWeight: FontWeight.w600,
+        color: tertiaryText, height: 1.5,
+      );
+  TextStyle get buttonText => TextStyle(
+        fontSize: 12.sp, fontWeight: FontWeight.w500,
+        color: _scheme.onPrimary, height: 1.5,
       );
 }
 
@@ -438,7 +442,7 @@ class AppTheme {
           borderRadius: BorderRadius.circular(AppRadius.button.r),
         ),
         textStyle: TextStyle(
-          fontFamily: 'Asap',
+          fontFamily: 'Nunito',
           fontSize: 12.sp,
           fontWeight: FontWeight.w500,
         ),
