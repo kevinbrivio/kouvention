@@ -55,13 +55,7 @@ class _ButtonState extends State<Button> {
   // All 4 variants share shape, padding, elevation, splash, minSize.
   // Differences: backgroundColor, foregroundColor.
 
-  TextStyle get _buttonTextStyle => TextStyle(
-    fontFamily: 'Nunito',
-    fontSize: 12.sp,
-    fontWeight: FontWeight.w500,
-    height: 1.5,
-    color: Theme.of(context).colorScheme.onPrimary,
-  );
+  TextStyle get _buttonTextStyle => context.text.labelMedium;
 
   ButtonStyle _elevatedStyle(ColorScheme scheme) => ElevatedButton.styleFrom(
     backgroundColor: scheme.primary,
@@ -123,7 +117,6 @@ class _ButtonState extends State<Button> {
     splashFactory: InkRipple.splashFactory,
   );
 
-
   ButtonStyle _whiteStyle() => ElevatedButton.styleFrom(
     backgroundColor: AppSurfaceLight.surface,
     foregroundColor: AppSurfaceLight.surface,
@@ -144,15 +137,14 @@ class _ButtonState extends State<Button> {
     final scheme = Theme.of(context).colorScheme;
 
     final ButtonStyle style = widget.isWhiteBackground
-      ? _whiteStyle()
-      : widget.isDelete
-          ? _deleteStyle(scheme)  // ← tambahin
-          : widget.isCancel
-              ? _cancelStyle(scheme)
-              : widget.isSecondary
-                  ? _secondaryStyle(scheme)
-                  : _elevatedStyle(scheme);
-
+        ? _whiteStyle()
+        : widget.isDelete
+        ? _deleteStyle(scheme) // ← tambahin
+        : widget.isCancel
+        ? _cancelStyle(scheme)
+        : widget.isSecondary
+        ? _secondaryStyle(scheme)
+        : _elevatedStyle(scheme);
 
     final TextStyle textStyle = _buttonTextStyle;
 

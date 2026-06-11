@@ -162,7 +162,7 @@ class _ProfileBody extends ConsumerWidget {
                 text: 'Cancel',
                 textStyle: context.text.labelMedium,
                 onPressed: () => Navigator.pop(sheetContext),
-                isWhiteBackground: true,
+                // isWhiteBackground: true,
               ),
             ],
           ),
