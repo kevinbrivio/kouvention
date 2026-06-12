@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,7 +7,6 @@ import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/widgets/tap_detector.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_list_viewmodel.dart';
-import 'package:kouvention/features/chat/views/debug_seeder_view.dart';
 import 'package:kouvention/features/search/viewmodel/search_viewmodel.dart';
 
 class ChatHeader extends ConsumerWidget {
@@ -51,20 +49,20 @@ class ChatHeader extends ConsumerWidget {
                   ],
                 ),
               ),
-              if (kDebugMode) ...[
-                Gap(AppSpacing.xs.w),
-                IconButton(
-                  icon: Icon(Icons.bug_report, color: scheme.primary),
-                  tooltip: 'Open debug seeder',
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const DebugSeederView(),
-                      ),
-                    );
-                  },
-                ),
-              ],
+              // if (kDebugMode) ...[
+              //   Gap(AppSpacing.xs.w),
+              //   IconButton(
+              //     icon: Icon(Icons.bug_report, color: scheme.primary),
+              //     tooltip: 'Open debug seeder',
+              //     onPressed: () {
+              //       Navigator.of(context).push(
+              //         MaterialPageRoute(
+              //           builder: (_) => const DebugSeederView(),
+              //         ),
+              //       );
+              //     },
+              //   ),
+              // ],
             ],
           ),
         ),
