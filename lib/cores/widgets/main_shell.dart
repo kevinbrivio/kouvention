@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
-import 'package:kouvention/cores/constants/colors.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/features/search/viewmodel/search_viewmodel.dart';
 
 class MainShell extends ConsumerStatefulWidget {
@@ -37,7 +37,7 @@ class _MainShellState extends ConsumerState<MainShell> {
       padding: EdgeInsets.only(
         left: 60.w,
         right: 60.w,
-        bottom: MediaQuery.of(context).padding.bottom + 16.h,
+        bottom: MediaQuery.of(context).padding.bottom + AppSpacing.xxs.h,
       ),
       child: Container(
         decoration: BoxDecoration(
@@ -77,16 +77,16 @@ class _MainShellState extends ConsumerState<MainShell> {
     required bool isSelected,
     required VoidCallback onTap,
   }) => Padding(
-    padding: EdgeInsets.all(4.w),
+    padding: EdgeInsets.all(AppSpacing.xxs.w),
     child: GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
-        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+        padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w, vertical: AppSpacing.xs.h),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppColors.primary.withValues(alpha: 0.1)
+              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(48.r),
         ),
@@ -96,13 +96,13 @@ class _MainShellState extends ConsumerState<MainShell> {
             Icon(
               icon,
               size: 18.sp,
-              color: isSelected ? AppColors.primary : AppColors.grey,
+              color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
             ),
             Gap(6.w),
             Text(
               label,
               style: TextStyle(
-                color: isSelected ? AppColors.primary : AppColors.grey,
+                color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                 fontSize: 8.sp,
                 fontWeight: FontWeight.w600,
               ),

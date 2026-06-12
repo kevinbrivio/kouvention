@@ -7,8 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
-import 'package:kouvention/cores/constants/colors.dart';
-import 'package:kouvention/cores/constants/text_theme.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/router/router.dart';
 import 'package:kouvention/cores/widgets/loading_indicator.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
@@ -97,18 +96,18 @@ class _ImageMedia extends StatelessWidget {
           ? nonEmptyCaptions.first
           : caption;
       return ClipRRect(
-        borderRadius: BorderRadius.circular(12.r),
+        borderRadius: BorderRadius.circular(AppRadius.sm.r),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildCollage(context, urls),
             if (effectiveCaption.isNotEmpty)
               Container(
-                padding: EdgeInsets.symmetric(vertical: 8.h),
+                padding: EdgeInsets.symmetric(vertical: AppSpacing.xs.h),
                 child: Text(
                   effectiveCaption,
-                  style: AppTextTheme.of(context).senderName.copyWith(
-                    color: isMe ? AppColors.white : AppColors.black,
+                  style: context.text.bodySmall.copyWith(
+                    color: isMe ? Colors.white : Colors.black,
                   ),
                 ),
               ),
@@ -126,7 +125,7 @@ class _ImageMedia extends StatelessWidget {
   }) => GestureDetector(
     onTap: () => _openFullscreen(context, index),
     child: ClipRRect(
-      borderRadius: BorderRadius.circular(12.r),
+      borderRadius: BorderRadius.circular(AppRadius.sm.r),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -138,17 +137,17 @@ class _ImageMedia extends StatelessWidget {
             placeholder: (_, __) => const Center(child: LoadingIndicator()),
             errorWidget: (_, __, ___) => Container(
               height: 200.h,
-              color: AppColors.grey,
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
               child: const Icon(Icons.broken_image),
             ),
           ),
           if (caption.isNotEmpty)
             Container(
-              padding: EdgeInsets.symmetric(vertical: 8.h),
+              padding: EdgeInsets.symmetric(vertical: AppSpacing.xs.h),
               child: Text(
                 caption,
-                style: AppTextTheme.of(context).senderName.copyWith(
-                  color: isMe ? AppColors.white : AppColors.black,
+                style: context.text.bodySmall.copyWith(
+                  color: isMe ? Colors.white : Colors.black,
                 ),
               ),
             ),
@@ -243,7 +242,7 @@ class _ImageMedia extends StatelessWidget {
   }) => GestureDetector(
     onTap: () => _openFullscreen(context, index),
     child: ClipRRect(
-      borderRadius: BorderRadius.circular(6.r),
+      borderRadius: BorderRadius.circular(AppRadius.sm.r),
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -264,9 +263,9 @@ class _ImageMedia extends StatelessWidget {
               child: Center(
                 child: Text(
                   '+${count - 4}',
-                  style: AppTextTheme.of(
-                    context,
-                  ).subheadline1.copyWith(color: AppColors.grey),
+                  style: context.text.headlineSmall.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                  ),
                 ),
               ),
             ),
@@ -375,23 +374,21 @@ class _FullScreenViewerState extends State<FullScreenViewer> {
                   ),
                   if (widget.urls.length > 1)
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm.w,
+                        vertical: AppSpacing.sm.h,
                       ),
                       decoration: BoxDecoration(
                         color: Colors.black54,
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(AppRadius.sm.r),
                       ),
                       child: Text(
                         '${_currentIndex + 1} / ${widget.urls.length}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                        ),
+                        style: context.text.labelMedium,
                       ),
                     ),
-                  const SizedBox(width: 48),
+
+                  Gap(AppSpacing.xl.w),
                 ],
               ),
             ),
@@ -407,12 +404,12 @@ class _FullScreenViewerState extends State<FullScreenViewer> {
                   child: Container(
                     constraints: BoxConstraints(maxWidth: 300.w),
                     padding: EdgeInsets.symmetric(
-                      horizontal: 16.w,
+                      horizontal: AppSpacing.md.w,
                       vertical: 10.h,
                     ),
                     decoration: BoxDecoration(
                       color: Colors.black54,
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(AppRadius.sm.r),
                     ),
                     child: Text(
                       widget.captions[_currentIndex],
@@ -441,12 +438,13 @@ class _VideoMedia extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      if (urls.length > 1)
+      if (urls.length > 1) ...[
         Text(
           '${urls.length} videos',
-          style: AppTextTheme.of(context).subDescription,
+          style: context.text.titleMedium.copyWith(color: context.text.secondaryText),
         ),
-      Gap(6.h),
+        Gap(AppSpacing.xs.h),
+      ],
       if (urls.length == 1)
         _VideoTile(url: urls[0], isMe: isMe)
       else
@@ -455,7 +453,7 @@ class _VideoMedia extends StatelessWidget {
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: urls.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 6),
+            separatorBuilder: (_, __) => Gap(AppSpacing.xs.h),
             itemBuilder: (context, index) =>
                 _VideoTile(url: urls[index], isMe: isMe),
           ),
@@ -514,7 +512,7 @@ class _VideoTileState extends State<_VideoTile> {
       );
     },
     child: ClipRRect(
-      borderRadius: BorderRadius.circular(12.r),
+      borderRadius: BorderRadius.circular(AppRadius.sm.r),
       child: Stack(
         alignment: Alignment.center,
         children: [
@@ -534,8 +532,8 @@ class _VideoTileState extends State<_VideoTile> {
               color: Colors.black45,
               shape: BoxShape.circle,
             ),
-            padding: EdgeInsets.all(8.w),
-            child: Icon(Icons.play_arrow, color: Colors.white, size: 36.sp),
+            padding: EdgeInsets.all(AppSpacing.xs.w),
+            child: Icon(Icons.play_arrow, color: Colors.white, size: AppSizing.iconMd.r),
           ),
         ],
       ),
@@ -636,7 +634,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                 children: [
                   // Play/Pause button besar di tengah
                   IconButton(
-                    iconSize: 64.w,
+                    iconSize: AppSizing.iconMd.r,
                     icon: Icon(
                       _isPlaying
                           ? Icons.pause_circle_filled
@@ -645,18 +643,15 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                     ),
                     onPressed: _togglePlay,
                   ),
-                  const SizedBox(height: 8),
+                  Gap(AppSpacing.xs.h),
                   // Progress slider
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w),
                     child: Row(
                       children: [
                         Text(
                           _formatDuration(_controller.value.position),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                          ),
+                          style: context.text.bodySmall,
                         ),
                         Expanded(
                           child: Slider(
@@ -675,10 +670,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                         ),
                         Text(
                           _formatDuration(_controller.value.duration),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                          ),
+                          style: context.text.bodySmall,
                         ),
                       ],
                     ),
@@ -687,8 +679,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
               ),
             ),
           Positioned(
-            top: 40,
-            left: 16,
+            top: 40.h,
+            left: 16.w,
             child: IconButton(
               icon: const Icon(Icons.close, color: Colors.white),
               onPressed: () => Navigator.pop(context),
@@ -709,7 +701,7 @@ class _StickerMedia extends StatelessWidget {
   Widget build(BuildContext context) {
     final url = urls.first;
     return ClipRRect(
-      borderRadius: BorderRadius.circular(16.r),
+      borderRadius: BorderRadius.circular(AppRadius.sm.r),
       child: SizedBox(
         width: 160.r,
         height: 160.r,
@@ -822,17 +814,17 @@ class _AudioTileState extends State<_AudioTile> with RouteAware {
     children: [
       Container(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12.r),
-          color: AppColors.white.withValues(alpha: 0.3),
+          borderRadius: BorderRadius.circular(AppRadius.sm.r),
+          color: Colors.white.withValues(alpha: 0.3),
         ),
-        padding: EdgeInsets.only(left: 2.w, right: 8.w),
+        padding: EdgeInsets.only(left: 2.w, right: AppSpacing.xs.w),
         child: Row(
           children: [
             // Tombol play/pause
             IconButton(
               icon: Icon(
                 _isPlaying ? Icons.pause : Icons.play_arrow,
-                color: AppColors.white,
+                color: Colors.white,
               ),
               onPressed: () {
                 if (_isPlaying) {
@@ -850,15 +842,15 @@ class _AudioTileState extends State<_AudioTile> with RouteAware {
                 onChanged: (val) {
                   // Seek ke posisi baru
                 },
-                activeColor: AppColors.primary,
+                activeColor: Theme.of(context).colorScheme.primary,
               ),
             ),
             // Durasi
             Text(
               _formatDuration(_position),
-              style: AppTextTheme.of(
-                context,
-              ).subDescription2.copyWith(color: AppColors.white),
+              style: context.text.bodyMedium.copyWith(fontSize: 13.sp, 
+                color: Colors.white,
+              ),
             ),
           ],
         ),
@@ -866,7 +858,7 @@ class _AudioTileState extends State<_AudioTile> with RouteAware {
       if (widget.byteSizes != null && widget.byteSizes != 0)
         Text(
           formatBytes(widget.byteSizes!),
-          style: AppTextTheme.of(context).subDescription3,
+          style: context.text.labelSmall.copyWith(color: context.text.tertiaryText),
         ),
     ],
   );
@@ -908,18 +900,17 @@ class _FileMedia extends StatelessWidget {
       children: [
         Text(
           '${urls.length} files',
-          style: AppTextTheme.of(context).subDescription3.copyWith(
-            color: isMe ? AppColors.white : AppColors.black,
+          style: context.text.labelSmall.copyWith(color: isMe ? Colors.white : Colors.black,
           ),
         ),
         Gap(6.h),
         InkWell(
           onTap: () => _showMultipleFilesDialog(context, urls),
           child: Container(
-            padding: EdgeInsets.all(8.w),
+            padding: EdgeInsets.all(AppSpacing.xs.w),
             decoration: BoxDecoration(
               color: isMe ? Colors.white24 : Colors.black12,
-              borderRadius: BorderRadius.circular(12.r),
+              borderRadius: BorderRadius.circular(AppRadius.sm.r),
             ),
             child: Row(
               children: [
@@ -936,10 +927,10 @@ class _FileMedia extends StatelessWidget {
                 if (totalSize != null)
                   Text(
                     formatBytes(totalSize),
-                    style: TextStyle(fontSize: 12, color: AppColors.grey),
+                    style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)),
                   ),
 
-                Icon(Icons.chevron_right, size: 20.sp, color: AppColors.grey),
+                Icon(Icons.chevron_right, size: 20.sp, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)),
               ],
             ),
           ),
@@ -952,11 +943,11 @@ class _FileMedia extends StatelessWidget {
     final thumbnails = message.thumbnailUrls;
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.sm.r)),
       ),
       builder: (context) => Padding(
-        padding: EdgeInsets.all(16.w),
+        padding: EdgeInsets.all(AppSpacing.md.w),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -970,7 +961,7 @@ class _FileMedia extends StatelessWidget {
               child: ListView.separated(
                 shrinkWrap: true,
                 itemCount: urls.length,
-                separatorBuilder: (_, __) => Gap(8.h),
+                separatorBuilder: (_, __) => Gap(AppSpacing.xs.h),
                 itemBuilder: (context, index) {
                   final fileUrl = urls[index].toString();
                   final originalName = extractFileNameFromUrl(fileUrl);
@@ -1179,7 +1170,7 @@ class _FileTileState extends State<_FileTile> {
       GestureDetector(
         onTap: _downloadAndOpen,
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(12.r),
+          borderRadius: BorderRadius.circular(AppRadius.sm.r),
           child: Stack(
             children: [
               CachedNetworkImage(
@@ -1197,7 +1188,7 @@ class _FileTileState extends State<_FileTile> {
                   color: Colors.grey[300],
                   child: Icon(
                     Icons.picture_as_pdf,
-                    size: 48.w,
+                    size: 40.w,
                     color: Colors.grey[600],
                   ),
                 ),
@@ -1209,7 +1200,7 @@ class _FileTileState extends State<_FileTile> {
                   padding: EdgeInsets.all(6.w),
                   decoration: BoxDecoration(
                     color: Colors.black54,
-                    borderRadius: BorderRadius.circular(8.r),
+                    borderRadius: BorderRadius.circular(AppRadius.sm.r),
                   ),
                   child: Icon(
                     Icons.picture_as_pdf,
@@ -1225,14 +1216,14 @@ class _FileTileState extends State<_FileTile> {
                   bottom: 0,
                   child: LinearProgressIndicator(
                     value: _downloadProgress,
-                    color: AppColors.primary,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
             ],
           ),
         ),
       ),
-      Gap(8.h),
+      Gap(AppSpacing.xs.h),
       GestureDetector(
         onTap: _downloadAndOpen,
         child: Row(
@@ -1243,8 +1234,8 @@ class _FileTileState extends State<_FileTile> {
                 children: [
                   Text(
                     widget.name,
-                    style: AppTextTheme.of(context).subDescription2.copyWith(
-                      color: widget.isMe ? Colors.white : AppColors.black,
+                    style: context.text.bodyMedium.copyWith(fontSize: 13.sp, 
+                      color: widget.isMe ? Colors.white : Colors.black,
                       fontWeight: FontWeight.w500,
                     ),
                     maxLines: 2,
@@ -1254,8 +1245,7 @@ class _FileTileState extends State<_FileTile> {
                   if (widget.size != null && !_isDownloading)
                     Text(
                       formatBytes(widget.size ?? 0),
-                      style: AppTextTheme.of(context).subDescription3.copyWith(
-                        color: widget.isMe ? Colors.white : AppColors.grey,
+                      style: context.text.labelSmall.copyWith(color: widget.isMe ? Colors.white : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -1264,7 +1254,7 @@ class _FileTileState extends State<_FileTile> {
             ),
             Icon(
               _isDownloading ? Icons.hourglass_empty : Icons.download,
-              color: widget.isMe ? Colors.white70 : AppColors.grey,
+              color: widget.isMe ? Colors.white70 : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
             ),
           ],
         ),
@@ -1275,27 +1265,26 @@ class _FileTileState extends State<_FileTile> {
   Widget _buildIconTile() => GestureDetector(
     onTap: _downloadAndOpen,
     child: Container(
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+      padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm.w, vertical: 10.h),
       decoration: BoxDecoration(
         color: widget.isMe ? Colors.white24 : Colors.black12,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadius.sm.r),
       ),
       child: Row(
         children: [
           Icon(
             _getFileIcon(widget.name),
             size: 32,
-            color: widget.isMe ? Colors.white70 : AppColors.grey,
+            color: widget.isMe ? Colors.white70 : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
           ),
-          Gap(12.w),
+          Gap(AppSpacing.sm.w),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   widget.name,
-                  style: AppTextTheme.of(context).subDescription3.copyWith(
-                    color: widget.isMe ? Colors.white : AppColors.grey,
+                  style: context.text.labelSmall.copyWith(color: widget.isMe ? Colors.white : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                     fontWeight: FontWeight.w500,
                   ),
                   maxLines: 1,
@@ -1304,8 +1293,7 @@ class _FileTileState extends State<_FileTile> {
                 if (widget.size != null && !_isDownloading)
                   Text(
                     formatBytes(widget.size!),
-                    style: AppTextTheme.of(context).subDescription3.copyWith(
-                      color: widget.isMe ? Colors.white : AppColors.grey,
+                    style: context.text.labelSmall.copyWith(color: widget.isMe ? Colors.white : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -1314,7 +1302,7 @@ class _FileTileState extends State<_FileTile> {
                     padding: const EdgeInsets.only(top: 8.0),
                     child: LinearProgressIndicator(
                       value: _downloadProgress,
-                      color: AppColors.primary,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
               ],
@@ -1322,7 +1310,7 @@ class _FileTileState extends State<_FileTile> {
           ),
           Icon(
             _isDownloading ? Icons.hourglass_empty : Icons.download,
-            color: widget.isMe ? Colors.white70 : AppColors.grey,
+            color: widget.isMe ? Colors.white70 : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
           ),
         ],
       ),

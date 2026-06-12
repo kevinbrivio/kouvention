@@ -2,8 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
-import 'package:kouvention/cores/constants/colors.dart';
-import 'package:kouvention/cores/constants/text_theme.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/utils/date_time_helper.dart';
 import 'package:kouvention/features/search/models/search_result_model.dart';
 
@@ -32,12 +31,12 @@ class SearchResultTile extends StatelessWidget {
   Widget _buildTextTile(BuildContext context) => InkWell(
     onTap: onTap,
     child: Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+      padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w, vertical: 10.h),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildHighlightedText(result.messageText, query, context),
-          Gap(4.h),
+          Gap(AppSpacing.xxs.h),
           _buildSenderLine(context),
         ],
       ),
@@ -47,7 +46,7 @@ class SearchResultTile extends StatelessWidget {
   Widget _buildMediaTile(BuildContext context) => InkWell(
     onTap: onTap,
     child: Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+      padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w, vertical: 10.h),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -67,10 +66,10 @@ class SearchResultTile extends StatelessWidget {
             ),
           ),
           ClipRRect(
-            borderRadius: BorderRadius.circular(8.r),
+            borderRadius: BorderRadius.circular(AppRadius.sm.r),
             child: SizedBox(
-              width: 48.w,
-              height: 48.w,
+              width: AppSizing.touchMin.w,
+              height: AppSizing.touchMin.w,
               child: _buildMediaPreview(context),
             ),
           ),
@@ -114,7 +113,7 @@ class SearchResultTile extends StatelessWidget {
                 color: Colors.black38,
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.play_arrow, color: Colors.white, size: 20.w),
+              child: Icon(Icons.play_arrow, color: Colors.white, size: AppSizing.iconSm.w),
             ),
           ],
         );
@@ -126,7 +125,7 @@ class SearchResultTile extends StatelessWidget {
       return Container(
         color: Colors.grey[100],
         child: Center(
-          child: Icon(_fileIcon(), color: Colors.grey[600], size: 24.w),
+          child: Icon(_fileIcon(), color: Colors.grey[600], size: AppSizing.iconMd.w),
         ),
       );
     }
@@ -138,7 +137,7 @@ class SearchResultTile extends StatelessWidget {
     if (result.isImage) {
       return Text(
         'Photo',
-        style: AppTextTheme.of(context).body2,
+        style: context.text.bodyMedium,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       );
@@ -146,7 +145,7 @@ class SearchResultTile extends StatelessWidget {
     if (result.isVideo) {
       return Text(
         'Video',
-        style: AppTextTheme.of(context).body2,
+        style: context.text.bodyMedium,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       );
@@ -154,7 +153,7 @@ class SearchResultTile extends StatelessWidget {
     if (result.isFile) {
       return Text(
         result.fileName ?? 'File',
-        style: AppTextTheme.of(context).body2,
+        style: context.text.bodyMedium,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       );
@@ -167,9 +166,9 @@ class SearchResultTile extends StatelessWidget {
         ? 'You'
         : '${result.senderName} '
               '· ${DateTimeHelper.formatDateMonthYear(result.sentAt)}',
-    style: AppTextTheme.of(
-      context,
-    ).subDescription3.copyWith(fontSize: 9.sp, color: AppColors.grey),
+    style: context
+        .text
+        .labelSmall.copyWith(fontSize: 9.sp, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)),
   );
 
   Widget _buildHighlightedText(
@@ -193,12 +192,12 @@ class SearchResultTile extends StatelessWidget {
       maxLines: 2,
       overflow: TextOverflow.ellipsis,
       text: TextSpan(
-        style: AppTextTheme.of(context).body1,
+        style: context.text.bodyMedium,
         children: [
           TextSpan(text: before),
           TextSpan(
             text: match,
-            style: AppTextTheme.of(context).body1.copyWith(
+            style: context.text.bodyMedium.copyWith(
               fontWeight: FontWeight.bold,
               backgroundColor: Color(0x33FFC107),
             ),

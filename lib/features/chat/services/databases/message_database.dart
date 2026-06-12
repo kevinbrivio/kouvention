@@ -451,7 +451,7 @@ class MessageDatabase extends _$MessageDatabase {
   /// and subsequent pages are appended to the first page without the first
   /// page re-emit stealing focus.
   Future<List<Chat>> fetchPagedChats({
-    // required int limit,
+    required int limit,
     int offset = 0,
     String? typeFilter,
     String? currentUid,

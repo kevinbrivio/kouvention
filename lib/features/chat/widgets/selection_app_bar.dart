@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:kouvention/cores/constants/colors.dart';
-import 'package:kouvention/cores/constants/text_theme.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_selection_viewmodel.dart';
 
 class SelectionAppBar extends ConsumerWidget implements PreferredSizeWidget {
@@ -15,24 +14,24 @@ class SelectionAppBar extends ConsumerWidget implements PreferredSizeWidget {
     final vm = ref.watch(chatSelectionVM(chatId));
 
     return AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       elevation: 0.5,
       scrolledUnderElevation: 0,
       leading: IconButton(
-        icon: Icon(Icons.arrow_back, color: AppColors.primary),
+        icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.primary),
         onPressed: vm.clearSelection,
       ),
       title: Text(
         '${vm.selectedCount}',
-        style: AppTextTheme.of(context).subDescription.copyWith(color: AppColors.primary),
+        style: context.text.titleMedium.copyWith(color: Theme.of(context).colorScheme.primary),
       ),
       actions: [
         IconButton(
-          icon: Icon(Icons.copy, color: AppColors.primary),
+          icon: Icon(Icons.copy, color: Theme.of(context).colorScheme.primary),
           onPressed: vm.copyToClipboard,
         ),
         IconButton(
-          icon: Icon(Icons.delete_outline, color: AppColors.primary),
+          icon: Icon(Icons.delete_outline, color: Theme.of(context).colorScheme.primary),
           onPressed: () {
             final selectedMessages = vm.getSelectedMessages();
             // filter for me
@@ -42,14 +41,14 @@ class SelectionAppBar extends ConsumerWidget implements PreferredSizeWidget {
             showDialog(
               context: context,
               builder: (dialogCtx) => AlertDialog(
-                backgroundColor: AppColors.grey,
+                backgroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16.r),
+                  borderRadius: BorderRadius.circular(AppRadius.lg.r),
                 ),
                 title: Text(
                   'Delete ${vm.selectedCount} message${vm.selectedCount > 1 ? 's' : ''}?',
-                  style: AppTextTheme.of(context).subDescription2.copyWith(
-                    color: AppColors.black,
+                  style: context.text.bodyMedium.copyWith(fontSize: 13.sp, 
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 content: Column(
@@ -63,8 +62,7 @@ class SelectionAppBar extends ConsumerWidget implements PreferredSizeWidget {
                       },
                       child: Text(
                         'Cancel',
-                        style: AppTextTheme.of(context).subDescription3.copyWith(
-                          color: AppColors.primary2,
+                        style: context.text.labelSmall.copyWith(color: AppColorTokens.primaryLighter,
                         ),
                       ),
                     ),
@@ -75,8 +73,7 @@ class SelectionAppBar extends ConsumerWidget implements PreferredSizeWidget {
                       },
                       child: Text(
                         'Delete for me',
-                        style: AppTextTheme.of(context).subDescription3.copyWith(
-                          color: AppColors.primary2,
+                        style: context.text.labelSmall.copyWith(color: AppColorTokens.primaryLighter,
                         ),
                       ),
                     ),
@@ -88,8 +85,7 @@ class SelectionAppBar extends ConsumerWidget implements PreferredSizeWidget {
                         },
                         child: Text(
                           'Delete for everyone',
-                          style: AppTextTheme.of(context).subDescription3.copyWith(
-                            color: AppColors.primary2,
+                          style: context.text.labelSmall.copyWith(color: AppColorTokens.primaryLighter,
                           ),
                         ),
                       ),

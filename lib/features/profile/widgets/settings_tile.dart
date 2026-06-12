@@ -1,10 +1,9 @@
-// lib/features/profile/widgets/settings_tile.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
-import 'package:kouvention/cores/constants/text_theme.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/widgets/liquid_glass_box.dart';
+import 'package:kouvention/cores/widgets/tap_detector.dart';
 
 class SettingsTile extends StatelessWidget {
   final IconData icon;
@@ -25,42 +24,52 @@ class SettingsTile extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap ?? () {},
-    child: Padding(
-      padding: EdgeInsets.symmetric(vertical: 6.h),
+  Widget build(BuildContext context) => Padding(
+    padding: EdgeInsets.symmetric(vertical: AppSpacing.xxs.h),
+    child: TapDetector(
+      onTap: onTap,
       child: LiquidGlassBox(
-        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+        padding: EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm.w,
+          vertical: AppSpacing.xs.h,
+        ),
         child: Row(
           children: [
             Container(
-              padding: EdgeInsets.all(8.r),
+              padding: EdgeInsets.all(AppRadius.sm.r),
               decoration: BoxDecoration(
                 color: iconColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8.r),
+                borderRadius: BorderRadius.circular(AppRadius.sm.r),
               ),
-              child: Icon(icon, size: 24.sp, color: iconColor),
+              child: Icon(icon, size: AppSizing.iconSm.r, color: iconColor),
             ),
-            Gap(12.w),
+            Gap(AppSpacing.sm.w),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: AppTextTheme.of(context).subDescription2),
+                  Text(
+                    title,
+                    style: context.text.labelMedium.copyWith(
+                      color: context.text.secondaryText,
+                    ),
+                  ),
                   Gap(2.h),
                   Text(
                     subtitle,
-                    style: AppTextTheme.of(context).subDescription3,
+                    style: context.text.labelSmall.copyWith(
+                      color: context.text.tertiaryText,
+                    ),
                   ),
                 ],
               ),
             ),
             trailing ??
-                Icon(
-                  Icons.chevron_right,
-                  size: 24.sp,
-                  color: Colors.grey.shade400,
-                ),
+              Icon(
+                Icons.chevron_right,
+                size: AppSizing.iconMd.r,
+                color: Theme.of(context).colorScheme.surface,
+              ),  
           ],
         ),
       ),

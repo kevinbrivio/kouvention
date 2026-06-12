@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:kouvention/cores/constants/colors.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 
 class TransparentBox extends StatelessWidget {
   final Widget child;
@@ -19,10 +19,11 @@ class TransparentBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     decoration: BoxDecoration(
-      color: color ?? AppColors.white,
-      borderRadius: radius ?? BorderRadius.circular(28.r),
+      color: color ?? AppSurfaceLight.surface,
+      borderRadius: radius ?? BorderRadius.circular(AppRadius.xl.r),
       border: Border.all(
-        color: borderColor ?? AppColors.white.withValues(alpha: 0.2),
+        color: borderColor ??
+            AppSurfaceLight.surface.withValues(alpha: 0.2),
         style: BorderStyle.solid,
         width: 1.sp,
       ),

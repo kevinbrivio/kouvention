@@ -3,7 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/bases/base_view.dart';
-import 'package:kouvention/cores/constants/text_theme.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/cores/widgets/custom_app_bar.dart';
 import 'package:kouvention/features/profile/viewmodel/privacy_settings_viewmodel.dart';
@@ -17,7 +17,7 @@ class PrivacySettingsView extends StatelessWidget {
     provider: privacySettingsVM,
     useGradient: false,
     appBar: (_) => CustomAppBar(
-      body: Text('Privacy', style: AppTextTheme.of(context).appBar),
+      body: Text('Privacy', style: context.text.appBarTitle),
       onBack: () => context.go(RouterRoutes.profile.path),
     ),
     builder: (context, vm) => _Body(viewmodel: vm),
@@ -40,13 +40,13 @@ class _Body extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Gap(24.h),
+            Gap(AppSpacing.lg.h),
 
             Text(
               'PRIVACY',
-              style: AppTextTheme.of(context).subDescription
+              style: context.text.titleMedium.copyWith(color: context.text.secondaryText)
             ),
-            Gap(12.h),
+            Gap(AppSpacing.sm.h),
 
             SettingsToggleTile(
               icon: Icons.wifi_outlined,
@@ -72,7 +72,7 @@ class _Body extends StatelessWidget {
               onChanged: (_) => viewmodel.toggleProfilePhoto(),
             ),
 
-            Gap(32.h),
+            Gap(AppSpacing.xl.h),
           ],
         ),
       ),

@@ -773,7 +773,7 @@ class SyncService {
           type: MessageType.sticker.name,
         ),
       );
-  
+
       await _sendFcmToRecipients(
         chatRoomId: chatRoomId,
         messageText: 'Sticker',
@@ -871,8 +871,7 @@ class SyncService {
   /// to re-send, so we skip them. The row stays `failed` until the user
   /// manually re-attaches the media.
   Future<void> flushPendingMessage(Message msg) async {
-    final hasMediaUrls =
-        msg.mediaUrls != null && msg.mediaUrls!.isNotEmpty;
+    final hasMediaUrls = msg.mediaUrls != null && msg.mediaUrls!.isNotEmpty;
     if (msg.type != MessageType.text.name && !hasMediaUrls) {
       return;
     }

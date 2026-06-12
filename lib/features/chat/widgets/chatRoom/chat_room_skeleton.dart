@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
-import 'package:kouvention/cores/constants/colors.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/features/chat/models/bubble_color_scheme.dart';
 import 'package:kouvention/features/chat/viewmodel/bubble_scheme_provider.dart';
 import 'package:skeletonizer/skeletonizer.dart';
@@ -19,7 +19,7 @@ class ChatRoomSkeleton extends ConsumerWidget {
 
     return Skeletonizer.zone(
       effect: ShimmerEffect(
-        baseColor: isDark ? AppColors.darkSkeleton : AppColors.lightSkeleton,
+        baseColor: isDark ? const Color(0xFF1E1E1E) : const Color(0xFFE6E9ED),
       ),
       child: ListView.builder(
         reverse: true,
@@ -33,32 +33,32 @@ class ChatRoomSkeleton extends ConsumerWidget {
   }
 
   Widget _buildBubble(bool isMe, BubbleColorScheme scheme) => Padding(
-    padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 16.w),
+    padding: EdgeInsets.symmetric(vertical: AppSpacing.sm.h, horizontal: AppSpacing.md.w),
     child: Row(
       mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (!isMe) ...[Bone.circle(size: 28.w), Gap(8.w)],
+        if (!isMe) ...[Bone.circle(size: AppSizing.avatarSm.w), Gap(AppSpacing.xs.w)],
         // Bubble body
         Container(
           constraints: BoxConstraints(maxWidth: 260.w),
-          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+          padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm.w, vertical: 10.h),
           decoration: BoxDecoration(
             color: isMe
                 ? scheme.sentBubble.withValues(alpha: 0.5)
                 : scheme.receivedBubble.withValues(alpha: 0.5),
             borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(isMe ? 16.r : 4.r),
-              topRight: Radius.circular(isMe ? 4.r : 16.r),
-              bottomRight: Radius.circular(16.r),
-              bottomLeft: Radius.circular(16.r),
+              topLeft: Radius.circular(isMe ? AppRadius.lg.r : AppRadius.xs.r),
+              topRight: Radius.circular(isMe ? AppRadius.xs.r : AppRadius.lg.r),
+              bottomRight: Radius.circular(AppRadius.lg.r),
+              bottomLeft: Radius.circular(AppRadius.lg.r),
             ),
           ),
           child: Column(
             crossAxisAlignment: isMe
                 ? CrossAxisAlignment.end
                 : CrossAxisAlignment.start,
-            children: [Bone.text(words: 3), Gap(4.h), Bone.text(words: 1)],
+            children: [Bone.text(words: 3), Gap(AppSpacing.xxs.h), Bone.text(words: 1)],
           ),
         ),
       ],

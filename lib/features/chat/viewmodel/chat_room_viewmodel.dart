@@ -781,7 +781,9 @@ final chatMessagesStreamProvider = StreamProvider.autoDispose
                         senderName: m.replyToSenderName ?? '',
                         text: m.replyToText ?? '',
                         sentAt: m.replyToSentAt != null
-                            ? DateTime.fromMillisecondsSinceEpoch(m.replyToSentAt!)
+                            ? DateTime.fromMillisecondsSinceEpoch(
+                                m.replyToSentAt!,
+                              )
                             : DateTime.fromMillisecondsSinceEpoch(m.sentAt),
                         mediaType: m.replyToMediaType,
                         mediaUrl: m.replyToMediaUrl,

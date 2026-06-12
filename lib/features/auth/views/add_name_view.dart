@@ -4,9 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:kouvention/cores/bases/base_view.dart';
-import 'package:kouvention/cores/constants/colors.dart';
 import 'package:kouvention/cores/constants/image_paths.dart';
-import 'package:kouvention/cores/constants/text_theme.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/widgets/custom_button.dart';
 import 'package:kouvention/cores/widgets/transparent_box.dart';
 import 'package:kouvention/features/user/viewmodel/add_name_viewmodel.dart';
@@ -20,13 +19,18 @@ class AddNameView extends StatelessWidget {
 
   Widget _buildScreen(BuildContext context, AddNameVM vm) => SafeArea(
     child: SingleChildScrollView(
-      padding: EdgeInsetsDirectional.symmetric(horizontal: 16.w),
+      padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w),
       child: SizedBox(
         height:
             MediaQuery.of(context).size.height -
             MediaQuery.of(context).padding.top,
         child: Column(
-          children: [Gap(40.h), _buildLogo(), Gap(32.h), _buildCard(context, vm)],
+          children: [
+            Gap(40.h),
+            _buildLogo(),
+            Gap(AppSpacing.xl.h),
+            _buildCard(context, vm),
+          ],
         ),
       ),
     ),
@@ -34,13 +38,13 @@ class AddNameView extends StatelessWidget {
 
   Widget _buildLogo() => Column(
     children: [
-      Image.asset(images.splash, height: 144.w, width: 144.w,),
-      Gap(8.h),
-      Text(
+      Image.asset(images.splash, height: 144.w, width: 144.w),
+      Gap(AppSpacing.xs.h),
+      const Text(
         'Kouvention',
         style: TextStyle(
           color: Colors.white,
-          fontSize: 20.sp,
+          fontSize: 20,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -48,26 +52,22 @@ class AddNameView extends StatelessWidget {
   );
 
   Widget _buildCard(BuildContext context, AddNameVM vm) => TransparentBox(
-    color: AppColors.primary.withValues(alpha: 0.4),
-    borderColor: AppColors.white.withValues(alpha: 0.7),
+    color: AppColorTokens.primary.withValues(alpha: 0.4),
+    borderColor: Colors.white.withValues(alpha: 0.7),
     child: Form(
       key: vm.formKey,
       child: Column(
         children: [
-          Text('One last thing', style: AppTextTheme.of(context).body1),
-
-          Gap(8.h),
+          Text('One last thing', style: context.text.bodyMedium),
+          Gap(AppSpacing.xs.h),
           Text(
             'What should others call you?',
-            style: AppTextTheme.of(context).subDescription2,
+            style: context.text.bodyMedium.copyWith(fontSize: 13.sp, color: context.text.secondaryText),
             textAlign: TextAlign.center,
           ),
-          Gap(32.h),
-
+          Gap(AppSpacing.xl.h),
           _buildNameField(context, vm),
-
-          Gap(24.h),
-
+          Gap(AppSpacing.lg.h),
           _buildSubmitButton(vm),
         ],
       ),
@@ -77,29 +77,32 @@ class AddNameView extends StatelessWidget {
   Widget _buildNameField(BuildContext context, AddNameVM vm) => TextFormField(
     controller: vm.form.displayName.controller,
     textCapitalization: TextCapitalization.words,
-    style: AppTextTheme.of(context).subDescription2,
+    style: context.text.bodyMedium.copyWith(fontSize: 13.sp, color: context.text.secondaryText),
     validator: (val) => vm.form.displayName.validator?.call(val ?? ''),
     decoration: InputDecoration(
       hintText: 'Display name',
-      hintStyle: TextStyle(color: Colors.white54),
+      hintStyle: const TextStyle(color: Colors.white54),
       prefixIcon: Icon(
         Icons.person_outline,
         color: Colors.white70,
-        size: 20.sp,
+        size: AppSizing.iconSm.sp,
       ),
       filled: true,
       fillColor: Colors.white.withValues(alpha: 0.1),
-      contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+      contentPadding: EdgeInsets.symmetric(
+        horizontal: AppSpacing.md.w,
+        vertical: 14.h,
+      ),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12.r),
+        borderRadius: BorderRadius.circular(AppRadius.md.r),
         borderSide: BorderSide.none,
       ),
-      errorStyle: TextStyle(color: Colors.orangeAccent, fontSize: 12.sp),
+      errorStyle: const TextStyle(color: Colors.orangeAccent, fontSize: 12),
     ),
   );
 
   Widget _buildSubmitButton(AddNameVM vm) => SizedBox(
-    height: 48.h,
+    height: AppSizing.buttonHeight.h,
     child: Button(
       onPressed: vm.isLoading ? null : () => vm.submit(),
       text: 'Continue',

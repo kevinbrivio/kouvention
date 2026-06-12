@@ -4,12 +4,13 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/bases/base_view.dart';
-import 'package:kouvention/cores/constants/colors.dart';
-import 'package:kouvention/cores/constants/text_theme.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
+import 'package:kouvention/cores/widgets/custom_app_bar.dart';
 import 'package:kouvention/cores/widgets/custom_button.dart';
 import 'package:kouvention/cores/widgets/liquid_glass_box.dart';
 import 'package:kouvention/cores/widgets/loading_indicator.dart';
+import 'package:kouvention/cores/widgets/tap_detector.dart';
 import 'package:kouvention/features/profile/viewmodel/profile_viewmodel.dart';
 import 'package:kouvention/features/profile/widgets/profile_header.dart';
 import 'package:kouvention/features/profile/widgets/personal_info_section.dart';
@@ -23,15 +24,12 @@ class ProfileView extends StatelessWidget {
   Widget build(BuildContext context) => BaseView(
     provider: profileVM,
     useGradient: false,
-    appBar: (_) => AppBar(
-      elevation: 0,
-      scrolledUnderElevation: 0,
-      leading: IconButton(
-        icon: Icon(Icons.arrow_back, color: AppColors.primary,),
-        onPressed: () => context.go(RouterRoutes.chatList.path),
+    appBar: (_) => CustomAppBar(
+      onBack: () => context.go(RouterRoutes.chatList.path),
+      body: Text(
+        'Profile',
+        style: context.text.appBarTitle,
       ),
-      title: Text('Profile', style: AppTextTheme.of(context).appBar),
-      centerTitle: false,
     ),
     builder: (context, vm) => _ProfileBody(viewmodel: vm),
   );
@@ -49,18 +47,18 @@ class _ProfileBody extends ConsumerWidget {
 
     if (user == null) {
       return Container(
-        color: AppColors.backdrop,
+        color: Theme.of(context).colorScheme.surface,
         child: const Center(child: LoadingIndicator()),
       );
     }
 
     return SafeArea(
       child: SingleChildScrollView(
-        padding: EdgeInsets.symmetric(horizontal: 20.w),
+        padding: EdgeInsets.symmetric(horizontal: AppSpacing.screenH),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Gap(24.h),
+            Gap(AppSpacing.sm.h),
             ProfileHeader(
               displayName: user.displayName,
               email: user.email,
@@ -70,44 +68,38 @@ class _ProfileBody extends ConsumerWidget {
               isGoogleLinked: viewmodel.isGoogleLinked,
               onChangePhoto: () => viewmodel.changeProfilePhoto(context),
             ),
-            Gap(32.h),
+            Gap(AppSpacing.lg.h),
             Text(
-              'PERSONAL INFO',
-              style: TextStyle(
-                fontSize: 12.sp,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey.shade500,
-                letterSpacing: 1.0,
+              'Personal Info',
+              style: context.text.bodyMedium.copyWith(
+                color: context.text.tertiaryText
               ),
             ),
-            Gap(12.h),
+            Gap(AppSpacing.sm.h),
             PersonalInfoSection(
               displayName: user.displayName,
               status: user.bio ?? 'No status set',
               onEditName: () => viewmodel.navigateToEditName(context),
               onEditStatus: () => viewmodel.navigateToEditStatus(context),
             ),
-            Gap(24.h),
+            Gap(AppSpacing.md.h),
             Text(
-              'SETTINGS',
-              style: TextStyle(
-                fontSize: 12.sp,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey.shade500,
-                letterSpacing: 1.0,
+              'Settings',
+              style: context.text.bodyMedium.copyWith(
+                color: context.text.tertiaryText
               ),
             ),
-            Gap(12.h),
+            Gap(AppSpacing.xs.h),
             SettingsTile(
               icon: Icons.shield_outlined,
-              iconColor: AppColors.primary,
+              iconColor: Theme.of(context).colorScheme.primary,
               title: 'Privacy & Security',
               subtitle: 'Manage your data and visibility',
               onTap: () => context.push(RouterRoutes.privacySettings.path),
             ),
             SettingsTile(
               icon: Icons.notifications_outlined,
-              iconColor: AppColors.primary,
+              iconColor: Theme.of(context).colorScheme.primary,
               title: 'Notifications',
               subtitle: 'Message alerts and sounds',
               onTap: () =>
@@ -115,7 +107,7 @@ class _ProfileBody extends ConsumerWidget {
             ),
             SettingsTile(
               icon: Icons.brightness_6,
-              iconColor: AppColors.primary,
+              iconColor: Theme.of(context).colorScheme.primary,
               title: 'Appearance',
               subtitle: switch (themeMode) {
                 ThemeMode.system => 'System default',
@@ -124,9 +116,9 @@ class _ProfileBody extends ConsumerWidget {
               },
               onTap: () => context.push(RouterRoutes.appearanceSettings.path),
             ),
-            Gap(32.h),
+            Gap(AppSpacing.lg.h),
             _buildLogoutButton(context),
-            Gap(32.h),
+            Gap(AppSpacing.lg.h),
           ],
         ),
       ),
@@ -155,20 +147,22 @@ class _ProfileBody extends ConsumerWidget {
                 'Are you sure you want to sign out?',
                 style: TextStyle(fontSize: 14.sp, color: Colors.grey.shade600),
               ),
-              Gap(24.h),
+              Gap(AppSpacing.md.h),
               Button(
                 text: 'Sign Out',
+                isDelete: true,
                 onPressed: () {
                   Navigator.pop(sheetContext);
                   viewmodel.signOut();
                 },
                 isCancel: true,
               ),
-              Gap(8.h),
+              Gap(AppSpacing.md.h),
               Button(
                 text: 'Cancel',
+                textStyle: context.text.labelMedium,
                 onPressed: () => Navigator.pop(sheetContext),
-                isWhiteBackground: true,
+                // isWhiteBackground: true,
               ),
             ],
           ),
@@ -177,12 +171,12 @@ class _ProfileBody extends ConsumerWidget {
     );
   }
 
-  Widget _buildLogoutButton(BuildContext context) => GestureDetector(
+  Widget _buildLogoutButton(BuildContext context) => TapDetector(
     onTap: viewmodel.isButtonLoading
         ? null
         : () => _showSignOutConfirmation(context),
     child: LiquidGlassBox(
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
+      padding: EdgeInsets.symmetric(horizontal: AppSpacing.xs.w, vertical: AppSpacing.xs.h),
       child: viewmodel.isButtonLoading
           ? Center(
               child: SizedBox(
@@ -204,16 +198,14 @@ class _ProfileBody extends ConsumerWidget {
                   ),
                   child: Icon(
                     Icons.logout_rounded,
-                    size: 24.sp,
+                    size: AppSizing.iconSm.r,
                     color: Colors.red.shade400,
                   ),
                 ),
-                Gap(12.w),
+                Gap(AppSpacing.sm.w),
                 Text(
                   'Sign Out',
-                  style: TextStyle(
-                    fontSize: 15.sp,
-                    fontWeight: FontWeight.w500,
+                  style: context.text.titleSmall.copyWith(
                     color: Colors.red.shade400,
                   ),
                 ),
