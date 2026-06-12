@@ -3,8 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
-import 'package:kouvention/cores/constants/colors.dart';
-import 'package:kouvention/cores/constants/text_theme.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/models/bubble_color_scheme.dart';
@@ -12,7 +11,6 @@ import 'package:kouvention/features/chat/models/message_model.dart';
 import 'package:kouvention/features/chat/models/message_status.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/models/reply_to_model.dart';
-import 'package:kouvention/features/chat/repositories/user_profile_repository.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_profile_provider.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_selection_viewmodel.dart';
@@ -63,6 +61,7 @@ class MessageBubble extends ConsumerWidget {
 
     final status = message.getUIStatus(chat, currentUid);
     final sender = ref.watch(otherUserStreamProvider(message.senderId)).value;
+    final resolvedName = sender?.displayName;
     final showSenderPhoto =
         isGroup &&
         !isMe &&
@@ -78,7 +77,7 @@ class MessageBubble extends ConsumerWidget {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       color: isSelected
-          ? AppColors.primary.withValues(alpha: 0.22)
+          ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.22)
           : isHighlighted
           ? Colors.amber.withValues(alpha: 0.2)
           : Colors.transparent,
@@ -140,7 +139,10 @@ class MessageBubble extends ConsumerWidget {
           : CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 16.w),
+          padding: EdgeInsets.symmetric(
+            vertical: AppSpacing.xs.h,
+            horizontal: AppSpacing.md.w,
+          ),
           child: Row(
             mainAxisAlignment: isMe
                 ? MainAxisAlignment.end
@@ -150,9 +152,9 @@ class MessageBubble extends ConsumerWidget {
               if (!isMe) ...[
                 if (isGroup && isFirstSequence)
                   CircleAvatar(
-                    radius: 14.r,
+                    radius: AppSizing.avatarSm.r,
                     backgroundColor: showSenderPhoto
-                        ? AppColors.senderNameColor(
+                        ? AppColorTokens.senderNameColor(
                             message.senderId,
                           ).withValues(alpha: 0.25)
                         : null,
@@ -165,15 +167,15 @@ class MessageBubble extends ConsumerWidget {
                             senderName.isNotEmpty
                                 ? senderName[0].toUpperCase()
                                 : '?',
-                            style: AppTextTheme.of(context).senderName.copyWith(
-                              color: AppColors.senderNameColor(
+                            style: context.text.senderName.copyWith(
+                              color: AppColorTokens.senderNameColor(
                                 message.senderId,
                               ).withValues(alpha: 0.7),
                             ),
                           )
                         : null,
                   ),
-                Gap(8.w),
+                Gap(AppSpacing.xs.w),
               ],
               Flexible(
                 child: Stack(
@@ -182,22 +184,24 @@ class MessageBubble extends ConsumerWidget {
                     Container(
                       constraints: BoxConstraints(maxWidth: 260.w),
                       padding: EdgeInsets.symmetric(
-                        horizontal: 12.w,
-                        vertical: 10.h,
+                        horizontal: AppSpacing.xs.w,
+                        vertical: AppSpacing.xs.w,
                       ),
                       decoration: BoxDecoration(
                         color: isMe ? sentBubbleColor : receivedBubbleColor,
                         borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(isMe ? 16.r : 4.r),
-                          topRight: Radius.circular(isMe ? 4.r : 16.r),
-                          bottomRight: Radius.circular(16.r),
-                          bottomLeft: Radius.circular(16.r),
+                          topLeft: Radius.circular(
+                            isMe ? AppRadius.sm.r : AppRadius.xs.r,
+                          ),
+                          topRight: Radius.circular(
+                            isMe ? AppRadius.xs.r : AppRadius.sm.r,
+                          ),
+                          bottomRight: Radius.circular(AppRadius.sm.r),
+                          bottomLeft: Radius.circular(AppRadius.sm.r),
                         ),
                       ),
                       child: Column(
-                        crossAxisAlignment: isMe
-                            ? CrossAxisAlignment.end
-                            : CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           if (replyMsg != null) ...[
                             InkWell(
@@ -211,7 +215,7 @@ class MessageBubble extends ConsumerWidget {
                                 context,
                                 replyMsg,
                                 currentUid,
-                                repliedSenderName,
+                                repliedSenderName ?? '',
                               ),
                             ),
                             Gap(6.h),
@@ -219,12 +223,11 @@ class MessageBubble extends ConsumerWidget {
                           if (!isMe && isGroup && isFirstSequence) ...[
                             Text(
                               senderName,
-                              style: AppTextTheme.of(context).senderName
-                                  .copyWith(
-                                    color: AppColors.senderNameColor(
-                                      message.senderId,
-                                    ),
-                                  ),
+                              style: context.text.senderName.copyWith(
+                                color: AppColorTokens.senderNameColor(
+                                  message.senderId,
+                                ),
+                              ),
                             ),
                             Gap(4.h),
                           ],
@@ -235,21 +238,24 @@ class MessageBubble extends ConsumerWidget {
                                         ? 'You deleted this message'
                                         : 'This message was deleted'
                                   : message.text,
-                              style: AppTextTheme.of(context).senderName
-                                  .copyWith(
-                                    color: isMe
-                                        ? message.isDeleted
-                                              ? AppColors.grey
-                                              : Colors.white
-                                        : message.isDeleted
-                                        ? AppColors.grey
-                                        : (isLightReceived
-                                              ? Colors.black87
-                                              : Colors.white),
-                                    fontStyle: message.isDeleted
-                                        ? FontStyle.italic
-                                        : FontStyle.normal,
-                                  ),
+                              style: context.text.bodySmall.copyWith(
+                                color: isMe
+                                    ? message.isDeleted
+                                          ? Theme.of(context)
+                                                .colorScheme
+                                                .onSurface
+                                                .withValues(alpha: 0.5)
+                                          : Colors.white
+                                    : message.isDeleted
+                                    ? Theme.of(context).colorScheme.onSurface
+                                          .withValues(alpha: 0.5)
+                                    : (isLightReceived
+                                          ? Colors.black87
+                                          : Colors.white),
+                                fontStyle: message.isDeleted
+                                    ? FontStyle.italic
+                                    : FontStyle.normal,
+                              ),
                             ),
                           ] else if (message.mediaUrls != null &&
                               message.mediaUrls!.isNotEmpty) ...[
@@ -261,13 +267,12 @@ class MessageBubble extends ConsumerWidget {
                             children: [
                               Text(
                                 time,
-                                style: TextStyle(
+                                style: context.text.labelSmall.copyWith(
                                   color: isMe
                                       ? Colors.white70
                                       : (isLightReceived
                                             ? Colors.grey[500]
                                             : Colors.white60),
-                                  fontSize: 11.sp,
                                 ),
                               ),
                               if (isMe) ...[
@@ -285,7 +290,7 @@ class MessageBubble extends ConsumerWidget {
                         left: isMe ? null : -4.w,
                         right: isMe ? -4.w : null,
                         child: CustomPaint(
-                          size: Size(8.w, 12.h),
+                          size: Size(AppSpacing.xs.w, AppSpacing.sm.h),
                           painter: BubbleTailPainter(
                             color: isMe ? sentBubbleColor : receivedBubbleColor,
                             isMe: isMe,
@@ -317,7 +322,7 @@ class MessageBubble extends ConsumerWidget {
     BuildContext context,
     ReplyToModel replyTo,
     String currentUid,
-    String? resolvedReplyName,
+    String resolvedReplyName,
   ) {
     // When senderId is empty (Drift mapping limitation), skip "You" check.
     final isRepliedMessageMine =
@@ -331,14 +336,14 @@ class MessageBubble extends ConsumerWidget {
       padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
       decoration: BoxDecoration(
         color: isMe
-            ? AppColors.white.withValues(alpha: 0.2)
+            ? Colors.white.withValues(alpha: 0.2)
             : Colors.black.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(8.r),
+        borderRadius: BorderRadius.circular(AppRadius.sm.r),
         border: Border(
           left: BorderSide(
             color: isMe
-                ? AppColors.white
-                : AppColors.senderNameColor(replyTo.senderId),
+                ? Colors.white
+                : AppColorTokens.senderNameColor(replyTo.senderId),
             width: 3.w,
           ),
         ),
@@ -347,13 +352,13 @@ class MessageBubble extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            isRepliedMessageMine ? 'You' : (resolvedReplyName ?? ''),
+            isRepliedMessageMine ? 'You' : (resolvedReplyName),
             style: TextStyle(
               fontWeight: FontWeight.w600,
               fontSize: 12.sp,
               color: isMe
-                  ? AppColors.white
-                  : AppColors.senderNameColor(replyTo.senderId),
+                  ? Colors.white
+                  : AppColorTokens.senderNameColor(replyTo.senderId),
             ),
           ),
           Gap(2.h),
@@ -413,7 +418,7 @@ class MessageBubble extends ConsumerWidget {
       fit: StackFit.expand,
       children: [
         ClipRRect(
-          borderRadius: BorderRadius.circular(4.r),
+          borderRadius: BorderRadius.circular(AppRadius.sm.r),
           child: Image.network(
             imageUrl!,
             fit: BoxFit.cover,
@@ -454,10 +459,19 @@ class MessageBubble extends ConsumerWidget {
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 20.sp, color: AppColors.grey),
+        Icon(
+          icon,
+          size: 20.sp,
+          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+        ),
         Gap(4.w),
         Flexible(
-          child: Text(label, style: AppTextTheme.of(context).subDescription3),
+          child: Text(
+            label,
+            style: context.text.labelSmall.copyWith(
+              color: context.text.tertiaryText,
+            ),
+          ),
         ),
       ],
     ),

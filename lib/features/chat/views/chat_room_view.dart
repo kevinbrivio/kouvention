@@ -8,8 +8,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/bases/base_view.dart';
-import 'package:kouvention/cores/constants/colors.dart';
-import 'package:kouvention/cores/constants/text_theme.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/cores/widgets/loading_indicator.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
@@ -263,8 +262,8 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
 
                     if (_showScrollBottom)
                       Positioned(
-                        right: 16.w,
-                        bottom: 16.h,
+                        right: AppSpacing.md.w,
+                        bottom: AppSpacing.md.h,
                         child: GestureDetector(
                           onTap: _scrollToBottom,
                           child: Container(
@@ -283,7 +282,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                             ),
                             child: Icon(
                               Icons.keyboard_arrow_down,
-                              color: AppColors.primary,
+                              color: Theme.of(context).colorScheme.primary,
                               size: 24.sp,
                             ),
                           ),
@@ -315,7 +314,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     initialScrollIndex: _initialScrollIndex ?? 0,
     reverse: true,
     padding: EdgeInsets.only(
-      bottom: 12.h,
+      bottom: AppSpacing.sm.h,
       top: MediaQuery.of(context).padding.top + kToolbarHeight,
     ),
     itemCount: messages.length + (vm.hasMoreMessges ? 1 : 0),
@@ -323,11 +322,11 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
       if (index == messages.length) {
         return vm.isLoadingOlder
             ? Padding(
-                padding: EdgeInsets.symmetric(vertical: 16.h),
+                padding: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
                 child: Center(
                   child: SizedBox(
-                    width: 24.w,
-                    height: 24.w,
+                    width: AppSpacing.xl.w,
+                    height: AppSpacing.xl.w,
                     child: LoadingIndicator(),
                   ),
                 ),
@@ -384,7 +383,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
         date.day == now.day && date.month == now.month && date.year == now.year;
 
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 16.h),
+      padding: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
       child: Text(
         isToday ? 'TODAY' : '${date.day}/${date.month}/${date.year}',
         style: TextStyle(
@@ -403,7 +402,11 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
       case MessageStatus.sent:
         return Icon(Icons.done_all, size: 14.sp, color: Colors.grey);
       case MessageStatus.read:
-        return Icon(Icons.done_all, size: 14.sp, color: AppColors.primary);
+        return Icon(
+          Icons.done_all,
+          size: 14.sp,
+          color: Theme.of(context).colorScheme.primary,
+        );
     }
   }
 
@@ -428,7 +431,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     final isLightReceived = receivedColor.computeLuminance() > 0.5;
 
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
+      padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w, vertical: 4.h),
       alignment: Alignment.centerLeft,
       child: Row(
         children: [
@@ -444,12 +447,12 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                 ),
               ),
             ),
-          Gap(8.w),
+          Gap(AppSpacing.xs.w),
           Container(
             padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
             decoration: BoxDecoration(
               color: receivedColor,
-              borderRadius: BorderRadius.circular(16.r),
+              borderRadius: BorderRadius.circular(AppRadius.lg.r),
             ),
             child: TypingDots(),
           ),
@@ -464,11 +467,10 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
       padding: EdgeInsets.only(
         left: 6.w,
         right: 6.w,
-        top: 8.h,
+        top: AppSpacing.xs.h,
         bottom:
             MediaQuery.of(context).viewInsets.bottom +
-            MediaQuery.of(context).padding.bottom +
-            8.h,
+            MediaQuery.of(context).padding.bottom,
       ),
       decoration: BoxDecoration(
         color: Colors.transparent,
@@ -491,115 +493,130 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
   ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Flexible(
-          child: Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: vm.replyMessage != null ? 6.w : 4.w,
-              vertical: 4.h,
-            ),
-            decoration: BoxDecoration(
-              color: isDark
-                  ? AppColors.darkInputBarSurface
-                  : AppColors.white.withValues(alpha: 0.85),
-              borderRadius: BorderRadius.circular(
-                vm.replyMessage != null ? 12.r : 24.r,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Flexible(
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: vm.replyMessage != null 
+                  ? AppSpacing.inputPadding.w 
+                  : AppSpacing.xxs.w,
+                vertical: AppSpacing.xxs.h
               ),
-            ),
-            child: AnimatedSize(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOut,
-              alignment: Alignment.bottomCenter,
-              child: Column(
-                children: [
-                  if (vm.replyMessage != null)
-                    _buildReplyPreview(vm.replyMessage!),
-                  Row(
-                    children: [
-                      IconButton(
-                        icon: Icon(
-                          Icons.emoji_emotions_outlined,
-                          color: AppColors.primary,
-                        ),
-                        onPressed: () {
-                          vm.toggleStickerPanel(context);
-                          _focusNode.unfocus();
-                        },
-                      ),
-                      Flexible(
-                        child: TextField(
-                          focusNode: _focusNode,
-                          controller: _textController,
-                          minLines: 1,
-                          maxLines: 5,
-                          onChanged: vm.onTextChanged,
-                          decoration: InputDecoration(
-                            hintText: 'Type a message...',
-                            hintStyle: AppTextTheme.of(
-                              context,
-                            ).typeMessage.copyWith(color: AppColors.grey),
-                            isDense: true,
-                            filled: false,
-                            border: OutlineInputBorder(
-                              borderSide: BorderSide.none,
-                            ),
-                            enabledBorder: InputBorder.none,
-                            focusedBorder: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 4.w,
-                              vertical: 10.h,
-                            ),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? AppSurfaceDark.surfaceInputBar
+                    : Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(
+                  vm.replyMessage != null ? AppRadius.md.r : AppRadius.xl.r,
+                ),
+              ),
+              child: AnimatedSize(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOut,
+                alignment: Alignment.bottomCenter,
+                child: Column(
+                  children: [
+                    if (vm.replyMessage != null)
+                      _buildReplyPreview(vm.replyMessage!),
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            Icons.emoji_emotions_outlined,
+                            color: Theme.of(context).colorScheme.primary,
                           ),
-                          style: AppTextTheme.of(context).typeMessage,
-                          textCapitalization: TextCapitalization.sentences,
+                          onPressed: () {
+                            vm.toggleStickerPanel(context);
+                            _focusNode.unfocus();
+                          },
                         ),
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.add, color: AppColors.primary),
-                        onPressed: () => vm.toggleMediaPanel(context),
-                      ),
-                    ],
-                  ),
-                ],
+                        Flexible(
+                          child: TextField(
+                            focusNode: _focusNode,
+                            controller: _textController,
+                            minLines: 1,
+                            maxLines: 5,
+                            onChanged: vm.onTextChanged,
+                            decoration: InputDecoration(
+                              hintText: 'Type a message...',
+                              hintStyle: context.text.typeMessage.copyWith(
+                                color: context.text.tertiaryText
+                              ),
+                              isDense: true,
+                              filled: false,
+                              border: OutlineInputBorder(
+                                borderSide: BorderSide.none,
+                              ),
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 4.w,
+                                vertical: 10.h,
+                              ),
+                            ),
+                            style: context.text.typeMessage,
+                            textCapitalization: TextCapitalization.sentences,
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            Icons.add,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          onPressed: () => vm.toggleMediaPanel(context),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-        Gap(8.w),
-        GestureDetector(
-          onTap: () {
-            if (_textController.text.trim().isNotEmpty) {
-              vm.sendMessage(_textController.text);
-              _textController.clear();
-              _scrollToBottom();
-            } else {
-              vm.startRecording();
-            }
-          },
-
-          child: CircleAvatar(
-            radius: 28.r,
-            backgroundColor: vm.isSending ? AppColors.grey : AppColors.primary,
-            child: vm.isSending
-                ? SizedBox(
-                    width: 24.w,
-                    height: 24.w,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: isDark ? AppColors.black : AppColors.white,
-                    ),
-                  )
-                : Icon(
-                    vm.isTyping ? Icons.send : Icons.mic,
-                    color: isDark ? AppColors.black : AppColors.white,
-                    size: 24.w,
-                  ),
+          Gap(AppSpacing.xs.w),
+          GestureDetector(
+            onTap: () {
+              if (_textController.text.trim().isNotEmpty) {
+                vm.sendMessage(_textController.text);
+                _textController.clear();
+                _scrollToBottom();
+              } else {
+                vm.startRecording();
+              }
+            },
+  
+            child: _buildSendButton(),
           ),
-        ),
-      ],
+        ],
     );
   }
+
+  Widget _buildSendButton() => Container(
+    width: AppSizing.chatInputBarMin.h,
+    height: AppSizing.chatInputBarMin.h,
+    decoration: BoxDecoration(
+      color: vm.isSending
+          ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)
+          : Theme.of(context).colorScheme.primary,
+      shape: BoxShape.circle,
+    ),
+    child: Center(
+      child: vm.isSending
+          ? SizedBox(
+              height: AppSizing.iconMd,
+              width: AppSizing.iconMd,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Theme.of(context).colorScheme.onPrimary,
+              ),
+            )
+          : Icon(
+              vm.isTyping ? Icons.send : Icons.mic,
+              size: AppSizing.iconLg,
+              color: Theme.of(context).colorScheme.onPrimary,
+            ),
+    ),
+  );
 
   Widget _buildMediaPanel() => AnimatedSize(
     duration: const Duration(milliseconds: 250),
@@ -631,21 +648,26 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     // Resolve fresh display name for the replied-to sender
-    //
-    final resolver = ref.watch(chatRoomProfileResolverProvider(widget.chatId));
-    final resolvedReplyName =
-        resolver.lookupDisplayName(message.senderId) ?? message.senderName;
+    final replySender = ref
+        .watch(otherUserStreamProvider(message.senderId))
+        .value;
+    final resolvedReplyName = replySender?.displayName ?? message.senderName;
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(16.r),
+      borderRadius: BorderRadius.circular(AppRadius.lg.r),
       child: Container(
         height: 76.h,
         decoration: BoxDecoration(
           color: isDark
-              ? AppColors.darkInputBarSurface
-              : AppColors.grey.withValues(alpha: 0.35),
+              ? AppSurfaceDark.surfaceInputBar
+              : Theme.of(context).colorScheme.onSurface
+                    .withValues(alpha: 0.5)
+                    .withValues(alpha: 0.35),
           border: Border(
-            left: BorderSide(color: AppColors.primary, width: 3.w),
+            left: BorderSide(
+              color: Theme.of(context).colorScheme.primary,
+              width: 3.w,
+            ),
           ),
         ),
 
@@ -655,10 +677,10 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
             Expanded(
               child: Padding(
                 padding: EdgeInsets.only(
-                  left: 12.w,
-                  right: 8.w,
-                  top: 8.h,
-                  bottom: 8.h,
+                  left: AppSpacing.sm.w,
+                  right: AppSpacing.xs.w,
+                  top: AppSpacing.xs.h,
+                  bottom: AppSpacing.xs.h,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -666,7 +688,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                   children: [
                     Text(
                       isMe ? 'You' : resolvedReplyName,
-                      style: AppTextTheme.of(context).senderName,
+                      style: context.text.senderName,
                     ),
                     Gap(4.h),
 
@@ -675,8 +697,10 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                         children: [
                           Icon(
                             _getReplyMediaIcon(message),
-                            color: AppColors.grey,
-                            size: 16.r,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.5),
+                            size: AppRadius.lg.r,
                           ),
                           Gap(4.w),
                           Expanded(
@@ -684,9 +708,11 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                               message.allMediaUrls.length > 1
                                   ? _getReplyMediaCountLabel(message)
                                   : _getReplyMediaLabel(message),
-                              style: AppTextTheme.of(
-                                context,
-                              ).senderName.copyWith(color: AppColors.grey),
+                              style: context.text.senderName.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.5),
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -696,7 +722,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                     ] else ...[
                       Text(
                         message.text,
-                        style: AppTextTheme.of(context).body2,
+                        style: context.text.bodyMedium,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -707,14 +733,14 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
             ),
 
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: 8.w),
+              padding: EdgeInsets.symmetric(horizontal: AppSpacing.xs.w),
               child: Center(
                 child: InkWell(
                   onTap: () {
                     vm.onCancelReply();
                     HapticFeedback.selectionClick();
                   },
-                  child: Icon(Icons.close, size: 18.r, color: Colors.grey),
+                  child: Icon(Icons.close, size: 12.sp, color: Colors.grey),
                 ),
               ),
             ),
@@ -728,22 +754,26 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                           message.type == MessageType.sticker) &&
                       _isImageUrl(message.allMediaUrls.first)) ...[
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(8.r),
+                      borderRadius: BorderRadius.circular(AppRadius.sm.r),
                       child: CachedNetworkImage(
                         imageUrl: message.allMediaUrls.first,
                         width: 76.h,
                         height: 76.h,
                         fit: BoxFit.cover,
                         placeholder: (context, url) => Container(
-                          color: AppColors.grey.withValues(alpha: 0.2),
+                          color: Theme.of(context).colorScheme.onSurface
+                              .withValues(alpha: 0.5)
+                              .withValues(alpha: 0.2),
                           width: 64.w,
                         ),
                         errorWidget: (context, url, error) => Container(
-                          color: AppColors.grey.withValues(alpha: 0.2),
+                          color: Theme.of(context).colorScheme.onSurface
+                              .withValues(alpha: 0.5)
+                              .withValues(alpha: 0.2),
                           width: 64.w,
                           child: Icon(
                             Icons.broken_image,
-                            size: 16.r,
+                            size: AppRadius.lg.r,
                             color: Colors.grey,
                           ),
                         ),
@@ -751,7 +781,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                     ),
                   ] else if (message.isVideo) ...[
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(8.r),
+                      borderRadius: BorderRadius.circular(AppRadius.sm.r),
                       child: SizedBox(
                         width: 76.h,
                         height: 76.h,
@@ -774,7 +804,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                                 child: Icon(
                                   Icons.play_arrow_rounded,
                                   color: Colors.white,
-                                  size: 20.w,
+                                  size: AppSpacing.lg.w,
                                 ),
                               ),
                             ),
@@ -784,7 +814,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                     ),
                   ] else if (message.isFile && _isPdf(message.fileName)) ...[
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(8.r),
+                      borderRadius: BorderRadius.circular(AppRadius.sm.r),
                       child: CachedNetworkImage(
                         imageUrl: vm.getCloudinaryThumbnail(
                           message.allMediaUrls.first,
@@ -796,12 +826,14 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                           width: 76.h,
                           height: 76.h,
                           decoration: BoxDecoration(
-                            color: AppColors.grey.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(8.r),
+                            color: Theme.of(context).colorScheme.onSurface
+                                .withValues(alpha: 0.5)
+                                .withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(AppRadius.sm.r),
                           ),
                           child: Icon(
                             _getReplyMediaIcon(message),
-                            size: 24.r,
+                            size: AppRadius.xl.r,
                             color: Colors.grey,
                           ),
                         ),
@@ -812,12 +844,14 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                       width: 76.h,
                       height: 76.h,
                       decoration: BoxDecoration(
-                        color: AppColors.grey.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(8.r),
+                        color: Theme.of(context).colorScheme.onSurface
+                            .withValues(alpha: 0.5)
+                            .withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(AppRadius.sm.r),
                       ),
                       child: Icon(
                         _getReplyMediaIcon(message),
-                        size: 24.r,
+                        size: AppRadius.xl.r,
                         color: Colors.grey,
                       ),
                     ),
@@ -979,7 +1013,7 @@ class _DebugSyncStateBar extends ConsumerWidget {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+      padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm.w, vertical: 6.h),
       color: Colors.black.withValues(alpha: 0.85),
       child: chatRowAsync.when(
         loading: () => const Text(
