@@ -898,7 +898,6 @@ These are explicitly **out of scope** for the current scaling effort. Do not sta
 - **Multi-tenant / `organizationId` scoping** — Deferred. The app is single-account per device.
 - **Multi-channel (WhatsApp, Instagram, Facebook)** — Deferred. The Firestore schema will support adding channel fields later, but no integration work is in scope.
 - **AI / agent responders** — Not in scope. Do not add LLM, Cloud Function AI pipelines, or confidence-based hand-off.
-- **`hasReachedBeginning` field on the `Chats` table** — Already defined in the Drift schema but never read. Wire it up only if it survives the paged-list refactor; otherwise remove it.
 - **Postgres / Algolia / Meilisearch migration** — Premature. Drift + Firestore are sufficient to 100K chats.
 - **Postgres-style relational queries (assignments, joins, analytics)** — Premature.
 - **Cross-region replication** — Not needed at current scale.

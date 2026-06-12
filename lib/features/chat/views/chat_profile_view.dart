@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/bases/base_view.dart';
 import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
+import 'package:kouvention/cores/widgets/custom_app_bar.dart';
 import 'package:kouvention/cores/widgets/custom_divider.dart';
 import 'package:kouvention/cores/widgets/loading_indicator.dart';
 import 'package:kouvention/cores/widgets/transparent_box.dart';
@@ -30,18 +32,10 @@ class ChatProfileView extends StatelessWidget {
     child: BaseView<ChatProfileVM>(
       useGradient: false,
       provider: chatProfileVM(chatId),
-      appBar: (_) => _buildAppBar(context),
+      appBar: (vm) => CustomAppBar(
+        onBack: () => context.pop(),
+      ),
       builder: (context, vm) => _ChatProfileBody(vm: vm),
-    ),
-  );
-
-  PreferredSizeWidget _buildAppBar(BuildContext context) => AppBar(
-    backgroundColor: Theme.of(context).colorScheme.surface,
-    elevation: 0.5,
-    scrolledUnderElevation: 0,
-    leading: IconButton(
-      icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.primary),
-      onPressed: () => context.pop(),
     ),
   );
 }
@@ -63,44 +57,46 @@ class _ChatProfileBodyState extends ConsumerState<_ChatProfileBody> {
 
     return SizedBox.expand(
       child: Padding(
-        padding: EdgeInsetsGeometry.only(
-          left: AppSpacing.md.w,
-          right: AppSpacing.md.w,
-          top: MediaQuery.of(context).padding.top,
-        ),
+      padding: EdgeInsetsGeometry.only(
+        left: AppSpacing.md.w,
+        right: AppSpacing.md.w,
+        top: MediaQuery.of(context).padding.top,
+      ),
+      child: SingleChildScrollView(
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Avatar
             Center(
-              child: CircleAvatar(
+              child: SizedBox(
+                width: AppSizing.avatarXl.r,
+                height: AppSizing.avatarXl.r,
+                child: CircleAvatar(
                 radius: AppRadius.full.r,
-                backgroundColor: AppColorTokens.senderNameColor(
-                  chat.id,
-                ).withValues(alpha: 0.25),
+                backgroundColor: AppColorTokens.senderNameColor(chat.id)
+                    .withValues(alpha: 0.25),
                 backgroundImage: vm.chatPhotoURL != null
-                    ? NetworkImage(vm.chatPhotoURL!)
+                    ? CachedNetworkImageProvider(vm.chatPhotoURL!)
                     : null,
                 child: vm.chatPhotoURL == null
                     ? vm.isGroupType
-                          ? Icon(
-                              Icons.people_alt_rounded,
-                              color: AppColorTokens.senderNameColor(
-                                chat.id,
-                              ).withValues(alpha: 0.7),
-                            )
-                          : Text(
-                              vm.chatDisplayName.isNotEmpty
-                                  ? vm.chatDisplayName[0].toUpperCase()
-                                  : '?',
-                              style: context.text.senderName.copyWith(
-                                fontSize: 48.sp,
-                                color: AppColorTokens.senderNameColor(
-                                  chat.id,
-                                ).withValues(alpha: 0.7),
-                              ),
-                            )
+                        ? Icon(
+                            Icons.people_alt_rounded,
+                            color: AppColorTokens.senderNameColor(chat.id)
+                                .withValues(alpha: 0.7),
+                          )
+                        : Text(
+                            vm.chatDisplayName.isNotEmpty
+                                ? vm.chatDisplayName[0].toUpperCase()
+                                : '?',
+                            style: context.text.senderName.copyWith(
+                              color: AppColorTokens.senderNameColor(chat.id)
+                                  .withValues(alpha: 0.7),
+                            ),
+                          )
                     : null,
+              ),
               ),
             ),
 
@@ -109,7 +105,9 @@ class _ChatProfileBodyState extends ConsumerState<_ChatProfileBody> {
             Center(
               child: Text(
                 vm.chatDisplayName,
-                style: context.text.headlineSmall,
+                style: context.text.headlineSmall.copyWith(
+                  color: AppColorTokens.primary
+                ),
               ),
             ),
             Gap(4.h),
@@ -131,7 +129,7 @@ class _ChatProfileBodyState extends ConsumerState<_ChatProfileBody> {
               Gap(AppSpacing.sm.h),
               Text(
                 'Created by ${vm.chat?.createdBy?['name']}, ${DateTimeHelper.formatDateMonthYear(vm.chat?.createdAt ?? DateTime.now())}',
-                style: context.text.senderName
+                style: context.text.senderName,
               ),
               Gap(AppSpacing.sm.h),
               CustomDivider(),
@@ -147,7 +145,10 @@ class _ChatProfileBodyState extends ConsumerState<_ChatProfileBody> {
               Center(
                 child: Text(
                   vm.otherUserEmail ?? '',
-                  style: context.text.bodyMedium.copyWith(fontSize: 13.sp, color: context.text.secondaryText),
+                  style: context.text.bodyMedium.copyWith(
+                    fontSize: 13.sp,
+                    color: context.text.secondaryText,
+                  ),
                 ),
               ),
             ],
@@ -156,7 +157,9 @@ class _ChatProfileBodyState extends ConsumerState<_ChatProfileBody> {
               Gap(18.h),
               Text(
                 '${vm.groupsInCommon.length} Groups in common',
-                style: context.text.labelSmall.copyWith(color: context.text.tertiaryText),
+                style: context.text.labelSmall.copyWith(
+                  color: context.text.tertiaryText,
+                ),
               ),
               Gap(6.h),
               _buildGroupInCommonList(),
@@ -167,6 +170,7 @@ class _ChatProfileBodyState extends ConsumerState<_ChatProfileBody> {
           ],
         ),
       ),
+      ),
     );
   }
 
@@ -175,15 +179,15 @@ class _ChatProfileBodyState extends ConsumerState<_ChatProfileBody> {
     padding: EdgeInsets.zero,
     physics: NeverScrollableScrollPhysics(),
     itemCount: vm.members.length,
-    separatorBuilder: (_, __) => Gap(10.h),
+    separatorBuilder: (_, __) => Gap(AppSpacing.betweenCards.h),
     itemBuilder: (context, index) {
       final uid = vm.members[index].key;
       final member = vm.members[index].value;
       final name = member.displayName;
       final photoUrl = member.photoUrl;
       final memberUser = ref.read(otherUserStreamProvider(uid)).value;
-      final showPhoto = photoUrl != null &&
-          (memberUser?.privacy.showProfilePhoto ?? true);
+      final showPhoto =
+          photoUrl != null && (memberUser?.privacy.showProfilePhoto ?? true);
 
       return InkWell(
         onTap: () => _showMemberSheet(context, vm.members[index]),
@@ -271,7 +275,9 @@ class _ChatProfileBodyState extends ConsumerState<_ChatProfileBody> {
                   ),
                   Text(
                     '${group.members.length} members',
-                    style: context.text.labelSmall.copyWith(color: context.text.tertiaryText),
+                    style: context.text.labelSmall.copyWith(
+                      color: context.text.tertiaryText,
+                    ),
                   ),
                 ],
               ),
@@ -287,92 +293,111 @@ class _ChatProfileBodyState extends ConsumerState<_ChatProfileBody> {
     MapEntry<String, MemberInfo> member,
   ) {
     final memberUser = ref.read(otherUserStreamProvider(member.key)).value;
-    final showPhoto = member.value.photoUrl != null &&
+    final showPhoto =
+        member.value.photoUrl != null &&
         (memberUser?.privacy.showProfilePhoto ?? true);
 
     showModalBottomSheet(
-    context: context,
-    showDragHandle: true,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl.r)),
-    ),
-    backgroundColor: Theme.of(context).colorScheme.surface,
-    builder: (sheetContext) => SafeArea(
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w, vertical: AppSpacing.md.h),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircleAvatar(
-              radius: AppRadius.full.r,
-              backgroundColor: showPhoto
-                  ? AppColorTokens.senderNameColor(member.key).withValues(alpha: 0.25)
-                  : null,
-              backgroundImage: showPhoto
-                  ? NetworkImage(member.value.photoUrl!)
-                  : null,
-              child: !showPhoto
-                  ? Text(
-                      member.value.displayName[0].toUpperCase(),
-                      style: TextStyle(fontSize: 24.sp),
-                    )
-                  : null,
-            ),
-            Gap(AppSpacing.xs.h),
-            Text(
-              member.value.displayName,
-              style: context.text.headlineSmall,
-            ),
-            Gap(AppSpacing.md.h),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                InkWell(
-                  borderRadius: BorderRadius.circular(AppRadius.lg.r),
-                  onTap: () async {
-                    HapticFeedback.selectionClick();
-                    Navigator.pop(sheetContext);
-                    await vm.navigateTo(context, RouterRoutes.chatRoom, member.key);
-                  },
-                  child: TransparentBox(
-                    radius: BorderRadius.circular(AppRadius.lg.r),
-                    borderColor: Theme.of(context).colorScheme.primary,
-                    child: Row(
-                      children: [
-                        Icon(Icons.chat, color: Theme.of(context).colorScheme.primary),
-                        Gap(6.w),
-                        Text('Message'),
-                      ],
-                    ),
-                  ),
-                ),
-                InkWell(
-                  borderRadius: BorderRadius.circular(AppRadius.lg.r),
-                  onTap: () async {
-                    HapticFeedback.selectionClick();
-                    Navigator.pop(sheetContext);
-                    await vm.navigateTo(context, RouterRoutes.chatDetail, member.key);
-                  },
-                  child: TransparentBox(
-                    radius: BorderRadius.circular(AppRadius.lg.r),
-                    borderColor: Theme.of(context).colorScheme.primary,
-                    child: Row(
-                      children: [
-                        Icon(Icons.person, color: Theme.of(context).colorScheme.primary),
-                        Gap(6.w),
-                        Text('View Profile'),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
+      context: context,
+      showDragHandle: true,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppRadius.xl.r),
         ),
       ),
-    ),
-  );
-}
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: AppSpacing.md.w,
+            vertical: AppSpacing.md.h,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircleAvatar(
+                radius: AppRadius.full.r,
+                backgroundColor: showPhoto
+                    ? AppColorTokens.senderNameColor(
+                        member.key,
+                      ).withValues(alpha: 0.25)
+                    : null,
+                backgroundImage: showPhoto
+                    ? NetworkImage(member.value.photoUrl!)
+                    : null,
+                child: !showPhoto
+                    ? Text(
+                        member.value.displayName[0].toUpperCase(),
+                        style: TextStyle(fontSize: 24.sp),
+                      )
+                    : null,
+              ),
+              Gap(AppSpacing.xs.h),
+              Text(member.value.displayName, style: context.text.headlineSmall),
+              Gap(AppSpacing.md.h),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  InkWell(
+                    borderRadius: BorderRadius.circular(AppRadius.lg.r),
+                    onTap: () async {
+                      HapticFeedback.selectionClick();
+                      Navigator.pop(sheetContext);
+                      await vm.navigateTo(
+                        context,
+                        RouterRoutes.chatRoom,
+                        member.key,
+                      );
+                    },
+                    child: TransparentBox(
+                      radius: BorderRadius.circular(AppRadius.lg.r),
+                      borderColor: Theme.of(context).colorScheme.primary,
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.chat,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          Gap(6.w),
+                          Text('Message'),
+                        ],
+                      ),
+                    ),
+                  ),
+                  InkWell(
+                    borderRadius: BorderRadius.circular(AppRadius.lg.r),
+                    onTap: () async {
+                      HapticFeedback.selectionClick();
+                      Navigator.pop(sheetContext);
+                      await vm.navigateTo(
+                        context,
+                        RouterRoutes.chatDetail,
+                        member.key,
+                      );
+                    },
+                    child: TransparentBox(
+                      radius: BorderRadius.circular(AppRadius.lg.r),
+                      borderColor: Theme.of(context).colorScheme.primary,
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.person,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          Gap(6.w),
+                          Text('View Profile'),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _ChatWallpaperSection extends ConsumerWidget {
@@ -391,7 +416,12 @@ class _ChatWallpaperSection extends ConsumerWidget {
       children: [
         CustomDivider(),
         Gap(AppSpacing.sm.h),
-        Text('WALLPAPER', style: context.text.labelSmall.copyWith(color: context.text.tertiaryText)),
+        Text(
+          'WALLPAPER',
+          style: context.text.labelSmall.copyWith(
+            color: context.text.tertiaryText,
+          ),
+        ),
         Gap(10.h),
         _WallpaperRow(
           wallpaper: wallpaper,
@@ -412,7 +442,9 @@ class _ChatWallpaperSection extends ConsumerWidget {
       context: context,
       showDragHandle: true,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl.r)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppRadius.xl.r),
+        ),
       ),
       backgroundColor: Theme.of(context).colorScheme.surface,
       builder: (sheetContext) => SafeArea(
@@ -420,8 +452,10 @@ class _ChatWallpaperSection extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading:
-                  Icon(Icons.photo_library_outlined, color: Theme.of(context).colorScheme.primary),
+              leading: Icon(
+                Icons.photo_library_outlined,
+                color: Theme.of(context).colorScheme.primary,
+              ),
               title: const Text('Pick from Gallery'),
               subtitle: const Text('Choose an image for this chat'),
               onTap: () async {
@@ -431,7 +465,10 @@ class _ChatWallpaperSection extends ConsumerWidget {
             ),
             if (hasOverride)
               ListTile(
-                leading: Icon(Icons.public, color: Theme.of(context).colorScheme.primary),
+                leading: Icon(
+                  Icons.public,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
                 title: const Text('Use Global Wallpaper'),
                 subtitle: const Text('Follow the global setting'),
                 onTap: () async {
@@ -515,12 +552,17 @@ class _WallpaperRow extends StatelessWidget {
                 children: [
                   Text(
                     'Wallpaper',
-                    style: context.text.bodyMedium.copyWith(fontSize: 13.sp, color: context.text.secondaryText),
+                    style: context.text.bodyMedium.copyWith(
+                      fontSize: 13.sp,
+                      color: context.text.secondaryText,
+                    ),
                   ),
                   Gap(2.h),
                   Text(
                     status,
-                    style: context.text.labelSmall.copyWith(color: context.text.tertiaryText),
+                    style: context.text.labelSmall.copyWith(
+                      color: context.text.tertiaryText,
+                    ),
                   ),
                 ],
               ),

@@ -12,8 +12,8 @@ import 'package:oktoast/oktoast.dart';
 
 enum ChatFilter { all, direct, group }
 
-const int kChatListPageSize = 50;
-const int kChatListMaxCached = 500;
+const int kChatListPageSize = 5;
+const int kChatListMaxCached = 20;
 
 class ChatListVM extends BaseNotifier {
   final ChatRepository _chatRepository;
@@ -149,26 +149,26 @@ class ChatListVM extends BaseNotifier {
   /// (§9.10), updates the compound cursor, and triggers LRU eviction
   /// (§7, 200-chat cap).
   Future<void> fetchOlderChats() async {
-    if (_currentUid == null || _isLoadingMore || !_hasMoreChats) {
+    if (_currentUid == null || _isLoadingMore) {
       debugPrint(
         '⏸️ fetchOlderChats skipped: uid=${_currentUid != null}, loading=$_isLoadingMore, hasMore=$_hasMoreChats',
       );
       return;
     }
 
-    final driftCount = await ref.read(messageDatabaseProvider).getChatCount();
-    debugPrint(
-      '🔍 Pagination check: Drift has $driftCount chats (cap: $kChatListMaxCached)',
-    );
+    // final driftCount = await ref.read(messageDatabaseProvider).getChatCount();
+    // debugPrint(
+    //   '🔍 Pagination check: Drift has $driftCount chats (cap: $kChatListMaxCached)',
+    // );
 
-    if (driftCount >= kChatListMaxCached) {
-      debugPrint('⏸️ Drift is full, skipping Firestore fetch');
-      return;
-    }
+    // if (driftCount >= kChatListMaxCached) {
+    //   debugPrint('⏸️ Drift is full, skipping Firestore fetch');
+    //   return;
+    // }
 
-    debugPrint(
-      '➡️ Drift not full ($driftCount < $kChatListMaxCached), fetching from Firestore',
-    );
+    // debugPrint(
+    //   '➡️ Drift not full ($driftCount < $kChatListMaxCached), fetching from Firestore',
+    // );
     _isLoadingMore = true;
     notifyListeners();
 
@@ -199,7 +199,7 @@ class ChatListVM extends BaseNotifier {
       final visibleIds = ref.read(visibleChatIdsProvider);
       final fetched = await _chatRepository.fetchOlderChatsPage(
         uid: _currentUid,
-        limit: kChatListPageSize,
+        // limit: kChatListPageSize,
         cursor: cursor,
         excludeIds: visibleIds,
       );
@@ -367,14 +367,12 @@ final pagedChatListRowsProvider = StreamProvider.autoDispose<List<Chat>>((ref) {
 
   return db
       .watchPagedChats(
-        limit: kChatListMaxCached,
-        offset: 0,
         typeFilter: typeFilter,
         currentUid: currentUid,
       )
       .map((rows) {
         debugPrint(
-          '📊 Drift LIMIT $kChatListMaxCached returned: ${rows.length} rows',
+          '=== 📊 Drift return: ${rows.length} rows',
         );
         return rows;
       });

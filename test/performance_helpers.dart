@@ -72,8 +72,6 @@ Future<SeedTimings> seedLargeInbox(
 
   final t1 = DateTime.now();
 
-  await db.evictOldestChats(keep: keep);
-
   final t2 = DateTime.now();
 
   return SeedTimings(

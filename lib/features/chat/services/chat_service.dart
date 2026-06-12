@@ -104,7 +104,6 @@ class ChatService {
   /// `(members array-contains, lastMessage.sentAt desc, __name__ desc)`.
   Future<List<ChatModel>> fetchChatRoomsPage({
     required String currentUid,
-    required int limit,
     ChatCursor? cursor,
   }) async {
     var query = _chatsRef
@@ -119,7 +118,7 @@ class ChatService {
       ]);
     }
 
-    final snapshot = await query.limit(limit).get();
+    final snapshot = await query.get();
     return snapshot.docs
         .map((doc) => ChatModel.fromMap(doc.id, doc.data()))
         .toList();

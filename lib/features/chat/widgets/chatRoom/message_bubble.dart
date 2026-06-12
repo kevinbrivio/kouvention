@@ -11,6 +11,7 @@ import 'package:kouvention/features/chat/models/message_model.dart';
 import 'package:kouvention/features/chat/models/message_status.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/models/reply_to_model.dart';
+import 'package:kouvention/features/chat/viewmodel/chat_room_profile_provider.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_selection_viewmodel.dart';
 import 'package:kouvention/features/chat/viewmodel/bubble_scheme_provider.dart';
@@ -59,24 +60,19 @@ class MessageBubble extends ConsumerWidget {
     final replyMsg = message.replyTo;
 
     final status = message.getUIStatus(chat, currentUid);
-
     final sender = ref.watch(otherUserStreamProvider(message.senderId)).value;
-    final resolvedName = sender?.displayName ?? senderName;
+    final resolvedName = sender?.displayName;
     final showSenderPhoto =
         isGroup &&
         !isMe &&
         senderPhotoUrl != null &&
         (sender?.privacy.showProfilePhoto ?? true);
-
-    // Resolve fresh display name for the replied-to sender in the reply preview.
-    // Guard against empty senderId (Drift doesn't store reply_to_sender_id yet).
-    final resolvedReplyName = (replyMsg != null && replyMsg.senderId.isNotEmpty)
-        ? (ref
-                  .watch(otherUserStreamProvider(replyMsg.senderId))
-                  .value
-                  ?.displayName ??
-              replyMsg.senderName)
-        : replyMsg?.senderName;
+        
+    final resolver = ref.read(chatRoomProfileResolverProvider(chatId));
+    final senderName = resolver.lookupDisplayName(message.senderId);
+    final repliedSenderName = resolver.lookupDisplayName(
+      message.replyTo?.senderId ?? '',
+    );
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
@@ -109,13 +105,13 @@ class MessageBubble extends ConsumerWidget {
             context,
             scheme: ref.watch(bubbleSchemeProvider),
             time: time,
-            senderName: resolvedName,
+            senderName: senderName ?? 'You',
             senderPhotoUrl: senderPhotoUrl,
             showSenderPhoto: showSenderPhoto,
             replyMsg: replyMsg,
             currentUid: currentUid,
             status: status,
-            resolvedReplyName: resolvedReplyName,
+            repliedSenderName: repliedSenderName,
           ),
         ),
       ),
@@ -132,7 +128,7 @@ class MessageBubble extends ConsumerWidget {
     required ReplyToModel? replyMsg,
     required String currentUid,
     required MessageStatus status,
-    String? resolvedReplyName,
+    String? repliedSenderName,
   }) {
     final sentBubbleColor = scheme.sentBubble;
     final receivedBubbleColor = scheme.receivedBubble;
@@ -219,7 +215,7 @@ class MessageBubble extends ConsumerWidget {
                                 context,
                                 replyMsg,
                                 currentUid,
-                                resolvedReplyName!,
+                                repliedSenderName ?? '',
                               ),
                             ),
                             Gap(6.h),
@@ -356,7 +352,7 @@ class MessageBubble extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            isRepliedMessageMine ? 'You' : resolvedReplyName,
+            isRepliedMessageMine ? 'You' : (resolvedReplyName),
             style: TextStyle(
               fontWeight: FontWeight.w600,
               fontSize: 12.sp,

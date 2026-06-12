@@ -15,11 +15,6 @@ part 'message_database.g.dart';
 
 enum SyncStatus { pending, sent, failed }
 
-/// Eviction trigger buffer zone. When Drift exceeds [keep] by more than
-/// [kEvictionThreshold] rows, [evictOldestChats] evicts down to [keep].
-/// Value matches page size (see AGENTS.md §14.1).
-const int kEvictionThreshold = 50;
-
 // ===============================
 // Table Chats
 // ===============================
@@ -60,9 +55,6 @@ class Chats extends Table {
       text().map(const MapStringStringConverter()).nullable()();
   TextColumn get deletedBy => text().nullable()();
 
-  BoolColumn get hasReachedBeginning =>
-      boolean().withDefault(const Constant(false))();
-
   // Deprecated. The 4-field sync state below (`latestSeenRemoteAt`,
   // `oldestCachedAt`, `hasMoreOlderRemote`, `hasLocalGap`) is now the sole
   // cursor (AGENTS.md §8). The column is kept for the v1→v2 migration that
@@ -77,10 +69,6 @@ class Chats extends Table {
       boolean().withDefault(const Constant(true))();
   BoolColumn get hasLocalGap => boolean().withDefault(const Constant(false))();
 
-  /// Timestamp (ms since epoch) of when this chat was LAST OPENED by the
-  /// user. Used by [evictOldestChats] as the primary LRU sort key. Defaults
-  /// to 0 (never opened) so never-opened chats are always eviction
-  /// candidates before opened ones.
   IntColumn get lastOpenedAt => integer().withDefault(const Constant(0))();
 
   @override
@@ -426,7 +414,7 @@ class MessageDatabase extends _$MessageDatabase {
   ///
   /// [typeFilter] is the literal `'direct'` or `'group'`. Pass `null` for all.
   Stream<List<Chat>> watchPagedChats({
-    required int limit,
+    // required int limit,
     int offset = 0,
     String? typeFilter,
     String? currentUid,
@@ -441,7 +429,6 @@ class MessageDatabase extends _$MessageDatabase {
       SELECT * FROM chats
       WHERE 1=1 $typeClause
       ORDER BY $pinnedOrder, updated_at DESC, id DESC
-      LIMIT ? OFFSET ?
     ''';
 
     final variables = <Variable<Object>>[];
@@ -451,8 +438,7 @@ class MessageDatabase extends _$MessageDatabase {
     if (currentUid != null) {
       variables.add(Variable.withString('%"$currentUid"%'));
     }
-    variables.add(Variable.withInt(limit));
-    variables.add(Variable.withInt(offset));
+    // variables.add(Variable.withInt(limit));
 
     return customSelect(
       sql,
@@ -480,7 +466,6 @@ class MessageDatabase extends _$MessageDatabase {
       SELECT * FROM chats
       WHERE 1=1 $typeClause
       ORDER BY $pinnedOrder, updated_at DESC, id DESC
-      LIMIT ? OFFSET ?
     ''';
 
     final variables = <Variable<Object>>[];
@@ -490,8 +475,7 @@ class MessageDatabase extends _$MessageDatabase {
     if (currentUid != null) {
       variables.add(Variable.withString('%"$currentUid"%'));
     }
-    variables.add(Variable.withInt(limit));
-    variables.add(Variable.withInt(offset));
+    // variables.add(Variable.withInt(limit));
 
     final rows = await customSelect(
       sql,
@@ -524,60 +508,6 @@ class MessageDatabase extends _$MessageDatabase {
         b.insert(chats, room, onConflict: DoUpdate((old) => room));
       }
     });
-  }
-
-  /// Evicts the oldest chats so that at most [keep] rows remain.
-  ///
-  /// Eviction order (ASC for deletion):
-  ///   1. [lastOpenedAt] — never-opened (0) first, most recently opened last.
-  ///   2. [lastMessage]→`sentAt` (via JSON) — chats with no recent activity
-  ///      are evicted before chats with recent messages.
-  ///   3. [createdAt] — oldest-created next (fallback when no `lastMessage`).
-  ///   4. [id] — stable tie-breaker.
-  ///
-  /// [excludeIds] are never evicted even if they rank lowest, protecting
-  /// chats currently visible in the user's viewport.
-  ///
-  /// A no-op when the current count is already ≤ [keep].
-  Future<void> evictOldestChats({
-    required int keep,
-    Set<String> excludeIds = const {},
-  }) async {
-    final count = await getChatCount();
-    if (count <= keep + kEvictionThreshold) return;
-    final limit = count - keep;
-
-    final excludeClause = excludeIds.isNotEmpty
-        ? 'AND id NOT IN (${excludeIds.map((_) => '?').join(', ')})'
-        : '';
-
-    // Raw string avoids Drift analyzer interpreting $ in '$.sentAt' as
-    // a Dart interpolation that confuses the drift_dev builder.
-    const _sqlPrefix = r'''
-      SELECT id FROM chats
-      WHERE 1=1 ''';
-    const _sqlSuffix = r'''
-      ORDER BY
-        last_opened_at ASC,
-        COALESCE(json_extract(last_message, '$.sentAt'), created_at) ASC,
-        id ASC
-      LIMIT ?
-    ''';
-
-    final sql = '$_sqlPrefix$excludeClause$_sqlSuffix';
-
-    final toDelete = await customSelect(
-      sql,
-      variables: [
-        ...excludeIds.map(Variable.withString),
-        Variable.withInt(limit),
-      ],
-      readsFrom: {chats},
-    ).get();
-
-    if (toDelete.isEmpty) return;
-    final ids = toDelete.map((r) => r.data['id'] as String).toList();
-    await (delete(chats)..where((c) => c.id.isIn(ids))).go();
   }
 
   Future<void> upsertMessages(List<MessagesCompanion> newMessages) async {
@@ -620,25 +550,12 @@ class MessageDatabase extends _$MessageDatabase {
     return rows.map((r) => r.read(userProfiles.uid)!).toSet();
   }
 
-  // LRU eviction oldest profiles
-  Future<void> evictOldestProfiles({required int keep}) async {
-    final count = await customSelect(
-      'SELECT COUNT(*) as cnt FROM user_profiles',
-      readsFrom: {userProfiles},
-    ).getSingle();
+  Future<String> fetchProfileDisplayName(String targetId) async {
+    final row = await (select(
+      userProfiles,
+    )..where((p) => p.uid.equals(targetId))).getSingle();
 
-    final total = count.read<int>('cnt');
-    if (total < keep) return;
-    final limit = total - keep;
-
-    await customStatement(
-      'DELETE FROM user_profiles WHERE uid IN ('
-      ' SELECT uid FROM user_profiles'
-      ' ORDER BY updated_at ASC, uid ASC'
-      ' LIMIT ?'
-      ')',
-      [limit],
-    );
+    return row.displayName;
   }
 
   // ============================

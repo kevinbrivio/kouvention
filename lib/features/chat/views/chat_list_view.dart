@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -28,10 +26,6 @@ class ChatListView extends ConsumerStatefulWidget {
 
 class _ChatListViewState extends ConsumerState<ChatListView> {
   final _scrollController = ScrollController();
-  Timer? _visibleIdsDebounce;
-  static const _visibleIdDebounceWindow = Duration(milliseconds: 250);
-  static const _listItemHeight = 80.0;
-  static const _visibleIdMargin = 2;
 
   @override
   void initState() {
@@ -41,7 +35,6 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
 
   @override
   void dispose() {
-    _visibleIdsDebounce?.cancel();
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
@@ -49,29 +42,9 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
 
   void _onScroll() {
     if (_scrollController.position.pixels >
-        _scrollController.position.maxScrollExtent * 0.8) {
+        _scrollController.position.maxScrollExtent * 0.95) {
       ref.read(chatListVM).fetchOlderChats();
     }
-
-    _visibleIdsDebounce?.cancel();
-    _visibleIdsDebounce = Timer(_visibleIdDebounceWindow, _trackVisibleIds);
-  }
-
-  void _trackVisibleIds() {
-    final chats = ref.read(chatListVM).visibleChats;
-    if (chats.isEmpty) return;
-    final pos = _scrollController.position;
-    if (!pos.hasContentDimensions) return;
-
-    final firstIdx = ((pos.pixels / _listItemHeight).floor() - _visibleIdMargin)
-        .clamp(0, chats.length - 1);
-    final lastIdx =
-        (((pos.pixels + pos.viewportDimension) / _listItemHeight).ceil() +
-                _visibleIdMargin)
-            .clamp(firstIdx, chats.length - 1);
-
-    final ids = chats.sublist(firstIdx, lastIdx + 1).map((c) => c.id).toSet();
-    ref.read(visibleChatIdsProvider.notifier).state = ids;
   }
 
   @override

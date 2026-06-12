@@ -99,7 +99,6 @@ Stream<List<ChatModel>> watchRecentChatsFromDrift(
   required String currentUid,
 }) {
   return db.watchPagedChats(
-    limit: kChatListPageSize,
     currentUid: currentUid,
   ).map((rows) => rows.map(chatModelFromDriftRow).toList());
 }

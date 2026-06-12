@@ -200,6 +200,7 @@ class AppSizing {
   static const double avatarSm = 32.0;
   static const double avatarMd = 40.0;
   static const double avatarLg = 48.0;
+  static const double avatarXl = 56.0;
 
   // Chat components
   static const double chatInputBarMin = 56.0;
