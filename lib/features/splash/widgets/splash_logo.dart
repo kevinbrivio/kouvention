@@ -21,21 +21,25 @@ class SplashLogo extends StatelessWidget {
 
       Text.rich(
         TextSpan(
-          text: 'Kouvent',
-          style: context.text.headlineLarge,
+          text: 'Kouvént',
+          style: context.text.headlineLarge.copyWith(
+            color: AppColorTokens.info,
+          ),
           children: [
             TextSpan(
               text: 'ion',
               style: context.text.headlineLarge.copyWith(
-                fontWeight: FontWeight.w300,
-                color: Colors.white.withAlpha(200),
+                color: AppColorTokens.info,
               ),
             ),
           ],
         ),
       ),
 
-      Text('Connect instantly, anywhere.', style: context.text.bodyMedium),
+      Text(
+        'Connect instantly, anywhere.',
+        style: context.text.bodyMedium.copyWith(color: AppColorTokens.info),
+      ),
     ],
   );
 }
