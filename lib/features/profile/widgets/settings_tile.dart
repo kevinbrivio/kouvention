@@ -65,11 +65,13 @@ class SettingsTile extends StatelessWidget {
               ),
             ),
             trailing ??
-              Icon(
-                Icons.chevron_right,
-                size: AppSizing.iconMd.r,
-                color: Theme.of(context).colorScheme.surface,
-              ),  
+                Icon(
+                  Icons.chevron_right,
+                  size: AppSizing.iconMd.r,
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.3),
+                ),
           ],
         ),
       ),

@@ -86,7 +86,7 @@ class ProfileHeader extends StatelessWidget {
           Gap(AppSpacing.md.h),
           // Display name
           Text(displayName, style: context.text.headlineSmall.copyWith(
-            color: context.text.tertiaryText
+            color: context.text.secondaryText
           )),
           Gap(AppSpacing.xs.h),
 
