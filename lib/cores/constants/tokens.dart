@@ -276,30 +276,29 @@ class _AppTextStyles {
 
   // ── Headline ──
   TextStyle get headlineLarge => TextStyle(
-        fontSize: 32.sp, fontWeight: FontWeight.w500,
+        fontSize: 32.sp, fontWeight: FontWeight.w400,
         color: primaryText, height: 1.5,
       );
   TextStyle get headlineMedium => TextStyle(
-        fontSize: 28.sp, fontWeight: FontWeight.w500,
+        fontSize: 28.sp, fontWeight: FontWeight.w400,
         color: primaryText, height: 1.5,
       );
-  /// Keeps w500 (M3 spec is w400) — matches existing visual weight.
   TextStyle get headlineSmall => TextStyle(
-        fontSize: 24.sp, fontWeight: FontWeight.w500,
+        fontSize: 24.sp, fontWeight: FontWeight.w400,
         color: primaryText, height: 1.5,
       );
 
   // ── Title ──
   TextStyle get titleLarge => TextStyle(
-        fontSize: 22.sp, fontWeight: FontWeight.w500,
+        fontSize: 22.sp, fontWeight: FontWeight.w400,
         color: primaryText, height: 1.5,
       );
   TextStyle get titleMedium => TextStyle(
-        fontSize: 16.sp, fontWeight: FontWeight.w500,
+        fontSize: 16.sp, fontWeight: FontWeight.w400,
         color: primaryText, height: 1.5,
       );
   TextStyle get titleSmall => TextStyle(
-        fontSize: 14.sp, fontWeight: FontWeight.w500,
+        fontSize: 14.sp, fontWeight: FontWeight.w400,
         color: primaryText, height: 1.5,
       );
 
@@ -309,7 +308,7 @@ class _AppTextStyles {
         color: primaryText, height: 1.5,
       );
   TextStyle get bodyMedium => TextStyle(
-        fontSize: 14.sp, fontWeight: FontWeight.w500,
+        fontSize: 14.sp, fontWeight: FontWeight.w400,
         color: primaryText, height: 1.5,
       );
   TextStyle get bodySmall => TextStyle(
@@ -319,15 +318,15 @@ class _AppTextStyles {
 
   // ── Label ──
   TextStyle get labelLarge => TextStyle(
-        fontSize: 14.sp, fontWeight: FontWeight.w500,
+        fontSize: 14.sp, fontWeight: FontWeight.w400,
         color: primaryText, height: 1.5,
       );
   TextStyle get labelMedium => TextStyle(
-        fontSize: 12.sp, fontWeight: FontWeight.w500,
+        fontSize: 12.sp, fontWeight: FontWeight.w400,
         color: primaryText, height: 1.5,
       );
   TextStyle get labelSmall => TextStyle(
-        fontSize: 11.sp, fontWeight: FontWeight.w500,
+        fontSize: 11.sp, fontWeight: FontWeight.w400,
         color: primaryText, height: 1.5,
       );
 
@@ -337,16 +336,16 @@ class _AppTextStyles {
         fontWeight: FontWeight.w600, color: secondaryText,
       );
   TextStyle get typeMessage => TextStyle(
-        fontSize: 13.sp, fontWeight: FontWeight.w500,
+        fontSize: 13.sp, fontWeight: FontWeight.w400,
         color: secondaryText, height: 1.5,
         decoration: TextDecoration.none,
       );
   TextStyle get contactName => TextStyle(
-        fontSize: 13.sp, fontWeight: FontWeight.w600,
+        fontSize: 13.sp, fontWeight: FontWeight.w400,
         color: tertiaryText, height: 1.5,
       );
   TextStyle get buttonText => TextStyle(
-        fontSize: 12.sp, fontWeight: FontWeight.w500,
+        fontSize: 12.sp, fontWeight: FontWeight.w400,
         color: _scheme.onPrimary, height: 1.5,
       );
 }
