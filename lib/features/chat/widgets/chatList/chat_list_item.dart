@@ -218,7 +218,7 @@ class ChatListItem extends ConsumerWidget {
           Gap(AppSpacing.xs.h),
           Text(
             typing ?? lastMessage.text,
-            style: context.text.bodySmall.copyWith(
+            style: context.text.labelSmall.copyWith(
               color: typing != null
                   ? scheme.primary
                   : scheme.onSurface.withValues(alpha: 0.5),

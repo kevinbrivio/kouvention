@@ -89,14 +89,17 @@ class ChatRoomAppBar extends ConsumerWidget implements PreferredSizeWidget {
         return AppBar(
           elevation: 0.5,
           scrolledUnderElevation: 0,
-          
-          leading: IconButton(
-            icon: Icon(
-              Icons.arrow_back,
-              color: scheme.primary,
-              size: AppSizing.iconSm.r,
+          leading: TapDetector(
+            onTap: () => context.go(RouterRoutes.chatList.path),
+            borderRadius: AppRadius.full.r,
+            child: Padding(
+              padding: EdgeInsets.all(AppSpacing.sm.r),
+              child: Icon(
+                Icons.arrow_back,
+                color: scheme.primary,
+                size: AppSizing.iconSm.r,
+              ),
             ),
-            onPressed: () => context.go(RouterRoutes.chatList.path),
           ),
           title: TapDetector(
             onTap: () {
@@ -152,7 +155,7 @@ class ChatRoomAppBar extends ConsumerWidget implements PreferredSizeWidget {
                       if (onlineStatusText != null)
                         Text(
                           onlineStatusText,
-                          style: context.text.bodySmall.copyWith(
+                          style: context.text.labelSmall.copyWith(
                             color: onlineStatusText == 'Online'
                               ? scheme.primary
                               : scheme.onSurface.withValues(alpha: 0.6),

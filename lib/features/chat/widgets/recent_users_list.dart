@@ -1,5 +1,5 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
@@ -42,11 +42,6 @@ class RecentUsersList extends ConsumerWidget {
         ),
       ),
       data: (users) {
-        print('========== USERS ===========');
-        for (final u in users) {
-          print(u);
-        }
-        print('========== USERS.isEmpty: ${users.isEmpty} ==========');
         if (users.isEmpty) {
           return Center(
             child: Text(
@@ -59,37 +54,37 @@ class RecentUsersList extends ConsumerWidget {
         }
 
         return Container(
-            decoration: BoxDecoration(
-              color: scheme.onSurface.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(AppRadius.md.r),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md.w,
-                    vertical: AppSpacing.sm.h,
-                  ),
-                  child: Text(
-                    'Sorted by latest message',
-                    style: context.text.labelSmall.copyWith(
-                      color: context.text.tertiaryText,
-                    ),
+          decoration: BoxDecoration(
+            color: scheme.onSurface.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(AppRadius.md.r),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md.w,
+                  vertical: AppSpacing.sm.h,
+                ),
+                child: Text(
+                  'Sorted by latest message',
+                  style: context.text.labelSmall.copyWith(
+                    color: context.text.tertiaryText,
                   ),
                 ),
-                Flexible(
-                  child: ListView.builder(
-                    physics: const ClampingScrollPhysics(),
-                    shrinkWrap: true,
-                    itemCount: users.length,
-                    itemBuilder: (context, index) =>
-                        _buildUserTile(context, users[index]),
-                  ),
+              ),
+              Flexible(
+                child: ListView.builder(
+                  physics: const ClampingScrollPhysics(),
+                  shrinkWrap: true,
+                  itemCount: users.length,
+                  itemBuilder: (context, index) =>
+                      _buildUserTile(context, users[index]),
                 ),
-              ],
-            ),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -117,7 +112,7 @@ class RecentUsersList extends ConsumerWidget {
                     ).withValues(alpha: 0.2),
               backgroundImage:
                   user.photoUrl != null && user.privacy.showProfilePhoto
-                  ? NetworkImage(user.photoUrl!)
+                  ? CachedNetworkImageProvider(user.photoUrl!)
                   : null,
               child: user.photoUrl == null || !user.privacy.showProfilePhoto
                   ? Text(

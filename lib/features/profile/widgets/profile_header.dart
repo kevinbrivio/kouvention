@@ -116,7 +116,7 @@ class ProfileHeader extends StatelessWidget {
                     color: scheme.primary,
                   ),
                 ],
-                Gap(AppSpacing.betweenSections.w),
+                Gap(AppSpacing.xs.w),
                 Text(
                   email,
                   style: context.text.labelLarge.copyWith(

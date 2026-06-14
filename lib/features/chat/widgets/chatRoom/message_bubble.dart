@@ -61,7 +61,6 @@ class MessageBubble extends ConsumerWidget {
 
     final status = message.getUIStatus(chat, currentUid);
     final sender = ref.watch(otherUserStreamProvider(message.senderId)).value;
-    final resolvedName = sender?.displayName;
     final showSenderPhoto =
         isGroup &&
         !isMe &&
@@ -141,7 +140,7 @@ class MessageBubble extends ConsumerWidget {
         Padding(
           padding: EdgeInsets.symmetric(
             vertical: AppSpacing.xs.h,
-            horizontal: AppSpacing.md.w,
+            horizontal: AppSpacing.sm.w,
           ),
           child: Row(
             mainAxisAlignment: isMe
@@ -182,7 +181,7 @@ class MessageBubble extends ConsumerWidget {
                   clipBehavior: Clip.none,
                   children: [
                     Container(
-                      constraints: BoxConstraints(maxWidth: 260.w),
+                      constraints: BoxConstraints(maxWidth: 128.w),
                       padding: EdgeInsets.symmetric(
                         horizontal: AppSpacing.xs.w,
                         vertical: AppSpacing.xs.w,
@@ -201,7 +200,8 @@ class MessageBubble extends ConsumerWidget {
                         ),
                       ),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           if (replyMsg != null) ...[
                             InkWell(
@@ -263,7 +263,7 @@ class MessageBubble extends ConsumerWidget {
                           ],
                           Gap(4.h),
                           Row(
-                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.end,
                             children: [
                               Text(
                                 time,
