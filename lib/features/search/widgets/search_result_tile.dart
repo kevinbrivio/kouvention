@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/utils/date_time_helper.dart';
+import 'package:kouvention/cores/widgets/tap_detector.dart';
 import 'package:kouvention/features/search/models/search_result_model.dart';
 
 class SearchResultTile extends StatelessWidget {
@@ -28,10 +29,10 @@ class SearchResultTile extends StatelessWidget {
     return _buildMediaTile(context);
   }
 
-  Widget _buildTextTile(BuildContext context) => InkWell(
+  Widget _buildTextTile(BuildContext context) => TapDetector(
     onTap: onTap,
     child: Padding(
-      padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w, vertical: 10.h),
+      padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w, vertical: AppSpacing.sm.h),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

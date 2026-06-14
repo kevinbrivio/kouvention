@@ -19,16 +19,6 @@ import 'package:kouvention/features/shared/services/sync_service.dart';
 /// orchestrate remote/local state directly — they call into the
 /// coordinator, which enqueues the actual work on a bounded-concurrency
 /// [ChatSyncQueue].
-///
-/// Why a coordinator at all?
-///   * Centralizes the policy "what runs when, in what order, with what
-///     cap on concurrency" so it's reviewable in one place.
-///   * Keeps the I/O layer (`ChatRepository`, `MessageRepository`) free
-///     of state machines; they stay thin.
-///   * Makes the failure mode obvious: an enqueued job either completes
-///     or surfaces a `Completer` error to the caller. There is no
-///     "wonder if it ran" — the queue records labels and emits the
-///     in-flight set on a broadcast stream.
 class ChatSyncCoordinator {
   ChatSyncCoordinator({
     required ChatRepository chatRepository,

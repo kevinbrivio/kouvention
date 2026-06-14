@@ -104,11 +104,13 @@ class ChatService {
   /// `(members array-contains, lastMessage.sentAt desc, __name__ desc)`.
   Future<List<ChatModel>> fetchChatRoomsPage({
     required String currentUid,
+    required int limit,
     ChatCursor? cursor,
   }) async {
     var query = _chatsRef
         .where('members', arrayContains: currentUid)
         .orderBy('lastMessage.sentAt', descending: true)
+        .limit(limit)
         .orderBy('__name__', descending: true);
 
     if (cursor != null) {

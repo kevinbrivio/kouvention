@@ -71,6 +71,13 @@ class Chats extends Table {
 
   IntColumn get lastOpenedAt => integer().withDefault(const Constant(0))();
 
+  BoolColumn get chatListHasMore =>
+      boolean().nullable().withDefault(const Constant(true))();
+  IntColumn get chatListCursorActivityAt =>
+      integer().nullable().withDefault(const Constant(null))();
+  TextColumn get chatListCursorChatId =>
+      text().nullable().withDefault(const Constant(null))();
+
   @override
   Set<Column<Object>>? get primaryKey => {id};
 }
@@ -155,6 +162,9 @@ class MessageDatabase extends _$MessageDatabase {
       print('🛠️ [DATABASE] Membuat tabel baru dari nol!');
       await m.createAll();
 
+      // ⚠️ sender_name is a HISTORICAL snapshot at message send time.
+      // Do NOT query against it. Search uses the UserProfileResolver
+      // for current sender names (AGENTS.md §9, Phase 8).
       await customStatement('''
         CREATE VIRTUAL TABLE messages_fts USING fts5(
           message_id UNINDEXED,
@@ -231,6 +241,19 @@ class MessageDatabase extends _$MessageDatabase {
       await customStatement('PRAGMA cache_size = -64000;');
     },
   );
+
+  // ===========================
+  // Recent messages (one-shot, used by search VM contact pass)
+  // ===========================
+  Future<List<Message>> fetchRecentMessages(
+    String chatRoomId, {
+    int limit = 20,
+  }) async =>
+      (select(messages)
+            ..where((m) => m.chatRoomId.equals(chatRoomId))
+            ..orderBy([(m) => OrderingTerm.desc(m.sentAt)])
+            ..limit(limit))
+          .get();
 
   // ===========================
   // Search using FTS5
@@ -428,7 +451,7 @@ class MessageDatabase extends _$MessageDatabase {
         '''
       SELECT * FROM chats
       WHERE 1=1 $typeClause
-      ORDER BY $pinnedOrder, updated_at DESC, id DESC
+      ORDER BY $pinnedOrder, json_extract(last_message, '\$.sentAt') DESC, id DESC
     ''';
 
     final variables = <Variable<Object>>[];
@@ -465,7 +488,7 @@ class MessageDatabase extends _$MessageDatabase {
         '''
       SELECT * FROM chats
       WHERE 1=1 $typeClause
-      ORDER BY $pinnedOrder, updated_at DESC, id DESC
+      ORDER BY $pinnedOrder, json_extract(last_message, '\$.sentAt') DESC, id DESC
     ''';
 
     final variables = <Variable<Object>>[];
@@ -660,6 +683,42 @@ class MessageDatabase extends _$MessageDatabase {
           lastOpenedAt: Value(DateTime.now().millisecondsSinceEpoch),
         ),
       );
+
+  // ===========================
+  // Chat-List Pagination State (A-explicit)
+  // ===========================
+
+  /// Reads the A-explicit chat-list pagination state from any row in the
+  /// [chats] table. All rows share the same denormalized values; picking
+  /// any row is correct. Returns defaults when the table is empty.
+  Future<({bool hasMore, int? activityAt, String? chatId})>
+      getChatListPaginationState() async {
+    final row = await (select(chats)..limit(1)).getSingleOrNull();
+    if (row == null) {
+      return (hasMore: true, activityAt: null, chatId: null);
+    }
+    return (
+      hasMore: row.chatListHasMore ?? true,
+      activityAt: row.chatListCursorActivityAt,
+      chatId: row.chatListCursorChatId,
+    );
+  }
+
+  /// Denormalized update: writes [hasMore], [cursorActivityAt], and
+  /// [cursorChatId] to every row in the [chats] table. Callers pass
+  /// `null` for cursor columns to clear the cursor (e.g. on filter
+  /// reset or end-of-list).
+  Future<void> updateChatListPaginationState({
+    required bool hasMore,
+    int? cursorActivityAt,
+    String? cursorChatId,
+  }) => (update(chats)).write(
+    ChatsCompanion(
+      chatListHasMore: Value(hasMore),
+      chatListCursorActivityAt: Value(cursorActivityAt),
+      chatListCursorChatId: Value(cursorChatId),
+    ),
+  );
 
   // ===========================
   // DELETE

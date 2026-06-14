@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:kouvention/cores/constants/tokens.dart';
+import 'package:kouvention/cores/widgets/custom_divider.dart';
 import 'package:kouvention/features/search/models/search_result_group.dart';
 import 'package:kouvention/features/search/models/search_result_model.dart';
 import 'package:kouvention/features/search/widgets/search_result_tile.dart';
@@ -61,7 +62,7 @@ class SearchResultGroupTile extends StatelessWidget {
           onTap: () => onResultTap(result),
         ),
       ),
-      const Divider(),
+      CustomDivider(),
     ],
   );
 }

@@ -10,6 +10,7 @@ import 'package:kouvention/cores/widgets/hidden_app_bar.dart';
 import 'package:kouvention/cores/widgets/loading_indicator.dart';
 import 'package:kouvention/cores/widgets/tap_detector.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
+import 'package:kouvention/features/chat/viewmodel/chat_list_profile_provider.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_list_viewmodel.dart';
 import 'package:kouvention/features/chat/widgets/chatList/chat_header.dart';
 import 'package:kouvention/features/chat/widgets/chatList/chat_list_item.dart';
@@ -229,6 +230,9 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
   ) {
     final chatRooms =
         ref.watch(pagedChatListProvider).value ?? const <ChatModel>[];
+    // Keep the resolver alive during search so contact filter
+    // and senderName resolution don't fall back to stale memberInfo.
+    ref.watch(chatListProfileResolverProvider);
     return Container(
       padding: EdgeInsets.only(
         top: MediaQuery.of(context).padding.top + AppSpacing.xs.h,
@@ -247,7 +251,12 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
               child: TextFormField(
                 autofocus: true,
                 textAlignVertical: TextAlignVertical.center,
-                onChanged: (value) => searchVM.onTextChanged(value, chatRooms),
+                onChanged: (value) => searchVM.onTextChanged(
+                  value,
+                  chatRooms,
+                  ref.read(chatListProfileResolverProvider),
+                ),
+                style: context.text.typeMessage,
                 decoration: InputDecoration(
                   hintText: 'Search...',
                   hintStyle: context.text.bodySmall.copyWith(
