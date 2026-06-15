@@ -101,7 +101,7 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
                   splashColor: scheme.onPrimary.withValues(alpha: 0.3),
                   onPressed: () {
                     setState(() => _fabRotated = !_fabRotated);
-                    // context.push(RouterRoutes.newChat.path);
+                    context.push(RouterRoutes.newChat.path);
                   },
                   child: Animate(
                     target: _fabRotated ? 1 : 0,
