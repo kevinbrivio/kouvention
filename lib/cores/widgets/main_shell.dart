@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
@@ -53,13 +54,13 @@ class _MainShellState extends ConsumerState<MainShell> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            _buildNavItem(
+            _CustomNavItem(
               icon: Icons.chat_bubble_rounded,
               label: 'Chats',
               isSelected: currentIndex == 0,
               onTap: () => widget.navigationShell.goBranch(0),
             ),
-            _buildNavItem(
+            _CustomNavItem(
               icon: Icons.person_rounded,
               label: 'Profile',
               isSelected: currentIndex == 1,
@@ -70,45 +71,85 @@ class _MainShellState extends ConsumerState<MainShell> {
       ),
     );
   }
+}
 
-  Widget _buildNavItem({
-    required IconData icon,
-    required String label,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) => Padding(
-    padding: EdgeInsets.all(AppSpacing.xxs.w),
+class _CustomNavItem extends StatefulWidget {
+  final IconData icon;
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _CustomNavItem({
+    required this.icon,
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  State<_CustomNavItem> createState() => _CustomNavItemState();
+}
+
+class _CustomNavItemState extends State<_CustomNavItem> {
+  bool _isInteracting = false;
+
+  @override
+  Widget build(BuildContext context) => MouseRegion(
+    onEnter: (_) => setState(() => _isInteracting = true),
+    onExit: (_) => setState(() => _isInteracting = false),
     child: GestureDetector(
-      onTap: onTap,
+      onTapDown: (_) => setState(() => _isInteracting = true),
+      onTapUp: (_) {
+        setState(() => _isInteracting = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _isInteracting = false),
       behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w, vertical: AppSpacing.xs.h),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(48.r),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 18.sp,
-              color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-            ),
-            Gap(6.w),
-            Text(
-              label,
-              style: TextStyle(
-                color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-                fontSize: 8.sp,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
+      child: Container(
+        padding: EdgeInsets.all(AppSpacing.xxs.w),
+        child:
+            Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      widget.icon,
+                      size: AppSizing.iconMd.r,
+                      color: widget.isSelected
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.5),
+                    ),
+                    Gap(4.h),
+                    Text(
+                      widget.label,
+                      style: context.text.labelSmall.copyWith(
+                        color: widget.isSelected
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withValues(alpha: 0.5),
+                        fontWeight: widget.isSelected
+                            ? FontWeight.w500
+                            : FontWeight.w400,
+                      ),
+                    ),
+                  ],
+                )
+                .animate(target: widget.isSelected ? 1 : 0)
+                .scale(
+                  begin: const Offset(0.9, 0.9),
+                  end: const Offset(1.1, 1.1),
+                  duration: 300.ms,
+                  curve: Curves.easeOutBack,
+                )
+                .shimmer(angle: 1.57, size: 2, duration: 400.ms)
+                .flipV(
+                  curve: Curves.easeInOutCubic,
+                  duration: 400.ms,
+                  end: 0.1,
+                )
+                .scaleXY(end: 1.05, alignment: const Alignment(0, 0.2)),
       ),
     ),
   );

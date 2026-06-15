@@ -43,10 +43,12 @@ class ProfileVM extends BaseNotifier {
       _connectivityService = ref.read(connectivityServiceProvider);
 
   bool _isButtonLoading = false;
+  int _photoVersion = 0;
 
   // Getters
   UserModel? get user => _user;
   bool get isButtonLoading => _isButtonLoading;
+  int get photoVersion => _photoVersion;
 
   String get authProviderLabel {
     final providerData = _authService.currentUser?.providerData ?? [];
@@ -73,15 +75,19 @@ class ProfileVM extends BaseNotifier {
         .streamUser(uid)
         .listen(
           (userModel) {
+            final oldUser = _user;
             _user = userModel;
+            if (oldUser != null && userModel != null) {
+              if (userModel.photoUrl != oldUser.photoUrl) {
+                _photoVersion++;
+              }
+            }
             notifyListeners();
           },
           onError: (e) {
             debugPrint("Profile stream error: $e");
           },
         );
-
-    print(_user);
   }
 
   @override

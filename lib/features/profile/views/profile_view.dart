@@ -26,10 +26,7 @@ class ProfileView extends StatelessWidget {
     useGradient: false,
     appBar: (_) => CustomAppBar(
       onBack: () => context.go(RouterRoutes.chatList.path),
-      body: Text(
-        'Profile',
-        style: context.text.appBarTitle,
-      ),
+      body: Text('Profile', style: context.text.appBarTitle),
     ),
     builder: (context, vm) => _ProfileBody(viewmodel: vm),
   );
@@ -67,12 +64,13 @@ class _ProfileBody extends ConsumerWidget {
               authProviderLabel: viewmodel.authProviderLabel,
               isGoogleLinked: viewmodel.isGoogleLinked,
               onChangePhoto: () => viewmodel.changeProfilePhoto(context),
+              photoVersion: viewmodel.photoVersion,
             ),
             Gap(AppSpacing.lg.h),
             Text(
               'Personal Info',
               style: context.text.bodyMedium.copyWith(
-                color: context.text.tertiaryText
+                color: context.text.tertiaryText,
               ),
             ),
             Gap(AppSpacing.sm.h),
@@ -86,7 +84,7 @@ class _ProfileBody extends ConsumerWidget {
             Text(
               'Settings',
               style: context.text.bodyMedium.copyWith(
-                color: context.text.tertiaryText
+                color: context.text.tertiaryText,
               ),
             ),
             Gap(AppSpacing.xs.h),
@@ -102,8 +100,7 @@ class _ProfileBody extends ConsumerWidget {
               iconColor: Theme.of(context).colorScheme.primary,
               title: 'Notifications',
               subtitle: 'Message alerts and sounds',
-              onTap: () =>
-                  context.push(RouterRoutes.notificationSettings.path),
+              onTap: () => context.push(RouterRoutes.notificationSettings.path),
             ),
             SettingsTile(
               icon: Icons.brightness_6,
@@ -176,7 +173,10 @@ class _ProfileBody extends ConsumerWidget {
         ? null
         : () => _showSignOutConfirmation(context),
     child: LiquidGlassBox(
-      padding: EdgeInsets.symmetric(horizontal: AppSpacing.xs.w, vertical: AppSpacing.xs.h),
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm.w,
+        vertical: AppSpacing.xs.h,
+      ),
       child: viewmodel.isButtonLoading
           ? Center(
               child: SizedBox(
@@ -193,7 +193,7 @@ class _ProfileBody extends ConsumerWidget {
                 Container(
                   padding: EdgeInsets.all(8.r),
                   decoration: BoxDecoration(
-                    color: Colors.red.shade50,
+                    color: Theme.of(context).canvasColor.withValues(alpha: 0.9),
                     borderRadius: BorderRadius.circular(8.r),
                   ),
                   child: Icon(

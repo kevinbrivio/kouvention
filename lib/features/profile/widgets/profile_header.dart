@@ -1,6 +1,7 @@
 // lib/features/profile/widgets/profile_header.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:kouvention/cores/constants/icon_paths.dart';
@@ -15,6 +16,7 @@ class ProfileHeader extends StatelessWidget {
   final String authProviderLabel;
   final bool isGoogleLinked;
   final Function() onChangePhoto;
+  final int photoVersion;
 
   const ProfileHeader({
     super.key,
@@ -25,6 +27,7 @@ class ProfileHeader extends StatelessWidget {
     required this.authProviderLabel,
     required this.isGoogleLinked,
     required this.onChangePhoto,
+    required this.photoVersion,
   });
 
   @override
@@ -38,16 +41,20 @@ class ProfileHeader extends StatelessWidget {
           Stack(
             clipBehavior: Clip.none,
             children: [
-              CircleAvatar(
-                radius: 56.r,
-                backgroundColor: scheme.onSurface.withValues(alpha: 0.15),
-                backgroundImage: photoUrl != null
-                    ? NetworkImage(photoUrl!)
-                    : null,
-                child: photoUrl == null
-                    ? Icon(Icons.person, size: 56.sp, color: Colors.grey)
-                    : null,
-              ),
+              photoVersion > 0
+                  ? Animate(
+                      key: ValueKey(photoVersion),
+                      effects: const [
+                        FlipEffect(
+                          curve: Curves.easeInOutCirc,
+                          duration: Duration(milliseconds: 800),
+                          direction: Axis.horizontal,
+                          end: 4,
+                        ),
+                      ],
+                      child: _avatar(scheme),
+                    )
+                  : _avatar(scheme),
               Positioned(
                 bottom: 0,
                 right: 0,
@@ -85,9 +92,12 @@ class ProfileHeader extends StatelessWidget {
           ),
           Gap(AppSpacing.md.h),
           // Display name
-          Text(displayName, style: context.text.headlineSmall.copyWith(
-            color: context.text.secondaryText
-          )),
+          Text(
+            displayName,
+            style: context.text.headlineSmall.copyWith(
+              color: context.text.secondaryText,
+            ),
+          ),
           Gap(AppSpacing.xs.h),
 
           // Auth provider badge
@@ -130,4 +140,14 @@ class ProfileHeader extends StatelessWidget {
       ),
     );
   }
+
+  CircleAvatar _avatar(ColorScheme scheme) => CircleAvatar(
+        radius: 56.r,
+        backgroundColor: scheme.onSurface.withValues(alpha: 0.15),
+        backgroundImage:
+            photoUrl != null ? NetworkImage(photoUrl!) : null,
+        child: photoUrl == null
+            ? Icon(Icons.person, size: 56.sp, color: Colors.grey)
+            : null,
+      );
 }
