@@ -325,7 +325,10 @@ class _PreviewAppBar extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
 
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 6.w),
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacing.xs.w,
+        vertical: AppSpacing.xs.h,
+      ),
       decoration: BoxDecoration(
         color: isDark
             ? Colors.black.withValues(alpha: 0.85)
@@ -334,10 +337,10 @@ class _PreviewAppBar extends StatelessWidget {
       child: Row(
         children: [
           Icon(Icons.arrow_back, size: AppSpacing.md.w, color: scheme.primary),
-          Gap(6.w),
+          Gap(AppSpacing.sm.w),
           Container(
-            width: 36.r,
-            height: 36.r,
+            width: AppSizing.avatarSm.h,
+            height: AppSizing.avatarSm.h,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: scheme.primary.withValues(alpha: 0.2),
@@ -345,14 +348,12 @@ class _PreviewAppBar extends StatelessWidget {
             alignment: Alignment.center,
             child: Text(
               'A',
-              style: TextStyle(
+              style: context.text.labelMedium.copyWith(
                 color: scheme.primary,
-                fontWeight: FontWeight.w600,
-                fontSize: 14.sp,
               ),
             ),
           ),
-          Gap(10.w),
+          Gap(AppSpacing.sm.w),
           Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -373,7 +374,7 @@ class _PreviewAppBar extends StatelessWidget {
             ),
           ),
           Icon(Icons.phone, size: AppSizing.iconSm.w, color: scheme.primary),
-          Gap(10.w),
+          Gap(AppSpacing.xs.w),
           Icon(
             Icons.info_outline,
             size: AppSizing.iconSm.w,
