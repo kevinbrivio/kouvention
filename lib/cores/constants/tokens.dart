@@ -70,10 +70,10 @@ class AppSurfaceLight {
   AppSurfaceLight._();
 
   /// Scaffold / page background
-  static const Color background = Color(0xFFFAEEE7);
+  static const Color background = Color(0xFFF2F4F7);
 
   /// Surface containers (cards, list items, dialogs)
-  static const Color surface = Color(0xFFF9ECE5);
+  static const Color surface = Color(0xFFF2F7F6);
 
   /// Elevated surfaces (sheets, menus)
   static const Color surfaceElevated = Color(0xFFFFFFFF);
