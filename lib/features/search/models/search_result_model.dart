@@ -27,6 +27,21 @@ class SearchResultModel {
     this.fileSizeBytes,
   });
 
+  SearchResultModel copyWith({String? senderName}) => SearchResultModel(
+    messageId: messageId,
+    chatRoomId: chatRoomId,
+    chatName: chatName,
+    senderId: senderId,
+    messageText: messageText,
+    senderName: senderName ?? this.senderName,
+    sentAt: sentAt,
+    messageType: messageType,
+    mediaUrls: mediaUrls,
+    mimeType: mimeType,
+    fileName: fileName,
+    fileSizeBytes: fileSizeBytes,
+  );
+
   bool get hasMedia => mediaUrls != null && mediaUrls!.isNotEmpty;
   bool get isImage => messageType == 'image';
   bool get isVideo => messageType == 'video';

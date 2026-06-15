@@ -106,7 +106,7 @@ class _MediaSheetState extends ConsumerState<MediaSheet> {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
       ),
       padding: EdgeInsets.only(top: 6.h),
@@ -197,7 +197,7 @@ class _MediaSheetState extends ConsumerState<MediaSheet> {
                         ),
                         child: Icon(
                           Icons.play_arrow,
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.surface,
                           size: 18.w,
                         ),
                       ),

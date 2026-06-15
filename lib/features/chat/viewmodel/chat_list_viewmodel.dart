@@ -7,13 +7,13 @@ import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/repositories/chat_repository.dart';
+import 'package:kouvention/features/chat/services/chat_service.dart';
 import 'package:kouvention/features/chat/services/databases/message_database.dart';
 import 'package:oktoast/oktoast.dart';
 
 enum ChatFilter { all, direct, group }
 
-const int kChatListPageSize = 50;
-const int kChatListMaxCached = 500;
+const int kChatListPageSize = 20;
 
 class ChatListVM extends BaseNotifier {
   final ChatRepository _chatRepository;
@@ -30,7 +30,6 @@ class ChatListVM extends BaseNotifier {
 
   // Pagination
   bool _isLoadingMore = false;
-  bool _hasMoreChats = true;
 
   String? _error;
 
@@ -70,7 +69,6 @@ class ChatListVM extends BaseNotifier {
   Future<void> pinSelectedChats() async {
     if (_currentUid == null) return;
 
-    final db = ref.read(messageDatabaseProvider);
     final allChats = _currentChatFromStream;
     final selectedChats = allChats
         .where((c) => _selectedChatIds.contains(c.id))
@@ -145,90 +143,66 @@ class ChatListVM extends BaseNotifier {
   // ================================
   // PAGINATION
   // ================================
-  /// Loads the next page of older chats from Firestore and grows the local
-  /// cache. Uses a single `getChatsByIds` lookup for sync state preservation
-  /// (§9.10), updates the compound cursor, and triggers LRU eviction
-  /// (§7, 200-chat cap).
+  /// Loads the next page of older chats from Firestore. The cursor and
+  /// end-of-list flag live in the A-explicit columns on the [chats] table
+  /// (denormalized — every row carries the same values). One SELECT per
+  /// scroll check, one UPDATE per page fetch.
   Future<void> fetchOlderChats() async {
-    if (_currentUid == null || _isLoadingMore || !_hasMoreChats) {
-      debugPrint(
-        '⏸️ fetchOlderChats skipped: uid=${_currentUid != null}, loading=$_isLoadingMore, hasMore=$_hasMoreChats',
-      );
-      return;
-    }
+    if (_currentUid == null || _isLoadingMore) return;
 
-    final driftCount = await ref.read(messageDatabaseProvider).getChatCount();
-    debugPrint(
-      '🔍 Pagination check: Drift has $driftCount chats (cap: $kChatListMaxCached)',
-    );
-
-    if (driftCount >= kChatListMaxCached) {
-      debugPrint('⏸️ Drift is full, skipping Firestore fetch');
-      return;
-    }
-
-    debugPrint(
-      '➡️ Drift not full ($driftCount < $kChatListMaxCached), fetching from Firestore',
-    );
     _isLoadingMore = true;
     notifyListeners();
 
     try {
-      var cursor = ref.read(chatCursorProvider);
+      final db = ref.read(messageDatabaseProvider);
 
-      // Fallback for filter-change case (setFilter resets cursor to null):
-      // derive cursor from the last item in the current Drift page.
-      // Drift's sort order (pinned, updated_at DESC) may differ from
-      // Firestore's (lastMessage.sentAt DESC), but this beats re-fetching
-      // page 1 and duplicating 50 chats.
-      if (cursor == null) {
-        final currentChats = ref.read(pagedChatListProvider).valueOrNull ?? [];
-        if (currentChats.isEmpty) {
-          // Drift page hasn't loaded yet — nothing to paginate from.
-          return;
-        }
-        final last = currentChats.last;
-        cursor = (
-          lastActivityAt: last.lastMessage?.sentAt ?? last.createdAt,
-          chatId: last.id,
-        );
-        ref.read(chatCursorProvider.notifier).state = cursor;
+      // Read A-explicit state from any row.
+      final state = await db.getChatListPaginationState();
+      if (!state.hasMore) {
+        debugPrint('⏸️ fetchOlderChats skipped: no more chats (DB)');
+        return;
       }
 
-      // Protect chats visible in the current viewport from LRU eviction
-      // that runs inside fetchOlderChatsPage.
-      final visibleIds = ref.read(visibleChatIdsProvider);
+      // Build cursor from denormalized columns.
+      ChatCursor? cursor;
+      if (state.activityAt != null && state.chatId != null) {
+        cursor = (
+          lastActivityAt:
+              DateTime.fromMillisecondsSinceEpoch(state.activityAt!),
+          chatId: state.chatId!,
+        );
+      }
+
       final fetched = await _chatRepository.fetchOlderChatsPage(
         uid: _currentUid,
         limit: kChatListPageSize,
         cursor: cursor,
-        excludeIds: visibleIds,
       );
 
-      if (fetched.isNotEmpty) {
-        if (fetched.length < kChatListPageSize) {
-          // Flag no more chat from remote
-          _hasMoreChats = false;
-          debugPrint(
-            '🏁 Reached end of Firestore (got ${fetched.length} < $kChatListPageSize)',
-          );
-          ref.read(chatCursorProvider.notifier).state = null;
-        } else {
-          // flag the cursor from oldest fetched chat
-          final lastChat = fetched.last;
-          final lastActivity =
-              lastChat.lastMessage?.sentAt ?? lastChat.createdAt;
-          ref.read(chatCursorProvider.notifier).state = (
-            lastActivityAt: lastActivity,
-            chatId: lastChat.id,
-          );
-        }
+      if (fetched.isEmpty) {
+        await db.updateChatListPaginationState(hasMore: false);
+        debugPrint('🏁 Reached end of Firestore (empty page)');
+      } else if (fetched.length < kChatListPageSize) {
+        final lastChat = fetched.last;
+        await db.updateChatListPaginationState(
+          hasMore: false,
+          cursorActivityAt: (lastChat.lastMessage?.sentAt ?? lastChat.createdAt)
+              .millisecondsSinceEpoch,
+          cursorChatId: lastChat.id,
+        );
+        debugPrint(
+          '🏁 Reached end of Firestore (got ${fetched.length} < $kChatListPageSize)',
+        );
       } else {
-        _hasMoreChats = false;
-        ref.read(chatCursorProvider.notifier).state = null;
+        final lastChat = fetched.last;
+        await db.updateChatListPaginationState(
+          hasMore: true,
+          cursorActivityAt: (lastChat.lastMessage?.sentAt ?? lastChat.createdAt)
+              .millisecondsSinceEpoch,
+          cursorChatId: lastChat.id,
+        );
       }
     } catch (e) {
-      _hasMoreChats = true;
       debugPrint('fetchOlderChats failed: $e');
     } finally {
       _isLoadingMore = false;
@@ -257,45 +231,20 @@ class ChatListVM extends BaseNotifier {
   void setFilter(ChatFilter value) {
     _filter = value;
     ref.read(chatListFilterProvider.notifier).state = value;
-    ref.read(chatCursorProvider.notifier).state = null;
-    _hasMoreChats = true;
+    // Reset A-explicit pagination state. Fire-and-forget — the next scroll
+    // read will see the cleared cursor and re-fetch page 1.
+    ref.read(messageDatabaseProvider).updateChatListPaginationState(
+      hasMore: true,
+    );
     clearSelection();
   }
 
-  String chatDisplayName(ChatModel chat) => chat.displayName(_currentUid!);
-
-  String? chatPhotoURL(ChatModel chat) => chat.displayPhotoUrl(_currentUid!);
-
   int chatUnreadCount(ChatModel chat) => chat.unreadCountFor(_currentUid!);
-
-  String? typingText(ChatModel chat) {
-    final others = chat.typingUsers.where((uid) => uid != _currentUid).toList();
-
-    if (others.isEmpty) return null;
-
-    final names = others
-        .map((uid) => chat.memberInfo[uid]?.displayName ?? 'Someone')
-        .toList();
-
-    if (names.length == 1) {
-      return '${names.first} is typing...';
-    } else {
-      return '${names.join(', ')} others are typing...';
-    }
-  }
 }
 
 final chatListVM = ChangeNotifierProvider.autoDispose<ChatListVM>(
   (ref) => ChatListVM(ref),
 );
-
-/// Compound pagination cursor for the Firestore chat list fetch.
-/// `(lastMessage.sentAt, chatId)` provides a stable tie-breaker so chats
-/// that share a timestamp are not skipped or duplicated.
-final chatCursorProvider =
-    StateProvider.autoDispose<({DateTime lastActivityAt, String chatId})?>(
-      (ref) => null,
-    );
 
 /// Filter for the chat list. Re-keyed when the filter changes so any
 /// filter-dependent state (page window, cursor) is reset cleanly.
@@ -345,11 +294,13 @@ final inboxFirstPageProvider = StreamProvider.autoDispose<List<ChatModel>>((
   yield* chatRepository.firstPageStream(
     uid,
     limit: kChatListPageSize,
-    onInitial: (initial) {
+    onInitial: (initial) async {
       final last = initial.last;
-      ref.read(chatCursorProvider.notifier).state = (
-        lastActivityAt: last.lastMessage?.sentAt ?? last.createdAt,
-        chatId: last.id,
+      await ref.read(messageDatabaseProvider).updateChatListPaginationState(
+        hasMore: true,
+        cursorActivityAt:
+            (last.lastMessage?.sentAt ?? last.createdAt).millisecondsSinceEpoch,
+        cursorChatId: last.id,
       );
     },
   );
@@ -388,14 +339,12 @@ final pagedChatListRowsProvider = StreamProvider.autoDispose<List<Chat>>((ref) {
 
   return db
       .watchPagedChats(
-        limit: kChatListMaxCached,
-        offset: 0,
         typeFilter: typeFilter,
         currentUid: currentUid,
       )
       .map((rows) {
         debugPrint(
-          '📊 Drift LIMIT $kChatListMaxCached returned: ${rows.length} rows',
+          '=== 📊 Drift return: ${rows.length} rows',
         );
         return rows;
       });

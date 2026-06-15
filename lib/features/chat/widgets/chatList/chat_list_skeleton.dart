@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
-import 'package:kouvention/cores/constants/colors.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 
 class ChatListSkeleton extends StatelessWidget {
@@ -13,34 +13,34 @@ class ChatListSkeleton extends StatelessWidget {
     
     return Skeletonizer.zone(
       effect: ShimmerEffect(
-        baseColor: isDark ? AppColors.darkSkeleton : AppColors.lightSkeleton,
+        baseColor: isDark ? const Color(0xFF1E1E1E) : const Color(0xFFE6E9ED),
       ),
       child: ListView.builder(
         itemCount: 8,
         padding: EdgeInsets.zero,
         itemBuilder: (context, index) => Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+          padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w, vertical: AppSpacing.sm.h),
           child: Row(
             children: [
-              Bone.circle(size: 48.w),
-              Gap(12.w),
+              Bone.circle(size: AppSizing.touchMin.w),
+              Gap(AppSpacing.sm.w),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Bone.text(words: 2),
-                    Gap(4.h),
+                    Gap(AppSpacing.xxs.h),
                     Bone.text(words: 4),
                   ],
                 ),
               ),
-              Gap(4.w),
+              Gap(AppSpacing.xxs.w),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Bone.text(words: 1),
-                  Gap(4.h),
-                  Bone.circle(size: 20.w),
+                  Gap(AppSpacing.xxs.h),
+                  Bone.circle(size: AppSizing.iconSm.w),
                 ],
               ),
             ],

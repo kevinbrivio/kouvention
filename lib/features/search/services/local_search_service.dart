@@ -20,7 +20,7 @@ class LocalSearchService implements SearchService {
     required String query,
     required String currentUid,
     required List<ChatModel> chatRooms,
-    int limit = 50,
+    int limit = 100,
   }) async {
     final s0 = DateTime.now();
     final messages = await _db.searchMessages(query, currentUid, limit: limit);
@@ -30,13 +30,12 @@ class LocalSearchService implements SearchService {
     final chatMap = {for (final c in chatRooms) c.id: c};
     final s2 = DateTime.now();
     debugPrint('🥷 chatMap build: ${s2.difference(s1).inMilliseconds}ms');
-
     final resultList = messages.map((msg) {
       final chat = chatMap[msg.chatRoomId];
       return SearchResultModel(
         messageId: msg.id,
         chatRoomId: msg.chatRoomId,
-        chatName: chat?.displayName(currentUid) ?? 'Unknown',
+        chatName: chat?.displayName(currentUid) ?? '',
         senderId: msg.senderId,
         messageText: msg.textContent,
         senderName: msg.senderName,
@@ -54,8 +53,7 @@ class LocalSearchService implements SearchService {
   }
 
   @override
-  void cancelSearch() {
-  }
+  void cancelSearch() {}
 
   @override
   void dispose() {

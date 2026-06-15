@@ -1,10 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/services/chat_service.dart';
 import 'package:kouvention/features/chat/services/databases/message_database.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_list_viewmodel.dart'
-    show kChatListMaxCached, kChatListPageSize;
+    show kChatListPageSize;
 import 'package:kouvention/features/shared/services/sync_service.dart';
 
 /// Single owner of chat-list + chat-room remote reads/writes that view
@@ -45,6 +47,7 @@ class ChatRepository {
         latestSeenRemoteAt: existing?.latestSeenRemoteAt ?? 0,
       ),
     ]);
+
     return remote;
   }
 
@@ -64,54 +67,56 @@ class ChatRepository {
   /// window (50 by default per AGENTS.md §11.1).
   Stream<List<ChatModel>> firstPageStream(
     String uid, {
-    int limit = 50,
-    void Function(List<ChatModel> initial)? onInitial,
+    int limit = 20,
+    Future<void> Function(List<ChatModel> initial)? onInitial,
   }) async* {
+    // 1. One-shot initial fetch to seed Drift immediately.
     try {
       final initial = await _chatService.fetchChatRoomsPage(
-        currentUid: uid,
         limit: limit,
+        currentUid: uid,
       );
       if (initial.isNotEmpty) {
         await _persistChats(initial);
-        await _db.evictOldestChats(keep: kChatListMaxCached);
-        onInitial?.call(initial);
+        await onInitial?.call(initial);
       }
     } catch (e) {
       debugPrint('firstPageStream: initial fetch failed: $e');
     }
-    yield* _chatService.streamChatList(uid, limit: limit).asyncMap((
-      chats,
-    ) async {
-      final hasNew = await _persistChats(chats);
-      if (hasNew) {
-        await _db.evictOldestChats(keep: kChatListMaxCached);
-      }
-      return chats;
-    });
+
+    // 2. Attach live Firestore listener for the top [limit] chats.
+    // Each emission is persisted to Drift so the UI (watchPagedChats)
+    // re-renders on remote changes without re-reading Firestore.
+    try {
+      yield* _chatService.streamChatList(uid, limit: limit).map((chats) {
+        unawaited(_persistChats(chats));
+        return chats;
+      });
+    } catch (e) {
+      debugPrint('firstPageStream: live stream failed: $e');
+    }
   }
 
   // --- Inbox (older pages) ---------------------------
 
   /// Fetches the next older chat page using the compound
   /// `(lastMessage.sentAt, chatId)` cursor. Returns the fetched chats;
-  /// the caller is responsible for updating its own cursor state
-  /// (`chatCursorProvider`).
+  /// the caller updates the A-explicit pagination state in Drift
+  /// after the fetch completes.
   ///
   /// Preserves the existing `latestSeenRemoteAt` per row via a single
   /// eviction after a successful write.
   Future<List<ChatModel>> fetchOlderChatsPage({
     required String uid,
-    required int limit,
+    int limit = 20,
     ChatCursor? cursor,
-    Set<String> excludeIds = const {},
   }) async {
     debugPrint(
-      '🌐 Firestore: fetching $limit chats (cursor: ${cursor?.chatId ?? "none"})',
+      '🌐 Firestore: fetching chats (cursor: ${cursor?.chatId ?? "none"})',
     );
     final fetched = await _chatService.fetchChatRoomsPage(
-      currentUid: uid,
       limit: limit,
+      currentUid: uid,
       cursor: cursor,
     );
     debugPrint('🌐 Firestore: got ${fetched.length} chats from remote');
@@ -122,7 +127,6 @@ class ChatRepository {
     }
 
     await _persistChats(fetched);
-    await _db.evictOldestChats(keep: kChatListMaxCached, excludeIds: excludeIds);
     final total = await _db.getChatCount();
     debugPrint(
       '💾 Drift: persisted ${fetched.length} chats, total in Drift: $total',
@@ -187,4 +191,3 @@ final chatRepositoryProvider = Provider<ChatRepository>((ref) {
 // Re-export the page-size constants so consumers that already import
 // the repository don't also need the viewmodel header.
 const int chatListPageSize = kChatListPageSize;
-const int chatListMaxCached = kChatListMaxCached;

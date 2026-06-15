@@ -41,6 +41,7 @@ MessagesCompanion messageToCompanion(
   replyToId: Value(msg.replyTo?.messageId),
   replyToText: Value(msg.replyTo?.text),
   replyToSenderName: Value(msg.replyTo?.senderName),
+  replyToSenderId: Value(msg.replyTo?.senderId),
   replyToMediaType: Value(msg.replyTo?.mediaType),
   replyToMediaUrl: Value(msg.replyTo?.mediaUrl),
   replyToSentAt: Value(msg.replyTo?.sentAt.millisecondsSinceEpoch),
@@ -482,6 +483,7 @@ class SyncService {
       replyToId: Value(replyTo?.messageId),
       replyToText: Value(replyTo?.text),
       replyToSenderName: Value(replyTo?.senderName),
+      replyToSenderId: Value(replyTo?.senderId),
     );
 
     await _db.upsertMessage(localMsg);
@@ -536,6 +538,10 @@ class SyncService {
       replyToId: Value(replyTo?.messageId),
       replyToText: Value(replyTo?.text),
       replyToSenderName: Value(replyTo?.senderName),
+      replyToSenderId: Value(replyTo?.senderId),
+      replyToMediaType: Value(replyTo?.mediaType),
+      replyToMediaUrl: Value(replyTo?.mediaUrl),
+      replyToSentAt: Value(replyTo?.sentAt.millisecondsSinceEpoch),
     );
 
     await _db.upsertMessage(localMsg);
@@ -732,6 +738,7 @@ class SyncService {
       fileSizeBytes: Value(0),
       replyToId: Value(replyTo?.messageId),
       replyToSenderName: Value(replyTo?.senderName),
+      replyToSenderId: Value(replyTo?.senderId),
       replyToSentAt: Value(replyTo?.sentAt.millisecondsSinceEpoch),
       replyToText: Value(replyTo?.text),
       replyToMediaType: Value(replyTo?.mediaType),
@@ -766,7 +773,7 @@ class SyncService {
           type: MessageType.sticker.name,
         ),
       );
-  
+
       await _sendFcmToRecipients(
         chatRoomId: chatRoomId,
         messageText: 'Sticker',
@@ -864,8 +871,7 @@ class SyncService {
   /// to re-send, so we skip them. The row stays `failed` until the user
   /// manually re-attaches the media.
   Future<void> flushPendingMessage(Message msg) async {
-    final hasMediaUrls =
-        msg.mediaUrls != null && msg.mediaUrls!.isNotEmpty;
+    final hasMediaUrls = msg.mediaUrls != null && msg.mediaUrls!.isNotEmpty;
     if (msg.type != MessageType.text.name && !hasMediaUrls) {
       return;
     }
@@ -950,7 +956,7 @@ class SyncService {
     return ReplyToModel(
       messageId: m.replyToId!,
       text: m.replyToText ?? '',
-      senderId: '',
+      senderId: m.replyToSenderId ?? '',
       senderName: m.replyToSenderName ?? '',
       sentAt: m.replyToSentAt != null
           ? DateTime.fromMillisecondsSinceEpoch(m.replyToSentAt!)

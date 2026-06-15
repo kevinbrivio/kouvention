@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
-import 'package:kouvention/cores/constants/colors.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/constants/image_paths.dart';
-import 'package:kouvention/cores/constants/text_theme.dart';
 import 'package:kouvention/cores/widgets/floating_widget.dart';
 import 'package:kouvention/cores/widgets/icon_holder.dart';
 import 'package:kouvention/cores/widgets/transparent_box.dart';
@@ -13,7 +12,7 @@ class OnboardingPage2 extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SingleChildScrollView(
-    padding: EdgeInsets.symmetric(horizontal: 16.w),
+    padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -22,18 +21,18 @@ class OnboardingPage2 extends StatelessWidget {
             width: 320.w,
             height: 180.w,
             child: TransparentBox(
-              borderColor: AppColors.white,
-              color: AppColors.white.withValues(alpha: 0.3),
+              borderColor: Colors.white,
+              color: Colors.white.withValues(alpha: 0.3),
               child: Image.asset(images.onboarding2, fit: BoxFit.cover),
             ),
           ),
         ),
-        Gap(16.h),
+        Gap(AppSpacing.md.h),
         Padding(
-          padding: EdgeInsets.symmetric(horizontal: 8.w),
+          padding: EdgeInsets.symmetric(horizontal: AppSpacing.xs.w),
           child: TransparentBox(
-            color: AppColors.white.withValues(alpha: 0.2),
-            radius: BorderRadius.circular(12.r),
+            color: Colors.white.withValues(alpha: 0.2),
+            radius: BorderRadius.circular(AppRadius.md.r),
             child: _buildContent(
               context,
               'Chat Rooms',
@@ -42,12 +41,12 @@ class OnboardingPage2 extends StatelessWidget {
             ),
           ),
         ),
-        Gap(16.h),
+        Gap(AppSpacing.md.h),
         Padding(
-          padding: EdgeInsets.symmetric(horizontal: 8.w),
+          padding: EdgeInsets.symmetric(horizontal: AppSpacing.xs.w),
           child: TransparentBox(
-            color: AppColors.white.withValues(alpha: 0.2),
-            radius: BorderRadius.circular(12.r),
+            color: Colors.white.withValues(alpha: 0.2),
+            radius: BorderRadius.circular(AppRadius.md.r),
             child: _buildContent(
               context,
               'Global Search',
@@ -56,12 +55,12 @@ class OnboardingPage2 extends StatelessWidget {
             ),
           ),
         ),
-        Gap(16.h),
+        Gap(AppSpacing.md.h),
         Padding(
-          padding: EdgeInsets.symmetric(horizontal: 8.w),
+          padding: EdgeInsets.symmetric(horizontal: AppSpacing.xs.w),
           child: TransparentBox(
-            color: AppColors.white.withValues(alpha: 0.2),
-            radius: BorderRadius.circular(12.r),
+            color: Colors.white.withValues(alpha: 0.2),
+            radius: BorderRadius.circular(AppRadius.md.r),
             child: _buildContent(
               context,
               'User Profiles',
@@ -70,7 +69,7 @@ class OnboardingPage2 extends StatelessWidget {
             ),
           ),
         ),
-        Gap(12.h),
+        Gap(AppSpacing.sm.h),
       ],
     ),
   );
@@ -78,9 +77,8 @@ class OnboardingPage2 extends StatelessWidget {
   Widget _buildContent(BuildContext context, String title, String description, IconData icon) => Row(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      // TODO: Change hardcoded icons to params
-      IconHolder(icon: Icon(icon, color: AppColors.white)),
-      Gap(12.w),
+      IconHolder(icon: Icon(icon, color: Colors.white)),
+      Gap(AppSpacing.sm.w),
       Expanded(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -88,15 +86,14 @@ class OnboardingPage2 extends StatelessWidget {
           children: [
             Text(
               title,
-              style: AppTextTheme.of(context).subDescription.copyWith(
-                fontWeight: FontWeight.w600,
-                color: AppColors.white,
+              style: context.text.titleMedium.copyWith(
+                color: AppColorTokens.info,
               ),
             ),
-            Gap(4.h),
+            Gap(AppSpacing.xxs.h),
             Text(
               description,
-              style: AppTextTheme.of(context).subDescription.copyWith(fontSize: 13.sp),
+              style: context.text.bodySmall.copyWith(color: AppColorTokens.info),
               textAlign: TextAlign.left,
               softWrap: true,
             ),

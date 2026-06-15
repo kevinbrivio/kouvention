@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -9,14 +8,14 @@ import 'package:go_router/go_router.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
-import 'package:kouvention/cores/constants/colors.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_list_viewmodel.dart';
 import 'package:kouvention/features/chat/viewmodel/media/media_picker_helper.dart';
 import 'package:kouvention/features/shared/services/connectivity_service.dart';
-import 'package:kouvention/features/shared/services/fcm_service.dart';
+
 import 'package:kouvention/features/shared/services/sync_service.dart';
 import 'package:kouvention/features/shared/viewmodel/connectivity_viewmodel.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
@@ -96,16 +95,6 @@ class ProfileVM extends BaseNotifier {
       isLoading = true;
       _isButtonLoading = true;
 
-      // Remove FCM Token — invalidate SDK token first, then clean Firestore
-      try {
-        await FirebaseMessaging.instance.deleteToken();
-      } catch (e) {
-        debugPrint('FCM deleteToken on sign out failed: $e');
-      }
-      final fcmService = ref.read(fcmServiceProvider);
-      await fcmService.removeToken();
-
-      // Update user offline status
       final presence = ref.read(presenceNotifierProvider);
       await presence.signOutWithPresence(_authService);
 
@@ -145,7 +134,7 @@ class ProfileVM extends BaseNotifier {
         context: context,
         useRootNavigator: true,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12.r),
+          borderRadius: BorderRadius.circular(AppRadius.md.r),
         ),
         builder: (sheetContext) => SafeArea(
           child: Column(
@@ -184,8 +173,8 @@ class ProfileVM extends BaseNotifier {
         uiSettings: [
           AndroidUiSettings(
             toolbarTitle: 'Crop Photo',
-            toolbarColor: AppColors.primary,
-            toolbarWidgetColor: AppColors.white,
+            toolbarColor: AppColorTokens.primary,
+            toolbarWidgetColor: Colors.white,
             lockAspectRatio: true,
           ),
           IOSUiSettings(

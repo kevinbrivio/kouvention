@@ -6,6 +6,7 @@ import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/services/chat_service.dart';
+import 'package:kouvention/features/chat/services/databases/message_database.dart';
 import 'package:kouvention/features/chat/viewmodel/recent_users_provider.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
 import 'package:kouvention/features/user/services/user_service.dart';
@@ -23,9 +24,6 @@ class NewChatVM extends BaseNotifier {
   List<UserModel> _searchResults = [];
   Timer? _debounceTimer;
   bool _isSearching = false;
-
-  // Recent List
-  List<UserModel> _recentUsers = [];
 
   // Group chat selection
   final List<UserModel> _selectedUsers = [];
@@ -67,11 +65,14 @@ class NewChatVM extends BaseNotifier {
     if (query.trim().isEmpty) {
       _searchResults = [];
       _isSearching = false;
+      _error = null; // clear any stale error from a previous failed search
       notifyListeners();
       return;
     }
 
     _isSearching = true;
+    _error = null; // clear previous error so the UI doesn't show it
+    // while the new search is in flight
     notifyListeners();
 
     _debounceTimer = Timer(const Duration(milliseconds: 500), () {
@@ -87,6 +88,7 @@ class NewChatVM extends BaseNotifier {
         query: query,
         currentUid: _currentUid,
       );
+      
       _error = null;
     } catch (e) {
       _error = 'Search failed';
@@ -131,13 +133,29 @@ class NewChatVM extends BaseNotifier {
     if (_currentUid == null) return null;
 
     try {
-      final currentUser = await _userService.getUser(_currentUid);
-      if (currentUser == null) return null;
+      // Try Drift cache first; fall back to Firestore if missing (cold start).
+      final db = ref.read(messageDatabaseProvider);
+      final cached = await db.fetchProfileByIds({_currentUid});
+      final profile = cached.firstOrNull;
+
+      String? myDisplayName;
+      String? myPhotoUrl;
+
+      if (profile != null) {
+        myDisplayName = profile.displayName;
+        myPhotoUrl = profile.photoUrl;
+      } else {
+        final currentUser = await _userService.getUser(_currentUid);
+        myDisplayName = currentUser?.displayName;
+        myPhotoUrl = currentUser?.photoUrl;
+      }
+
+      if (myDisplayName == null) return null;
 
       final memberInfo = {
         _currentUid: MemberInfo(
-          displayName: currentUser.displayName,
-          photoUrl: currentUser.photoUrl,
+          displayName: myDisplayName,
+          photoUrl: myPhotoUrl,
         ),
         otherUser.uid: MemberInfo(
           displayName: otherUser.displayName,
@@ -169,15 +187,31 @@ class NewChatVM extends BaseNotifier {
     if (_currentUid == null || _selectedUsers.isEmpty) return null;
 
     try {
-      final currentUser = await _userService.getUser(_currentUid);
-      if (currentUser == null) return null;
+      // Try Drift cache first; fall back to Firestore if missing (cold start).
+      final db = ref.read(messageDatabaseProvider);
+      final cached = await db.fetchProfileByIds({_currentUid});
+      final profile = cached.firstOrNull;
+
+      String? myDisplayName;
+      String? myPhotoUrl;
+
+      if (profile != null) {
+        myDisplayName = profile.displayName;
+        myPhotoUrl = profile.photoUrl;
+      } else {
+        final currentUser = await _userService.getUser(_currentUid);
+        myDisplayName = currentUser?.displayName;
+        myPhotoUrl = currentUser?.photoUrl;
+      }
+
+      if (myDisplayName == null) return null;
 
       final allMembers = [_currentUid, ..._selectedUsers.map((u) => u.uid)];
 
       final memberInfo = <String, MemberInfo>{
         _currentUid: MemberInfo(
-          displayName: currentUser.displayName,
-          photoUrl: currentUser.photoUrl,
+          displayName: myDisplayName,
+          photoUrl: myPhotoUrl,
         ),
         for (final user in _selectedUsers)
           user.uid: MemberInfo(
@@ -188,7 +222,7 @@ class NewChatVM extends BaseNotifier {
 
       final chatId = await _chatService.createGroupChat(
         createdByUid: _currentUid,
-        createdByName: currentUser.displayName,
+        createdByName: myDisplayName,
         members: allMembers,
         memberInfo: memberInfo,
         groupName: groupName,

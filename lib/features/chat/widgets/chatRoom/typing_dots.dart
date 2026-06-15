@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:kouvention/cores/constants/colors.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 
 class TypingDots extends StatefulWidget {
   final Color? color;
@@ -33,8 +33,8 @@ class _TypingDotsState extends State<TypingDots>
 
   @override
   Widget build(BuildContext context) {
-    final dotSize = widget.size ?? 8.r;
-    final color = widget.color ?? AppColors.grey;
+    final dotSize = widget.size ?? AppRadius.sm.r;
+    final color = widget.color ?? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5);
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -53,7 +53,7 @@ class _TypingDotsState extends State<TypingDots>
             return Container(
               margin: EdgeInsets.symmetric(horizontal: 2.w),
               child: Transform.translate(
-                offset: Offset(0, -bounce * 4.h),
+                offset: Offset(0, -bounce * AppSpacing.xxs.h),
                 child: Container(
                   width: dotSize,
                   height: dotSize,

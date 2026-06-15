@@ -1,10 +1,10 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
-import 'package:kouvention/cores/constants/colors.dart';
-import 'package:kouvention/cores/constants/text_theme.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
+import 'package:kouvention/cores/widgets/tap_detector.dart';
 import 'package:kouvention/features/chat/viewmodel/recent_users_provider.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
 
@@ -23,6 +23,7 @@ class RecentUsersList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final recentUsersAsync = ref.watch(recentUsersProvider);
+    final scheme = Theme.of(context).colorScheme;
 
     return recentUsersAsync.when(
       loading: () => const Center(
@@ -33,51 +34,56 @@ class RecentUsersList extends ConsumerWidget {
         ),
       ),
       error: (_, __) => Center(
-        child: Text('Search users by name', style: AppTextTheme.of(context).subDescription),
+        child: Text(
+          'Failed to load recent users',
+          style: context.text.bodyMedium.copyWith(
+            color: context.text.secondaryText,
+          ),
+        ),
       ),
       data: (users) {
         if (users.isEmpty) {
           return Center(
             child: Text(
               'Search users by name',
-              style: AppTextTheme.of(context).subDescription,
+              style: context.text.bodyMedium.copyWith(
+                color: context.text.secondaryText,
+              ),
             ),
           );
         }
 
-        return Padding(
-          padding: EdgeInsets.all(16.w),
-          child: Container(
-            decoration: BoxDecoration(
-              color: AppColors.searchBar,
-              borderRadius: BorderRadius.circular(12.r),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 16.w,
-                    vertical: 12.h,
-                  ),
-                  child: Text(
-                    'Sorted by latest message',
-                    style: AppTextTheme.of(context).subDescription3.copyWith(
-                      color: AppColors.primary2,
-                    ),
+        return Container(
+          decoration: BoxDecoration(
+            color: scheme.onSurface.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(AppRadius.md.r),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md.w,
+                  vertical: AppSpacing.sm.h,
+                ),
+                child: Text(
+                  'Sorted by latest message',
+                  style: context.text.labelSmall.copyWith(
+                    color: context.text.tertiaryText,
                   ),
                 ),
-                Flexible(
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: users.length,
-                    itemBuilder: (context, index) =>
-                        _buildUserTile(context, users[index]),
-                  ),
+              ),
+              Flexible(
+                child: ListView.builder(
+                  physics: const ClampingScrollPhysics(),
+                  shrinkWrap: true,
+                  itemCount: users.length,
+                  itemBuilder: (context, index) =>
+                      _buildUserTile(context, users[index]),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         );
       },
@@ -87,42 +93,42 @@ class RecentUsersList extends ConsumerWidget {
   Widget _buildUserTile(BuildContext context, UserModel user) {
     final selected = isSelected?.call(user) ?? false;
 
-    return InkWell(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        onUserTap(user);
-      },
+    return TapDetector(
+      onTap: () => onUserTap(user),
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+        padding: EdgeInsets.symmetric(
+          horizontal: AppSpacing.md.w,
+          vertical: AppSpacing.betweenCards.h,
+        ),
         child: Row(
           children: [
             CircleAvatar(
               radius: 22.r,
               backgroundColor:
                   user.photoUrl != null && user.privacy.showProfilePhoto
-                      ? null
-                      : AppColors.senderNameColor(
-                          user.uid,
-                        ).withValues(alpha: 0.2),
-              backgroundImage: user.photoUrl != null &&
-                      user.privacy.showProfilePhoto
-                  ? NetworkImage(user.photoUrl!)
+                  ? null
+                  : AppColorTokens.senderNameColor(
+                      user.uid,
+                    ).withValues(alpha: 0.2),
+              backgroundImage:
+                  user.photoUrl != null && user.privacy.showProfilePhoto
+                  ? CachedNetworkImageProvider(user.photoUrl!)
                   : null,
               child: user.photoUrl == null || !user.privacy.showProfilePhoto
                   ? Text(
                       user.displayName.isNotEmpty
                           ? user.displayName[0].toUpperCase()
                           : '?',
-                      style: AppTextTheme.of(context).senderName.copyWith(
+                      style: context.text.senderName.copyWith(
                         fontSize: 18.sp,
-                        color: AppColors.senderNameColor(
+                        color: AppColorTokens.senderNameColor(
                           user.uid,
                         ).withValues(alpha: 0.7),
                       ),
                     )
                   : null,
             ),
-            SizedBox(width: 16.w),
+            SizedBox(width: AppSpacing.md.w),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -146,7 +152,9 @@ class RecentUsersList extends ConsumerWidget {
             if (showSelection)
               Icon(
                 selected ? Icons.check_circle : Icons.radio_button_unchecked,
-                color: selected ? AppColors.primary : Colors.grey[400],
+                color: selected
+                    ? Theme.of(context).colorScheme.primary
+                    : Colors.grey[400],
                 size: 24.sp,
               ),
           ],

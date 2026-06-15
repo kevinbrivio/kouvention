@@ -3,8 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:kouvention/cores/bases/base_view.dart';
-import 'package:kouvention/cores/constants/colors.dart';
-import 'package:kouvention/cores/constants/text_theme.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/widgets/hidden_app_bar.dart';
 import 'package:kouvention/features/onboarding/viewmodel/onboarding_viewmodel.dart';
 import 'package:kouvention/features/onboarding/widgets/bottom_indicator_button.dart';
@@ -26,46 +25,50 @@ class OnboardingView extends StatelessWidget {
     canPop: false,
     child: SafeArea(
       child: Padding(
-      padding: EdgeInsets.symmetric(vertical: 16.h),
-      child: Column(
-        children: [
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 24.w),
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: GestureDetector(
-                onTap: vm.goToPrivacyPolicy,
-                child: Text('Skip', style: AppTextTheme.of(context).subDescription),
+        padding: EdgeInsets.symmetric(vertical: 16.h),
+        child: Column(
+          children: [
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 24.w),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: GestureDetector(
+                  onTap: vm.goToPrivacyPolicy,
+                  child: Text(
+                    'Skip',
+                    style: context.text.titleMedium.copyWith(
+                      color: AppColorTokens.info,
+                    ),
+                  ),
+                ),
               ),
             ),
-          ),
-          Gap(12.h),
-          Expanded(
-            child: CarouselSlider(
-              carouselController: vm.controller,
-              items: [
-                OnboardingPage1(),
-                OnboardingPage2(),
-                OnboardingPage3(),
-              ],
-              options: CarouselOptions(
-                height: double.infinity,
-                enableInfiniteScroll: false,
-                viewportFraction: 1.0,
-                onPageChanged: (index, reason) {
-                  vm.syncPage(index);
-                },
+            Gap(12.h),
+            Expanded(
+              child: CarouselSlider(
+                carouselController: vm.controller,
+                items: [
+                  OnboardingPage1(),
+                  OnboardingPage2(),
+                  OnboardingPage3(),
+                ],
+                options: CarouselOptions(
+                  height: double.infinity,
+                  enableInfiniteScroll: false,
+                  viewportFraction: 1.0,
+                  onPageChanged: (index, reason) {
+                    vm.syncPage(index);
+                  },
+                ),
               ),
             ),
-          ),
-          
-          Gap(12.h),
-          _buildIndicator(vm.currentPage),
-          Gap(12.h),
-          BottomIndicatorButton(),
-          Gap(12.h),
-        ],
-      ),
+
+            Gap(AppSpacing.xs.h),
+            _buildIndicator(vm.currentPage),
+            Gap(AppSpacing.md.h),
+            BottomIndicatorButton(),
+          ],
+        ),
       ),
     ),
   );
@@ -76,13 +79,13 @@ class OnboardingView extends StatelessWidget {
       final isActive = index == currentPage;
       return AnimatedContainer(
         duration: const Duration(milliseconds: 300),
-        width: isActive ? 32.w : 8.w,
-        height: 6.h,
-        margin: EdgeInsets.symmetric(horizontal: 4.w),
+        width: isActive ? AppSpacing.lg.w : AppSpacing.sm.w,
+        height: AppSpacing.xxs.h,
+        margin: EdgeInsets.symmetric(horizontal: AppSpacing.xxs.w),
         decoration: BoxDecoration(
           color: isActive
-              ? AppColors.white
-              : AppColors.white.withValues(alpha: 0.35),
+              ? AppColorTokens.info
+              : AppColorTokens.info.withValues(alpha: 0.3),
           borderRadius: BorderRadius.circular(6.r),
         ),
       );

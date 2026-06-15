@@ -15,11 +15,6 @@ part 'message_database.g.dart';
 
 enum SyncStatus { pending, sent, failed }
 
-/// Eviction trigger buffer zone. When Drift exceeds [keep] by more than
-/// [kEvictionThreshold] rows, [evictOldestChats] evicts down to [keep].
-/// Value matches page size (see AGENTS.md §14.1).
-const int kEvictionThreshold = 50;
-
 // ===============================
 // Table Chats
 // ===============================
@@ -60,9 +55,6 @@ class Chats extends Table {
       text().map(const MapStringStringConverter()).nullable()();
   TextColumn get deletedBy => text().nullable()();
 
-  BoolColumn get hasReachedBeginning =>
-      boolean().withDefault(const Constant(false))();
-
   // Deprecated. The 4-field sync state below (`latestSeenRemoteAt`,
   // `oldestCachedAt`, `hasMoreOlderRemote`, `hasLocalGap`) is now the sole
   // cursor (AGENTS.md §8). The column is kept for the v1→v2 migration that
@@ -77,11 +69,14 @@ class Chats extends Table {
       boolean().withDefault(const Constant(true))();
   BoolColumn get hasLocalGap => boolean().withDefault(const Constant(false))();
 
-  /// Timestamp (ms since epoch) of when this chat was LAST OPENED by the
-  /// user. Used by [evictOldestChats] as the primary LRU sort key. Defaults
-  /// to 0 (never opened) so never-opened chats are always eviction
-  /// candidates before opened ones.
   IntColumn get lastOpenedAt => integer().withDefault(const Constant(0))();
+
+  BoolColumn get chatListHasMore =>
+      boolean().nullable().withDefault(const Constant(true))();
+  IntColumn get chatListCursorActivityAt =>
+      integer().nullable().withDefault(const Constant(null))();
+  TextColumn get chatListCursorChatId =>
+      text().nullable().withDefault(const Constant(null))();
 
   @override
   Set<Column<Object>>? get primaryKey => {id};
@@ -117,6 +112,7 @@ class Messages extends Table {
   TextColumn get replyToId => text().nullable()();
   TextColumn get replyToText => text().nullable()();
   TextColumn get replyToSenderName => text().nullable()();
+  TextColumn get replyToSenderId => text().nullable()();
   IntColumn get replyToSentAt => integer().nullable()();
   TextColumn get replyToMediaUrl => text().nullable()();
   TextColumn get replyToMediaType => text().nullable()();
@@ -136,7 +132,18 @@ class Messages extends Table {
   Set<Column<Object>>? get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [Chats, Messages])
+class UserProfiles extends Table {
+  TextColumn get uid => text()();
+  TextColumn get displayName => text()();
+  TextColumn get photoUrl => text().nullable()();
+  IntColumn get lastSeen => integer().nullable()();
+  IntColumn get updatedAt => integer()();
+
+  @override
+  Set<Column<Object>>? get primaryKey => {uid};
+}
+
+@DriftDatabase(tables: [Chats, Messages, UserProfiles])
 class MessageDatabase extends _$MessageDatabase {
   MessageDatabase() : super(_openConnection());
 
@@ -147,7 +154,7 @@ class MessageDatabase extends _$MessageDatabase {
   MessageDatabase.forExecutor(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -155,6 +162,9 @@ class MessageDatabase extends _$MessageDatabase {
       print('🛠️ [DATABASE] Membuat tabel baru dari nol!');
       await m.createAll();
 
+      // ⚠️ sender_name is a HISTORICAL snapshot at message send time.
+      // Do NOT query against it. Search uses the UserProfileResolver
+      // for current sender names (AGENTS.md §9, Phase 8).
       await customStatement('''
         CREATE VIRTUAL TABLE messages_fts USING fts5(
           message_id UNINDEXED,
@@ -220,6 +230,10 @@ class MessageDatabase extends _$MessageDatabase {
           'UPDATE chats SET last_opened_at = COALESCE(updated_at, created_at)',
         );
       }
+
+      if (from < 4) {
+        await m.createTable(userProfiles);
+      }
     },
 
     beforeOpen: (details) async {
@@ -227,6 +241,19 @@ class MessageDatabase extends _$MessageDatabase {
       await customStatement('PRAGMA cache_size = -64000;');
     },
   );
+
+  // ===========================
+  // Recent messages (one-shot, used by search VM contact pass)
+  // ===========================
+  Future<List<Message>> fetchRecentMessages(
+    String chatRoomId, {
+    int limit = 20,
+  }) async =>
+      (select(messages)
+            ..where((m) => m.chatRoomId.equals(chatRoomId))
+            ..orderBy([(m) => OrderingTerm.desc(m.sentAt)])
+            ..limit(limit))
+          .get();
 
   // ===========================
   // Search using FTS5
@@ -410,7 +437,7 @@ class MessageDatabase extends _$MessageDatabase {
   ///
   /// [typeFilter] is the literal `'direct'` or `'group'`. Pass `null` for all.
   Stream<List<Chat>> watchPagedChats({
-    required int limit,
+    // required int limit,
     int offset = 0,
     String? typeFilter,
     String? currentUid,
@@ -424,8 +451,7 @@ class MessageDatabase extends _$MessageDatabase {
         '''
       SELECT * FROM chats
       WHERE 1=1 $typeClause
-      ORDER BY $pinnedOrder, updated_at DESC, id DESC
-      LIMIT ? OFFSET ?
+      ORDER BY $pinnedOrder, json_extract(last_message, '\$.sentAt') DESC, id DESC
     ''';
 
     final variables = <Variable<Object>>[];
@@ -435,8 +461,7 @@ class MessageDatabase extends _$MessageDatabase {
     if (currentUid != null) {
       variables.add(Variable.withString('%"$currentUid"%'));
     }
-    variables.add(Variable.withInt(limit));
-    variables.add(Variable.withInt(offset));
+    // variables.add(Variable.withInt(limit));
 
     return customSelect(
       sql,
@@ -463,8 +488,7 @@ class MessageDatabase extends _$MessageDatabase {
         '''
       SELECT * FROM chats
       WHERE 1=1 $typeClause
-      ORDER BY $pinnedOrder, updated_at DESC, id DESC
-      LIMIT ? OFFSET ?
+      ORDER BY $pinnedOrder, json_extract(last_message, '\$.sentAt') DESC, id DESC
     ''';
 
     final variables = <Variable<Object>>[];
@@ -474,8 +498,7 @@ class MessageDatabase extends _$MessageDatabase {
     if (currentUid != null) {
       variables.add(Variable.withString('%"$currentUid"%'));
     }
-    variables.add(Variable.withInt(limit));
-    variables.add(Variable.withInt(offset));
+    // variables.add(Variable.withInt(limit));
 
     final rows = await customSelect(
       sql,
@@ -510,60 +533,6 @@ class MessageDatabase extends _$MessageDatabase {
     });
   }
 
-  /// Evicts the oldest chats so that at most [keep] rows remain.
-  ///
-  /// Eviction order (ASC for deletion):
-  ///   1. [lastOpenedAt] — never-opened (0) first, most recently opened last.
-  ///   2. [lastMessage]→`sentAt` (via JSON) — chats with no recent activity
-  ///      are evicted before chats with recent messages.
-  ///   3. [createdAt] — oldest-created next (fallback when no `lastMessage`).
-  ///   4. [id] — stable tie-breaker.
-  ///
-  /// [excludeIds] are never evicted even if they rank lowest, protecting
-  /// chats currently visible in the user's viewport.
-  ///
-  /// A no-op when the current count is already ≤ [keep].
-  Future<void> evictOldestChats({
-    required int keep,
-    Set<String> excludeIds = const {},
-  }) async {
-    final count = await getChatCount();
-    if (count <= keep + kEvictionThreshold) return;
-    final limit = count - keep;
-
-    final excludeClause = excludeIds.isNotEmpty
-        ? 'AND id NOT IN (${excludeIds.map((_) => '?').join(', ')})'
-        : '';
-
-    // Raw string avoids Drift analyzer interpreting $ in '$.sentAt' as
-    // a Dart interpolation that confuses the drift_dev builder.
-    const _sqlPrefix = r'''
-      SELECT id FROM chats
-      WHERE 1=1 ''';
-    const _sqlSuffix = r'''
-      ORDER BY
-        last_opened_at ASC,
-        COALESCE(json_extract(last_message, '$.sentAt'), created_at) ASC,
-        id ASC
-      LIMIT ?
-    ''';
-
-    final sql = '$_sqlPrefix$excludeClause$_sqlSuffix';
-
-    final toDelete = await customSelect(
-      sql,
-      variables: [
-        ...excludeIds.map(Variable.withString),
-        Variable.withInt(limit),
-      ],
-      readsFrom: {chats},
-    ).get();
-
-    if (toDelete.isEmpty) return;
-    final ids = toDelete.map((r) => r.data['id'] as String).toList();
-    await (delete(chats)..where((c) => c.id.isIn(ids))).go();
-  }
-
   Future<void> upsertMessages(List<MessagesCompanion> newMessages) async {
     await batch((b) {
       for (final msg in newMessages) {
@@ -574,6 +543,43 @@ class MessageDatabase extends _$MessageDatabase {
 
   Future<void> upsertMessage(MessagesCompanion message) =>
       into(messages).insertOnConflictUpdate(message);
+
+  // ============================
+  // USER PROFILES
+  // ============================
+  Future<void> upsertUserProfiles(List<UserProfilesCompanion> profiles) async {
+    await batch((b) {
+      for (final p in profiles) {
+        b.insert(userProfiles, p, onConflict: DoUpdate((old) => p));
+      }
+    });
+  }
+
+  Stream<List<UserProfile>> watchProfileByIds(Set<String> uids) {
+    if (uids.isEmpty) return Stream.value(const []);
+    return (select(userProfiles)..where((p) => p.uid.isIn(uids))).watch();
+  }
+
+  Future<List<UserProfile>> fetchProfileByIds(Set<String> uids) {
+    if (uids.isEmpty) return Future.value(const []);
+    return (select(userProfiles)..where((p) => p.uid.isIn(uids))).get();
+  }
+
+  Future<Set<String>> fetchAllProfileIds() async {
+    final rows = await (selectOnly(
+      userProfiles,
+    )..addColumns([userProfiles.uid])).get();
+
+    return rows.map((r) => r.read(userProfiles.uid)!).toSet();
+  }
+
+  Future<String> fetchProfileDisplayName(String targetId) async {
+    final row = await (select(
+      userProfiles,
+    )..where((p) => p.uid.equals(targetId))).getSingle();
+
+    return row.displayName;
+  }
 
   // ============================
   // UPDATE
@@ -679,6 +685,42 @@ class MessageDatabase extends _$MessageDatabase {
       );
 
   // ===========================
+  // Chat-List Pagination State (A-explicit)
+  // ===========================
+
+  /// Reads the A-explicit chat-list pagination state from any row in the
+  /// [chats] table. All rows share the same denormalized values; picking
+  /// any row is correct. Returns defaults when the table is empty.
+  Future<({bool hasMore, int? activityAt, String? chatId})>
+      getChatListPaginationState() async {
+    final row = await (select(chats)..limit(1)).getSingleOrNull();
+    if (row == null) {
+      return (hasMore: true, activityAt: null, chatId: null);
+    }
+    return (
+      hasMore: row.chatListHasMore ?? true,
+      activityAt: row.chatListCursorActivityAt,
+      chatId: row.chatListCursorChatId,
+    );
+  }
+
+  /// Denormalized update: writes [hasMore], [cursorActivityAt], and
+  /// [cursorChatId] to every row in the [chats] table. Callers pass
+  /// `null` for cursor columns to clear the cursor (e.g. on filter
+  /// reset or end-of-list).
+  Future<void> updateChatListPaginationState({
+    required bool hasMore,
+    int? cursorActivityAt,
+    String? cursorChatId,
+  }) => (update(chats)).write(
+    ChatsCompanion(
+      chatListHasMore: Value(hasMore),
+      chatListCursorActivityAt: Value(cursorActivityAt),
+      chatListCursorChatId: Value(cursorChatId),
+    ),
+  );
+
+  // ===========================
   // DELETE
   // ===========================
   Future<int> hardDeleteMessages({required List<String> messageIds}) async {
@@ -775,6 +817,7 @@ class MessageDatabase extends _$MessageDatabase {
     await transaction(() async {
       await delete(messages).go();
       await delete(chats).go();
+      await delete(userProfiles).go();
     });
   }
 

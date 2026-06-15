@@ -8,15 +8,17 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/bases/base_view.dart';
-import 'package:kouvention/cores/constants/colors.dart';
-import 'package:kouvention/cores/constants/text_theme.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/cores/widgets/loading_indicator.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
+import 'package:kouvention/features/chat/models/bubble_color_scheme.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/models/message_status.dart';
+import 'package:kouvention/features/chat/utils/display_name_resolver.dart';
+import 'package:kouvention/features/chat/viewmodel/chat_room_profile_provider.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_selection_viewmodel.dart';
 import 'package:kouvention/features/chat/viewmodel/bubble_scheme_provider.dart';
@@ -130,13 +132,6 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
   @override
   void initState() {
     super.initState();
-    // Bypass `ref.watch(chatRoomVMProvider(...))` in build (which should
-    // mark the State dirty on every notifyListeners() but empirically
-    // does not in this widget's position in the tree) by attaching a
-    // direct ChangeNotifier listener that forces setState. This is the
-    // only way `vm.loadedOlderMessageModels` updates show up in the
-    // same room session — without it, paginated rows only render after
-    // navigating out to the chat list and back in.
     vm.addListener(_onVmChanged);
     _itemPositionsListener.itemPositions.addListener(_onPositionChanged);
 
@@ -155,9 +150,6 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
   void _onVmChanged() {
     // The VM already called notifyListeners(). We just need a rebuild so
     // the widget reads the latest loadedOlderMessageModels from the VM
-    // that the ConsumerState already watches via ref.watch in build().
-    // If that ref.watch already covers the VM, this becomes a no-op
-    // guard; if not, setState forces the rebuild.
     if (mounted) setState(() {});
   }
 
@@ -261,8 +253,8 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
 
                     if (_showScrollBottom)
                       Positioned(
-                        right: 16.w,
-                        bottom: 16.h,
+                        right: AppSpacing.md.w,
+                        bottom: AppSpacing.md.h,
                         child: GestureDetector(
                           onTap: _scrollToBottom,
                           child: Container(
@@ -281,7 +273,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                             ),
                             child: Icon(
                               Icons.keyboard_arrow_down,
-                              color: AppColors.primary,
+                              color: Theme.of(context).colorScheme.primary,
                               size: 24.sp,
                             ),
                           ),
@@ -294,7 +286,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
           ),
         ),
         if (chatAsync.value?.typingUsers.isNotEmpty == true)
-          _buildTypingIndicator(chatAsync.value!, currentUid),
+          _buildTypingIndicator(chatAsync.value!, currentUid, ref),
 
         _buildInputBar(chatAsync.value, currentUid),
         _buildMediaPanel(),
@@ -313,7 +305,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     initialScrollIndex: _initialScrollIndex ?? 0,
     reverse: true,
     padding: EdgeInsets.only(
-      bottom: 12.h,
+      bottom: AppSpacing.sm.h,
       top: MediaQuery.of(context).padding.top + kToolbarHeight,
     ),
     itemCount: messages.length + (vm.hasMoreMessges ? 1 : 0),
@@ -321,11 +313,11 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
       if (index == messages.length) {
         return vm.isLoadingOlder
             ? Padding(
-                padding: EdgeInsets.symmetric(vertical: 16.h),
+                padding: EdgeInsets.symmetric(vertical: AppSpacing.md.h),
                 child: Center(
                   child: SizedBox(
-                    width: 24.w,
-                    height: 24.w,
+                    width: AppSpacing.xl.w,
+                    height: AppSpacing.xl.w,
                     child: LoadingIndicator(),
                   ),
                 ),
@@ -346,7 +338,12 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
 
       return Column(
         children: [
-          if (showDate) _buildDateSeparator(message.sentAt),
+          if (showDate)
+            _buildDateSeparator(
+              context,
+              message.sentAt,
+              ref.watch(bubbleSchemeProvider),
+            ),
           MessageBubble(
             chat: chat,
             chatId: chat?.id ?? '',
@@ -376,20 +373,29 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
         current.year != previous.year;
   }
 
-  Widget _buildDateSeparator(DateTime date) {
+  Widget _buildDateSeparator(
+    BuildContext context,
+    DateTime date,
+    BubbleColorScheme bubbleScheme,
+  ) {
     final now = DateTime.now();
     final isToday =
         date.day == now.day && date.month == now.month && date.year == now.year;
 
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 16.h),
+    final separatorBg = bubbleScheme.sentBubble.withValues(alpha: 0.12);
+    final separatorText = bubbleScheme.isDark
+        ? Colors.white.withValues(alpha: 0.7)
+        : bubbleScheme.sentBubble.withValues(alpha: 0.8);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: separatorBg,
+        borderRadius: BorderRadius.circular(AppRadius.sm.r),
+      ),
+      padding: EdgeInsets.all(AppSpacing.xxs.w),
       child: Text(
         isToday ? 'TODAY' : '${date.day}/${date.month}/${date.year}',
-        style: TextStyle(
-          color: Colors.grey[500],
-          fontSize: 12.sp,
-          fontWeight: FontWeight.w500,
-        ),
+        style: context.text.bodySmall.copyWith(color: separatorText),
       ),
     );
   }
@@ -401,23 +407,36 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
       case MessageStatus.sent:
         return Icon(Icons.done_all, size: 14.sp, color: Colors.grey);
       case MessageStatus.read:
-        return Icon(Icons.done_all, size: 14.sp, color: AppColors.primary);
+        return Icon(
+          Icons.done_all,
+          size: 14.sp,
+          color: Theme.of(context).colorScheme.primary,
+        );
     }
   }
 
-  Widget _buildTypingIndicator(ChatModel? chat, String? currentUid) {
+  Widget _buildTypingIndicator(
+    ChatModel? chat,
+    String? currentUid,
+    WidgetRef ref,
+  ) {
     if (chat == null || currentUid == null) return const SizedBox.shrink();
     final others = chat.typingUsers.where((uid) => uid != currentUid).toList();
     if (others.isEmpty) return const SizedBox.shrink();
 
     final isGroup = chat.type == 'group';
-    final chatName = chat.displayName(currentUid);
+    final resolver = ref.watch(chatRoomProfileResolverProvider(chat.id));
+    final chatName = resolveDisplayName(
+      chat: chat,
+      currentUid: currentUid,
+      resolver: resolver,
+    );
     final scheme = ref.watch(bubbleSchemeProvider);
     final receivedColor = scheme.receivedBubble;
     final isLightReceived = receivedColor.computeLuminance() > 0.5;
 
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
+      padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w, vertical: 4.h),
       alignment: Alignment.centerLeft,
       child: Row(
         children: [
@@ -433,12 +452,12 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                 ),
               ),
             ),
-          Gap(8.w),
+          Gap(AppSpacing.xs.w),
           Container(
             padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
             decoration: BoxDecoration(
               color: receivedColor,
-              borderRadius: BorderRadius.circular(16.r),
+              borderRadius: BorderRadius.circular(AppRadius.lg.r),
             ),
             child: TypingDots(),
           ),
@@ -453,11 +472,10 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
       padding: EdgeInsets.only(
         left: 6.w,
         right: 6.w,
-        top: 8.h,
+        top: AppSpacing.xs.h,
         bottom:
             MediaQuery.of(context).viewInsets.bottom +
-            MediaQuery.of(context).padding.bottom +
-            8.h,
+            MediaQuery.of(context).padding.bottom,
       ),
       decoration: BoxDecoration(
         color: Colors.transparent,
@@ -485,15 +503,15 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
         Flexible(
           child: Container(
             padding: EdgeInsets.symmetric(
-              horizontal: vm.replyMessage != null ? 6.w : 4.w,
-              vertical: 4.h,
+              horizontal: AppSpacing.xs.w,
+              vertical: AppSpacing.xxs.h,
             ),
             decoration: BoxDecoration(
               color: isDark
-                  ? AppColors.darkInputBarSurface
-                  : AppColors.white.withValues(alpha: 0.85),
+                  ? AppSurfaceDark.surfaceInputBar
+                  : Theme.of(context).colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(
-                vm.replyMessage != null ? 12.r : 24.r,
+                vm.replyMessage != null ? AppRadius.md.r : AppRadius.xl.r,
               ),
             ),
             child: AnimatedSize(
@@ -504,87 +522,85 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                 children: [
                   if (vm.replyMessage != null)
                     _buildReplyPreview(vm.replyMessage!),
-                  Row(
-                    children: [
-                      IconButton(
-                        icon: Icon(
-                          Icons.emoji_emotions_outlined,
-                          color: AppColors.primary,
-                        ),
-                        onPressed: () {
-                          vm.toggleStickerPanel(context);
-                          _focusNode.unfocus();
-                        },
-                      ),
-                      Flexible(
-                        child: TextField(
-                          focusNode: _focusNode,
-                          controller: _textController,
-                          minLines: 1,
-                          maxLines: 5,
-                          onChanged: vm.onTextChanged,
-                          decoration: InputDecoration(
-                            hintText: 'Type a message...',
-                            hintStyle: AppTextTheme.of(
-                              context,
-                            ).typeMessage.copyWith(color: AppColors.grey),
-                            isDense: true,
-                            filled: false,
-                            border: OutlineInputBorder(
-                              borderSide: BorderSide.none,
-                            ),
-                            enabledBorder: InputBorder.none,
-                            focusedBorder: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 4.w,
-                              vertical: 10.h,
-                            ),
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight:
+                          AppSizing.chatInputBarMin.h - (AppSpacing.xxs.h * 2),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        IconButton(
+                          padding: EdgeInsets.all(AppSpacing.xxs.r),
+                          constraints: const BoxConstraints(),
+                          icon: Icon(
+                            Icons.emoji_emotions_outlined,
+                            size: AppSizing.iconSm.r,
+                            color: Theme.of(context).colorScheme.primary,
                           ),
-                          style: AppTextTheme.of(context).typeMessage,
-                          textCapitalization: TextCapitalization.sentences,
+                          onPressed: () {
+                            vm.toggleStickerPanel(context);
+                            _focusNode.unfocus();
+                          },
                         ),
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.add, color: AppColors.primary),
-                        onPressed: () => vm.toggleMediaPanel(context),
-                      ),
-                    ],
+                        Flexible(
+                          child: TextField(
+                            focusNode: _focusNode,
+                            controller: _textController,
+                            minLines: 1,
+                            maxLines: 5,
+                            onChanged: vm.onTextChanged,
+                            textAlignVertical: TextAlignVertical.center,
+                            decoration: InputDecoration(
+                              hintText: 'Type a message...',
+                              hintStyle: context.text.labelMedium.copyWith(
+                                color: context.text.tertiaryText,
+                              ),
+                              isDense: true,
+                              filled: false,
+                              border: OutlineInputBorder(
+                                borderSide: BorderSide.none,
+                              ),
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 4.w,
+                                vertical: AppSpacing.xxs.h,
+                              ),
+                            ),
+                            style: context.text.typeMessage,
+                            textCapitalization: TextCapitalization.sentences,
+                          ),
+                        ),
+                        IconButton(
+                          padding: EdgeInsets.all(AppSpacing.xxs.r),
+                          constraints: const BoxConstraints(),
+                          icon: Icon(
+                            Icons.add,
+                            size: AppSizing.iconSm.r,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          onPressed: () => vm.toggleMediaPanel(context),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
           ),
         ),
-        Gap(8.w),
-        GestureDetector(
-          onTap: () {
-            if (_textController.text.trim().isNotEmpty) {
-              vm.sendMessage(_textController.text);
-              _textController.clear();
-              _scrollToBottom();
-            } else {
-              vm.startRecording();
-            }
+        Gap(AppSpacing.xs.w),
+        _SendMicButton(
+          controller: _textController,
+          isSending: vm.isSending,
+          onSend: () {
+            vm.sendMessage(_textController.text);
+            _textController.clear();
+            _scrollToBottom();
           },
-
-          child: CircleAvatar(
-            radius: 28.r,
-            backgroundColor: vm.isSending ? AppColors.grey : AppColors.primary,
-            child: vm.isSending
-                ? SizedBox(
-                    width: 24.w,
-                    height: 24.w,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: isDark ? AppColors.black : AppColors.white,
-                    ),
-                  )
-                : Icon(
-                    vm.isTyping ? Icons.send : Icons.mic,
-                    color: isDark ? AppColors.black : AppColors.white,
-                    size: 24.w,
-                  ),
-          ),
+          onRecord: vm.startRecording,
         ),
       ],
     );
@@ -617,18 +633,24 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
 
   Widget _buildReplyPreview(MessageModel message) {
     final isMe = vm.isMyMessage(message);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // Resolve fresh display name for the replied-to sender
+    final replySender = ref
+        .watch(otherUserStreamProvider(message.senderId))
+        .value;
+    final resolvedReplyName = replySender?.displayName ?? message.senderName;
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(16.r),
+      borderRadius: BorderRadius.circular(AppRadius.sm.r),
       child: Container(
         height: 76.h,
         decoration: BoxDecoration(
-          color: isDark
-              ? AppColors.darkInputBarSurface
-              : AppColors.grey.withValues(alpha: 0.35),
+          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1),
           border: Border(
-            left: BorderSide(color: AppColors.primary, width: 3.w),
+            left: BorderSide(
+              color: Theme.of(context).colorScheme.primary,
+              width: 3.w,
+            ),
           ),
         ),
 
@@ -638,38 +660,42 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
             Expanded(
               child: Padding(
                 padding: EdgeInsets.only(
-                  left: 12.w,
-                  right: 8.w,
-                  top: 8.h,
-                  bottom: 8.h,
+                  left: AppSpacing.sm.w,
+                  right: AppSpacing.xs.w,
+                  top: AppSpacing.xs.h,
+                  bottom: AppSpacing.xs.h,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      isMe ? 'You' : message.senderName,
-                      style: AppTextTheme.of(context).senderName,
+                      isMe ? 'You' : resolvedReplyName,
+                      style: context.text.senderName,
                     ),
-                    Gap(4.h),
+                    Gap(AppSpacing.xxs.h),
 
                     if (message.allMediaUrls.isNotEmpty) ...[
                       Row(
                         children: [
                           Icon(
                             _getReplyMediaIcon(message),
-                            color: AppColors.grey,
-                            size: 16.r,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.5),
+                            size: AppRadius.lg.r,
                           ),
-                          Gap(4.w),
+                          Gap(AppSpacing.xxs.w),
                           Expanded(
                             child: Text(
                               message.allMediaUrls.length > 1
                                   ? _getReplyMediaCountLabel(message)
                                   : _getReplyMediaLabel(message),
-                              style: AppTextTheme.of(
-                                context,
-                              ).senderName.copyWith(color: AppColors.grey),
+                              style: context.text.senderName.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.5),
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -679,7 +705,9 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                     ] else ...[
                       Text(
                         message.text,
-                        style: AppTextTheme.of(context).body2,
+                        style: context.text.bodySmall.copyWith(
+                          color: context.text.secondaryText,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -690,14 +718,18 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
             ),
 
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: 8.w),
+              padding: EdgeInsets.symmetric(horizontal: AppSpacing.xs.w),
               child: Center(
                 child: InkWell(
                   onTap: () {
                     vm.onCancelReply();
                     HapticFeedback.selectionClick();
                   },
-                  child: Icon(Icons.close, size: 18.r, color: Colors.grey),
+                  child: Icon(
+                    Icons.close,
+                    size: AppSizing.iconSm.r,
+                    color: Colors.grey,
+                  ),
                 ),
               ),
             ),
@@ -707,30 +739,30 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                 key: ValueKey('reply_thumb_${message.id}'),
                 alignment: Alignment.center,
                 children: [
-                  if (message.isImage ||
-                      message.type == MessageType.sticker ||
-                      message.isVideo) ...[
+                  if ((message.isImage ||
+                          message.type == MessageType.sticker) &&
+                      _isImageUrl(message.allMediaUrls.first)) ...[
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(8.r),
+                      borderRadius: BorderRadius.circular(AppRadius.sm.r),
                       child: CachedNetworkImage(
-                        imageUrl: message.isVideo
-                            ? vm.getCloudinaryThumbnail(
-                                message.allMediaUrls.first,
-                              )
-                            : message.allMediaUrls.first,
+                        imageUrl: message.allMediaUrls.first,
                         width: 76.h,
                         height: 76.h,
                         fit: BoxFit.cover,
                         placeholder: (context, url) => Container(
-                          color: AppColors.grey.withValues(alpha: 0.2),
+                          color: Theme.of(context).colorScheme.onSurface
+                              .withValues(alpha: 0.5)
+                              .withValues(alpha: 0.2),
                           width: 64.w,
                         ),
                         errorWidget: (context, url, error) => Container(
-                          color: AppColors.grey.withValues(alpha: 0.2),
+                          color: Theme.of(context).colorScheme.onSurface
+                              .withValues(alpha: 0.5)
+                              .withValues(alpha: 0.2),
                           width: 64.w,
                           child: Icon(
                             Icons.broken_image,
-                            size: 16.r,
+                            size: AppRadius.lg.r,
                             color: Colors.grey,
                           ),
                         ),
@@ -738,33 +770,78 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                     ),
                   ] else if (message.isVideo) ...[
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(8.r),
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          CachedNetworkImage(
-                            imageUrl: vm.getCloudinaryThumbnail(
-                              message.allMediaUrls.first,
-                            ),
-                            height: 76.h,
-                            width: 76.h,
-                            fit: BoxFit.cover,
-                          ),
-                          Center(
-                            child: Container(
-                              padding: EdgeInsets.all(4.r),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.5),
-                                shape: BoxShape.circle,
+                      borderRadius: BorderRadius.circular(AppRadius.sm.r),
+                      child: SizedBox(
+                        width: 76.h,
+                        height: 76.h,
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            CachedNetworkImage(
+                              imageUrl: vm.getCloudinaryThumbnail(
+                                message.allMediaUrls.first,
                               ),
-                              child: Icon(
-                                Icons.play_arrow_rounded,
-                                color: Colors.white,
-                                size: 20.w,
+                              fit: BoxFit.cover,
+                            ),
+                            Center(
+                              child: Container(
+                                padding: EdgeInsets.all(4.r),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.5),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.play_arrow_rounded,
+                                  color: Colors.white,
+                                  size: AppSpacing.lg.w,
+                                ),
                               ),
                             ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ] else if (message.isFile && _isPdf(message.fileName)) ...[
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(AppRadius.sm.r),
+                      child: CachedNetworkImage(
+                        imageUrl: vm.getCloudinaryThumbnail(
+                          message.allMediaUrls.first,
+                        ),
+                        width: 76.h,
+                        height: 76.h,
+                        fit: BoxFit.cover,
+                        errorWidget: (context, url, error) => Container(
+                          width: 76.h,
+                          height: 76.h,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.onSurface
+                                .withValues(alpha: 0.5)
+                                .withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(AppRadius.sm.r),
                           ),
-                        ],
+                          child: Icon(
+                            _getReplyMediaIcon(message),
+                            size: AppRadius.xl.r,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ] else if (message.isFile) ...[
+                    Container(
+                      width: 76.h,
+                      height: 76.h,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.onSurface
+                            .withValues(alpha: 0.5)
+                            .withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(AppRadius.sm.r),
+                      ),
+                      child: Icon(
+                        _getReplyMediaIcon(message),
+                        size: AppRadius.xl.r,
+                        color: Colors.grey,
                       ),
                     ),
                   ],
@@ -775,6 +852,9 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
       ),
     );
   }
+
+  bool _isPdf(String? fileName) =>
+      (fileName ?? '').toLowerCase().endsWith('.pdf');
 
   IconData _getReplyMediaIcon(MessageModel message) {
     if (message.isFile) {
@@ -886,6 +966,97 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
   }
 }
 
+bool _isImageUrl(String url) {
+  final lower = url.toLowerCase();
+  return lower.endsWith('.jpg') ||
+      lower.endsWith('.jpeg') ||
+      lower.endsWith('.png') ||
+      lower.endsWith('.gif') ||
+      lower.endsWith('.webp');
+}
+
+/// Mic/Send button that rebuilds itself without touching the parent state.
+class _SendMicButton extends StatefulWidget {
+  final TextEditingController controller;
+  final VoidCallback onSend;
+  final VoidCallback onRecord;
+  final bool isSending;
+
+  const _SendMicButton({
+    required this.controller,
+    required this.onSend,
+    required this.onRecord,
+    required this.isSending,
+  });
+
+  @override
+  State<_SendMicButton> createState() => _SendMicButtonState();
+}
+
+class _SendMicButtonState extends State<_SendMicButton> {
+  bool _hasText = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _hasText = widget.controller.text.trim().isNotEmpty;
+    widget.controller.addListener(_onTextChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant _SendMicButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_onTextChanged);
+      widget.controller.addListener(_onTextChanged);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onTextChanged);
+    super.dispose();
+  }
+
+  void _onTextChanged() {
+    final nowHasText = widget.controller.text.trim().isNotEmpty;
+    if (nowHasText != _hasText) {
+      setState(() => _hasText = nowHasText);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: () => _hasText ? widget.onSend() : widget.onRecord(),
+    child: Container(
+      width: AppSizing.chatInputBarMin.h,
+      height: AppSizing.chatInputBarMin.h,
+      decoration: BoxDecoration(
+        color: widget.isSending
+            ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)
+            : Theme.of(context).colorScheme.primary,
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: widget.isSending
+            ? SizedBox(
+                height: AppSizing.iconMd,
+                width: AppSizing.iconMd,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Theme.of(context).colorScheme.onPrimary,
+                ),
+              )
+            : Icon(
+                _hasText ? Icons.send : Icons.mic,
+                size: AppSizing.iconMd.r,
+                color: Theme.of(context).colorScheme.onPrimary,
+              ),
+      ),
+    ),
+  );
+}
+
 /// Debug-only bar shown above the message list. Surfaces the 4-field
 /// sync state (AGENTS.md §8) so older-message pagination can be
 /// observed live in the simulator without tailing `adb logcat`.
@@ -913,7 +1084,7 @@ class _DebugSyncStateBar extends ConsumerWidget {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+      padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm.w, vertical: 6.h),
       color: Colors.black.withValues(alpha: 0.85),
       child: chatRowAsync.when(
         loading: () => const Text(

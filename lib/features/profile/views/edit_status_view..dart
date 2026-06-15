@@ -3,8 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/bases/base_view.dart';
-import 'package:kouvention/cores/constants/colors.dart';
-import 'package:kouvention/cores/constants/text_theme.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/cores/widgets/custom_app_bar.dart';
 import 'package:kouvention/cores/widgets/custom_button.dart';
@@ -32,8 +31,8 @@ class _EditNameViewState extends State<EditStatusView> {
   Widget _buildBody(BuildContext context, EditStatusVM vm) => SafeArea(
     child: Padding(
       padding: EdgeInsets.only(
-        left: 24.w,
-        right: 24.w,
+        left: AppRadius.xl.w,
+        right: AppRadius.xl.w,
         // top: MediaQuery.of(context).padding.top,
         bottom: MediaQuery.of(context).padding.bottom,
       ),
@@ -54,18 +53,18 @@ class _EditNameViewState extends State<EditStatusView> {
                       onSubmit: (val) => vm.editStatus(context),
                     ),
                   ),
-                  Gap(8.h),
+                  Gap(AppSpacing.xs.h),
                   Text(
                     'Visible in chats',
-                    style: AppTextTheme.of(context).subDescription3,
+                    style: context.text.labelSmall.copyWith(color: context.text.tertiaryText),
                   ),
-                  Gap(8.h),
+                  Gap(AppSpacing.xs.h),
                   CustomDivider(),
-                  Gap(8.h),
-                  Text('Select', style: AppTextTheme.of(context).subDescription3),
-                  Gap(8.h),
+                  Gap(AppSpacing.xs.h),
+                  Text('Select', style: context.text.labelSmall.copyWith(color: context.text.tertiaryText)),
+                  Gap(AppSpacing.xs.h),
                   _buildDefaultStatus(vm),
-                  Gap(16.h),
+                  Gap(AppSpacing.md.h),
                 ],
               ),
             ),
@@ -77,7 +76,7 @@ class _EditNameViewState extends State<EditStatusView> {
   );
 
   PreferredSizeWidget _buildAppBar() => CustomAppBar(
-    body: Text('About', style: AppTextTheme.of(context).appBar),
+    body: Text('About', style: context.text.appBarTitle),
     onBack: () => context.go(RouterRoutes.profile.path),
   );
 
@@ -86,9 +85,9 @@ class _EditNameViewState extends State<EditStatusView> {
     physics: const NeverScrollableScrollPhysics(),
     itemCount: _defaultStatuses.length,
     separatorBuilder: (_, __) => Divider(
-      height: 16.h,
+      height: AppSpacing.md.h,
       thickness: 0.5,
-      color: AppColors.grey.withValues(alpha: 0.3),
+      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5).withValues(alpha: 0.3),
     ),
     itemBuilder: (context, index) {
       final status = _defaultStatuses[index];
@@ -104,10 +103,10 @@ class _EditNameViewState extends State<EditStatusView> {
                 shape: BoxShape.circle,
               ),
               alignment: Alignment.center,
-              child: Text(status.emoji, style: AppTextTheme.of(context).subDescription3),
+              child: Text(status.emoji, style: context.text.labelSmall.copyWith(color: context.text.tertiaryText)),
             ),
-            Gap(12.w),
-            Text(status.label, style: AppTextTheme.of(context).subDescription3),
+            Gap(AppSpacing.sm.w),
+            Text(status.label, style: context.text.labelSmall.copyWith(color: context.text.tertiaryText)),
           ],
         ),
       );

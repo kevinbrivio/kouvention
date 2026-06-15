@@ -2,8 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
-import 'package:kouvention/cores/constants/colors.dart';
-import 'package:kouvention/cores/constants/text_theme.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 
 class SettingsToggleTile extends StatelessWidget {
   final IconData icon;
@@ -16,7 +15,7 @@ class SettingsToggleTile extends StatelessWidget {
   const SettingsToggleTile({
     super.key,
     required this.icon,
-    this.iconColor = AppColors.primary,
+    this.iconColor = AppColorTokens.primary,
     required this.title,
     required this.subtitle,
     required this.value,
@@ -25,10 +24,10 @@ class SettingsToggleTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    margin: EdgeInsets.only(bottom: 8.h),
-    padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+    margin: EdgeInsets.only(bottom: AppSpacing.xs.h),
+    padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w, vertical: 14.h),
     decoration: BoxDecoration(
-      borderRadius: BorderRadius.circular(12.r),
+      borderRadius: BorderRadius.circular(AppRadius.md.r),
       boxShadow: [
         BoxShadow(
           color: Colors.black.withValues(alpha: 0.04),
@@ -40,26 +39,26 @@ class SettingsToggleTile extends StatelessWidget {
     child: Row(
       children: [
         Container(
-          padding: EdgeInsets.all(8.r),
+          padding: EdgeInsets.all(AppRadius.sm.r),
           decoration: BoxDecoration(
             color: iconColor.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8.r),
+            borderRadius: BorderRadius.circular(AppRadius.sm.r),
           ),
           child: Icon(icon, size: 24.sp, color: iconColor),
         ),
-        Gap(12.w),
+        Gap(AppSpacing.sm.w),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 title,
-                style: AppTextTheme.of(context).subDescription2
+                style: context.text.bodyMedium.copyWith(fontSize: 13.sp, color: context.text.secondaryText)
               ),
               Gap(2.h),
               Text(
                 subtitle,
-                style: AppTextTheme.of(context).subDescription3
+                style: context.text.labelSmall.copyWith(color: context.text.tertiaryText)
               ),
             ],
           ),
@@ -67,7 +66,7 @@ class SettingsToggleTile extends StatelessWidget {
         CupertinoSwitch(
           value: value,
           onChanged: onChanged,
-          activeTrackColor: AppColors.primary,
+          activeTrackColor: Theme.of(context).colorScheme.primary,
         ),
       ],
     ),

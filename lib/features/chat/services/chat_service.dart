@@ -40,11 +40,11 @@ class ChatService {
         .orderBy('lastMessage.sentAt', descending: true);
     if (limit != null) query = query.limit(limit);
     return query.snapshots().map(
-          (snapshot) => snapshot.docs
-              .map((doc) => ChatModel.fromMap(doc.id, doc.data()))
-              .where((chat) => !chat.isDeletedBy(currentUid))
-              .toList(),
-        );
+      (snapshot) => snapshot.docs
+          .map((doc) => ChatModel.fromMap(doc.id, doc.data()))
+          .where((chat) => !chat.isDeletedBy(currentUid))
+          .toList(),
+    );
   }
 
   /// Stream a single chat room
@@ -63,16 +63,18 @@ class ChatService {
   /// [limit] controls the page size. Start with 20.
   /// This stream is for the FIRST page only — it stays live
   /// so new incoming messages appear instantly.
-  Stream<List<MessageModel>> streamMessagesSince(String chatId, DateTime lastSyncAt) =>
-      _messagesRef(chatId)
-          .where('updatedAt', isGreaterThan: lastSyncAt)
-          .orderBy('updatedAt', descending: true)
-          .snapshots()
-          .map(
-            (snapshot) => snapshot.docs
-                .map((doc) => MessageModel.fromMap(doc.id, doc.data()))
-                .toList(),
-          );
+  Stream<List<MessageModel>> streamMessagesSince(
+    String chatId,
+    DateTime lastSyncAt,
+  ) => _messagesRef(chatId)
+      .where('updatedAt', isGreaterThan: lastSyncAt)
+      .orderBy('updatedAt', descending: true)
+      .snapshots()
+      .map(
+        (snapshot) => snapshot.docs
+            .map((doc) => MessageModel.fromMap(doc.id, doc.data()))
+            .toList(),
+      );
 
   @Deprecated('Use fetchChatRoomsPage with compound cursor instead')
   Future<List<ChatModel>> fetchChatRooms(
@@ -81,8 +83,8 @@ class ChatService {
     DateTime? startAfter,
   }) async {
     var query = _chatsRef
-      .where('members', arrayContains: currentUid)
-      .orderBy('lastMessage.sentAt', descending: true);
+        .where('members', arrayContains: currentUid)
+        .orderBy('lastMessage.sentAt', descending: true);
 
     if (startAfter != null) {
       query = query.startAfter([Timestamp.fromDate(startAfter)]);
@@ -108,6 +110,7 @@ class ChatService {
     var query = _chatsRef
         .where('members', arrayContains: currentUid)
         .orderBy('lastMessage.sentAt', descending: true)
+        .limit(limit)
         .orderBy('__name__', descending: true);
 
     if (cursor != null) {
@@ -117,7 +120,7 @@ class ChatService {
       ]);
     }
 
-    final snapshot = await query.limit(limit).get();
+    final snapshot = await query.get();
     return snapshot.docs
         .map((doc) => ChatModel.fromMap(doc.id, doc.data()))
         .toList();
@@ -144,11 +147,11 @@ class ChatService {
     }
 
     return query.snapshots().map(
-          (snapshot) => snapshot.docs
-              .map((doc) => ChatModel.fromMap(doc.id, doc.data()))
-              .where((chat) => !chat.isDeletedBy(currentUid))
-              .toList(),
-        );
+      (snapshot) => snapshot.docs
+          .map((doc) => ChatModel.fromMap(doc.id, doc.data()))
+          .where((chat) => !chat.isDeletedBy(currentUid))
+          .toList(),
+    );
   }
 
   /// Fetches message after specific timestamp
@@ -157,11 +160,11 @@ class ChatService {
     required DateTime lastSyncTimestamp,
     int limit = 20,
   }) async {
-    final snapshot = await _messagesRef(
-      chatId,
-    )
-    .where('sentAt', isGreaterThan: lastSyncTimestamp)
-    .orderBy('sentAt', descending: true).limit(limit).get();
+    final snapshot = await _messagesRef(chatId)
+        .where('sentAt', isGreaterThan: lastSyncTimestamp)
+        .orderBy('sentAt', descending: true)
+        .limit(limit)
+        .get();
 
     return snapshot.docs
         .map((doc) => MessageModel.fromMap(doc.id, doc.data()))
@@ -219,9 +222,7 @@ class ChatService {
         .limit(limit)
         .get();
     final docs = snap.docs.reversed.toList();
-    return docs
-        .map((doc) => MessageModel.fromMap(doc.id, doc.data()))
-        .toList();
+    return docs.map((doc) => MessageModel.fromMap(doc.id, doc.data())).toList();
   }
 
   // --- Send Messages --------------------------------

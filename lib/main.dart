@@ -71,7 +71,9 @@ void main() async {
         FirebaseMessaging.onBackgroundMessage(firebaseBackgroundHandler);
         debugPrint('[main] firebaseBackgroundHandler registered');
       } catch (e, s) {
-        debugPrint('[main] firebaseBackgroundHandler registration FAILED: $e\n$s');
+        debugPrint(
+          '[main] firebaseBackgroundHandler registration FAILED: $e\n$s',
+        );
       }
 
       // Pass all uncuaught errors from Flutter to Crashlytics

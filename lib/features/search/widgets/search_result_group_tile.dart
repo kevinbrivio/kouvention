@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
-import 'package:kouvention/cores/constants/colors.dart';
-import 'package:kouvention/cores/constants/text_theme.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
+import 'package:kouvention/cores/widgets/custom_divider.dart';
 import 'package:kouvention/features/search/models/search_result_group.dart';
 import 'package:kouvention/features/search/models/search_result_model.dart';
 import 'package:kouvention/features/search/widgets/search_result_tile.dart';
@@ -27,13 +27,13 @@ class SearchResultGroupTile extends StatelessWidget {
     children: [
       // --- GROUP HEADER ---
       Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+        padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w, vertical: AppSpacing.xs.h),
         child: Row(
           children: [
             CircleAvatar(
-              radius: 24.r,
+              radius: AppRadius.xl.r,
               backgroundColor: group.chatPhotoUrl == null
-                  ? AppColors.senderNameColor(group.chatRoomId)
+                  ? AppColorTokens.senderNameColor(group.chatRoomId)
                   : null,
               backgroundImage: group.chatPhotoUrl != null
                   ? NetworkImage(group.chatPhotoUrl!)
@@ -42,14 +42,14 @@ class SearchResultGroupTile extends StatelessWidget {
                   ? Text(group.chatDisplayName[0].toUpperCase())
                   : null,
             ),
-            Gap(12.w),
+            Gap(AppSpacing.sm.w),
             Expanded(
               child: Text(
                 group.chatDisplayName,
-                style: AppTextTheme.of(context).contactName,
+                style: context.text.contactName,
               ),
             ),
-            Text('${group.results.length}', style: AppTextTheme.of(context).subDescription3),
+            Text('${group.results.length}', style: context.text.labelSmall.copyWith(color: context.text.tertiaryText)),
           ],
         ),
       ),
@@ -62,7 +62,7 @@ class SearchResultGroupTile extends StatelessWidget {
           onTap: () => onResultTap(result),
         ),
       ),
-      const Divider(),
+      CustomDivider(),
     ],
   );
 }

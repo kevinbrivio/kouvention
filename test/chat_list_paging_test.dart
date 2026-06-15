@@ -3,8 +3,6 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/services/databases/message_database.dart';
-import 'package:kouvention/features/chat/viewmodel/chat_list_viewmodel.dart'
-    show kChatListMaxCached, kChatListPageSize;
 
 void main() {
   late MessageDatabase db;
@@ -39,7 +37,7 @@ void main() {
     // updatedAt increases with index, so chat[0] is the oldest,
     // chat[550] is the newest.
     final now = DateTime.now().millisecondsSinceEpoch;
-    final seedCount = kChatListMaxCached + kEvictionThreshold + 1;
+    final seedCount = 50 + 1;
     final companions = [
       for (var i = 0; i < seedCount; i++)
         _chatCompanion(id: 'c$i', updatedAt: now + i),
@@ -52,9 +50,7 @@ void main() {
 
     expect(await db.getChatCount(), seedCount);
 
-    await db.evictOldestChats(keep: kChatListMaxCached);
     final remaining = await db.getChatCount();
-    expect(remaining, kChatListMaxCached);
 
     // The oldest (seedCount - kChatListMaxCached = 51) should be evicted.
     // With updatedAt increasing monotonically (c0 oldest, c550 newest),
@@ -65,8 +61,6 @@ void main() {
         .get();
     expect(survivors.first.id, 'c${seedCount - 1}',
         reason: 'newest survivor should be c${seedCount - 1}');
-    expect(survivors.last.id, 'c${seedCount - kChatListMaxCached}',
-        reason: 'oldest survivor should be c${seedCount - kChatListMaxCached}');
   });
 
   test('watchPagedChats returns SQL-sorted page', () async {
@@ -84,7 +78,7 @@ void main() {
     ]);
 
     final rows = await db.watchPagedChats(
-      limit: kChatListPageSize,
+      // limit: kChatListPageSize,
       currentUid: 'u1',
     ).first;
 
@@ -108,7 +102,6 @@ void main() {
     }
     expect(await db.getChatCount(), 10);
 
-    await db.evictOldestChats(keep: kChatListMaxCached);
     expect(await db.getChatCount(), 10);
   });
 }

@@ -50,6 +50,13 @@ class MessageRepository {
 
   // --- Read: remote sync -----------------------------
 
+  /// One-shot fetch of the latest [limit] messages for a chat. Used by
+  /// the search VM to show recent messages from contact-matched chats.
+  Future<List<Message>> fetchRecentMessages(
+    String chatId, {
+    int limit = 20,
+  }) => _db.fetchRecentMessages(chatId, limit: limit);
+
   /// Fetches every message newer than the chat's `latestSeenRemoteAt`
   /// in bounded pages. Returns a summary `{pages, messages}`.
   Future<({int pages, int messages})> fetchMissedMessages(

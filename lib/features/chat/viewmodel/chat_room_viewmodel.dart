@@ -7,6 +7,8 @@ import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
+import 'package:kouvention/features/chat/utils/display_name_resolver.dart';
+import 'package:kouvention/features/chat/viewmodel/chat_room_profile_provider.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/models/reply_to_model.dart';
 import 'package:kouvention/features/chat/models/sticker_model.dart';
@@ -118,7 +120,7 @@ class ChatRoomVM extends BaseNotifier {
     replyTo: m.replyToId != null
         ? ReplyToModel(
             messageId: m.replyToId!,
-            senderId: '',
+            senderId: m.replyToSenderId ?? '',
             senderName: m.replyToSenderName ?? '',
             text: m.replyToText ?? '',
             sentAt: m.replyToSentAt != null
@@ -177,9 +179,7 @@ class ChatRoomVM extends BaseNotifier {
       // 5. Update lastOpenedAt so the LRU eviction ranks this chat as
       //    recently used and preserves it from eviction. Non-critical.
       try {
-        await ref
-            .read(messageDatabaseProvider)
-            .updateLastOpenedAt(chatId);
+        await ref.read(messageDatabaseProvider).updateLastOpenedAt(chatId);
       } catch (e) {
         debugPrint('lastOpenedAt update skipped ($e)');
       }
@@ -215,7 +215,7 @@ class ChatRoomVM extends BaseNotifier {
               senderName: _replyMessage!.senderName,
               text: _replyMessage!.text,
               sentAt: _replyMessage!.sentAt,
-              mediaUrl: _replyMessage!.allMediaUrls.toString(),
+              mediaUrl: _replyMessage!.allMediaUrls.firstOrNull,
               mediaType: _replyMessage!.type.name,
             )
           : null;
@@ -223,7 +223,11 @@ class ChatRoomVM extends BaseNotifier {
       await _messageRepository.sendTextMessage(
         chatRoomId: chat.id,
         textContent: text,
-        senderName: chat.displayName(_currentUid),
+        senderName: resolveDisplayName(
+          chat: chat,
+          currentUid: _currentUid,
+          resolver: ref.read(chatRoomProfileResolverProvider(chatId)),
+        ),
         memberUids: chat.members,
         otherUserFcmTokens: otherUser?.fcmTokens,
         replyTo: replyTo,
@@ -317,9 +321,7 @@ class ChatRoomVM extends BaseNotifier {
           );
         }
         if (chat?.hasMoreOlderRemote ?? false) {
-          final remote = await _messageRepository.fetchOlderMessages(
-            chatId,
-          );
+          final remote = await _messageRepository.fetchOlderMessages(chatId);
           fetchedRemote = remote.messages > 0;
           insertedCount += remote.messages;
           if (kDebugMode) {
@@ -341,8 +343,9 @@ class ChatRoomVM extends BaseNotifier {
             );
             if (reRead.isNotEmpty) {
               final existingIds = _loadedOlderMessages.map((m) => m.id).toSet();
-              final newRows =
-                  reRead.where((m) => !existingIds.contains(m.id)).toList();
+              final newRows = reRead
+                  .where((m) => !existingIds.contains(m.id))
+                  .toList();
               if (newRows.isNotEmpty) {
                 _loadedOlderMessages = [..._loadedOlderMessages, ...newRows];
                 _oldestLoadedSentAt = newRows.last.sentAt;
@@ -350,8 +353,10 @@ class ChatRoomVM extends BaseNotifier {
               }
             }
           } else if (kDebugMode) {
-            debugPrint('[loadOlder] remote not needed '
-                '(hasMoreOlderRemote=false or chat missing)');
+            debugPrint(
+              '[loadOlder] remote not needed '
+              '(hasMoreOlderRemote=false or chat missing)',
+            );
           }
         }
       }
@@ -360,7 +365,8 @@ class ChatRoomVM extends BaseNotifier {
       final chat = await db.getChatById(chatId);
       final remoteExhausted = !(chat?.hasMoreOlderRemote ?? false);
       if (remoteExhausted &&
-          (insertedCount == 0 || (insertedCount < threshold && !fetchedRemote))) {
+          (insertedCount == 0 ||
+              (insertedCount < threshold && !fetchedRemote))) {
         _hasMoreMessages = false;
       }
       if (kDebugMode) {
@@ -439,7 +445,7 @@ class ChatRoomVM extends BaseNotifier {
               senderName: _replyMessage!.senderName,
               text: _replyMessage!.text,
               sentAt: _replyMessage!.sentAt,
-              mediaUrl: _replyMessage!.allMediaUrls.toString(),
+              mediaUrl: _replyMessage!.allMediaUrls.firstOrNull,
               mediaType: _replyMessage!.type.name,
             )
           : null;
@@ -453,7 +459,11 @@ class ChatRoomVM extends BaseNotifier {
       await _messageRepository.sendSticker(
         chatRoomId: chatId,
         stickerUrl: sticker.url,
-        senderName: chat.displayName(_currentUid),
+        senderName: resolveDisplayName(
+          chat: chat,
+          currentUid: _currentUid,
+          resolver: ref.read(chatRoomProfileResolverProvider(chatId)),
+        ),
         memberUids: chat.members,
         otherUserFcmTokens: otherUser?.fcmTokens,
         replyTo: replyTo,
@@ -605,7 +615,11 @@ class ChatRoomVM extends BaseNotifier {
     try {
       await _messageRepository.sendMediaMessageDirect(
         chatRoomId: chatId,
-        senderName: chat.displayName(_currentUid),
+        senderName: resolveDisplayName(
+          chat: chat,
+          currentUid: _currentUid,
+          resolver: ref.read(chatRoomProfileResolverProvider(chatId)),
+        ),
         memberUids: chat.members,
         caption: caption,
         uploadResults: files,
@@ -670,6 +684,7 @@ class ChatRoomVM extends BaseNotifier {
   }
 
   String getCloudinaryThumbnail(String videoUrl) {
+    print('========== GETTING THUMBNAIL FOR VIDEO: $videoUrl');
     if (videoUrl.isEmpty) return '';
     return videoUrl.replaceAll(RegExp(r'\.[^.]+$'), '.jpg');
   }
@@ -728,11 +743,7 @@ final chatMessagesStreamProvider = StreamProvider.autoDispose
       } else {
         // No target sent means nothing for us to jump
         final uid = ref.read(currentUidProvider);
-        localStream = db.watchMessages(
-          chatId,
-          uid!,
-          limit: 100,
-        );
+        localStream = db.watchMessages(chatId, uid!, limit: 100);
       }
 
       return localStream.map((localMsgs) {
@@ -766,10 +777,14 @@ final chatMessagesStreamProvider = StreamProvider.autoDispose
                 replyTo: m.replyToId != null
                     ? ReplyToModel(
                         messageId: m.replyToId!,
-                        senderId: '', // Sesuaikan jika lu butuh
+                        senderId: m.replyToSenderId ?? '',
                         senderName: m.replyToSenderName ?? '',
                         text: m.replyToText ?? '',
-                        sentAt: DateTime.now(),
+                        sentAt: m.replyToSentAt != null
+                            ? DateTime.fromMillisecondsSinceEpoch(
+                                m.replyToSentAt!,
+                              )
+                            : DateTime.fromMillisecondsSinceEpoch(m.sentAt),
                         mediaType: m.replyToMediaType,
                         mediaUrl: m.replyToMediaUrl,
                       )

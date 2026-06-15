@@ -4,8 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:kouvention/cores/constants/icon_paths.dart';
-import 'package:kouvention/cores/constants/text_theme.dart';
-import 'package:kouvention/cores/constants/colors.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 
 class AudioPreview extends StatelessWidget {
   final File file;
@@ -25,7 +24,7 @@ class AudioPreview extends StatelessWidget {
   
     return SafeArea(
       child: SingleChildScrollView(
-        padding: EdgeInsets.symmetric(horizontal: 32.w),
+        padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl.w),
         child: SizedBox(
           height: MediaQuery.of(context).size.height
               - MediaQuery.of(context).viewPadding.top
@@ -36,17 +35,17 @@ class AudioPreview extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Image.asset(icons.audio, height: 176.w, width: 176.w),
-                Gap(12.h),
+                Gap(AppSpacing.sm.h),
                 Text(
                   fileName,
-                  style: AppTextTheme.of(context).subheadline1.copyWith(
-                    color: AppColors.grey,
+                  style: context.text.headlineSmall.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                     fontWeight: FontWeight.w400,
                   ),
                   textAlign: TextAlign.center,
                 ),
-                Gap(12.h),
-                Text('$fileSizes · MP3', style: AppTextTheme.of(context).subDescription),
+                Gap(AppSpacing.sm.h),
+                Text('$fileSizes · MP3', style: context.text.titleMedium.copyWith(color: context.text.secondaryText)),
               ],
             ),
           ),

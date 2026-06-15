@@ -41,7 +41,9 @@ class FcmService {
     final granted = await requestPermission();
     debugPrint('[FcmService] requestPermission() returned granted=$granted');
     if (!granted) {
-      debugPrint('[FcmService] Permission denied — skipping token registration');
+      debugPrint(
+        '[FcmService] Permission denied — skipping token registration',
+      );
       return;
     }
 
@@ -81,11 +83,15 @@ class FcmService {
         debugPrint('[FcmService] getToken() returned null');
         return;
       }
-      debugPrint('[FcmService] FCM token obtained: ${newToken.substring(0, 20)}...');
+      debugPrint(
+        '[FcmService] FCM token obtained: ${newToken.substring(0, 20)}...',
+      );
 
       final oldToken = _prefs.getFcmToken();
       if (oldToken != null && oldToken != newToken) {
-        debugPrint('[FcmService] Token changed — removing old token from Firestore');
+        debugPrint(
+          '[FcmService] Token changed — removing old token from Firestore',
+        );
         await _firestore.doc('users/$uid').update({
           'fcmTokens.$oldToken': FieldValue.delete(),
         });
@@ -170,7 +176,8 @@ class FcmService {
         final tokenKey = entry.key;
         final tokenData = entry.value as Map<String, dynamic>? ?? {};
 
-        final deviceId = tokenData['deviceId'] as String? ?? '_unknown_device_id_';
+        final deviceId =
+            tokenData['deviceId'] as String? ?? '_unknown_device_id_';
         final updatedAt = (tokenData['updatedAt'] as Timestamp?)?.toDate();
         final isCurrent = tokenKey == _prefs.getFcmToken();
 
@@ -196,7 +203,8 @@ class FcmService {
 
         // 3. Track latest token per deviceId for dedup
         final existing = latestPerDevice[deviceId];
-        if (existing == null || (updatedAt != null && existing.updatedAt.isBefore(updatedAt))) {
+        if (existing == null ||
+            (updatedAt != null && existing.updatedAt.isBefore(updatedAt))) {
           latestPerDevice[deviceId] = tokenEntry;
         }
       }
@@ -211,10 +219,9 @@ class FcmService {
       }
 
       // 5. Cap total tokens to _maxTokensPerUser (keep most recent)
-      final remaining = allEntries
-          .where((e) => !tokensToDelete.contains(e.token))
-          .toList()
-        ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+      final remaining =
+          allEntries.where((e) => !tokensToDelete.contains(e.token)).toList()
+            ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
 
       if (remaining.length > _maxTokensPerUser) {
         for (var i = _maxTokensPerUser; i < remaining.length; i++) {
@@ -233,7 +240,9 @@ class FcmService {
       }
 
       await _firestore.doc('users/$uid').update(updates);
-      debugPrint('[FcmService] Stale cleanup: removed ${tokensToDelete.length} token(s)');
+      debugPrint(
+        '[FcmService] Stale cleanup: removed ${tokensToDelete.length} token(s)',
+      );
     } catch (e) {
       debugPrint('[FcmService] Stale cleanup failed: $e');
     }
@@ -246,7 +255,9 @@ class FcmService {
     // FCM aren't permanent, user could clear app data or reinstall app.
     // Hence we listen to new token from Firebase instead of using stale token.
     _tokenRefreshSub = _messaging.onTokenRefresh.listen((newToken) async {
-      debugPrint('[FcmService] Token refresh event: ${newToken.substring(0, 20)}...');
+      debugPrint(
+        '[FcmService] Token refresh event: ${newToken.substring(0, 20)}...',
+      );
       final uid = FirebaseAuth.instance.currentUser?.uid;
       if (uid == null) {
         debugPrint('[FcmService] Token refresh skipped — no user');
@@ -274,7 +285,18 @@ class FcmService {
       return;
     }
 
-    final token = await _messaging.getToken();
+    final String? token;
+    try {
+      token = await _messaging.getToken();
+    } catch (e) {
+      debugPrint('Error on getting token: $e');
+
+      _tokenRefreshSub?.cancel();
+      _tokenRefreshSub = null;
+      await _prefs.removeFcmToken();
+      return;
+    }
+
     if (token == null) {
       debugPrint('[FcmService] removeToken() skipped — no token');
       return;

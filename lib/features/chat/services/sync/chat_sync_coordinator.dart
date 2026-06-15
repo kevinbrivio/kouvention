@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/repositories/chat_repository.dart';
 import 'package:kouvention/features/chat/repositories/message_repository.dart';
+import 'package:kouvention/features/chat/repositories/user_profile_repository.dart';
 import 'package:kouvention/features/chat/services/sync/chat_sync_queue.dart';
 import 'package:kouvention/features/shared/viewmodel/connectivity_viewmodel.dart';
 import 'package:kouvention/features/shared/services/sync_service.dart';
@@ -18,24 +19,16 @@ import 'package:kouvention/features/shared/services/sync_service.dart';
 /// orchestrate remote/local state directly — they call into the
 /// coordinator, which enqueues the actual work on a bounded-concurrency
 /// [ChatSyncQueue].
-///
-/// Why a coordinator at all?
-///   * Centralizes the policy "what runs when, in what order, with what
-///     cap on concurrency" so it's reviewable in one place.
-///   * Keeps the I/O layer (`ChatRepository`, `MessageRepository`) free
-///     of state machines; they stay thin.
-///   * Makes the failure mode obvious: an enqueued job either completes
-///     or surfaces a `Completer` error to the caller. There is no
-///     "wonder if it ran" — the queue records labels and emits the
-///     in-flight set on a broadcast stream.
 class ChatSyncCoordinator {
   ChatSyncCoordinator({
     required ChatRepository chatRepository,
     required MessageRepository messageRepository,
+    required UserProfileRepository userProfileRepository,
     required SyncService syncService,
     ChatSyncQueue? queue,
   }) : _chatRepository = chatRepository,
        _messageRepository = messageRepository,
+       _userProfileRepository = userProfileRepository,
        _syncService = syncService,
        _queue = queue ?? ChatSyncQueue() {
     _queue.inFlightLabels.listen((labels) {
@@ -46,6 +39,7 @@ class ChatSyncCoordinator {
 
   final ChatRepository _chatRepository;
   final MessageRepository _messageRepository;
+  final UserProfileRepository _userProfileRepository;
   final SyncService _syncService;
   final ChatSyncQueue _queue;
 
@@ -63,7 +57,6 @@ class ChatSyncCoordinator {
     _queue.enqueue('login:inbox-first-page', () async {
       await _chatRepository.fetchOlderChatsPage(
         uid: uid,
-        limit: chatListPageSize,
       );
     });
     _queue.enqueue('login:flush-pending', _flushPending);
@@ -103,6 +96,9 @@ class ChatSyncCoordinator {
   /// once on initial app boot (no offline→online event yet).
   void onNetworkResumed() {
     _queue.enqueue('net:resume:flush-pending', _flushPending);
+    _queue.enqueue(
+      'user-profile:flush', () => _userProfileRepository.refreshAll(),
+    );
   }
 
   /// Awaits all currently-pending and in-flight jobs. Used by tests
@@ -126,6 +122,7 @@ final chatSyncCoordinatorProvider = Provider<ChatSyncCoordinator>((ref) {
   final coord = ChatSyncCoordinator(
     chatRepository: ref.watch(chatRepositoryProvider),
     messageRepository: ref.watch(messageRepositoryProvider),
+    userProfileRepository: ref.watch(userProfileRepositoryProvider),
     syncService: ref.watch(syncServiceProvider),
   );
   ref.onDispose(coord.close);

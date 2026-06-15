@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:kouvention/cores/constants/colors.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 
 class BubblePainter extends CustomPainter {
   final Color color;
@@ -69,13 +69,13 @@ class BubbleContainer extends StatelessWidget {
   @override
   Widget build(BuildContext context) => CustomPaint(
     painter: BubblePainter(
-      color: color ?? AppColors.primary2.withValues(alpha: 0.08),
-      radius: 16.r,
-      nubSize: 8.r,
+      color: color ?? AppColorTokens.primaryLighter.withValues(alpha: 0.08),
+      radius: AppRadius.lg.r,
+      nubSize: AppRadius.sm.r,
     ),
     child: Padding(
       // Extra top padding to account for the nub
-      padding: padding.copyWith(top: padding.top, bottom: padding.bottom + 8.r),
+      padding: padding.copyWith(top: padding.top, bottom: padding.bottom + AppRadius.sm.r),
       child: child,
     ),
   );
