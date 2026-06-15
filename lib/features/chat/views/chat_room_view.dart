@@ -12,6 +12,7 @@ import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/cores/widgets/loading_indicator.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
+import 'package:kouvention/features/chat/models/bubble_color_scheme.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
@@ -131,13 +132,6 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
   @override
   void initState() {
     super.initState();
-    // Bypass `ref.watch(chatRoomVMProvider(...))` in build (which should
-    // mark the State dirty on every notifyListeners() but empirically
-    // does not in this widget's position in the tree) by attaching a
-    // direct ChangeNotifier listener that forces setState. This is the
-    // only way `vm.loadedOlderMessageModels` updates show up in the
-    // same room session — without it, paginated rows only render after
-    // navigating out to the chat list and back in.
     vm.addListener(_onVmChanged);
     _itemPositionsListener.itemPositions.addListener(_onPositionChanged);
 
@@ -156,9 +150,6 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
   void _onVmChanged() {
     // The VM already called notifyListeners(). We just need a rebuild so
     // the widget reads the latest loadedOlderMessageModels from the VM
-    // that the ConsumerState already watches via ref.watch in build().
-    // If that ref.watch already covers the VM, this becomes a no-op
-    // guard; if not, setState forces the rebuild.
     if (mounted) setState(() {});
   }
 
@@ -347,7 +338,12 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
 
       return Column(
         children: [
-          if (showDate) _buildDateSeparator(context, message.sentAt),
+          if (showDate)
+            _buildDateSeparator(
+              context,
+              message.sentAt,
+              ref.watch(bubbleSchemeProvider),
+            ),
           MessageBubble(
             chat: chat,
             chatId: chat?.id ?? '',
@@ -377,24 +373,29 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
         current.year != previous.year;
   }
 
-  Widget _buildDateSeparator(BuildContext context, DateTime date) {
+  Widget _buildDateSeparator(
+    BuildContext context,
+    DateTime date,
+    BubbleColorScheme bubbleScheme,
+  ) {
     final now = DateTime.now();
     final isToday =
         date.day == now.day && date.month == now.month && date.year == now.year;
-    final scheme = Theme.of(context).colorScheme;
+
+    final separatorBg = bubbleScheme.sentBubble.withValues(alpha: 0.12);
+    final separatorText = bubbleScheme.isDark
+        ? Colors.white.withValues(alpha: 0.7)
+        : bubbleScheme.sentBubble.withValues(alpha: 0.8);
+
     return Container(
       decoration: BoxDecoration(
-        color: scheme.surface.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(AppRadius.xs.r),
+        color: separatorBg,
+        borderRadius: BorderRadius.circular(AppRadius.sm.r),
       ),
       padding: EdgeInsets.all(AppSpacing.xxs.w),
       child: Text(
         isToday ? 'TODAY' : '${date.day}/${date.month}/${date.year}',
-        style: TextStyle(
-          color: Colors.grey[500],
-          fontSize: 12.sp,
-          fontWeight: FontWeight.w500,
-        ),
+        style: context.text.bodySmall.copyWith(color: separatorText),
       ),
     );
   }
@@ -521,57 +522,69 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                 children: [
                   if (vm.replyMessage != null)
                     _buildReplyPreview(vm.replyMessage!),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      IconButton(
-                        icon: Icon(
-                          Icons.emoji_emotions_outlined,
-                          size: AppSizing.iconSm.r,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                        onPressed: () {
-                          vm.toggleStickerPanel(context);
-                          _focusNode.unfocus();
-                        },
-                      ),
-                      Flexible(
-                        child: TextField(
-                          focusNode: _focusNode,
-                          controller: _textController,
-                          minLines: 1,
-                          maxLines: 5,
-                          onChanged: vm.onTextChanged,
-                          decoration: InputDecoration(
-                            hintText: 'Type a message...',
-                            hintStyle: context.text.labelMedium.copyWith(
-                              color: context.text.tertiaryText,
-                            ),
-                            isDense: true,
-                            filled: false,
-                            border: OutlineInputBorder(
-                              borderSide: BorderSide.none,
-                            ),
-                            enabledBorder: InputBorder.none,
-                            focusedBorder: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 4.w,
-                              vertical: 10.h,
-                            ),
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight:
+                          AppSizing.chatInputBarMin.h - (AppSpacing.xxs.h * 2),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        IconButton(
+                          padding: EdgeInsets.all(AppSpacing.xxs.r),
+                          constraints: const BoxConstraints(),
+                          icon: Icon(
+                            Icons.emoji_emotions_outlined,
+                            size: AppSizing.iconSm.r,
+                            color: Theme.of(context).colorScheme.primary,
                           ),
-                          style: context.text.typeMessage,
-                          textCapitalization: TextCapitalization.sentences,
+                          onPressed: () {
+                            vm.toggleStickerPanel(context);
+                            _focusNode.unfocus();
+                          },
                         ),
-                      ),
-                      IconButton(
-                        icon: Icon(
-                          Icons.add,
-                          size: AppSizing.iconSm.r,
-                          color: Theme.of(context).colorScheme.primary,
+                        Flexible(
+                          child: TextField(
+                            focusNode: _focusNode,
+                            controller: _textController,
+                            minLines: 1,
+                            maxLines: 5,
+                            onChanged: vm.onTextChanged,
+                            textAlignVertical: TextAlignVertical.center,
+                            decoration: InputDecoration(
+                              hintText: 'Type a message...',
+                              hintStyle: context.text.labelMedium.copyWith(
+                                color: context.text.tertiaryText,
+                              ),
+                              isDense: true,
+                              filled: false,
+                              border: OutlineInputBorder(
+                                borderSide: BorderSide.none,
+                              ),
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 4.w,
+                                vertical: AppSpacing.xxs.h,
+                              ),
+                            ),
+                            style: context.text.typeMessage,
+                            textCapitalization: TextCapitalization.sentences,
+                          ),
                         ),
-                        onPressed: () => vm.toggleMediaPanel(context),
-                      ),
-                    ],
+                        IconButton(
+                          padding: EdgeInsets.all(AppSpacing.xxs.r),
+                          constraints: const BoxConstraints(),
+                          icon: Icon(
+                            Icons.add,
+                            size: AppSizing.iconSm.r,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          onPressed: () => vm.toggleMediaPanel(context),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -579,49 +592,19 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
           ),
         ),
         Gap(AppSpacing.xs.w),
-        GestureDetector(
-          onTap: () {
-            if (_textController.text.trim().isNotEmpty) {
-              vm.sendMessage(_textController.text);
-              _textController.clear();
-              _scrollToBottom();
-            } else {
-              vm.startRecording();
-            }
+        _SendMicButton(
+          controller: _textController,
+          isSending: vm.isSending,
+          onSend: () {
+            vm.sendMessage(_textController.text);
+            _textController.clear();
+            _scrollToBottom();
           },
-
-          child: _buildSendButton(),
+          onRecord: vm.startRecording,
         ),
       ],
     );
   }
-
-  Widget _buildSendButton() => Container(
-    width: AppSizing.chatInputBarMin.h,
-    height: AppSizing.chatInputBarMin.h,
-    decoration: BoxDecoration(
-      color: vm.isSending
-          ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)
-          : Theme.of(context).colorScheme.primary,
-      shape: BoxShape.circle,
-    ),
-    child: Center(
-      child: vm.isSending
-          ? SizedBox(
-              height: AppSizing.iconMd,
-              width: AppSizing.iconMd,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Theme.of(context).colorScheme.onPrimary,
-              ),
-            )
-          : Icon(
-              vm.isTyping ? Icons.send : Icons.mic,
-              size: AppSizing.iconLg,
-              color: Theme.of(context).colorScheme.onPrimary,
-            ),
-    ),
-  );
 
   Widget _buildMediaPanel() => AnimatedSize(
     duration: const Duration(milliseconds: 250),
@@ -990,6 +973,88 @@ bool _isImageUrl(String url) {
       lower.endsWith('.png') ||
       lower.endsWith('.gif') ||
       lower.endsWith('.webp');
+}
+
+/// Mic/Send button that rebuilds itself without touching the parent state.
+class _SendMicButton extends StatefulWidget {
+  final TextEditingController controller;
+  final VoidCallback onSend;
+  final VoidCallback onRecord;
+  final bool isSending;
+
+  const _SendMicButton({
+    required this.controller,
+    required this.onSend,
+    required this.onRecord,
+    required this.isSending,
+  });
+
+  @override
+  State<_SendMicButton> createState() => _SendMicButtonState();
+}
+
+class _SendMicButtonState extends State<_SendMicButton> {
+  bool _hasText = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _hasText = widget.controller.text.trim().isNotEmpty;
+    widget.controller.addListener(_onTextChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant _SendMicButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_onTextChanged);
+      widget.controller.addListener(_onTextChanged);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onTextChanged);
+    super.dispose();
+  }
+
+  void _onTextChanged() {
+    final nowHasText = widget.controller.text.trim().isNotEmpty;
+    if (nowHasText != _hasText) {
+      setState(() => _hasText = nowHasText);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: () => _hasText ? widget.onSend() : widget.onRecord(),
+    child: Container(
+      width: AppSizing.chatInputBarMin.h,
+      height: AppSizing.chatInputBarMin.h,
+      decoration: BoxDecoration(
+        color: widget.isSending
+            ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)
+            : Theme.of(context).colorScheme.primary,
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: widget.isSending
+            ? SizedBox(
+                height: AppSizing.iconMd,
+                width: AppSizing.iconMd,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Theme.of(context).colorScheme.onPrimary,
+                ),
+              )
+            : Icon(
+                _hasText ? Icons.send : Icons.mic,
+                size: AppSizing.iconMd.r,
+                color: Theme.of(context).colorScheme.onPrimary,
+              ),
+      ),
+    ),
+  );
 }
 
 /// Debug-only bar shown above the message list. Surfaces the 4-field
