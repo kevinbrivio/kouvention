@@ -682,12 +682,23 @@ class ChatRoomVM extends BaseNotifier {
 
     // Generate temp file path
     final tempDir = await Directory.systemTemp.createTemp('kou_audio_');
-    final tempPath = '${tempDir.path}${DateTime.now().millisecondsSinceEpoch}.m4a';
+    final supported = await _audioRecorder.isEncoderSupported(AudioEncoder.opus);
+    final encoder = supported ? AudioEncoder.opus : AudioEncoder.aacLc;
+    final ext = supported ? 'opus' : 'm4a';
+    final tempPath =
+        '${tempDir.path}${DateTime.now().millisecondsSinceEpoch}.$ext';
     _recordingPath = tempPath;
 
     try {
       await _audioRecorder.start(
-        RecordConfig(encoder: AudioEncoder.aacLc),
+        RecordConfig(
+          encoder: encoder,
+          bitRate: 32000,
+          sampleRate: 16000,
+          numChannels: 1,
+          autoGain: true,
+          noiseSuppress: true,
+        ),
         path: tempPath,
       );
 
@@ -697,29 +708,106 @@ class ChatRoomVM extends BaseNotifier {
       _amplitudeSamples.clear();
 
       // Duration timer
-      _recordingTimer = Timer.periodic(
-        const Duration(seconds: 1),
-        (_) {
-          _recordingDuration++;
-          notifyListeners();
-        },
-      );
+      _recordingTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+        _recordingDuration++;
+        notifyListeners();
+      });
 
       // Amplitude subscription
       _amplitudeSub = _audioRecorder
           .onAmplitudeChanged(const Duration(milliseconds: 100))
           .listen((amp) {
-        final normalized = amp.current.abs().clamp(0.0, 1.0);
-        _amplitudeSamples.add(normalized);
-        // Cap at 1 hour (36000 samples @ 10/sec)
-        if (_amplitudeSamples.length > 36000) {
-          _amplitudeSub?.cancel();
-        }
-      });
+            debugPrint('Raw dB: ${amp.current}');
 
-      notifyListeners();
+            const double minDb = -60.0;
+            const double maxDb = 0.0;
+
+            final normalized = ((amp.current - minDb) / (maxDb - minDb)).clamp(
+              0.0,
+              1.0,
+            );
+
+            _amplitudeSamples.add(normalized);
+            // Cap at 1 hour (36000 samples @ 10/sec)
+            if (_amplitudeSamples.length > 36000) {
+              _amplitudeSub?.cancel();
+            }
+            notifyListeners();
+          });
     } catch (e) {
       debugPrint('Error starting recording: $e');
+      _resetRecording();
+    }
+  }
+
+  /// Start recording audio in locked mode (tap path).
+  /// Transitions: idle → locked.
+  Future<void> startLockedRecording() async {
+    if (_recordingState != RecordingState.idle) return;
+
+    final status = await Permission.microphone.request();
+    if (status != PermissionStatus.granted) return;
+
+    final tempDir = await Directory.systemTemp.createTemp('kou_audio_');
+    final supported = await _audioRecorder.isEncoderSupported(AudioEncoder.opus);
+    final encoder = supported ? AudioEncoder.opus : AudioEncoder.aacLc;
+    final ext = supported ? 'opus' : 'm4a';
+    final tempPath =
+        '${tempDir.path}${DateTime.now().millisecondsSinceEpoch}.$ext';
+    _recordingPath = tempPath;
+
+    try {
+      await _audioRecorder.start(
+        RecordConfig(
+          encoder: encoder,
+          bitRate: 32000,
+          sampleRate: 16000,
+          numChannels: 1,
+          autoGain: true,
+          noiseSuppress: true,
+        ),
+        path: tempPath,
+      );
+
+      _recordingState = RecordingState.locked;
+      _isRecordingLocked = true;
+      _recordingDuration = 0;
+      _amplitudeSamples.clear();
+
+      _recordingTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+        _recordingDuration++;
+        notifyListeners();
+      });
+
+      _amplitudeSub = _audioRecorder
+          .onAmplitudeChanged(const Duration(milliseconds: 100))
+          .listen((amp) {
+            final db = amp.current;
+
+            // ✅ Filter nilai invalid
+            if (db < -100.0) return;
+
+            const double minDb = -40.0;
+            const double maxDb = 0.0;
+
+            // ✅ Normalisasi dulu
+            final raw = ((db - minDb) / (maxDb - minDb)).clamp(0.0, 1.0);
+
+            // ✅ Rescale supaya bedanya lebih kelihatan
+            // Data lo berkisar 0.4 - 0.85, kita "rentangkan" ke 0.0 - 1.0
+            const double floorLevel = 0.35; // batas bawah data lo
+            final normalized = ((raw - floorLevel) / (1.0 - floorLevel)).clamp(
+              0.0,
+              1.0,
+            );
+
+            debugPrint('Normalized after rescale: $normalized');
+
+            _amplitudeSamples.add(normalized);
+            notifyListeners();
+          });
+    } catch (e) {
+      debugPrint('Error starting locked recording: $e');
       _resetRecording();
     }
   }
@@ -738,7 +826,8 @@ class ChatRoomVM extends BaseNotifier {
   Future<void> cancelRecording() async {
     if (_recordingState == RecordingState.idle) return;
     if (_recordingState == RecordingState.reviewing ||
-        _recordingState == RecordingState.sending) return;
+        _recordingState == RecordingState.sending)
+      return;
 
     await _audioRecorder.cancel();
     _deleteTempFile();
@@ -768,11 +857,44 @@ class ChatRoomVM extends BaseNotifier {
     }
   }
 
+  /// Pause recording and enter review state (tap path).
+  /// Transitions: locked → reviewing.
+  Future<void> pauseRecording() async {
+    if (_recordingState != RecordingState.locked) return;
+
+    try {
+      await _audioRecorder.stop();
+
+      _recordingTimer?.cancel();
+      _recordingTimer = null;
+      _amplitudeSub?.cancel();
+      _amplitudeSub = null;
+
+      _recordingState = RecordingState.reviewing;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error pausing recording: $e');
+      _resetRecording();
+    }
+  }
+
   /// Send the recorded audio.
-  /// Transitions: reviewing → sending → idle.
+  /// Transitions: locked/reviewing → sending → idle.
   Future<void> sendRecordedAudio() async {
-    if (_recordingState != RecordingState.reviewing) return;
+    if (_recordingState != RecordingState.reviewing &&
+        _recordingState != RecordingState.locked)
+      return;
     if (_recordingPath == null || _currentUid == null) return;
+
+    // If still recording (locked), stop the recorder first
+    if (_recordingState == RecordingState.locked) {
+      final path = await _audioRecorder.stop();
+      if (path != null) _recordingPath = path;
+      _recordingTimer?.cancel();
+      _recordingTimer = null;
+      _amplitudeSub?.cancel();
+      _amplitudeSub = null;
+    }
 
     _recordingState = RecordingState.sending;
     _isSending = true;
@@ -847,9 +969,11 @@ class ChatRoomVM extends BaseNotifier {
     }
   }
 
-  /// Discard recorded audio from review. Deletes temp file.
+  /// Discard recorded audio. Deletes temp file.
   void discardRecording() {
-    if (_recordingState != RecordingState.reviewing) return;
+    if (_recordingState != RecordingState.reviewing &&
+        _recordingState != RecordingState.locked)
+      return;
     _deleteTempFile();
     _resetRecording();
     notifyListeners();
@@ -858,6 +982,9 @@ class ChatRoomVM extends BaseNotifier {
   // ── Helpers ──
 
   void _resetRecording() {
+    try {
+      _audioRecorder.stop();
+    } catch (_) {}
     _recordingState = RecordingState.idle;
     _isRecordingLocked = false;
     _recordingPath = null;

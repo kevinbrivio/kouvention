@@ -21,6 +21,7 @@ class AudioPreview extends StatelessWidget {
     final cachedName = file.path;
     final fileName   = cachedName.split('/').last;
     final fileSizes  = formatFileSize(file.lengthSync());
+    final ext = file.path.split('.').last.toUpperCase();
   
     return SafeArea(
       child: SingleChildScrollView(
@@ -45,7 +46,7 @@ class AudioPreview extends StatelessWidget {
                   textAlign: TextAlign.center,
                 ),
                 Gap(AppSpacing.sm.h),
-                Text('$fileSizes · MP3', style: context.text.titleMedium.copyWith(color: context.text.secondaryText)),
+                Text('$fileSizes · $ext', style: context.text.titleMedium.copyWith(color: context.text.secondaryText)),
               ],
             ),
           ),

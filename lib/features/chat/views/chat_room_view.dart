@@ -31,7 +31,7 @@ import 'package:kouvention/features/chat/widgets/selection_app_bar.dart';
 import 'package:kouvention/features/chat/widgets/chatRoom/typing_dots.dart';
 import 'package:kouvention/features/chat/widgets/chatRoom/record_button.dart';
 import 'package:kouvention/features/chat/widgets/chatRoom/recording_overlay.dart';
-import 'package:kouvention/features/chat/widgets/chatRoom/review_bar.dart';
+import 'package:kouvention/features/chat/widgets/chatRoom/recording_bar.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:kouvention/features/chat/widgets/chatRoom/chat_room_appbar.dart';
 import 'package:kouvention/features/chat/widgets/chatRoom/chat_room_appbar_skeleton.dart';
@@ -204,14 +204,14 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
 
     return Column(
       children: [
-        if (kDebugMode)
-          _DebugSyncStateBar(
-            chatId: widget.chatId,
-            isLoadingOlder: vm.isLoadingOlder,
-            hasMore: vm.hasMoreMessges,
-            loadedOlderCount: vm.loadedOlderMessages.length,
-            oldestLoadedSentAt: vm.oldestLoadedSentAt,
-          ),
+        // if (kDebugMode)
+        //   _DebugSyncStateBar(
+        //     chatId: widget.chatId,
+        //     isLoadingOlder: vm.isLoadingOlder,
+        //     hasMore: vm.hasMoreMessges,
+        //     loadedOlderCount: vm.loadedOlderMessages.length,
+        //     oldestLoadedSentAt: vm.oldestLoadedSentAt,
+        //   ),
         Expanded(
           child: messagesAsync.when(
             loading: () => const ChatRoomSkeleton(),
@@ -473,12 +473,12 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: EdgeInsets.only(
-        left: 6.w,
-        right: 6.w,
+        left: AppSpacing.xs.w,
+        right: AppSpacing.xs.w,
         top: AppSpacing.xs.h,
         bottom:
-            MediaQuery.of(context).viewInsets.bottom +
-            MediaQuery.of(context).padding.bottom,
+            kBottomNavigationBarHeight
+            // MediaQuery.of(context).padding.bottom,
       ),
       decoration: BoxDecoration(
         color: Colors.transparent,
@@ -501,6 +501,36 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
   ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    // ── Locked state: show recording bar ──
+    if (vm.recordingState == RecordingState.locked) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Expanded(
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: 4.w,
+                vertical: 4.h,
+              ),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? AppSurfaceDark.surfaceInputBar
+                    : Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(AppRadius.xl.r),
+              ),
+              child: RecordingBar(
+                isReviewing: false,
+                recordingDuration: vm.recordingDuration,
+                onCancel: () => vm.cancelRecording(),
+                onPause: () => vm.pauseRecording(),
+                onSend: () => vm.sendRecordedAudio(),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
     // ── Review state: show review bar ──
     if (vm.recordingState == RecordingState.reviewing) {
       return Row(
@@ -509,8 +539,8 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
           Expanded(
             child: Container(
               padding: EdgeInsets.symmetric(
-                horizontal: AppSpacing.xs.w,
-                vertical: AppSpacing.xxs.h,
+                horizontal: 4.w,
+                vertical: 4.h,
               ),
               decoration: BoxDecoration(
                 color: isDark
@@ -518,27 +548,22 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                     : Theme.of(context).colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(AppRadius.xl.r),
               ),
-              child: ReviewBar(
+              child: RecordingBar(
+                isReviewing: true,
                 filePath: vm.recordingPath ?? '',
-                durationSeconds: vm.recordingDuration,
+                recordingDuration: vm.recordingDuration,
                 amplitudeSamples: vm.recordingAmplitudeSamples,
-                onDelete: () => vm.discardRecording(),
+                onCancel: () => vm.discardRecording(),
                 onSend: () => vm.sendRecordedAudio(),
               ),
             ),
-          ),
-          Gap(AppSpacing.xs.w),
-          SizedBox(
-            width: AppSizing.chatInputBarMin.h,
-            height: AppSizing.chatInputBarMin.h,
           ),
         ],
       );
     }
 
-    // ── Normal or recording state ──
+    // ── Normal or recording state (long-press, finger down) ──
     final isRecording = vm.recordingState == RecordingState.recording;
-    final isLocked = vm.recordingState == RecordingState.locked;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -547,7 +572,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
           child: Container(
             padding: EdgeInsets.symmetric(
               horizontal: AppSpacing.xs.w,
-              vertical: AppSpacing.xxs.h,
+              vertical: AppSpacing.xs.h,
             ),
             decoration: BoxDecoration(
               color: isDark
@@ -630,12 +655,12 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                       ],
                     ),
                   ),
-                  // Recording hint overlay
-                  if (isRecording || isLocked)
+                  // Recording hint overlay (only during active finger-down recording)
+                  if (isRecording)
                     Padding(
                       padding: EdgeInsets.only(bottom: 4.h),
                       child: RecordingOverlay(
-                        isLocked: isLocked,
+                        isLocked: false,
                       ),
                     ),
                 ],
@@ -655,6 +680,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
             _scrollToBottom();
           },
           onStartRecord: () => vm.startRecording(),
+          onStartLockedRecord: () => vm.startLockedRecording(),
           onLockRecord: () => vm.lockRecording(),
           onStopRecord: () => vm.stopRecording(),
           onCancelRecord: () => vm.cancelRecording(),

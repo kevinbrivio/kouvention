@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 
 class AudioManager {
@@ -9,13 +10,17 @@ class AudioManager {
   String? currentUrl;
 
   Future<void> play(String url) async {
-    if (currentUrl == url) {
+    try {
+      if (currentUrl == url) {
+        await _player.play();
+        return;
+      }
+      currentUrl = url;
+      await _player.setUrl(url);
       await _player.play();
-      return;
+    } catch (e) {
+      debugPrint('AudioManager.play error: $e');
     }
-    currentUrl = url;
-    await _player.setUrl(url);
-    await _player.play();
   }
 
   Future<void> pause() async => await _player.pause();

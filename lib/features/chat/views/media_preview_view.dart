@@ -156,7 +156,7 @@ class _MediaPreviewViewState extends ConsumerState<MediaPreviewView> {
   Widget _buildPreviewItem(File file) {
     final ext = file.path.split('.').last.toLowerCase();
     final isVideo = ['mp4', 'mov', 'avi', 'mkv'].contains(ext);
-    final isAudio = ['mp3', 'm4a'].contains(ext);
+    final isAudio = ['mp3', 'm4a', 'opus', 'wav', 'aac', 'ogg', 'flac'].contains(ext);
     final isDocument = ['pdf', 'xlxs', 'docx', 'doc'].contains(ext);
 
     if (isAudio) return AudioPreview(file: file);

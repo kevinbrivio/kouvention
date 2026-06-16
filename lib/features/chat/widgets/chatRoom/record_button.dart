@@ -18,7 +18,8 @@ class RecordButton extends StatefulWidget {
   final RecordingState recordingState;
   final bool isRecordingLocked;
   final VoidCallback onSend;
-  final VoidCallback onStartRecord;
+  final VoidCallback onStartRecord;   // long-press path → 'recording' state
+  final VoidCallback onStartLockedRecord; // tap path → 'locked' state
   final VoidCallback onLockRecord;   // slide-up during recording
   final VoidCallback onStopRecord;   // stop button when locked
   final VoidCallback onCancelRecord;
@@ -31,6 +32,7 @@ class RecordButton extends StatefulWidget {
     required this.isRecordingLocked,
     required this.onSend,
     required this.onStartRecord,
+    required this.onStartLockedRecord,
     required this.onLockRecord,
     required this.onStopRecord,
     required this.onCancelRecord,
@@ -41,7 +43,7 @@ class RecordButton extends StatefulWidget {
 }
 
 class _RecordButtonState extends State<RecordButton>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   Offset? _fingerOffset;
   Offset? _longPressDownPosition;
   AnimationController? _pulseController;
@@ -108,7 +110,7 @@ class _RecordButtonState extends State<RecordButton>
     if (widget.hasText) {
       widget.onSend();
     } else {
-      widget.onStartRecord();
+      widget.onStartLockedRecord();
     }
   }
 
