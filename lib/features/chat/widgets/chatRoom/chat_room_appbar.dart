@@ -150,15 +150,17 @@ class ChatRoomAppBar extends ConsumerWidget implements PreferredSizeWidget {
                         chatDisplayName,
                         overflow: TextOverflow.ellipsis,
                         softWrap: true,
-                        style: context.text.senderName,
+                        style: context.text.senderName.copyWith(
+                          color: context.text.primaryText,
+                        ),
                       ),
                       if (onlineStatusText != null)
                         Text(
                           onlineStatusText,
                           style: context.text.labelSmall.copyWith(
                             color: onlineStatusText == 'Online'
-                              ? scheme.primary
-                              : scheme.onSurface.withValues(alpha: 0.6),
+                                ? scheme.primary
+                                : scheme.onSurface.withValues(alpha: 0.6),
                           ),
                         ),
                     ],

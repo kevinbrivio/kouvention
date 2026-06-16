@@ -147,7 +147,7 @@ class _ImageMedia extends StatelessWidget {
               child: Text(
                 caption,
                 style: context.text.bodySmall.copyWith(
-                  color: isMe ? Colors.white : Colors.black,
+                  color: context.text.secondaryText,
                 ),
               ),
             ),

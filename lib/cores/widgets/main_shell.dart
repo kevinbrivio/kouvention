@@ -139,7 +139,7 @@ class _CustomNavItemState extends State<_CustomNavItem> {
                 .animate(target: widget.isSelected ? 1 : 0)
                 .scale(
                   begin: const Offset(0.9, 0.9),
-                  end: const Offset(1.1, 1.1),
+                  end: const Offset(1, 1),
                   duration: 300.ms,
                   curve: Curves.easeOutBack,
                 )
@@ -149,7 +149,7 @@ class _CustomNavItemState extends State<_CustomNavItem> {
                   duration: 400.ms,
                   end: 0.1,
                 )
-                .scaleXY(end: 1.05, alignment: const Alignment(0, 0.2)),
+                .scaleXY(end: 1, alignment: const Alignment(0, 0.1)),
       ),
     ),
   );

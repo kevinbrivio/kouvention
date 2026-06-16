@@ -29,6 +29,9 @@ import 'package:kouvention/features/chat/widgets/chatRoom/message_bubble.dart';
 import 'package:kouvention/features/chat/widgets/sticker_picker.dart';
 import 'package:kouvention/features/chat/widgets/selection_app_bar.dart';
 import 'package:kouvention/features/chat/widgets/chatRoom/typing_dots.dart';
+import 'package:kouvention/features/chat/widgets/chatRoom/record_button.dart';
+import 'package:kouvention/features/chat/widgets/chatRoom/recording_overlay.dart';
+import 'package:kouvention/features/chat/widgets/chatRoom/review_bar.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:kouvention/features/chat/widgets/chatRoom/chat_room_appbar.dart';
 import 'package:kouvention/features/chat/widgets/chatRoom/chat_room_appbar_skeleton.dart';
@@ -385,7 +388,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     final separatorBg = bubbleScheme.sentBubble.withValues(alpha: 0.12);
     final separatorText = bubbleScheme.isDark
         ? Colors.white.withValues(alpha: 0.7)
-        : bubbleScheme.sentBubble.withValues(alpha: 0.8);
+        : bubbleScheme.sentBubble.withValues(alpha: 1);
 
     return Container(
       decoration: BoxDecoration(
@@ -395,7 +398,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
       padding: EdgeInsets.all(AppSpacing.xxs.w),
       child: Text(
         isToday ? 'TODAY' : '${date.day}/${date.month}/${date.year}',
-        style: context.text.bodySmall.copyWith(color: separatorText),
+        style: context.text.bodySmall.copyWith(color: context.text.secondaryText),
       ),
     );
   }
@@ -497,6 +500,46 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     String? currentUid,
   ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // ── Review state: show review bar ──
+    if (vm.recordingState == RecordingState.reviewing) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Expanded(
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: AppSpacing.xs.w,
+                vertical: AppSpacing.xxs.h,
+              ),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? AppSurfaceDark.surfaceInputBar
+                    : Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(AppRadius.xl.r),
+              ),
+              child: ReviewBar(
+                filePath: vm.recordingPath ?? '',
+                durationSeconds: vm.recordingDuration,
+                amplitudeSamples: vm.recordingAmplitudeSamples,
+                onDelete: () => vm.discardRecording(),
+                onSend: () => vm.sendRecordedAudio(),
+              ),
+            ),
+          ),
+          Gap(AppSpacing.xs.w),
+          SizedBox(
+            width: AppSizing.chatInputBarMin.h,
+            height: AppSizing.chatInputBarMin.h,
+          ),
+        ],
+      );
+    }
+
+    // ── Normal or recording state ──
+    final isRecording = vm.recordingState == RecordingState.recording;
+    final isLocked = vm.recordingState == RecordingState.locked;
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
@@ -519,6 +562,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
               curve: Curves.easeOut,
               alignment: Alignment.bottomCenter,
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   if (vm.replyMessage != null)
                     _buildReplyPreview(vm.replyMessage!),
@@ -586,21 +630,34 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                       ],
                     ),
                   ),
+                  // Recording hint overlay
+                  if (isRecording || isLocked)
+                    Padding(
+                      padding: EdgeInsets.only(bottom: 4.h),
+                      child: RecordingOverlay(
+                        isLocked: isLocked,
+                      ),
+                    ),
                 ],
               ),
             ),
           ),
         ),
         Gap(AppSpacing.xs.w),
-        _SendMicButton(
-          controller: _textController,
+        RecordButton(
+          hasText: _textController.text.trim().isNotEmpty,
           isSending: vm.isSending,
+          recordingState: vm.recordingState,
+          isRecordingLocked: vm.isRecordingLocked,
           onSend: () {
             vm.sendMessage(_textController.text);
             _textController.clear();
             _scrollToBottom();
           },
-          onRecord: vm.startRecording,
+          onStartRecord: () => vm.startRecording(),
+          onLockRecord: () => vm.lockRecording(),
+          onStopRecord: () => vm.stopRecording(),
+          onCancelRecord: () => vm.cancelRecording(),
         ),
       ],
     );
@@ -975,87 +1032,7 @@ bool _isImageUrl(String url) {
       lower.endsWith('.webp');
 }
 
-/// Mic/Send button that rebuilds itself without touching the parent state.
-class _SendMicButton extends StatefulWidget {
-  final TextEditingController controller;
-  final VoidCallback onSend;
-  final VoidCallback onRecord;
-  final bool isSending;
 
-  const _SendMicButton({
-    required this.controller,
-    required this.onSend,
-    required this.onRecord,
-    required this.isSending,
-  });
-
-  @override
-  State<_SendMicButton> createState() => _SendMicButtonState();
-}
-
-class _SendMicButtonState extends State<_SendMicButton> {
-  bool _hasText = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _hasText = widget.controller.text.trim().isNotEmpty;
-    widget.controller.addListener(_onTextChanged);
-  }
-
-  @override
-  void didUpdateWidget(covariant _SendMicButton oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.controller != widget.controller) {
-      oldWidget.controller.removeListener(_onTextChanged);
-      widget.controller.addListener(_onTextChanged);
-    }
-  }
-
-  @override
-  void dispose() {
-    widget.controller.removeListener(_onTextChanged);
-    super.dispose();
-  }
-
-  void _onTextChanged() {
-    final nowHasText = widget.controller.text.trim().isNotEmpty;
-    if (nowHasText != _hasText) {
-      setState(() => _hasText = nowHasText);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: () => _hasText ? widget.onSend() : widget.onRecord(),
-    child: Container(
-      width: AppSizing.chatInputBarMin.h,
-      height: AppSizing.chatInputBarMin.h,
-      decoration: BoxDecoration(
-        color: widget.isSending
-            ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)
-            : Theme.of(context).colorScheme.primary,
-        shape: BoxShape.circle,
-      ),
-      child: Center(
-        child: widget.isSending
-            ? SizedBox(
-                height: AppSizing.iconMd,
-                width: AppSizing.iconMd,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Theme.of(context).colorScheme.onPrimary,
-                ),
-              )
-            : Icon(
-                _hasText ? Icons.send : Icons.mic,
-                size: AppSizing.iconMd.r,
-                color: Theme.of(context).colorScheme.onPrimary,
-              ),
-      ),
-    ),
-  );
-}
 
 /// Debug-only bar shown above the message list. Surfaces the 4-field
 /// sync state (AGENTS.md §8) so older-message pagination can be

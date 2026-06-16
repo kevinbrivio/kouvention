@@ -181,7 +181,7 @@ class MessageBubble extends ConsumerWidget {
                   clipBehavior: Clip.none,
                   children: [
                     Container(
-                      constraints: BoxConstraints(maxWidth: 128.w),
+                      constraints: BoxConstraints(maxWidth: 192.w),
                       padding: EdgeInsets.symmetric(
                         horizontal: AppSpacing.xs.w,
                         vertical: AppSpacing.xs.w,
@@ -367,9 +367,8 @@ class MessageBubble extends ConsumerWidget {
               replyTo.text,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 12.sp,
-                color: isMe ? Colors.white70 : Colors.grey[600],
+              style: context.text.labelSmall.copyWith(
+                color: context.text.secondaryText,
               ),
             )
           else ...[

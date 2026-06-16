@@ -97,7 +97,7 @@ class _SettingsTileState extends State<SettingsTile> {
               )
               .animate(target: _isInteracting ? 1 : 0)
               .shimmer(angle: 1.27, size: 1.2)
-              .flipH(curve: Curves.easeInOutCubic, duration: 600.ms, end: 0.1)
+              .flipV(curve: Curves.easeInOutCubic, duration: 600.ms, end: -0.1)
               .scaleXY(end: 1.05, alignment: const Alignment(0, 0.1)),
     ),
   );
