@@ -122,6 +122,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
   final ItemPositionsListener _itemPositionsListener =
       ItemPositionsListener.create();
   final _focusNode = FocusNode();
+  final ValueNotifier<Offset> _fingerOffset = ValueNotifier(Offset.zero);
 
   bool _showScrollBottom = false;
   int? _initialScrollIndex;
@@ -188,6 +189,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     vm.removeListener(_onVmChanged);
     _textController.dispose();
     _itemPositionsListener.itemPositions.removeListener(_onPositionChanged);
+    _fingerOffset.dispose();
     super.dispose();
   }
 
@@ -398,7 +400,9 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
       padding: EdgeInsets.all(AppSpacing.xxs.w),
       child: Text(
         isToday ? 'TODAY' : '${date.day}/${date.month}/${date.year}',
-        style: context.text.bodySmall.copyWith(color: context.text.secondaryText),
+        style: context.text.bodySmall.copyWith(
+          color: context.text.secondaryText,
+        ),
       ),
     );
   }
@@ -476,9 +480,8 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
         left: AppSpacing.xs.w,
         right: AppSpacing.xs.w,
         top: AppSpacing.xs.h,
-        bottom:
-            kBottomNavigationBarHeight
-            // MediaQuery.of(context).padding.bottom,
+        bottom: kBottomNavigationBarHeight,
+        // MediaQuery.of(context).padding.bottom,
       ),
       decoration: BoxDecoration(
         color: Colors.transparent,
@@ -508,10 +511,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
         children: [
           Expanded(
             child: Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: 4.w,
-                vertical: 4.h,
-              ),
+              padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 4.h),
               decoration: BoxDecoration(
                 color: isDark
                     ? AppSurfaceDark.surfaceInputBar
@@ -538,10 +538,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
         children: [
           Expanded(
             child: Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: 4.w,
-                vertical: 4.h,
-              ),
+              padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 4.h),
               decoration: BoxDecoration(
                 color: isDark
                     ? AppSurfaceDark.surfaceInputBar
@@ -586,7 +583,15 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
               duration: const Duration(milliseconds: 200),
               curve: Curves.easeOut,
               alignment: Alignment.bottomCenter,
-              child: Column(
+              child: isRecording 
+              ? ValueListenableBuilder<Offset>(
+                  valueListenable: _fingerOffset,
+                  builder: (_, offset, __) => RecordingOverlay(
+                    isLocked: false,
+                    fingerOffset: offset,
+                ),
+              )
+              : Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (vm.replyMessage != null)
@@ -594,7 +599,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                   ConstrainedBox(
                     constraints: BoxConstraints(
                       minHeight:
-                          AppSizing.chatInputBarMin.h - (AppSpacing.xxs.h * 2),
+                          AppSizing.chatInputBarMin.h - (AppSpacing.xs.h * 2),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -655,12 +660,15 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                       ],
                     ),
                   ),
-                  // Recording hint overlay (only during active finger-down recording)
                   if (isRecording)
                     Padding(
                       padding: EdgeInsets.only(bottom: 4.h),
-                      child: RecordingOverlay(
-                        isLocked: false,
+                      child: ValueListenableBuilder<Offset>(
+                        valueListenable: _fingerOffset,
+                        builder: (_, offset, __) => RecordingOverlay(
+                          isLocked: true,
+                          fingerOffset: offset,
+                        ),
                       ),
                     ),
                 ],
@@ -673,17 +681,18 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
           hasText: _textController.text.trim().isNotEmpty,
           isSending: vm.isSending,
           recordingState: vm.recordingState,
-          isRecordingLocked: vm.isRecordingLocked,
           onSend: () {
             vm.sendMessage(_textController.text);
             _textController.clear();
             _scrollToBottom();
           },
-          onStartRecord: () => vm.startRecording(),
-          onStartLockedRecord: () => vm.startLockedRecording(),
+          onStartRecord: () => vm.startRecording(context, startsLocked: false),
+          onStartLockedRecord: () =>
+              vm.startRecording(context, startsLocked: true),
           onLockRecord: () => vm.lockRecording(),
           onStopRecord: () => vm.stopRecording(),
           onCancelRecord: () => vm.cancelRecording(),
+          onFingerOffsetChanged: (offset) => _fingerOffset.value = offset,
         ),
       ],
     );
@@ -1057,8 +1066,6 @@ bool _isImageUrl(String url) {
       lower.endsWith('.gif') ||
       lower.endsWith('.webp');
 }
-
-
 
 /// Debug-only bar shown above the message list. Surfaces the 4-field
 /// sync state (AGENTS.md §8) so older-message pagination can be

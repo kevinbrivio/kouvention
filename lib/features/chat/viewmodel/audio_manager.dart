@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 
 class AudioManager {
-  // Hanya ada 1 AudioManager di seluruh app
   static final AudioManager instance = AudioManager._();
   AudioManager._();
 
@@ -29,10 +28,10 @@ class AudioManager {
     await _player.stop();
   }
 
-  // Stream posisi (untuk slider)
+  // Stream current position for slider
   Stream<Duration> get positionStream => _player.positionStream;
-  // Stream durasi
+  // Stream duration used for displaying in UI
   Stream<Duration?> get durationStream => _player.durationStream;
-  // Stream status play/pause
+  // Stream status of current recording state
   Stream<PlayerState> get playerStateStream => _player.playerStateStream;
 }

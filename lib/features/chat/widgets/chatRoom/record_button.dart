@@ -1,41 +1,33 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
 
-/// Hold-to-record button with gesture detection for slide-to-cancel
-/// and slide-up-to-lock.
-///
-/// Uses a single [GestureDetector] for all recording states so the
-/// gesture arena stays stable across rebuilds — the finger doesn't
-/// need to lift between idle→recording transitions.
-///
-/// Finger-position computation is widget-side (the VM only learns
-/// which threshold was crossed on release — see recap §3.2).
 class RecordButton extends StatefulWidget {
   final bool hasText;
   final bool isSending;
   final RecordingState recordingState;
-  final bool isRecordingLocked;
   final VoidCallback onSend;
-  final VoidCallback onStartRecord;   // long-press path → 'recording' state
+  final VoidCallback onStartRecord; // long-press path → 'recording' state
   final VoidCallback onStartLockedRecord; // tap path → 'locked' state
-  final VoidCallback onLockRecord;   // slide-up during recording
-  final VoidCallback onStopRecord;   // stop button when locked
+  final VoidCallback onLockRecord; // slide-up during recording
+  final VoidCallback onStopRecord; // stop button when locked
   final VoidCallback onCancelRecord;
+  final ValueChanged<Offset>? onFingerOffsetChanged;
 
   const RecordButton({
     super.key,
     required this.hasText,
     required this.isSending,
     required this.recordingState,
-    required this.isRecordingLocked,
     required this.onSend,
     required this.onStartRecord,
     required this.onStartLockedRecord,
     required this.onLockRecord,
     required this.onStopRecord,
     required this.onCancelRecord,
+    this.onFingerOffsetChanged,
   });
 
   @override
@@ -48,7 +40,8 @@ class _RecordButtonState extends State<RecordButton>
   Offset? _longPressDownPosition;
   AnimationController? _pulseController;
 
-  static const double _lockThreshold = -35.0;
+  static const double _lockThresholdPx = -35.0;
+  static const double _cancelThresholdPx = -20.0;
 
   @override
   void initState() {
@@ -90,16 +83,14 @@ class _RecordButtonState extends State<RecordButton>
     _pulseController = null;
   }
 
-  bool get _isInCancelZone {
-    if (_fingerOffset == null) return false;
-    final renderBox = context.findRenderObject() as RenderBox?;
-    final cancelThreshold = (renderBox?.size.width ?? 100) * 0.2;
-    return _fingerOffset!.dx < -cancelThreshold;
-  }
-
   bool get _isInLockZone {
     if (_fingerOffset == null) return false;
-    return _fingerOffset!.dy < _lockThreshold;
+    return _fingerOffset!.dy < _lockThresholdPx;
+  }
+
+  bool get _isInCancelZone {
+    if (_fingerOffset == null) return false;
+    return _fingerOffset!.dx < _cancelThresholdPx;
   }
 
   // ── Unified gesture handler ──
@@ -119,6 +110,7 @@ class _RecordButtonState extends State<RecordButton>
     if (widget.hasText) return;
     _longPressDownPosition = details.localPosition;
     setState(() => _fingerOffset = Offset.zero);
+    widget.onFingerOffsetChanged?.call(Offset.zero);
     widget.onStartRecord();
   }
 
@@ -128,6 +120,7 @@ class _RecordButtonState extends State<RecordButton>
     if (_longPressDownPosition != null) {
       final delta = details.localPosition - _longPressDownPosition!;
       setState(() => _fingerOffset = delta);
+      widget.onFingerOffsetChanged?.call(delta);
     }
   }
 
@@ -138,7 +131,7 @@ class _RecordButtonState extends State<RecordButton>
     if (_longPressDownPosition != null) {
       delta = details.localPosition - _longPressDownPosition!;
     }
-    if (delta.dy < _lockThreshold) {
+    if (delta.dy < _lockThresholdPx) {
       widget.onLockRecord();
     } else {
       widget.onCancelRecord();
@@ -147,6 +140,7 @@ class _RecordButtonState extends State<RecordButton>
       _fingerOffset = null;
       _longPressDownPosition = null;
     });
+    widget.onFingerOffsetChanged?.call(delta);
   }
 
   void _onLongPressCancel() {
@@ -157,8 +151,6 @@ class _RecordButtonState extends State<RecordButton>
       _longPressDownPosition = null;
     });
   }
-
-  // ── Build ──
 
   @override
   Widget build(BuildContext context) {
@@ -207,9 +199,6 @@ class _RecordButtonState extends State<RecordButton>
       );
     }
 
-    // ── Idle / Recording ──
-    // Single GestureDetector handles both states so the arena stays alive
-    // across the idle→recording transition.
     return GestureDetector(
       onTap: _onTap,
       onLongPressStart: widget.hasText ? null : _onLongPressStart,
@@ -223,58 +212,116 @@ class _RecordButtonState extends State<RecordButton>
 
   Widget _buildContent(ThemeData theme, double size) {
     final isRecording = widget.recordingState == RecordingState.recording;
+    final double safeLimit = (size / 2) - (AppSizing.iconMd.r / 2);
 
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        // Pulse ring during recording
-        if (isRecording && _pulseController != null)
-          FadeTransition(
-            opacity: Tween<double>(begin: 0.3, end: 0.8)
-                .animate(_pulseController!),
-            child: Container(
-              width: size + 10,
-              height: size + 10,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: _isInCancelZone
-                      ? Colors.orange.shade400
-                      : _isInLockZone
-                          ? Colors.green.shade400
-                          : Colors.red,
-                  width: 3,
+    // Hitung dulu offset mentah
+    double rawX = isRecording ? _fingerOffset!.dx * 0.8 : 0.0;
+    double rawY = isRecording ? _fingerOffset!.dy * 0.8 : 0.0;
+
+    // Batasi hanya ke atas dan kiri
+    rawX = rawX.clamp(-safeLimit, 0.0);
+    rawY = rawY.clamp(-safeLimit, 0.0);
+
+    // Hitung jarak diagonal
+    final double distance = (Offset(rawX, rawY)).distance;
+
+    // Kalau diagonal melebihi safeLimit, scale down keduanya
+    double iconOffsetX = rawX;
+    double iconOffsetY = rawY;
+
+    if (distance > safeLimit) {
+      final double scale = safeLimit / distance;
+      iconOffsetX = rawX * scale;
+      iconOffsetY = rawY * scale;
+    }
+
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          if (isRecording)
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 100),
+              top: -96.h,
+              child:
+                  Container(
+                        padding: EdgeInsets.all(AppSpacing.xs.r),
+                        decoration: BoxDecoration(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(AppRadius.full.r),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.1),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          Icons.lock_outline,
+                          size: AppSizing.iconMd.r,
+                          color: _isInLockZone
+                              ? AppColorTokens.primary
+                              : AppColorTokens.info,
+                        ),
+                      )
+                      .animate(target: _isInLockZone ? 1 : 0)
+                      .shake(duration: 500.ms, curve: Curves.easeOutQuad)
+                      .shakeY(duration: 500.ms, curve: Curves.easeInBack),
+            ),
+
+          Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              color: _isInLockZone || _isInCancelZone
+                  ? Colors.transparent
+                  : isRecording
+                  ? AppColorTokens.error
+                  : theme.colorScheme.primary,
+              shape: BoxShape.circle,
+            ),
+            child: ClipOval(
+              child: Center(
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 100),
+                  transform: Matrix4.translationValues(
+                    iconOffsetX,
+                    iconOffsetY,
+                    0,
+                  ),
+                  child:
+                      Icon(
+                            isRecording
+                                ? Icons.mic
+                                : widget.hasText
+                                ? Icons.send
+                                : Icons.mic,
+                            size: AppSizing.iconMd.r,
+                            color: _isInLockZone || _isInCancelZone
+                                ? AppColorTokens.primary
+                                : theme.colorScheme.onPrimary,
+                          )
+                          .animate(target: iconOffsetX < -10.w ? 1 : 0)
+                          .rotate(
+                            begin: 0,
+                            end: -0.25,
+                            duration: 200.ms,
+                            curve: Curves.easeOut,
+                          )
+                          .animate(target: iconOffsetX < -80.w ? 1 : 0)
+                          .rotate(begin: 0, end: 0.25, curve: Curves.easeIn),
                 ),
               ),
             ),
           ),
-        // Main circle
-        Container(
-          width: isRecording ? size + 4 : size,
-          height: isRecording ? size + 4 : size,
-          decoration: BoxDecoration(
-            color: isRecording
-                ? (_isInCancelZone
-                    ? Colors.orange.shade400
-                    : Colors.red.shade400)
-                : widget.hasText
-                    ? theme.colorScheme.primary
-                    : theme.colorScheme.primary,
-            shape: BoxShape.circle,
-          ),
-          child: Center(
-            child: Icon(
-              isRecording
-                  ? Icons.mic
-                  : widget.hasText
-                      ? Icons.send
-                      : Icons.mic,
-              size: AppSizing.iconMd.r,
-              color: theme.colorScheme.onPrimary,
-            ),
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -294,7 +341,7 @@ class _LockedControls extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: size,
+      width: size + 8,
       height: size,
       child: Row(
         mainAxisSize: MainAxisSize.min,

@@ -24,6 +24,8 @@ import 'package:kouvention/features/user/models/user_model.dart';
 import 'package:kouvention/features/user/services/user_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
+import 'package:snackify/enums/snack_enums.dart';
+import 'package:snackify/snackify.dart';
 
 /// Voice recording state machine (§3.1 of recap).
 ///
@@ -74,7 +76,6 @@ class ChatRoomVM extends BaseNotifier {
   // audio record
   final AudioRecorder _audioRecorder = AudioRecorder();
   RecordingState _recordingState = RecordingState.idle;
-  bool _isRecordingLocked = false;
   String? _recordingPath;
   int _recordingDuration = 0;
   final List<double> _amplitudeSamples = [];
@@ -100,7 +101,6 @@ class ChatRoomVM extends BaseNotifier {
   bool get showMediaPanel => _showMediaPanel;
   bool get showStickerPanel => _showStickerPanel;
   RecordingState get recordingState => _recordingState;
-  bool get isRecordingLocked => _isRecordingLocked;
   int get recordingDuration => _recordingDuration;
   List<double> get recordingAmplitudeSamples => _amplitudeSamples;
   String? get recordingPath => _recordingPath;
@@ -674,15 +674,31 @@ class ChatRoomVM extends BaseNotifier {
 
   /// Start recording audio from microphone.
   /// Transitions: idle → recording.
-  Future<void> startRecording() async {
+  Future<void> startRecording(
+    BuildContext context, {
+    required bool startsLocked,
+  }) async {
     if (_recordingState != RecordingState.idle) return;
 
     final status = await Permission.microphone.request();
-    if (status != PermissionStatus.granted) return;
+    if (status.isPermanentlyDenied || status.isRestricted) {
+      Snackify.show(
+        context: context,
+        type: SnackType.error,
+        title: Text('Enable microphone access on settings'),
+        action: TextButton(
+          onPressed: openAppSettings,
+          child: Text('Open Settings'),
+        ),
+      );
+      return;
+    }
 
     // Generate temp file path
     final tempDir = await Directory.systemTemp.createTemp('kou_audio_');
-    final supported = await _audioRecorder.isEncoderSupported(AudioEncoder.opus);
+    final supported = await _audioRecorder.isEncoderSupported(
+      AudioEncoder.opus,
+    );
     final encoder = supported ? AudioEncoder.opus : AudioEncoder.aacLc;
     final ext = supported ? 'opus' : 'm4a';
     final tempPath =
@@ -702,8 +718,9 @@ class ChatRoomVM extends BaseNotifier {
         path: tempPath,
       );
 
-      _recordingState = RecordingState.recording;
-      _isRecordingLocked = false;
+      _recordingState = startsLocked
+          ? RecordingState.locked
+          : RecordingState.recording;
       _recordingDuration = 0;
       _amplitudeSamples.clear();
 
@@ -740,83 +757,10 @@ class ChatRoomVM extends BaseNotifier {
     }
   }
 
-  /// Start recording audio in locked mode (tap path).
-  /// Transitions: idle → locked.
-  Future<void> startLockedRecording() async {
-    if (_recordingState != RecordingState.idle) return;
-
-    final status = await Permission.microphone.request();
-    if (status != PermissionStatus.granted) return;
-
-    final tempDir = await Directory.systemTemp.createTemp('kou_audio_');
-    final supported = await _audioRecorder.isEncoderSupported(AudioEncoder.opus);
-    final encoder = supported ? AudioEncoder.opus : AudioEncoder.aacLc;
-    final ext = supported ? 'opus' : 'm4a';
-    final tempPath =
-        '${tempDir.path}${DateTime.now().millisecondsSinceEpoch}.$ext';
-    _recordingPath = tempPath;
-
-    try {
-      await _audioRecorder.start(
-        RecordConfig(
-          encoder: encoder,
-          bitRate: 32000,
-          sampleRate: 16000,
-          numChannels: 1,
-          autoGain: true,
-          noiseSuppress: true,
-        ),
-        path: tempPath,
-      );
-
-      _recordingState = RecordingState.locked;
-      _isRecordingLocked = true;
-      _recordingDuration = 0;
-      _amplitudeSamples.clear();
-
-      _recordingTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-        _recordingDuration++;
-        notifyListeners();
-      });
-
-      _amplitudeSub = _audioRecorder
-          .onAmplitudeChanged(const Duration(milliseconds: 100))
-          .listen((amp) {
-            final db = amp.current;
-
-            // ✅ Filter nilai invalid
-            if (db < -100.0) return;
-
-            const double minDb = -40.0;
-            const double maxDb = 0.0;
-
-            // ✅ Normalisasi dulu
-            final raw = ((db - minDb) / (maxDb - minDb)).clamp(0.0, 1.0);
-
-            // ✅ Rescale supaya bedanya lebih kelihatan
-            // Data lo berkisar 0.4 - 0.85, kita "rentangkan" ke 0.0 - 1.0
-            const double floorLevel = 0.35; // batas bawah data lo
-            final normalized = ((raw - floorLevel) / (1.0 - floorLevel)).clamp(
-              0.0,
-              1.0,
-            );
-
-            debugPrint('Normalized after rescale: $normalized');
-
-            _amplitudeSamples.add(normalized);
-            notifyListeners();
-          });
-    } catch (e) {
-      debugPrint('Error starting locked recording: $e');
-      _resetRecording();
-    }
-  }
-
   /// Lock the recording (finger slid up). Continues recording.
   /// Transitions: recording → locked.
   void lockRecording() {
     if (_recordingState != RecordingState.recording) return;
-    _isRecordingLocked = true;
     _recordingState = RecordingState.locked;
     notifyListeners();
   }
@@ -878,7 +822,6 @@ class ChatRoomVM extends BaseNotifier {
     }
   }
 
-  /// Send the recorded audio.
   /// Transitions: locked/reviewing → sending → idle.
   Future<void> sendRecordedAudio() async {
     if (_recordingState != RecordingState.reviewing &&
@@ -896,6 +839,7 @@ class ChatRoomVM extends BaseNotifier {
       _amplitudeSub = null;
     }
 
+    // Update the recording state to sent
     _recordingState = RecordingState.sending;
     _isSending = true;
     notifyListeners();
@@ -986,7 +930,6 @@ class ChatRoomVM extends BaseNotifier {
       _audioRecorder.stop();
     } catch (_) {}
     _recordingState = RecordingState.idle;
-    _isRecordingLocked = false;
     _recordingPath = null;
     _recordingDuration = 0;
     _amplitudeSamples.clear();

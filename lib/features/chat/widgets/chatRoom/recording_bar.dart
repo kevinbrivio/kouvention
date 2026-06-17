@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:kouvention/cores/constants/tokens.dart';
+import 'package:kouvention/cores/widgets/custom_divider.dart';
 import 'package:kouvention/features/chat/viewmodel/audio_manager.dart';
 import 'package:kouvention/features/chat/widgets/chatRoom/waveform_painter.dart';
 
@@ -79,28 +80,34 @@ class _RecordingBarState extends State<RecordingBar> {
     final theme = Theme.of(context);
 
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacing.md.w,
+        vertical: AppSpacing.xs.h,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (widget.isReviewing)
             _buildReviewTopRow(theme)
           else
-            _buildRecordingTopRow(theme),
-          SizedBox(height: 8.h),
+            _buildRecordingTopRow(context, theme),
+          Gap(AppSpacing.xs.h),
           _buildBottomRow(theme),
         ],
       ),
     );
   }
 
-  Widget _buildRecordingTopRow(ThemeData theme) => Row(
+  Widget _buildRecordingTopRow(BuildContext context, ThemeData theme) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       Text(
         _formatDuration(widget.recordingDuration),
-        style: theme.textTheme.labelLarge?.copyWith(
-          color: Colors.red.shade400,
-        ),
+        style: context.text.labelLarge.copyWith(color: Colors.red.shade400),
+      ),
+
+      CustomDivider(
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.3),
       ),
     ],
   );
@@ -113,20 +120,20 @@ class _RecordingBarState extends State<RecordingBar> {
         height: AppSpacing.md.h,
         child: IconButton(
           padding: EdgeInsets.zero,
-            icon: Icon(
-              _isPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled,
-              color: theme.colorScheme.primary,
-              size: AppSizing.iconMd.r,
-            ),
-            onPressed: _togglePlay,
+          icon: Icon(
+            _isPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled,
+            color: theme.colorScheme.primary,
+            size: AppSizing.iconMd.r,
           ),
+          onPressed: _togglePlay,
         ),
-        Gap(AppSpacing.md.w),
-        Expanded(
-          child: SizedBox(
-            height: AppSizing.inputHeight.h,
-            child: CustomPaint(
-              painter: WaveformPainter(
+      ),
+      Gap(AppSpacing.md.w),
+      Expanded(
+        child: SizedBox(
+          height: AppSizing.inputHeight.h,
+          child: CustomPaint(
+            painter: WaveformPainter(
               samples: widget.amplitudeSamples,
               color: theme.colorScheme.primary.withValues(alpha: 0.6),
             ),
@@ -137,13 +144,13 @@ class _RecordingBarState extends State<RecordingBar> {
 
       Text(
         _formatDuration(widget.recordingDuration),
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: theme.colorScheme.onSurface,
+        style: context.text.labelMedium.copyWith(
+          color: context.text.tertiaryText,
         ),
       ),
     ],
   );
-    
+
   Widget _buildBottomRow(ThemeData theme) => Row(
     mainAxisAlignment: MainAxisAlignment.spaceBetween,
     children: [
@@ -164,16 +171,12 @@ class _RecordingBarState extends State<RecordingBar> {
         child: IconButton(
           padding: EdgeInsets.zero,
           icon: Icon(
-            widget.isReviewing
-                ? Icons.mic
-                : Icons.pause,
+            widget.isReviewing ? Icons.mic : Icons.pause,
             color: widget.isReviewing
                 ? theme.colorScheme.onSurface.withValues(alpha: 0.4)
                 : theme.colorScheme.primary,
           ),
-          onPressed: widget.isReviewing
-              ? null
-              : widget.onPause,
+          onPressed: widget.isReviewing ? null : widget.onPause,
         ),
       ),
       // Send button
@@ -182,10 +185,7 @@ class _RecordingBarState extends State<RecordingBar> {
         height: AppSizing.iconSm.r,
         child: IconButton(
           padding: EdgeInsets.zero,
-          icon: Icon(
-            Icons.send_rounded,
-            color: theme.colorScheme.primary,
-          ),
+          icon: Icon(Icons.send_rounded, color: theme.colorScheme.primary),
           onPressed: widget.onSend,
         ),
       ),

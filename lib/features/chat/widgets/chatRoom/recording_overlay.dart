@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:gap/gap.dart';
 import 'package:kouvention/cores/constants/tokens.dart';
+import 'package:kouvention/features/chat/widgets/chatRoom/trash_icon.dart';
 
 /// Overlay shown during voice recording (before locking).
 /// Displays slide hints, a pulsing red dot, and threshold markers.
@@ -39,24 +42,33 @@ class _RecordingOverlayState extends State<RecordingOverlay>
 
   @override
   Widget build(BuildContext context) {
-    final cancelActive = widget.fingerOffset.dx < -20.w;
-    final lockActive = widget.fingerOffset.dy < -20.h;
+    final screenWidth = MediaQuery.of(context).size.width;
 
+    final cancelThreshold = screenWidth * 0.1;
+
+    final cancelActive = widget.fingerOffset.dx < -cancelThreshold;
     return Flexible(
       child: Container(
-        padding: EdgeInsets.zero,
+        padding: EdgeInsets.symmetric(
+          horizontal: AppSpacing.xs.w,
+          vertical: AppSpacing.xs.h,
+        ),
+        constraints: BoxConstraints(
+          minHeight: AppSizing.chatInputBarMin.h - (AppSpacing.xs.h * 2),
+        ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             // Trash icon — cancel threshold marker (left zone)
-            Icon(
-              Icons.delete_outline,
+            TrashIcon(
               size: AppSizing.iconSm.r,
               color: cancelActive
-                  ? Colors.orange.shade400
-                  : Colors.orange.shade200.withValues(alpha: 0.5),
+                  ? AppColorTokens.error.withValues(alpha: 0.7)
+                  : AppColorTokens.error,
+              isActive: cancelActive,
             ),
-            const SizedBox(width: 4),
+            Gap(AppSpacing.xs.w),
+
             // Pulse dot
             FadeTransition(
               opacity: Tween<double>(
@@ -72,34 +84,13 @@ class _RecordingOverlayState extends State<RecordingOverlay>
                 ),
               ),
             ),
-            const SizedBox(width: 6),
+            Gap(AppSpacing.sm.w),
             // Hint text
             Text(
-              widget.isLocked
-                  ? 'Recording locked'
-                  : cancelActive
-                  ? 'Release to cancel'
-                  : lockActive
-                  ? 'Slide up to lock'
-                  : 'Slide ← cancel · Slide ↑ lock',
-              style: TextStyle(
-                color: cancelActive
-                    ? Colors.orange.shade400
-                    : lockActive
-                    ? Colors.green.shade400
-                    : Colors.red.shade400,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
+              'Slide ← cancel',
+              style: context.text.labelSmall.copyWith(
+                color: context.text.tertiaryText,
               ),
-            ),
-            const SizedBox(width: 6),
-            // Lock icon — lock threshold marker (top zone)
-            Icon(
-              Icons.lock_outline,
-              size: AppSizing.iconSm.r,
-              color: lockActive
-                  ? Colors.green.shade400
-                  : Colors.green.shade200.withValues(alpha: 0.5),
             ),
           ],
         ),
