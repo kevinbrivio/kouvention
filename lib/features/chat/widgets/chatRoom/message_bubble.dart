@@ -66,7 +66,7 @@ class MessageBubble extends ConsumerWidget {
         !isMe &&
         senderPhotoUrl != null &&
         (sender?.privacy.showProfilePhoto ?? true);
-        
+
     final resolver = ref.read(chatRoomProfileResolverProvider(chatId));
     final senderName = resolver.lookupDisplayName(message.senderId);
     final repliedSenderName = resolver.lookupDisplayName(
@@ -177,11 +177,11 @@ class MessageBubble extends ConsumerWidget {
                 Gap(AppSpacing.xs.w),
               ],
               Flexible(
+                fit: FlexFit.loose,
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
                     Container(
-                      constraints: BoxConstraints(maxWidth: 192.w),
                       padding: EdgeInsets.symmetric(
                         horizontal: AppSpacing.xs.w,
                         vertical: AppSpacing.xs.w,
@@ -200,87 +200,172 @@ class MessageBubble extends ConsumerWidget {
                         ),
                       ),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           if (replyMsg != null) ...[
-                            InkWell(
-                              onTap: onTapReply != null
-                                  ? () {
-                                      HapticFeedback.selectionClick();
-                                      onTapReply!(replyMsg.messageId);
-                                    }
-                                  : null,
-                              child: _buildInBubbleReplyPreview(
-                                context,
-                                replyMsg,
-                                currentUid,
-                                repliedSenderName ?? '',
+                            ConstrainedBox(
+                              constraints: BoxConstraints(
+                                maxWidth:
+                                    MediaQuery.of(context).size.width * 0.8,
+                              ),
+                              child: InkWell(
+                                onTap: onTapReply != null
+                                    ? () {
+                                        HapticFeedback.selectionClick();
+                                        onTapReply!(replyMsg.messageId);
+                                      }
+                                    : null,
+                                child: _buildInBubbleReplyPreview(
+                                  context,
+                                  replyMsg,
+                                  currentUid,
+                                  repliedSenderName ?? '',
+                                ),
                               ),
                             ),
-                            Gap(6.h),
+                            Gap(AppSpacing.xxs.h),
                           ],
                           if (!isMe && isGroup && isFirstSequence) ...[
-                            Text(
-                              senderName,
-                              style: context.text.senderName.copyWith(
-                                color: AppColorTokens.senderNameColor(
-                                  message.senderId,
+                            ConstrainedBox(
+                              constraints: BoxConstraints(
+                                maxWidth:
+                                    MediaQuery.of(context).size.width * 0.8,
+                              ),
+                              child: Text(
+                                senderName,
+                                style: context.text.senderName.copyWith(
+                                  color: AppColorTokens.senderNameColor(
+                                    message.senderId,
+                                  ),
                                 ),
                               ),
                             ),
                             Gap(4.h),
                           ],
                           if (message.type == MessageType.text) ...[
-                            Text(
-                              (message.text == '' && message.isDeleted)
-                                  ? isMe
-                                        ? 'You deleted this message'
-                                        : 'This message was deleted'
-                                  : message.text,
-                              style: context.text.bodySmall.copyWith(
-                                color: isMe
-                                    ? message.isDeleted
-                                          ? Theme.of(context)
-                                                .colorScheme
-                                                .onSurface
-                                                .withValues(alpha: 0.5)
-                                          : Colors.white
-                                    : message.isDeleted
-                                    ? Theme.of(context).colorScheme.onSurface
-                                          .withValues(alpha: 0.5)
-                                    : (isLightReceived
-                                          ? Colors.black87
-                                          : Colors.white),
-                                fontStyle: message.isDeleted
-                                    ? FontStyle.italic
-                                    : FontStyle.normal,
-                              ),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  (message.text == '' && message.isDeleted)
+                                      ? isMe
+                                            ? 'You deleted this message'
+                                            : 'This message was deleted'
+                                      : message.text,
+                                  style: context.text.bodySmall.copyWith(
+                                    color: isMe
+                                        ? message.isDeleted
+                                              ? Theme.of(context)
+                                                    .colorScheme
+                                                    .onSurface
+                                                    .withValues(alpha: 0.5)
+                                              : Colors.white
+                                        : message.isDeleted
+                                        ? Theme.of(context)
+                                              .colorScheme
+                                              .onSurface
+                                              .withValues(alpha: 0.5)
+                                        : (isLightReceived
+                                              ? Colors.black87
+                                              : Colors.white),
+                                    fontStyle: message.isDeleted
+                                        ? FontStyle.italic
+                                        : FontStyle.normal,
+                                  ),
+                                ),
+                                Gap(AppSpacing.sm.w),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        time,
+                                        style: context.text.labelSmall.copyWith(
+                                          color: isMe
+                                              ? Colors.white70
+                                              : (isLightReceived
+                                                    ? Colors.grey[500]
+                                                    : Colors.white60),
+                                        ),
+                                      ),
+                                    ),
+                                    if (isMe) ...[
+                                      Gap(4.w),
+                                      _buildMessageStatus(status),
+                                    ],
+                                  ],
+                                ),
+                              ],
                             ),
                           ] else if (message.mediaUrls != null &&
                               message.mediaUrls!.isNotEmpty) ...[
-                            MediaBubble(message: message, isMe: isMe),
-                          ],
-                          Gap(4.h),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              Text(
-                                time,
-                                style: context.text.labelSmall.copyWith(
-                                  color: isMe
-                                      ? Colors.white70
-                                      : (isLightReceived
-                                            ? Colors.grey[500]
-                                            : Colors.white60),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    MediaBubble(
+                                      message: message,
+                                      isMe: isMe,
+                                      scheme: scheme,
+                                    ),
+                                    Gap(AppSpacing.xxs.h),
+
+                                    // Align(
+                                    //   alignment: Alignment.centerRight,
+                                    //   child: Row(
+                                    //     mainAxisSize: MainAxisSize.min,
+                                    //     children: [
+                                    //       Text(
+                                    //         time,
+                                    //         style: context.text.labelSmall.copyWith(
+                                    //           color: isMe
+                                    //               ? Colors.white70
+                                    //               : (isLightReceived
+                                    //                     ? Colors.grey[500]
+                                    //                     : Colors.white60),
+                                    //         ),
+                                    //       ),
+                                    //       if (isMe) ...[
+                                    //         Gap(4.w),
+                                    //         _buildMessageStatus(status),
+                                    //       ],
+                                    //     ],
+                                    //   ),
+                                    // ),
+                                  ],
                                 ),
-                              ),
-                              if (isMe) ...[
-                                Gap(4.w),
-                                _buildMessageStatus(status),
+
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        time,
+                                        style: context.text.labelSmall.copyWith(
+                                          color: isMe
+                                              ? Colors.white70
+                                              : (isLightReceived
+                                                    ? Colors.grey[500]
+                                                    : Colors.white60),
+                                        ),
+                                      ),
+                                    ),
+                                    if (isMe) ...[
+                                      Gap(4.w),
+                                      _buildMessageStatus(status),
+                                    ],
+                                  ],
+                                ),
                               ],
-                            ],
-                          ),
+                            ),
+                          ],
                         ],
                       ),
                     ),

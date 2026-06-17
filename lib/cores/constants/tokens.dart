@@ -85,7 +85,7 @@ class AppSurfaceLight {
   static const Color surfaceBubbleReceived = Color(0xFFF5F5F0);
 
   /// Navigation bars, app bars
-  static const Color surfaceBar = Color(0xFFF9ECE5);
+  static const Color surfaceBar = Color(0xFFF3F3F3);
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -326,7 +326,7 @@ class _AppTextStyles {
         color: primaryText, height: 1.5,
       );
   TextStyle get labelSmall => TextStyle(
-        fontSize: 11.sp, fontWeight: FontWeight.w400,
+        fontSize: 9.sp, fontWeight: FontWeight.w400,
         color: primaryText, height: 1.5,
       );
 

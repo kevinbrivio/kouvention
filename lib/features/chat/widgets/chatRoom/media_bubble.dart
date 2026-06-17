@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -10,6 +11,7 @@ import 'package:gap/gap.dart';
 import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/router/router.dart';
 import 'package:kouvention/cores/widgets/loading_indicator.dart';
+import 'package:kouvention/features/chat/models/bubble_color_scheme.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/viewmodel/audio_manager.dart';
@@ -21,8 +23,14 @@ import 'package:video_thumbnail/video_thumbnail.dart';
 class MediaBubble extends StatelessWidget {
   final MessageModel message;
   final bool isMe;
+  final BubbleColorScheme scheme;
 
-  const MediaBubble({super.key, required this.message, required this.isMe});
+  const MediaBubble({
+    super.key,
+    required this.message,
+    required this.isMe,
+    required this.scheme,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -62,7 +70,12 @@ class MediaBubble extends StatelessWidget {
         isMe: isMe,
       );
     if (isAudio)
-      return _AudioMedia(urls: urls, isMe: isMe, byteSizes: bytesSizes);
+      return _AudioMedia(
+        urls: urls,
+        isMe: isMe,
+        byteSizes: bytesSizes,
+        scheme: scheme,
+      );
     if (isVideo) return _VideoMedia(urls: urls, isMe: isMe);
     return _FileMedia(message: message, isMe: isMe);
   }
@@ -107,7 +120,7 @@ class _ImageMedia extends StatelessWidget {
                 child: Text(
                   effectiveCaption,
                   style: context.text.bodySmall.copyWith(
-                    color: isMe ? context.text.secondaryText : Colors.white,
+                    color: isMe ? context.text.tertiaryText : Colors.white,
                   ),
                 ),
               ),
@@ -129,16 +142,25 @@ class _ImageMedia extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CachedNetworkImage(
-            imageUrl: url,
-            fit: BoxFit.cover,
-            width: double.infinity,
-            height: 200.h,
-            placeholder: (_, __) => const Center(child: LoadingIndicator()),
-            errorWidget: (_, __, ___) => Container(
-              height: 200.h,
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-              child: const Icon(Icons.broken_image),
+          ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.8,
+              maxHeight: 200.h,
+            ),
+            child: CachedNetworkImage(
+              imageUrl: url,
+              fit: BoxFit.scaleDown,
+              placeholder: (_, __) => SizedBox(
+                height: 120.h,
+                child: const Center(child: LoadingIndicator()),
+              ),
+              errorWidget: (_, __, ___) => Container(
+                height: 120.h,
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.5),
+                child: const Icon(Icons.broken_image),
+              ),
             ),
           ),
           if (caption.isNotEmpty)
@@ -160,7 +182,8 @@ class _ImageMedia extends StatelessWidget {
     final count = urls.length;
     if (count == 2) {
       return SizedBox(
-        height: 150.h,
+        width: MediaQuery.sizeOf(context).width * 0.7,
+        height: 120.h,
         child: Row(
           children: [
             Expanded(child: _buildCollageTile(context, count, urls[0], 0)),
@@ -170,64 +193,75 @@ class _ImageMedia extends StatelessWidget {
         ),
       );
     } else if (count == 3) {
-      return Column(
-        children: [
-          SizedBox(
-            height: 120.h,
-            child: _buildCollageTile(
-              context,
-              count,
-              urls[0],
-              0,
-              fullWidth: true,
+      return ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.sizeOf(context).width * 0.7,
+        ),
+        child: Column(
+          children: [
+            SizedBox(
+              width: MediaQuery.sizeOf(context).width * 0.7,
+              height: 120.h,
+              child: _buildCollageTile(
+                context,
+                count,
+                urls[0],
+                0,
+                fullWidth: true,
+              ),
             ),
-          ),
-          Gap(2.h),
-          SizedBox(
-            height: 120.h,
-            child: Row(
-              children: [
-                Expanded(child: _buildCollageTile(context, count, urls[1], 1)),
-                Gap(2.w),
-                Expanded(child: _buildCollageTile(context, count, urls[2], 2)),
-              ],
+            Gap(2.h),
+            SizedBox(
+              height: 120.h,
+              child: Row(
+                children: [
+                  Expanded(child: _buildCollageTile(context, count, urls[1], 1)),
+                  Gap(2.w),
+                  Expanded(child: _buildCollageTile(context, count, urls[2], 2)),
+                ],
+              ),
             ),
+          ],
           ),
-        ],
       );
     } else {
-      return Column(
-        children: [
-          SizedBox(
-            height: 100.h,
-            child: Row(
-              children: [
-                Expanded(child: _buildCollageTile(context, count, urls[0], 0)),
-                Gap(2.w),
-                Expanded(child: _buildCollageTile(context, count, urls[1], 1)),
-              ],
+      return ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.sizeOf(context).width * 0.7
+        ),
+        child: Column(
+          children: [
+            SizedBox(
+              height: 120.h,
+              child: Row(
+                children: [
+                  Expanded(child: _buildCollageTile(context, count, urls[0], 0)),
+                  Gap(2.w),
+                  Expanded(child: _buildCollageTile(context, count, urls[1], 1)),
+                ],
+              ),
             ),
-          ),
-          Gap(2.h),
-          SizedBox(
-            height: 100.h,
-            child: Row(
-              children: [
-                Expanded(child: _buildCollageTile(context, count, urls[2], 2)),
-                Gap(2.w),
-                Expanded(
-                  child: _buildCollageTile(
-                    context,
-                    count,
-                    urls[3],
-                    3,
-                    last: count > 4,
+            Gap(2.h),
+            SizedBox(
+              height: 100.h,
+              child: Row(
+                children: [
+                  Expanded(child: _buildCollageTile(context, count, urls[2], 2)),
+                  Gap(2.w),
+                  Expanded(
+                    child: _buildCollageTile(
+                      context,
+                      count,
+                      urls[3],
+                      3,
+                      last: count > 4,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
+          ],
           ),
-        ],
       );
     }
   }
@@ -264,7 +298,9 @@ class _ImageMedia extends StatelessWidget {
                 child: Text(
                   '+${count - 4}',
                   style: context.text.headlineSmall.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.5),
                   ),
                 ),
               ),
@@ -441,7 +477,9 @@ class _VideoMedia extends StatelessWidget {
       if (urls.length > 1) ...[
         Text(
           '${urls.length} videos',
-          style: context.text.titleMedium.copyWith(color: context.text.secondaryText),
+          style: context.text.titleMedium.copyWith(
+            color: context.text.secondaryText,
+          ),
         ),
         Gap(AppSpacing.xs.h),
       ],
@@ -449,7 +487,7 @@ class _VideoMedia extends StatelessWidget {
         _VideoTile(url: urls[0], isMe: isMe)
       else
         SizedBox(
-          height: 180.h,
+          height: 120.h,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: urls.length,
@@ -518,7 +556,7 @@ class _VideoTileState extends State<_VideoTile> {
         children: [
           if (_thumbnail != null && _aspectRatio != null)
             ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: 240.w, maxHeight: 180.h),
+              constraints: BoxConstraints(maxWidth: 240.w, maxHeight: 160.h),
               child: AspectRatio(
                 aspectRatio: _aspectRatio!,
                 child: Image.memory(_thumbnail!, fit: BoxFit.cover),
@@ -533,7 +571,11 @@ class _VideoTileState extends State<_VideoTile> {
               shape: BoxShape.circle,
             ),
             padding: EdgeInsets.all(AppSpacing.xs.w),
-            child: Icon(Icons.play_arrow, color: Colors.white, size: AppSizing.iconMd.r),
+            child: Icon(
+              Icons.play_arrow,
+              color: Colors.white,
+              size: AppSizing.iconMd.r,
+            ),
           ),
         ],
       ),
@@ -703,8 +745,8 @@ class _StickerMedia extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppRadius.sm.r),
       child: SizedBox(
-        width: 160.r,
-        height: 160.r,
+        width: 0.3.sw,
+        height: 0.3.sw,
         child: CachedNetworkImage(
           imageUrl: url,
           fit: BoxFit.cover,
@@ -726,17 +768,26 @@ class _AudioMedia extends StatelessWidget {
   final List<String> urls;
   final bool isMe;
   final int? byteSizes;
+  final BubbleColorScheme scheme;
   const _AudioMedia({
     required this.urls,
     required this.isMe,
     this.byteSizes = 0,
+    required this.scheme,
   });
   @override
   Widget build(BuildContext context) {
     // Single audio or list
     return Column(
       children: urls
-          .map((url) => _AudioTile(url: url, isMe: isMe, byteSizes: byteSizes))
+          .map(
+            (url) => _AudioTile(
+              url: url,
+              isMe: isMe,
+              byteSizes: byteSizes,
+              scheme: scheme,
+            ),
+          )
           .toList(),
     );
   }
@@ -746,7 +797,13 @@ class _AudioTile extends StatefulWidget {
   final String url;
   final bool isMe;
   final int? byteSizes;
-  const _AudioTile({required this.url, required this.isMe, this.byteSizes});
+  final BubbleColorScheme scheme;
+  const _AudioTile({
+    required this.url,
+    required this.isMe,
+    this.byteSizes,
+    required this.scheme,
+  });
 
   @override
   State<StatefulWidget> createState() => _AudioTileState();
@@ -758,24 +815,23 @@ class _AudioTileState extends State<_AudioTile> with RouteAware {
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
 
+  StreamSubscription? _posSub;
+  StreamSubscription? _durSub;
+  StreamSubscription? _stateSub;
+
   @override
   void initState() {
     super.initState();
-    // Dengarkan perubahan posisi
-    _manager.positionStream.listen((pos) {
+    _posSub = _manager.positionStream.listen((pos) {
       if (mounted) setState(() => _position = pos);
     });
-    // Dengarkan perubahan durasi
-    _manager.durationStream.listen((dur) {
+    _durSub = _manager.durationStream.listen((dur) {
       if (mounted) setState(() => _duration = dur ?? Duration.zero);
     });
-    // Dengarkan play/pause
-    _manager.playerStateStream.listen((state) {
+    _stateSub = _manager.playerStateStream.listen((state) {
       if (mounted) {
         setState(() {
-          _isPlaying =
-              state.playing &&
-              _manager.currentUrl == widget.url; // ← hanya tile INI
+          _isPlaying = state.playing && _manager.currentUrl == widget.url;
         });
       }
     });
@@ -789,6 +845,9 @@ class _AudioTileState extends State<_AudioTile> with RouteAware {
 
   @override
   void dispose() {
+    _posSub?.cancel();
+    _durSub?.cancel();
+    _stateSub?.cancel();
     if (_manager.currentUrl == widget.url) {
       _manager.stop();
     }
@@ -798,7 +857,7 @@ class _AudioTileState extends State<_AudioTile> with RouteAware {
 
   @override
   void didPushNext() {
-    AudioManager.instance.stop(); // stop audio
+    AudioManager.instance.stop();
   }
 
   String _formatDuration(Duration duration) {
@@ -809,7 +868,11 @@ class _AudioTileState extends State<_AudioTile> with RouteAware {
   }
 
   @override
-  Widget build(BuildContext context) => Column(
+  Widget build(BuildContext context) => ConstrainedBox(
+    constraints: BoxConstraints(
+      maxWidth: MediaQuery.sizeOf(context).width * 0.8,
+    ),
+    child: Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       Container(
@@ -820,7 +883,6 @@ class _AudioTileState extends State<_AudioTile> with RouteAware {
         padding: EdgeInsets.only(left: 2.w, right: AppSpacing.xs.w),
         child: Row(
           children: [
-            // Tombol play/pause
             IconButton(
               icon: Icon(
                 _isPlaying ? Icons.pause : Icons.play_arrow,
@@ -842,25 +904,27 @@ class _AudioTileState extends State<_AudioTile> with RouteAware {
                 onChanged: (val) {
                   // Seek ke posisi baru
                 },
-                activeColor: Theme.of(context).colorScheme.primary,
+                activeColor: widget.scheme.sentBubble,
               ),
             ),
-            // Durasi
             Text(
               _formatDuration(_position),
-              style: context.text.bodyMedium.copyWith(fontSize: 13.sp, 
-                color: Colors.white,
-              ),
+              style: context.text.labelMedium.copyWith(color: Colors.white),
             ),
           ],
         ),
       ),
-      if (widget.byteSizes != null && widget.byteSizes != 0)
+      if (widget.byteSizes != null && widget.byteSizes != 0) ...[
+        Gap(AppSpacing.xs.h),
         Text(
           formatBytes(widget.byteSizes!),
-          style: context.text.labelSmall.copyWith(color: context.text.tertiaryText),
+          style: context.text.labelSmall.copyWith(
+            color: Colors.white,
+          ),
         ),
+      ],
     ],
+    ),
   );
 }
 
@@ -900,10 +964,11 @@ class _FileMedia extends StatelessWidget {
       children: [
         Text(
           '${urls.length} files',
-          style: context.text.labelSmall.copyWith(color: isMe ? Colors.white : Colors.black,
+          style: context.text.labelSmall.copyWith(
+            color: isMe ? Colors.white : Colors.black,
           ),
         ),
-        Gap(6.h),
+        Gap(AppSpacing.xs.h),
         InkWell(
           onTap: () => _showMultipleFilesDialog(context, urls),
           child: Container(
@@ -927,10 +992,21 @@ class _FileMedia extends StatelessWidget {
                 if (totalSize != null)
                   Text(
                     formatBytes(totalSize),
-                    style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.5),
+                    ),
                   ),
 
-                Icon(Icons.chevron_right, size: 20.sp, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)),
+                Icon(
+                  Icons.chevron_right,
+                  size: 20.sp,
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.5),
+                ),
               ],
             ),
           ),
@@ -944,7 +1020,9 @@ class _FileMedia extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.sm.r)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppRadius.sm.r),
+        ),
       ),
       builder: (context) => Padding(
         padding: EdgeInsets.all(AppSpacing.md.w),
@@ -1175,16 +1253,16 @@ class _FileTileState extends State<_FileTile> {
             children: [
               CachedNetworkImage(
                 imageUrl: widget.thumbnailUrl!,
-                height: 100.h,
-                width: double.infinity,
-                fit: BoxFit.cover,
+                height: 120.h,
+                width: MediaQuery.of(context).size.width * 0.8,
+                fit: BoxFit.contain,
                 placeholder: (_, __) => Container(
-                  height: 100.h,
+                  height: 120.h,
                   color: Colors.grey[300],
                   child: const Center(child: LoadingIndicator()),
                 ),
                 errorWidget: (_, __, ___) => Container(
-                  height: 100.h,
+                  height: 120.h,
                   color: Colors.grey[300],
                   child: Icon(
                     Icons.picture_as_pdf,
@@ -1234,7 +1312,8 @@ class _FileTileState extends State<_FileTile> {
                 children: [
                   Text(
                     widget.name,
-                    style: context.text.bodyMedium.copyWith(fontSize: 13.sp, 
+                    style: context.text.bodyMedium.copyWith(
+                      fontSize: 13.sp,
                       color: widget.isMe ? Colors.white : Colors.black,
                       fontWeight: FontWeight.w500,
                     ),
@@ -1245,7 +1324,12 @@ class _FileTileState extends State<_FileTile> {
                   if (widget.size != null && !_isDownloading)
                     Text(
                       formatBytes(widget.size ?? 0),
-                      style: context.text.labelSmall.copyWith(color: widget.isMe ? Colors.white : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                      style: context.text.labelSmall.copyWith(
+                        color: widget.isMe
+                            ? Colors.white
+                            : Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withValues(alpha: 0.5),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -1254,7 +1338,11 @@ class _FileTileState extends State<_FileTile> {
             ),
             Icon(
               _isDownloading ? Icons.hourglass_empty : Icons.download,
-              color: widget.isMe ? Colors.white70 : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+              color: widget.isMe
+                  ? Colors.white70
+                  : Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.5),
             ),
           ],
         ),
@@ -1265,7 +1353,10 @@ class _FileTileState extends State<_FileTile> {
   Widget _buildIconTile() => GestureDetector(
     onTap: _downloadAndOpen,
     child: Container(
-      padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm.w, vertical: 10.h),
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm.w,
+        vertical: 10.h,
+      ),
       decoration: BoxDecoration(
         color: widget.isMe ? Colors.white24 : Colors.black12,
         borderRadius: BorderRadius.circular(AppRadius.sm.r),
@@ -1275,7 +1366,11 @@ class _FileTileState extends State<_FileTile> {
           Icon(
             _getFileIcon(widget.name),
             size: 32,
-            color: widget.isMe ? Colors.white70 : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+            color: widget.isMe
+                ? Colors.white70
+                : Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.5),
           ),
           Gap(AppSpacing.sm.w),
           Expanded(
@@ -1284,7 +1379,12 @@ class _FileTileState extends State<_FileTile> {
               children: [
                 Text(
                   widget.name,
-                  style: context.text.labelSmall.copyWith(color: widget.isMe ? Colors.white : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                  style: context.text.labelSmall.copyWith(
+                    color: widget.isMe
+                        ? Colors.white
+                        : Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.5),
                     fontWeight: FontWeight.w500,
                   ),
                   maxLines: 1,
@@ -1293,7 +1393,12 @@ class _FileTileState extends State<_FileTile> {
                 if (widget.size != null && !_isDownloading)
                   Text(
                     formatBytes(widget.size!),
-                    style: context.text.labelSmall.copyWith(color: widget.isMe ? Colors.white : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                    style: context.text.labelSmall.copyWith(
+                      color: widget.isMe
+                          ? Colors.white
+                          : Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.5),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -1310,7 +1415,11 @@ class _FileTileState extends State<_FileTile> {
           ),
           Icon(
             _isDownloading ? Icons.hourglass_empty : Icons.download,
-            color: widget.isMe ? Colors.white70 : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+            color: widget.isMe
+                ? Colors.white70
+                : Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.5),
           ),
         ],
       ),

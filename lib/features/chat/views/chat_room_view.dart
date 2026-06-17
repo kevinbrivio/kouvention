@@ -480,8 +480,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
         left: AppSpacing.xs.w,
         right: AppSpacing.xs.w,
         top: AppSpacing.xs.h,
-        bottom: kBottomNavigationBarHeight,
-        // MediaQuery.of(context).padding.bottom,
+        bottom: MediaQuery.of(context).viewInsets.bottom + kBottomNavigationBarHeight,
       ),
       decoration: BoxDecoration(
         color: Colors.transparent,
