@@ -262,92 +262,127 @@ class _AppTextStyles {
 
   // ── Display ──
   TextStyle get displayLarge => TextStyle(
-        fontSize: 57.sp, fontWeight: FontWeight.w400,
-        color: primaryText, height: 1.5,
-      );
+    fontSize: 57.sp,
+    fontWeight: FontWeight.w400,
+    color: primaryText,
+    height: 1.5,
+  );
   TextStyle get displayMedium => TextStyle(
-        fontSize: 45.sp, fontWeight: FontWeight.w400,
-        color: primaryText, height: 1.5,
-      );
+    fontSize: 45.sp,
+    fontWeight: FontWeight.w400,
+    color: primaryText,
+    height: 1.5,
+  );
   TextStyle get displaySmall => TextStyle(
-        fontSize: 36.sp, fontWeight: FontWeight.w400,
-        color: primaryText, height: 1.5,
-      );
+    fontSize: 36.sp,
+    fontWeight: FontWeight.w400,
+    color: primaryText,
+    height: 1.5,
+  );
 
   // ── Headline ──
   TextStyle get headlineLarge => TextStyle(
-        fontSize: 32.sp, fontWeight: FontWeight.w400,
-        color: primaryText, height: 1.5,
-      );
+    fontSize: 32.sp,
+    fontWeight: FontWeight.w400,
+    color: primaryText,
+    height: 1.5,
+  );
   TextStyle get headlineMedium => TextStyle(
-        fontSize: 28.sp, fontWeight: FontWeight.w400,
-        color: primaryText, height: 1.5,
-      );
+    fontSize: 28.sp,
+    fontWeight: FontWeight.w400,
+    color: primaryText,
+    height: 1.5,
+  );
   TextStyle get headlineSmall => TextStyle(
-        fontSize: 24.sp, fontWeight: FontWeight.w400,
-        color: primaryText, height: 1.5,
-      );
+    fontSize: 24.sp,
+    fontWeight: FontWeight.w400,
+    color: primaryText,
+    height: 1.5,
+  );
 
   // ── Title ──
   TextStyle get titleLarge => TextStyle(
-        fontSize: 22.sp, fontWeight: FontWeight.w400,
-        color: primaryText, height: 1.5,
-      );
+    fontSize: 22.sp,
+    fontWeight: FontWeight.w400,
+    color: primaryText,
+    height: 1.5,
+  );
   TextStyle get titleMedium => TextStyle(
-        fontSize: 16.sp, fontWeight: FontWeight.w400,
-        color: primaryText, height: 1.5,
-      );
+    fontSize: 16.sp,
+    fontWeight: FontWeight.w400,
+    color: primaryText,
+    height: 1.5,
+  );
   TextStyle get titleSmall => TextStyle(
-        fontSize: 14.sp, fontWeight: FontWeight.w400,
-        color: primaryText, height: 1.5,
-      );
+    fontSize: 14.sp,
+    fontWeight: FontWeight.w400,
+    color: primaryText,
+    height: 1.5,
+  );
 
   // ── Body ──
   TextStyle get bodyLarge => TextStyle(
-        fontSize: 16.sp, fontWeight: FontWeight.w400,
-        color: primaryText, height: 1.5,
-      );
+    fontSize: 16.sp,
+    fontWeight: FontWeight.w400,
+    color: primaryText,
+    height: 1.5,
+  );
   TextStyle get bodyMedium => TextStyle(
-        fontSize: 14.sp, fontWeight: FontWeight.w400,
-        color: primaryText, height: 1.5,
-      );
+    fontSize: 14.sp,
+    fontWeight: FontWeight.w400,
+    color: primaryText,
+    height: 1.5,
+  );
   TextStyle get bodySmall => TextStyle(
-        fontSize: 12.sp, fontWeight: FontWeight.w400,
-        color: primaryText, height: 1.5,
-      );
+    fontSize: 12.sp,
+    fontWeight: FontWeight.w400,
+    color: primaryText,
+    height: 1.5,
+  );
 
   // ── Label ──
   TextStyle get labelLarge => TextStyle(
-        fontSize: 14.sp, fontWeight: FontWeight.w400,
-        color: primaryText, height: 1.5,
-      );
+    fontSize: 14.sp,
+    fontWeight: FontWeight.w400,
+    color: primaryText,
+    height: 1.5,
+  );
   TextStyle get labelMedium => TextStyle(
-        fontSize: 12.sp, fontWeight: FontWeight.w400,
-        color: primaryText, height: 1.5,
-      );
+    fontSize: 12.sp,
+    fontWeight: FontWeight.w400,
+    color: primaryText,
+    height: 1.5,
+  );
   TextStyle get labelSmall => TextStyle(
-        fontSize: 9.sp, fontWeight: FontWeight.w400,
-        color: primaryText, height: 1.5,
-      );
+    fontSize: 9.sp,
+    fontWeight: FontWeight.w400,
+    color: primaryText,
+    height: 1.5,
+  );
 
   // ── Semantic aliases (for high-frequency reusable patterns) ──
   TextStyle get appBarTitle => titleMedium.copyWith(color: accentText);
-  TextStyle get senderName => bodyMedium.copyWith(
-        fontWeight: FontWeight.w600, color: secondaryText,
-      );
+  TextStyle get senderName =>
+      bodyMedium.copyWith(fontWeight: FontWeight.w600, color: secondaryText);
   TextStyle get typeMessage => TextStyle(
-        fontSize: 13.sp, fontWeight: FontWeight.w400,
-        color: secondaryText, height: 1.5,
-        decoration: TextDecoration.none,
-      );
+    fontSize: 13.sp,
+    fontWeight: FontWeight.w400,
+    color: secondaryText,
+    height: 1.5,
+    decoration: TextDecoration.none,
+  );
   TextStyle get contactName => TextStyle(
-        fontSize: 13.sp, fontWeight: FontWeight.w400,
-        color: tertiaryText, height: 1.5,
-      );
+    fontSize: 13.sp,
+    fontWeight: FontWeight.w400,
+    color: tertiaryText,
+    height: 1.5,
+  );
   TextStyle get buttonText => TextStyle(
-        fontSize: 12.sp, fontWeight: FontWeight.w400,
-        color: _scheme.onPrimary, height: 1.5,
-      );
+    fontSize: 12.sp,
+    fontWeight: FontWeight.w400,
+    color: _scheme.onPrimary,
+    height: 1.5,
+  );
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -387,9 +422,8 @@ class AppTheme {
         color: scheme.outlineVariant,
         thickness: 1,
       ),
-      extensions: [
-        _skeletonConfig(isDark: false),
-      ],
+      segmentedButtonTheme: _segmentedButtonTheme(scheme),
+      extensions: [_skeletonConfig(isDark: false)],
     );
   }
 
@@ -420,9 +454,8 @@ class AppTheme {
         color: scheme.outlineVariant,
         thickness: 1,
       ),
-      extensions: [
-        _skeletonConfig(isDark: true),
-      ],
+      segmentedButtonTheme: _segmentedButtonTheme(scheme),
+      extensions: [_skeletonConfig(isDark: true)],
     );
   }
 
@@ -456,8 +489,9 @@ class AppTheme {
   }) {
     return InputDecorationTheme(
       filled: true,
-      fillColor:
-          isDark ? AppSurfaceDark.surfaceInput : AppSurfaceLight.surfaceInput,
+      fillColor: isDark
+          ? AppSurfaceDark.surfaceInput
+          : AppSurfaceLight.surfaceInput,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.input.r),
         borderSide: BorderSide(color: scheme.outline),
@@ -481,12 +515,41 @@ class AppTheme {
     );
   }
 
+  // --- Segmented Button Theme
+  static SegmentedButtonThemeData _segmentedButtonTheme(ColorScheme scheme) {
+    return SegmentedButtonThemeData(
+      style: ButtonStyle(
+        backgroundColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return scheme.primary;
+          }
+          return scheme.surface;
+        }),
+
+        foregroundColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return scheme.onPrimary;
+          }
+          return scheme.onSurface.withValues(alpha: 0.6);
+        }),
+
+        side: WidgetStateProperty.resolveWith((states) {
+          return BorderSide(color: scheme.primary.withValues(alpha: 0.4));
+        }),
+
+        shape: WidgetStateProperty.all(
+          RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.button.r),
+          ),
+        ),
+      ),
+    );
+  }
+
   static SkeletonizerConfigData _skeletonConfig({required bool isDark}) {
     return SkeletonizerConfigData(
       effect: ShimmerEffect(
-        baseColor: isDark
-            ? const Color(0xFF1E1E1E)
-            : const Color(0xFFE6E9ED),
+        baseColor: isDark ? const Color(0xFF1E1E1E) : const Color(0xFFE6E9ED),
         highlightColor: isDark
             ? const Color(0xFF03DAC6)
             : const Color(0xFF82B1FF),
