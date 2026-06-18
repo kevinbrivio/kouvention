@@ -117,9 +117,6 @@ void main() async {
       // Register DIO Handler
       DioHandler.setup();
 
-      //TODO: REMOVE LATER
-      Animate.restartOnHotReload = true;
-
       runApp(
         ProviderScope(
           overrides: [

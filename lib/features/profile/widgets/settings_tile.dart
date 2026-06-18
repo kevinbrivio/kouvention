@@ -4,7 +4,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/widgets/liquid_glass_box.dart';
-// import 'package:kouvention/cores/widgets/tap_detector.dart'; // Tergantung apakah lu masih butuh ini
 
 class SettingsTile extends StatefulWidget {
   final IconData icon;
