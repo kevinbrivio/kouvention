@@ -21,7 +21,10 @@ class NewChatVM extends BaseNotifier {
   final String? _currentUid;
 
   // Search
-  List<UserModel> _searchResults = [];
+  StreamSubscription<List<UserSearchModel>>? _usersSubs;
+  bool _isLoadingUsers = true;
+  List<UserSearchModel> _allUsers = [];
+  List<UserSearchModel> _searchResults = [];
   Timer? _debounceTimer;
   bool _isSearching = false;
 
@@ -38,8 +41,8 @@ class NewChatVM extends BaseNotifier {
       _currentUid = ref.read(authServiceProvider).currentUser?.uid;
 
   // ── Getters ─────────────────────────────────────────
-
-  List<UserModel> get searchResults => _searchResults;
+  List<UserSearchModel> get allUsers => _allUsers;
+  List<UserSearchModel> get searchResults => _searchResults;
   List<UserModel> get recentUsers =>
       ref.watch(recentUsersProvider).valueOrNull ?? [];
   List<UserModel> get selectedUsers => _selectedUsers;
@@ -48,9 +51,24 @@ class NewChatVM extends BaseNotifier {
   String? get error => _error;
   String? get currentUid => _currentUid;
   bool get hasSelection => _selectedUsers.isNotEmpty;
+  bool get isLoadingUsers => _isLoadingUsers;
 
   @override
-  FutureOr<void> init() async {}
+  FutureOr<void> init() async {
+    _usersSubs = _userService.streamAllUser().listen(
+      (users) {
+        _allUsers = users.where((u) => u.uid != _currentUid).toList();
+        _isLoadingUsers = false;
+        notifyListeners();
+      },
+      onError: (e) {
+        _allUsers = [];
+        _isLoadingUsers = false;
+        debugPrint('streamAllUser error: $e');
+        notifyListeners();
+      },
+    );
+  }
 
   // ── Search ─────────────────────────────────────────
   /// Called on every keystroke in the search field.
@@ -74,27 +92,33 @@ class NewChatVM extends BaseNotifier {
     _error = null; // clear previous error so the UI doesn't show it
     // while the new search is in flight
     notifyListeners();
-
     _debounceTimer = Timer(const Duration(milliseconds: 500), () {
       _performSearch(query);
     });
   }
 
   Future<void> _performSearch(String query) async {
-    if (_currentUid == null) return;
-
-    try {
-      _searchResults = await _userService.searchUsers(
-        query: query,
-        currentUid: _currentUid,
-      );
-      
-      _error = null;
-    } catch (e) {
-      _error = 'Search failed';
-      debugPrint('Search error: $e');
+    final q = query.trim().toLowerCase();
+  
+    // 🔍 Cek 1: Apakah _allUsers sudah terisi?
+    print('=== TOTAL allUsers: ${_allUsers.length}');
+  
+    // 🔍 Cek 2: Lihat isi _allUsers
+    for (final u in _allUsers) {
+      print('=== USER: ${u.displayName} | ${u.email}');
     }
-
+  
+    _searchResults = _allUsers
+        .where((u) => u.uid != _currentUid)
+        .where(
+          (u) =>
+              u.displayName.toLowerCase().contains(q) ||
+              u.email.toLowerCase().contains(q),
+        )
+        .toList();
+  
+    print('=== QUERY: $q');
+    print('=== Hasil: $_searchResults');
     _isSearching = false;
     notifyListeners();
   }
@@ -242,6 +266,7 @@ class NewChatVM extends BaseNotifier {
   @override
   void dispose() {
     _debounceTimer?.cancel();
+    _usersSubs?.cancel();
     super.dispose();
   }
 }

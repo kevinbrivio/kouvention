@@ -1,3 +1,4 @@
+import 'package:cloudinary_url_gen/config/url_config.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
@@ -6,6 +7,7 @@ import 'package:kouvention/cores/bases/base_view.dart';
 import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/cores/widgets/custom_app_bar.dart';
+import 'package:kouvention/cores/widgets/custom_divider.dart';
 import 'package:kouvention/cores/widgets/loading_indicator.dart';
 import 'package:kouvention/cores/widgets/tap_detector.dart';
 import 'package:kouvention/features/chat/viewmodel/new_chat_viewmodel.dart';
@@ -50,7 +52,11 @@ class _NewChatBodyState extends State<_NewChatBody> {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: EdgeInsets.symmetric(horizontal: AppSpacing.screenH.w),
+    padding: EdgeInsets.only(
+      left: AppSpacing.screenH.w,
+      right: AppSpacing.screenH.w,
+      bottom: MediaQuery.of(context).viewInsets.bottom,
+    ),
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -58,43 +64,44 @@ class _NewChatBodyState extends State<_NewChatBody> {
         Gap(AppSpacing.md.h),
         _buildGroupButton(),
         Gap(AppSpacing.md.h),
-        Flexible(
-          child: vm.isSearching
-              ? Center(
-                  child: SizedBox(
-                    width: AppSizing.iconMd.w,
-                    height: AppSizing.iconMd.w,
-                    child: LoadingIndicator(),
+        Expanded(
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+    
+                if (_searchController.text.isNotEmpty) ...[
+                  if (vm.isSearching)
+                    Center(child: LoadingIndicator())
+                  else if (vm.error != null)
+                    Center(child: Text(vm.error!))
+                  else if (vm.searchResults.isEmpty)
+                    Center(child: Text('No users found'))
+                  else
+                    _buildResultsList(),
+    
+                ] else ...[
+                  RecentUsersList(
+                    onUserTap: (user) async {
+                      final chatId = await vm.createDirectChat(user);
+                      if (chatId != null && mounted) context.go('/chats/$chatId');
+                    },
                   ),
-                )
-              : _searchController.text.isNotEmpty && vm.error != null
-              ? Center(
-                  child: Text(
-                    vm.error!,
-                    style: context.text.labelSmall.copyWith(
-                      color: context.text.tertiaryText,
-                    ),
+                  Gap(AppSpacing.md.h),
+                  CustomDivider(text: 'Available users'),
+                  Gap(AppSpacing.md.h),
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: NeverScrollableScrollPhysics(),
+                    itemCount: vm.allUsers.length,
+                    itemBuilder: (context, index) =>
+                        _buildUserTile(vm.allUsers[index]),
                   ),
-                )
-              : _searchController.text.isNotEmpty && vm.searchResults.isEmpty
-              ? Center(
-                  child: Text(
-                    'No users found',
-                    style: context.text.labelSmall.copyWith(
-                      color: context.text.tertiaryText,
-                    ),
-                  ),
-                )
-              : _searchController.text.isEmpty
-              ? RecentUsersList(
-                  onUserTap: (user) async {
-                    final chatId = await vm.createDirectChat(user);
-                    if (chatId != null && mounted) {
-                      context.go('/chats/$chatId');
-                    }
-                  },
-                )
-              : _buildResultsList(),
+                  Gap(AppSpacing.md.h),
+                ],
+              ],
+            ),
+          ),
         ),
       ],
     ),
@@ -187,6 +194,8 @@ class _NewChatBodyState extends State<_NewChatBody> {
   }
 
   Widget _buildResultsList() => ListView.builder(
+    shrinkWrap: true,
+    physics: const NeverScrollableScrollPhysics(),
     itemCount: vm.searchResults.length,
     itemBuilder: (context, index) {
       final user = vm.searchResults[index];
@@ -194,23 +203,29 @@ class _NewChatBodyState extends State<_NewChatBody> {
     },
   );
 
-  Widget _buildUserTile(UserModel user) {
+  Widget _buildUserTile(UserSearchModel user) {
     final scheme = Theme.of(context).colorScheme;
     return TapDetector(
       onTap: () async {
-        final chatId = await vm.createDirectChat(user);
+        final u = UserModel(
+          uid: user.uid,
+          displayName: user.displayName,
+          displayNameLower: user.displayName.toLowerCase(),
+          email: user.email,
+          createdAt: DateTime.now(),
+        );
+
+        final chatId = await vm.createDirectChat(u);
         if (chatId != null && mounted) {
           context.go('/chats/$chatId');
         }
       },
       child: Padding(
-        padding: EdgeInsets.symmetric(
-          vertical: AppSpacing.betweenCards.h,
-        ),
+        padding: EdgeInsets.symmetric(vertical: AppSpacing.betweenCards.h),
         child: Row(
           children: [
             CircleAvatar(
-              radius: 22.r,
+              radius: AppRadius.xl.r,
               backgroundColor: scheme.primary.withValues(alpha: 0.2),
               backgroundImage: user.photoUrl != null
                   ? NetworkImage(user.photoUrl!)
@@ -232,10 +247,7 @@ class _NewChatBodyState extends State<_NewChatBody> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    user.displayName,
-                    style: context.text.bodyMedium,
-                  ),
+                  Text(user.displayName, style: context.text.bodyMedium),
                   Gap(2.h),
                   Text(
                     user.email,

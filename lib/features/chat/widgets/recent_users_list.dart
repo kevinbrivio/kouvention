@@ -4,13 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:kouvention/cores/constants/tokens.dart';
+import 'package:kouvention/cores/widgets/custom_divider.dart';
 import 'package:kouvention/cores/widgets/tap_detector.dart';
 import 'package:kouvention/features/chat/viewmodel/recent_users_provider.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
 
 class RecentUsersList extends ConsumerWidget {
   final void Function(UserModel user) onUserTap;
-  final bool Function(UserModel user)? isSelected; // ← add
+  final bool Function(UserModel user)? isSelected;
   final bool showSelection;
 
   const RecentUsersList({
@@ -53,38 +54,34 @@ class RecentUsersList extends ConsumerWidget {
           );
         }
 
-        return Container(
-          decoration: BoxDecoration(
-            color: scheme.onSurface.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(AppRadius.md.r),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: AppSpacing.md.w,
-                  vertical: AppSpacing.sm.h,
-                ),
-                child: Text(
-                  'Sorted by latest message',
-                  style: context.text.labelSmall.copyWith(
-                    color: context.text.tertiaryText,
-                  ),
-                ),
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Gap(AppSpacing.md.h),
+            CustomDivider(
+              text: 'Sorted by latest message',
+            ),
+            Gap(AppSpacing.md.h),
+            // Padding(
+            //   padding: EdgeInsets.symmetric(vertical: AppSpacing.sm.h),
+            //   child: Text(
+            //     'Sorted by latest message',
+            //     style: context.text.labelSmall.copyWith(
+            //       color: context.text.tertiaryText,
+            //     ),
+            //   ),
+            // ),
+            Flexible(
+              child: ListView.builder(
+                physics: const ClampingScrollPhysics(),
+                shrinkWrap: true,
+                itemCount: users.length,
+                itemBuilder: (context, index) =>
+                    _buildUserTile(context, users[index]),
               ),
-              Flexible(
-                child: ListView.builder(
-                  physics: const ClampingScrollPhysics(),
-                  shrinkWrap: true,
-                  itemCount: users.length,
-                  itemBuilder: (context, index) =>
-                      _buildUserTile(context, users[index]),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         );
       },
     );
@@ -96,10 +93,7 @@ class RecentUsersList extends ConsumerWidget {
     return TapDetector(
       onTap: () => onUserTap(user),
       child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: AppSpacing.md.w,
-          vertical: AppSpacing.betweenCards.h,
-        ),
+        padding: EdgeInsets.symmetric(vertical: AppSpacing.betweenCards.h),
         child: Row(
           children: [
             CircleAvatar(
@@ -128,22 +122,18 @@ class RecentUsersList extends ConsumerWidget {
                     )
                   : null,
             ),
-            SizedBox(width: AppSpacing.md.w),
+            Gap(AppSpacing.md.w),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    user.displayName,
-                    style: TextStyle(
-                      fontSize: 15.sp,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
+                  Text(user.displayName, style: context.text.bodyMedium),
                   Gap(2.h),
                   Text(
                     user.email,
-                    style: TextStyle(fontSize: 12.sp, color: Colors.grey[500]),
+                    style: context.text.labelSmall.copyWith(
+                      color: context.text.tertiaryText,
+                    ),
                   ),
                 ],
               ),

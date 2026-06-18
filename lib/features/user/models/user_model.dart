@@ -179,3 +179,24 @@ class PrivacySettings {
     );
   }
 }
+
+class UserSearchModel {
+  final String uid;
+  final String displayName;
+  final String email;
+  final String? photoUrl;
+
+  const UserSearchModel({
+    required this.uid,
+    required this.displayName,
+    required this.email,
+    this.photoUrl,
+  });
+
+  factory UserSearchModel.fromMap(Map<String, dynamic> data) => UserSearchModel(
+    uid: data['uid'] as String,
+    displayName: data['displayName'] as String,
+    email: data['email'] as String,
+    photoUrl: data['photoUrl'] as String?,
+  );
+}
