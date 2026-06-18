@@ -8,7 +8,7 @@ import 'package:kouvention/features/chat/viewmodel/chat_list_viewmodel.dart'
 import 'package:kouvention/features/user/models/user_model.dart';
 import 'package:kouvention/features/user/services/user_service.dart';
 
-const int kRecentUsersLimit = 20;
+const int kRecentUsersLimit = 5;
 
 /// Firestore `whereIn` upper bound. Chunks must not exceed this.
 const int _kWhereInChunk = 10;
