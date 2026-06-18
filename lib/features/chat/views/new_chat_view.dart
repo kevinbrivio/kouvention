@@ -67,6 +67,7 @@ class _NewChatBodyState extends State<_NewChatBody> {
         Expanded(
           child: SingleChildScrollView(
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
     
@@ -81,15 +82,17 @@ class _NewChatBodyState extends State<_NewChatBody> {
                     _buildResultsList(),
     
                 ] else ...[
-                  RecentUsersList(
-                    onUserTap: (user) async {
-                      final chatId = await vm.createDirectChat(user);
-                      if (chatId != null && mounted) context.go('/chats/$chatId');
-                    },
+                  Padding(
+                    padding: EdgeInsets.symmetric(
+                      vertical: AppSpacing.sm.h,
+                    ),
+                    child: Text(
+                      'Available users',
+                      style: context.text.labelMediumSmall.copyWith(
+                        color: context.text.tertiaryText,
+                      ),
+                    ),
                   ),
-                  Gap(AppSpacing.md.h),
-                  CustomDivider(text: 'Available users'),
-                  Gap(AppSpacing.md.h),
                   ListView.builder(
                     shrinkWrap: true,
                     physics: NeverScrollableScrollPhysics(),
