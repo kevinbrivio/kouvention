@@ -69,13 +69,6 @@ class BubbleColorScheme {
       receivedBubble: Color(0xFF202C33),
     ),
     BubbleColorScheme(
-      id: 'default_freen',
-      name: 'Default Green Dark',
-      isDark: true,
-      sentBubble: Color(0xFF06CF9C),
-      receivedBubble: Color(0xFF1F332B),
-    ),
-    BubbleColorScheme(
       id: 'blue_dark',
       name: 'Blue Dark',
       isDark: true,
