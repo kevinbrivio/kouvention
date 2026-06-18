@@ -48,9 +48,11 @@
 					<key>UISceneStoryboardFile</key>
 					<string>Main</string>
 					<key>NSCameraUsageDescription</key>
-                    <string>To take a profile photo</string>
+                    <string>This app uses the camera to take profile photos and send photos in chats.</string>
                     <key>NSPhotoLibraryUsageDescription</key>
-                    <string>To choose a profile photo</string>
+                    <string>This app accesses your photo library to set profile photos and send images in chats.</string>
+                    <key>NSMicrophoneUsageDescription</key>
+                    <string>This app uses the microphone to record audio messages.</string>
 				</dict>
 			</array>
 		</dict>

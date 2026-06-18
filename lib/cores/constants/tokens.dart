@@ -70,10 +70,10 @@ class AppSurfaceLight {
   AppSurfaceLight._();
 
   /// Scaffold / page background
-  static const Color background = Color(0xFFF2F4F7);
+  static const Color background = Color(0xFFF5F5F5);
 
   /// Surface containers (cards, list items, dialogs)
-  static const Color surface = Color(0xFFF2F7F6);
+  static const Color surface = Color(0xFFFAFAFA);
 
   /// Elevated surfaces (sheets, menus)
   static const Color surfaceElevated = Color(0xFFFFFFFF);
@@ -85,7 +85,7 @@ class AppSurfaceLight {
   static const Color surfaceBubbleReceived = Color(0xFFF5F5F0);
 
   /// Navigation bars, app bars
-  static const Color surfaceBar = Color(0xFFF9ECE5);
+  static const Color surfaceBar = Color(0xFFF3F3F3);
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -252,7 +252,7 @@ class _AppTextStyles {
 
   // ── Public color resolvers (for .copyWith at call sites) ──
   Color get primaryText => _scheme.onSurface;
-  Color get secondaryText => _scheme.onSurface.withValues(alpha: 0.7);
+  Color get secondaryText => _scheme.onSurface.withValues(alpha: 0.85);
   Color get tertiaryText => _scheme.onSurface.withValues(alpha: 0.5);
   Color get accentText => _scheme.primary;
 
@@ -326,7 +326,7 @@ class _AppTextStyles {
         color: primaryText, height: 1.5,
       );
   TextStyle get labelSmall => TextStyle(
-        fontSize: 11.sp, fontWeight: FontWeight.w400,
+        fontSize: 9.sp, fontWeight: FontWeight.w400,
         color: primaryText, height: 1.5,
       );
 

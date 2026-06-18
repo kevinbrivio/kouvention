@@ -29,6 +29,9 @@ import 'package:kouvention/features/chat/widgets/chatRoom/message_bubble.dart';
 import 'package:kouvention/features/chat/widgets/sticker_picker.dart';
 import 'package:kouvention/features/chat/widgets/selection_app_bar.dart';
 import 'package:kouvention/features/chat/widgets/chatRoom/typing_dots.dart';
+import 'package:kouvention/features/chat/widgets/chatRoom/record_button.dart';
+import 'package:kouvention/features/chat/widgets/chatRoom/recording_overlay.dart';
+import 'package:kouvention/features/chat/widgets/chatRoom/recording_bar.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:kouvention/features/chat/widgets/chatRoom/chat_room_appbar.dart';
 import 'package:kouvention/features/chat/widgets/chatRoom/chat_room_appbar_skeleton.dart';
@@ -119,6 +122,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
   final ItemPositionsListener _itemPositionsListener =
       ItemPositionsListener.create();
   final _focusNode = FocusNode();
+  final ValueNotifier<Offset> _fingerOffset = ValueNotifier(Offset.zero);
 
   bool _showScrollBottom = false;
   int? _initialScrollIndex;
@@ -185,6 +189,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     vm.removeListener(_onVmChanged);
     _textController.dispose();
     _itemPositionsListener.itemPositions.removeListener(_onPositionChanged);
+    _fingerOffset.dispose();
     super.dispose();
   }
 
@@ -201,14 +206,14 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
 
     return Column(
       children: [
-        if (kDebugMode)
-          _DebugSyncStateBar(
-            chatId: widget.chatId,
-            isLoadingOlder: vm.isLoadingOlder,
-            hasMore: vm.hasMoreMessges,
-            loadedOlderCount: vm.loadedOlderMessages.length,
-            oldestLoadedSentAt: vm.oldestLoadedSentAt,
-          ),
+        // if (kDebugMode)
+        //   _DebugSyncStateBar(
+        //     chatId: widget.chatId,
+        //     isLoadingOlder: vm.isLoadingOlder,
+        //     hasMore: vm.hasMoreMessges,
+        //     loadedOlderCount: vm.loadedOlderMessages.length,
+        //     oldestLoadedSentAt: vm.oldestLoadedSentAt,
+        //   ),
         Expanded(
           child: messagesAsync.when(
             loading: () => const ChatRoomSkeleton(),
@@ -385,7 +390,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     final separatorBg = bubbleScheme.sentBubble.withValues(alpha: 0.12);
     final separatorText = bubbleScheme.isDark
         ? Colors.white.withValues(alpha: 0.7)
-        : bubbleScheme.sentBubble.withValues(alpha: 0.8);
+        : bubbleScheme.sentBubble.withValues(alpha: 1);
 
     return Container(
       decoration: BoxDecoration(
@@ -395,7 +400,9 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
       padding: EdgeInsets.all(AppSpacing.xxs.w),
       child: Text(
         isToday ? 'TODAY' : '${date.day}/${date.month}/${date.year}',
-        style: context.text.bodySmall.copyWith(color: separatorText),
+        style: context.text.bodySmall.copyWith(
+          color: context.text.secondaryText,
+        ),
       ),
     );
   }
@@ -470,12 +477,10 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: EdgeInsets.only(
-        left: 6.w,
-        right: 6.w,
+        left: AppSpacing.xs.w,
+        right: AppSpacing.xs.w,
         top: AppSpacing.xs.h,
-        bottom:
-            MediaQuery.of(context).viewInsets.bottom +
-            MediaQuery.of(context).padding.bottom,
+        bottom: MediaQuery.of(context).viewInsets.bottom + kBottomNavigationBarHeight,
       ),
       decoration: BoxDecoration(
         color: Colors.transparent,
@@ -497,6 +502,65 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     String? currentUid,
   ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // ── Locked state: show recording bar ──
+    if (vm.recordingState == RecordingState.locked) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Expanded(
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 4.h),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? AppSurfaceDark.surfaceInputBar
+                    : Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(AppRadius.xl.r),
+              ),
+              child: RecordingBar(
+                isReviewing: false,
+                recordingDuration: vm.recordingDuration,
+                onCancel: () => vm.cancelRecording(),
+                onPause: () => vm.pauseRecording(),
+                onSend: () => vm.sendRecordedAudio(),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // ── Review state: show review bar ──
+    if (vm.recordingState == RecordingState.reviewing) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Expanded(
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 4.h),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? AppSurfaceDark.surfaceInputBar
+                    : Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(AppRadius.xl.r),
+              ),
+              child: RecordingBar(
+                isReviewing: true,
+                filePath: vm.recordingPath ?? '',
+                recordingDuration: vm.recordingDuration,
+                amplitudeSamples: vm.recordingAmplitudeSamples,
+                onCancel: () => vm.discardRecording(),
+                onSend: () => vm.sendRecordedAudio(),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // ── Normal or recording state (long-press, finger down) ──
+    final isRecording = vm.recordingState == RecordingState.recording;
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
@@ -504,7 +568,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
           child: Container(
             padding: EdgeInsets.symmetric(
               horizontal: AppSpacing.xs.w,
-              vertical: AppSpacing.xxs.h,
+              vertical: AppSpacing.xs.h,
             ),
             decoration: BoxDecoration(
               color: isDark
@@ -518,14 +582,23 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
               duration: const Duration(milliseconds: 200),
               curve: Curves.easeOut,
               alignment: Alignment.bottomCenter,
-              child: Column(
+              child: isRecording 
+              ? ValueListenableBuilder<Offset>(
+                  valueListenable: _fingerOffset,
+                  builder: (_, offset, __) => RecordingOverlay(
+                    isLocked: false,
+                    fingerOffset: offset,
+                ),
+              )
+              : Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   if (vm.replyMessage != null)
                     _buildReplyPreview(vm.replyMessage!),
                   ConstrainedBox(
                     constraints: BoxConstraints(
                       minHeight:
-                          AppSizing.chatInputBarMin.h - (AppSpacing.xxs.h * 2),
+                          AppSizing.chatInputBarMin.h - (AppSpacing.xs.h * 2),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -586,21 +659,39 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                       ],
                     ),
                   ),
+                  if (isRecording)
+                    Padding(
+                      padding: EdgeInsets.only(bottom: 4.h),
+                      child: ValueListenableBuilder<Offset>(
+                        valueListenable: _fingerOffset,
+                        builder: (_, offset, __) => RecordingOverlay(
+                          isLocked: true,
+                          fingerOffset: offset,
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
           ),
         ),
         Gap(AppSpacing.xs.w),
-        _SendMicButton(
-          controller: _textController,
+        RecordButton(
+          hasText: _textController.text.trim().isNotEmpty,
           isSending: vm.isSending,
+          recordingState: vm.recordingState,
           onSend: () {
             vm.sendMessage(_textController.text);
             _textController.clear();
             _scrollToBottom();
           },
-          onRecord: vm.startRecording,
+          onStartRecord: () => vm.startRecording(context, startsLocked: false),
+          onStartLockedRecord: () =>
+              vm.startRecording(context, startsLocked: true),
+          onLockRecord: () => vm.lockRecording(),
+          onStopRecord: () => vm.stopRecording(),
+          onCancelRecord: () => vm.cancelRecording(),
+          onFingerOffsetChanged: (offset) => _fingerOffset.value = offset,
         ),
       ],
     );
@@ -973,88 +1064,6 @@ bool _isImageUrl(String url) {
       lower.endsWith('.png') ||
       lower.endsWith('.gif') ||
       lower.endsWith('.webp');
-}
-
-/// Mic/Send button that rebuilds itself without touching the parent state.
-class _SendMicButton extends StatefulWidget {
-  final TextEditingController controller;
-  final VoidCallback onSend;
-  final VoidCallback onRecord;
-  final bool isSending;
-
-  const _SendMicButton({
-    required this.controller,
-    required this.onSend,
-    required this.onRecord,
-    required this.isSending,
-  });
-
-  @override
-  State<_SendMicButton> createState() => _SendMicButtonState();
-}
-
-class _SendMicButtonState extends State<_SendMicButton> {
-  bool _hasText = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _hasText = widget.controller.text.trim().isNotEmpty;
-    widget.controller.addListener(_onTextChanged);
-  }
-
-  @override
-  void didUpdateWidget(covariant _SendMicButton oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.controller != widget.controller) {
-      oldWidget.controller.removeListener(_onTextChanged);
-      widget.controller.addListener(_onTextChanged);
-    }
-  }
-
-  @override
-  void dispose() {
-    widget.controller.removeListener(_onTextChanged);
-    super.dispose();
-  }
-
-  void _onTextChanged() {
-    final nowHasText = widget.controller.text.trim().isNotEmpty;
-    if (nowHasText != _hasText) {
-      setState(() => _hasText = nowHasText);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: () => _hasText ? widget.onSend() : widget.onRecord(),
-    child: Container(
-      width: AppSizing.chatInputBarMin.h,
-      height: AppSizing.chatInputBarMin.h,
-      decoration: BoxDecoration(
-        color: widget.isSending
-            ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)
-            : Theme.of(context).colorScheme.primary,
-        shape: BoxShape.circle,
-      ),
-      child: Center(
-        child: widget.isSending
-            ? SizedBox(
-                height: AppSizing.iconMd,
-                width: AppSizing.iconMd,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Theme.of(context).colorScheme.onPrimary,
-                ),
-              )
-            : Icon(
-                _hasText ? Icons.send : Icons.mic,
-                size: AppSizing.iconMd.r,
-                color: Theme.of(context).colorScheme.onPrimary,
-              ),
-      ),
-    ),
-  );
 }
 
 /// Debug-only bar shown above the message list. Surfaces the 4-field

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -15,16 +16,29 @@ import 'package:kouvention/features/chat/models/sticker_model.dart';
 import 'package:kouvention/features/chat/models/upload_result_model.dart';
 import 'package:kouvention/features/chat/repositories/chat_repository.dart';
 import 'package:kouvention/features/chat/repositories/message_repository.dart';
+import 'package:kouvention/features/chat/services/media/cloud_media_service.dart';
 import 'package:kouvention/features/chat/services/databases/message_database.dart';
+import 'package:kouvention/features/chat/viewmodel/audio_manager.dart';
 import 'package:kouvention/features/notification/viewmodel/active_chat_id_provider.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
 import 'package:kouvention/features/user/services/user_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
+import 'package:snackify/enums/snack_enums.dart';
+import 'package:snackify/snackify.dart';
+
+/// Voice recording state machine (§3.1 of recap).
+///
+/// Transitions:
+///   idle → recording → locked → reviewing → sending → idle
+///     ↓                 ↓
+///   (tap)            (discard)
+enum RecordingState { idle, recording, locked, reviewing, sending }
 
 class ChatRoomVM extends BaseNotifier {
   final ChatRepository _chatRepository;
   final MessageRepository _messageRepository;
+  final CloudMediaService _cloudMediaService;
   final String? _currentUid;
   final String chatId;
 
@@ -61,13 +75,19 @@ class ChatRoomVM extends BaseNotifier {
 
   // audio record
   final AudioRecorder _audioRecorder = AudioRecorder();
-  bool _isRecording = false;
+  RecordingState _recordingState = RecordingState.idle;
+  String? _recordingPath;
+  int _recordingDuration = 0;
+  final List<double> _amplitudeSamples = [];
+  Timer? _recordingTimer;
+  StreamSubscription? _amplitudeSub;
 
   String? _error;
 
   ChatRoomVM(super.ref, {required this.chatId})
     : _chatRepository = ref.read(chatRepositoryProvider),
       _messageRepository = ref.read(messageRepositoryProvider),
+      _cloudMediaService = ref.read(cloudMediaServiceProvider),
       _currentUid = ref.read(authServiceProvider).currentUser?.uid;
 
   // --- GETTERS ------------------------------
@@ -80,7 +100,10 @@ class ChatRoomVM extends BaseNotifier {
   bool get isUploading => _isUploading;
   bool get showMediaPanel => _showMediaPanel;
   bool get showStickerPanel => _showStickerPanel;
-  bool get isRecording => _isRecording;
+  RecordingState get recordingState => _recordingState;
+  int get recordingDuration => _recordingDuration;
+  List<double> get recordingAmplitudeSamples => _amplitudeSamples;
+  String? get recordingPath => _recordingPath;
   bool get hasMoreMessges => _hasMoreMessages;
   bool get isLoadingOlder => _isLoadingOlder;
   int get oldestLoadedSentAt => _oldestLoadedSentAt;
@@ -646,40 +669,282 @@ class ChatRoomVM extends BaseNotifier {
   }
 
   // =================================
-  // AUDIO RECORDING
+  // VOICE RECORDING (state machine)
   // =================================
-  Future<void> startRecording() async {
-    try {
-      // Ketuk pintu: Minta izin mic
-      var status = await Permission.microphone.request();
-      if (status != PermissionStatus.granted) {
-        return;
-      }
 
+  /// Start recording audio from microphone.
+  /// Transitions: idle → recording.
+  Future<void> startRecording(
+    BuildContext context, {
+    required bool startsLocked,
+  }) async {
+    if (_recordingState != RecordingState.idle) return;
+
+    final status = await Permission.microphone.request();
+    if (status.isPermanentlyDenied || status.isRestricted) {
+      Snackify.show(
+        context: context,
+        type: SnackType.error,
+        title: Text('Enable microphone access on settings'),
+        action: TextButton(
+          onPressed: openAppSettings,
+          child: Text('Open Settings'),
+        ),
+      );
+      return;
+    }
+
+    // Generate temp file path
+    final tempDir = await Directory.systemTemp.createTemp('kou_audio_');
+    final supported = await _audioRecorder.isEncoderSupported(
+      AudioEncoder.opus,
+    );
+    final encoder = supported ? AudioEncoder.opus : AudioEncoder.aacLc;
+    final ext = supported ? 'opus' : 'm4a';
+    final tempPath =
+        '${tempDir.path}${DateTime.now().millisecondsSinceEpoch}.$ext';
+    _recordingPath = tempPath;
+
+    try {
       await _audioRecorder.start(
-        const RecordConfig(),
-        path: 'my_temp_audio.m4a',
+        RecordConfig(
+          encoder: encoder,
+          bitRate: 32000,
+          sampleRate: 16000,
+          numChannels: 1,
+          autoGain: true,
+          noiseSuppress: true,
+        ),
+        path: tempPath,
       );
 
-      _isRecording = true;
-      notifyListeners();
+      _recordingState = startsLocked
+          ? RecordingState.locked
+          : RecordingState.recording;
+      _recordingDuration = 0;
+      _amplitudeSamples.clear();
+
+      // Duration timer
+      _recordingTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+        _recordingDuration++;
+        notifyListeners();
+      });
+
+      // Amplitude subscription
+      _amplitudeSub = _audioRecorder
+          .onAmplitudeChanged(const Duration(milliseconds: 100))
+          .listen((amp) {
+            debugPrint('Raw dB: ${amp.current}');
+
+            const double minDb = -60.0;
+            const double maxDb = 0.0;
+
+            final normalized = ((amp.current - minDb) / (maxDb - minDb)).clamp(
+              0.0,
+              1.0,
+            );
+
+            _amplitudeSamples.add(normalized);
+            // Cap at 1 hour (36000 samples @ 10/sec)
+            if (_amplitudeSamples.length > 36000) {
+              _amplitudeSub?.cancel();
+            }
+            notifyListeners();
+          });
     } catch (e) {
-      print('Error in recording audio: $e');
+      debugPrint('Error starting recording: $e');
+      _resetRecording();
     }
   }
 
+  /// Lock the recording (finger slid up). Continues recording.
+  /// Transitions: recording → locked.
+  void lockRecording() {
+    if (_recordingState != RecordingState.recording) return;
+    _recordingState = RecordingState.locked;
+    notifyListeners();
+  }
+
+  /// Cancel/discard recording. Silently deletes temp file.
+  /// Transitions: recording/locked → idle.
+  Future<void> cancelRecording() async {
+    if (_recordingState == RecordingState.idle) return;
+    if (_recordingState == RecordingState.reviewing ||
+        _recordingState == RecordingState.sending)
+      return;
+
+    await _audioRecorder.cancel();
+    _deleteTempFile();
+    _resetRecording();
+    notifyListeners();
+  }
+
+  /// Stop recording and enter review state.
+  /// Transitions: locked → reviewing.
   Future<void> stopRecording() async {
+    if (_recordingState != RecordingState.locked) return;
+
     try {
       final path = await _audioRecorder.stop();
-
-      _isRecording = false;
-      notifyListeners();
-
       if (path != null) {
-        print("Done recording, File in: $path");
+        _recordingPath = path;
       }
+
+      _recordingTimer?.cancel();
+      _amplitudeSub?.cancel();
+
+      _recordingState = RecordingState.reviewing;
+      notifyListeners();
     } catch (e) {
-      print("Stop recording failed: $e");
+      debugPrint('Error stopping recording: $e');
+      _resetRecording();
+    }
+  }
+
+  /// Pause recording and enter review state (tap path).
+  /// Transitions: locked → reviewing.
+  Future<void> pauseRecording() async {
+    if (_recordingState != RecordingState.locked) return;
+
+    try {
+      await _audioRecorder.stop();
+
+      _recordingTimer?.cancel();
+      _recordingTimer = null;
+      _amplitudeSub?.cancel();
+      _amplitudeSub = null;
+
+      _recordingState = RecordingState.reviewing;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error pausing recording: $e');
+      _resetRecording();
+    }
+  }
+
+  /// Transitions: locked/reviewing → sending → idle.
+  Future<void> sendRecordedAudio() async {
+    if (_recordingState != RecordingState.reviewing &&
+        _recordingState != RecordingState.locked)
+      return;
+    if (_recordingPath == null || _currentUid == null) return;
+
+    // If still recording (locked), stop the recorder first
+    if (_recordingState == RecordingState.locked) {
+      final path = await _audioRecorder.stop();
+      if (path != null) _recordingPath = path;
+      _recordingTimer?.cancel();
+      _recordingTimer = null;
+      _amplitudeSub?.cancel();
+      _amplitudeSub = null;
+    }
+
+    // Update the recording state to sent
+    _recordingState = RecordingState.sending;
+    _isSending = true;
+    notifyListeners();
+
+    // Stop any playback
+    AudioManager.instance.stop();
+
+    try {
+      final file = File(_recordingPath!);
+
+      // Upload to Cloudinary
+      final uploadResult = await _cloudMediaService.uploadFile(
+        file: file,
+        mediaType: MessageType.audio,
+      );
+
+      if (uploadResult == null) throw Exception('Audio upload failed');
+
+      // Get chat metadata
+      final chat = ref.read(chatMetadataStreamProvider(chatId)).value;
+      if (chat == null) throw Exception('Chat not ready');
+
+      // Enrich with local path for traceability
+      final enriched = uploadResult.copyWith(
+        localPath: _recordingPath,
+        mediaDuration: _recordingDuration,
+      );
+
+      // Determine other user for FCM if direct chat
+      UserModel? otherUser;
+      if (chat.type == 'direct') {
+        final otherUid = chat.otherMemberUid(_currentUid);
+        otherUser = ref.read(otherUserStreamProvider(otherUid)).value;
+      }
+
+      await _messageRepository.sendMediaMessageDirect(
+        chatRoomId: chatId,
+        senderName: resolveDisplayName(
+          chat: chat,
+          currentUid: _currentUid,
+          resolver: ref.read(chatRoomProfileResolverProvider(chatId)),
+        ),
+        memberUids: chat.members,
+        caption: '',
+        uploadResults: [enriched],
+        type: MessageType.audio,
+        otherUserFcmTokens: otherUser?.fcmTokens,
+        replyTo: _replyMessage != null
+            ? ReplyToModel(
+                messageId: _replyMessage!.id,
+                senderId: _replyMessage!.senderId,
+                senderName: _replyMessage!.senderName,
+                text: _replyMessage!.text,
+                sentAt: _replyMessage!.sentAt,
+                mediaUrl: _replyMessage!.mediaUrls?.firstOrNull,
+                mediaType: _replyMessage!.type.name,
+              )
+            : null,
+      );
+
+      onCancelReply();
+      await file.delete();
+      _resetRecording();
+    } catch (e) {
+      debugPrint('Error sending recorded audio: $e');
+      _error = 'Failed to send audio. Tap to retry.';
+      _recordingState = RecordingState.reviewing;
+    } finally {
+      _isSending = false;
+      notifyListeners();
+    }
+  }
+
+  /// Discard recorded audio. Deletes temp file.
+  void discardRecording() {
+    if (_recordingState != RecordingState.reviewing &&
+        _recordingState != RecordingState.locked)
+      return;
+    _deleteTempFile();
+    _resetRecording();
+    notifyListeners();
+  }
+
+  // ── Helpers ──
+
+  void _resetRecording() {
+    try {
+      _audioRecorder.stop();
+    } catch (_) {}
+    _recordingState = RecordingState.idle;
+    _recordingPath = null;
+    _recordingDuration = 0;
+    _amplitudeSamples.clear();
+    _recordingTimer?.cancel();
+    _recordingTimer = null;
+    _amplitudeSub?.cancel();
+    _amplitudeSub = null;
+  }
+
+  void _deleteTempFile() {
+    if (_recordingPath != null) {
+      try {
+        File(_recordingPath!).delete();
+      } catch (_) {}
+      _recordingPath = null;
     }
   }
 
@@ -697,7 +962,10 @@ class ChatRoomVM extends BaseNotifier {
     clearTyping();
     _typingTimer?.cancel();
     _typingDebounce?.cancel();
+    _recordingTimer?.cancel();
+    _amplitudeSub?.cancel();
     _audioRecorder.dispose();
+    _deleteTempFile();
     super.dispose();
   }
 }

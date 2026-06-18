@@ -9,6 +9,7 @@ import 'package:kouvention/features/chat/models/bubble_color_scheme.dart';
 import 'package:kouvention/features/chat/viewmodel/bubble_scheme_provider.dart';
 import 'package:kouvention/features/chat/viewmodel/wallpaper_provider.dart';
 import 'package:kouvention/features/profile/widgets/settings_tile.dart';
+import 'package:kouvention/cores/viewmodels/theme_iris_controller.dart';
 import 'package:kouvention/features/shared/viewmodel/theme_mode_provider.dart';
 
 class AppearanceSettingsView extends ConsumerWidget {
@@ -17,6 +18,7 @@ class AppearanceSettingsView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
+    final snapshotKey = ref.read(themeSnapshotKeyProvider);
 
     return Scaffold(
       appBar: CustomAppBar(
@@ -86,9 +88,15 @@ class AppearanceSettingsView extends ConsumerWidget {
                         ),
                       ],
                       selected: {themeMode},
-                      onSelectionChanged: (set) => ref
-                          .read(themeModeProvider.notifier)
-                          .setThemeMode(set.first),
+                      onSelectionChanged: (set) {
+                        final controller =
+                            ref.read(themeIrisControllerProvider.notifier);
+                        controller.changeTheme(
+                          context,
+                          set.first,
+                          snapshotKey: snapshotKey,
+                        );
+                      },
                     ),
                   ),
                 ],

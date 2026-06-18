@@ -108,7 +108,8 @@ class UploadResultModel {
 
     // Audio extensions
     if (ext == 'mp3' || ext == 'wav' || ext == 'ogg' || ext == 'm4a' ||
-        ext == 'aac' || ext == 'flac' || ext == 'wma') {
+        ext == 'aac' || ext == 'flac' || ext == 'wma' ||
+        ext == 'opus' || ext == 'caf') {
       return MessageType.audio;
     }
 

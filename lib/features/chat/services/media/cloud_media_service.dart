@@ -39,7 +39,15 @@ class CloudMediaService {
       );
 
       if (response.statusCode == 200) {
-        final data = response.data;
+        final data = response.data as Map<String, dynamic>;
+
+        if (mediaType == MessageType.audio) {
+          data['secure_url'] = (data['secure_url'] as String).replaceFirst(
+            '/upload/',
+            '/upload/f_m4a,br_32k,ar_16000/',
+          );
+        }
+
         return UploadResultModel.fromJson(data);
       }
       return null;

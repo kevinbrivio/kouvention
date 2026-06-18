@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:kouvention/cores/configs/env.dart';
@@ -17,6 +18,8 @@ import 'package:kouvention/cores/router/router.dart';
 import 'package:kouvention/cores/router/router_guard.dart';
 import 'package:kouvention/cores/services/dio_handler.dart';
 import 'package:kouvention/cores/widgets/flavor_banner.dart';
+import 'package:kouvention/cores/widgets/theme_iris_overlay.dart';
+import 'package:kouvention/cores/viewmodels/theme_iris_controller.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/notification/services/notification_handler.dart';
 import 'package:kouvention/features/shared/services/prefs_service.dart';
@@ -193,10 +196,21 @@ class _KouventionAppState extends ConsumerState<KouventionApp>
     }
     return OKToast(
       child: MaterialApp.router(
-        builder: (_, child) => MediaQuery(
-          data: MediaQuery.of(context).copyWith(boldText: true),
-          child: FlavorBanner(child: child!),
-        ),
+        builder: (context, child) {
+          final snapshot = ref.watch(themeIrisControllerProvider);
+          return ThemeIrisOverlay(
+            snapshotImage: snapshot,
+            onComplete: () =>
+                ref.read(themeIrisControllerProvider.notifier).clear(),
+            child: RepaintBoundary(
+              key: ref.read(themeSnapshotKeyProvider),
+              child: MediaQuery(
+                data: MediaQuery.of(context).copyWith(boldText: true),
+                child: FlavorBanner(child: child!),
+              ),
+            ),
+          );
+        },
         title: 'Kouvention',
         debugShowCheckedModeBanner: FlavorConfig.showBanner(),
         theme: AppTheme.light,

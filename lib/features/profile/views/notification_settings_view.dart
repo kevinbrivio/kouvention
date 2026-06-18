@@ -79,8 +79,10 @@ class _BodyState extends State<_Body> with WidgetsBindingObserver {
           Gap(AppSpacing.lg.h),
 
           Text(
-            'NOTIFICATIONS',
-            style: context.text.titleMedium.copyWith(color: context.text.secondaryText)
+            'Notifications',
+            style: context.text.bodyMedium.copyWith(
+              color: context.text.tertiaryText,
+            ),
           ),
           Gap(AppSpacing.sm.h),
 

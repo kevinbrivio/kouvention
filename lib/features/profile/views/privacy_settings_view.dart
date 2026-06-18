@@ -43,8 +43,10 @@ class _Body extends StatelessWidget {
             Gap(AppSpacing.lg.h),
 
             Text(
-              'PRIVACY',
-              style: context.text.titleMedium.copyWith(color: context.text.secondaryText)
+              'Privacy',
+              style: context.text.bodyMedium.copyWith(
+                color: context.text.tertiaryText,
+              ),
             ),
             Gap(AppSpacing.sm.h),
 
