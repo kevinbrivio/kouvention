@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:kouvention/cores/constants/tokens.dart';
-import 'package:kouvention/cores/widgets/custom_divider.dart';
 import 'package:kouvention/cores/widgets/tap_detector.dart';
 import 'package:kouvention/features/chat/viewmodel/recent_users_provider.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
@@ -58,20 +57,15 @@ class RecentUsersList extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Gap(AppSpacing.md.h),
-            CustomDivider(
-              text: 'Sorted by latest message',
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: AppSpacing.sm.h),
+              child: Text(
+                'Sorted by latest message',
+                style: context.text.labelSmall.copyWith(
+                  color: context.text.tertiaryText,
+                ),
+              ),
             ),
-            Gap(AppSpacing.md.h),
-            // Padding(
-            //   padding: EdgeInsets.symmetric(vertical: AppSpacing.sm.h),
-            //   child: Text(
-            //     'Sorted by latest message',
-            //     style: context.text.labelSmall.copyWith(
-            //       color: context.text.tertiaryText,
-            //     ),
-            //   ),
-            // ),
             Flexible(
               child: ListView.builder(
                 physics: const ClampingScrollPhysics(),

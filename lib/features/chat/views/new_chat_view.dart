@@ -1,4 +1,3 @@
-import 'package:cloudinary_url_gen/config/url_config.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
@@ -7,11 +6,9 @@ import 'package:kouvention/cores/bases/base_view.dart';
 import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/cores/widgets/custom_app_bar.dart';
-import 'package:kouvention/cores/widgets/custom_divider.dart';
 import 'package:kouvention/cores/widgets/loading_indicator.dart';
 import 'package:kouvention/cores/widgets/tap_detector.dart';
 import 'package:kouvention/features/chat/viewmodel/new_chat_viewmodel.dart';
-import 'package:kouvention/features/chat/widgets/recent_users_list.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
 
 class NewChatView extends StatelessWidget {
