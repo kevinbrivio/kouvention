@@ -30,14 +30,6 @@ class MessageRepository {
   final ChatService _chatService;
   final MessageDatabase _db;
 
-  /// Reactive local watch around a target `sentAt` (jump-to-message).
-  Stream<List<Message>> watchLocalMessagesAround(
-    String chatId, {
-    required int targetSentAt,
-    int limit = 100,
-  }) =>
-      _db.watchMessagesAround(chatId, targetSentAt: targetSentAt, limit: limit);
-
   /// Watch all messages from local
   Stream<List<Message>> watchAllCachedMessages(
     String chatId,

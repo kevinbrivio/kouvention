@@ -351,57 +351,6 @@ class MessageDatabase extends _$MessageDatabase {
             ..limit(limit))
           .get();
 
-  // ===========================
-  // Jump To / Teleportation
-  // ===========================
-
-  /// Get the target and Stream it
-  ///The reason is, after we jump to target, there could be a case that
-  ///Target was deleted, edited. If we use Future then its static, no changes
-  ///Stream enables our App to keep listen to it
-  Stream<List<Message>> watchMessagesAround(
-    String chatRoomId, {
-    required int targetSentAt,
-    int limit = 100,
-  }) {
-    int half = limit ~/ 2;
-
-    // Use custom statement for bidirectional UNION
-    // 1. GET data AND half of previous data
-    // 2. Fetch the half of next data
-    return customSelect(
-      '''
-        SELECT * FROM messages m
-        WHERE m.chat_room_id = ?
-        AND (
-          id IN (
-            SELECT id FROM messages
-            WHERE chat_room_id = ? AND sent_at <= ?
-            ORDER BY sent_at DESC LIMIT ?
-          )
-          OR id IN (
-            SELECT id FROM messages
-            WHERE chat_room_id = ? AND sent_at > ?
-            ORDER BY sent_at ASC LIMIT ?
-          )
-        )
-        ORDER BY sent_at DESC
-      ''',
-      variables: [
-        Variable.withString(chatRoomId),
-
-        Variable.withString(chatRoomId),
-        Variable.withInt(targetSentAt),
-        Variable.withInt(half),
-
-        Variable.withString(chatRoomId),
-        Variable.withInt(targetSentAt),
-        Variable.withInt(half),
-      ],
-      readsFrom: {messages},
-    ).watch().map((rows) => rows.map((row) => messages.map(row.data)).toList());
-  }
-
   /// Watch every cached messages in Drift.
   /// For every data in Drift, proceed show it into app
   Stream<List<Message>> watchAllCachedMessages(
