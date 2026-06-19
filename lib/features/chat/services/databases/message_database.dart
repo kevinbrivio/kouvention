@@ -402,22 +402,6 @@ class MessageDatabase extends _$MessageDatabase {
     ).watch().map((rows) => rows.map((row) => messages.map(row.data)).toList());
   }
 
-  // ==============================
-  // WATCH CHAT ROOM MESSAGES
-  // ==============================
-  /// Only watch messages limited in chat room
-  Stream<List<Message>> watchMessages(
-    String chatRoomId,
-    String currentUid, {
-    int limit = 100,
-  }) =>
-      (select(messages)
-            ..where((m) => m.chatRoomId.equals(chatRoomId))
-            ..where((m) => m.deletedFor.like('%"$currentUid"%').not())
-            ..orderBy([(m) => OrderingTerm.desc(m.sentAt)])
-            ..limit(limit))
-          .watch();
-
   /// Watch every cached messages in Drift.
   /// For every data in Drift, proceed show it into app
   Stream<List<Message>> watchAllCachedMessages(

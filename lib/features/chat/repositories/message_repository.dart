@@ -30,17 +30,6 @@ class MessageRepository {
   final ChatService _chatService;
   final MessageDatabase _db;
 
-  // --- Read: local window ----------------------------
-
-  /// Reactive local watch of the latest message window for a chat. This
-  /// is what `chatMessagesStreamProvider` consumes. The Drift query
-  /// already limits to [limit] rows (AGENTS.md §11.2: 50-100).
-  Stream<List<Message>> watchLocalMessages(
-    String chatId,
-    String uid, {
-    int limit = 100,
-  }) => _db.watchMessages(chatId, uid, limit: limit);
-
   /// Reactive local watch around a target `sentAt` (jump-to-message).
   Stream<List<Message>> watchLocalMessagesAround(
     String chatId, {
