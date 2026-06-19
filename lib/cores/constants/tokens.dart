@@ -353,6 +353,12 @@ class _AppTextStyles {
     color: primaryText,
     height: 1.5,
   );
+  TextStyle get labelMediumSmall => TextStyle(
+    fontSize: 11.sp,
+    fontWeight: FontWeight.w400,
+    color: primaryText,
+    height: 1.5,
+  );
   TextStyle get labelSmall => TextStyle(
     fontSize: 9.sp,
     fontWeight: FontWeight.w400,
