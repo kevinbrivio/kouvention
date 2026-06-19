@@ -9,7 +9,7 @@ import 'package:kouvention/features/shared/viewmodel/theme_mode_provider.dart';
 final bubbleSchemeProvider =
     StateNotifierProvider<BubbleSchemeNotifier, BubbleColorScheme>((ref) {
       final prefs = ref.read(prefsServiceProvider);
-      final themeMode = ref.read(themeModeProvider);
+      final themeMode = ref.watch(themeModeProvider);
       return BubbleSchemeNotifier(prefs)..load(themeMode);
     });
 
