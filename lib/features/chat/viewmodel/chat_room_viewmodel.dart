@@ -394,6 +394,10 @@ class ChatRoomVM extends BaseNotifier {
     });
   }
 
+  void clearHighlight() {
+    ref.read(highlightMessageProvider(chatId).notifier).state = null;
+  }
+
   bool isMyMessage(MessageModel message) => message.senderId == _currentUid;
   bool isRepliedMessageMine(String senderId) => _currentUid == senderId;
 
@@ -401,8 +405,11 @@ class ChatRoomVM extends BaseNotifier {
     ref.read(jumpToTargetProvider(chatId).notifier).state = sentAt;
   }
 
+  /// Clear jump target and highlight. Call when the user explicitly returns to
+  /// latest messages (scroll-to-bottom, close button, etc.).
   void switchToNormalMode() {
     ref.read(jumpToTargetProvider(chatId).notifier).state = null;
+    ref.read(highlightMessageProvider(chatId).notifier).state = null;
   }
 
   Future<void> fetchMessagesAround(DateTime sentAt) async {
@@ -547,7 +554,7 @@ class ChatRoomVM extends BaseNotifier {
     final ext = supported ? 'opus' : 'm4a';
     final tempPath =
         '${tempDir.path}${DateTime.now().millisecondsSinceEpoch}.$ext';
-    _recordingPath = tempPath;
+    _recordingPath = tempPath;  
 
     try {
       await _audioRecorder.start(
@@ -578,8 +585,6 @@ class ChatRoomVM extends BaseNotifier {
       _amplitudeSub = _audioRecorder
           .onAmplitudeChanged(const Duration(milliseconds: 100))
           .listen((amp) {
-            debugPrint('Raw dB: ${amp.current}');
-
             const double minDb = -60.0;
             const double maxDb = 0.0;
 
@@ -727,7 +732,7 @@ class ChatRoomVM extends BaseNotifier {
           resolver: ref.read(chatRoomProfileResolverProvider(chatId)),
         ),
         memberUids: chat.members,
-        caption: '',
+        caption: 'Audio message',
         uploadResults: [enriched],
         type: MessageType.audio,
         otherUserFcmTokens: otherUser?.fcmTokens,
@@ -793,7 +798,6 @@ class ChatRoomVM extends BaseNotifier {
   }
 
   String getCloudinaryThumbnail(String videoUrl) {
-    print('========== GETTING THUMBNAIL FOR VIDEO: $videoUrl');
     if (videoUrl.isEmpty) return '';
     return videoUrl.replaceAll(RegExp(r'\.[^.]+$'), '.jpg');
   }
@@ -842,21 +846,8 @@ final chatMessagesStreamProvider = StreamProvider.autoDispose
       // Watch refresh trigger — re-creates stream when init fetches data.
       ref.watch(chatRoomRefreshProvider(chatId));
 
-      final targetSentAt = ref.watch(jumpToTargetProvider(chatId));
-
-      Stream<List<Message>> localStream;
-
-      if (targetSentAt != null) {
-        localStream = db.watchMessagesAround(
-          chatId,
-          targetSentAt: targetSentAt,
-          limit: 100,
-        );
-      } else {
-        // No target sent means nothing for us to jump
-        final uid = ref.read(currentUidProvider);
-        localStream = db.watchAllCachedMessages(chatId, uid!);
-      }
+      final uid = ref.read(currentUidProvider);
+      final localStream = db.watchAllCachedMessages(chatId, uid!);
 
       return localStream.map((localMsgs) {
         if (kDebugMode) debugPrint('Drift messages in chat room: ${localMsgs.length}');
