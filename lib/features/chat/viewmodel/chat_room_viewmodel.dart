@@ -859,9 +859,7 @@ final chatMessagesStreamProvider = StreamProvider.autoDispose
       }
 
       return localStream.map((localMsgs) {
-        debugPrint(
-          '==== Drift return messges in chat room: ${localMsgs.length}',
-        );
+        if (kDebugMode) debugPrint('Drift messages in chat room: ${localMsgs.length}');
         return localMsgs
             .map(
               (m) => MessageModel(

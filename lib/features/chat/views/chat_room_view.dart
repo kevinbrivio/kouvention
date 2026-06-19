@@ -152,8 +152,6 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
   }
 
   void _onVmChanged() {
-    // The VM already called notifyListeners(). We just need a rebuild so
-    // the widget reads the latest loadedOlderMessageModels from the VM
     if (mounted) setState(() {});
   }
 
