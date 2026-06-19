@@ -351,71 +351,16 @@ class MessageDatabase extends _$MessageDatabase {
             ..limit(limit))
           .get();
 
-  // ===========================
-  // Jump To / Teleportation
-  // ===========================
-
-  /// Get the target and Stream it
-  ///The reason is, after we jump to target, there could be a case that
-  ///Target was deleted, edited. If we use Future then its static, no changes
-  ///Stream enables our App to keep listen to it
-  Stream<List<Message>> watchMessagesAround(
-    String chatRoomId, {
-    required int targetSentAt,
-    int limit = 100,
-  }) {
-    int half = limit ~/ 2;
-
-    // Use custom statement for bidirectional UNION
-    // 1. GET data AND half of previous data
-    // 2. Fetch the half of next data
-    return customSelect(
-      '''
-        SELECT * FROM messages m
-        WHERE m.chat_room_id = ?
-        AND (
-          id IN (
-            SELECT id FROM messages
-            WHERE chat_room_id = ? AND sent_at <= ?
-            ORDER BY sent_at DESC LIMIT ?
-          )
-          OR id IN (
-            SELECT id FROM messages
-            WHERE chat_room_id = ? AND sent_at > ?
-            ORDER BY sent_at ASC LIMIT ?
-          )
-        )
-        ORDER BY sent_at DESC
-      ''',
-      variables: [
-        Variable.withString(chatRoomId),
-
-        Variable.withString(chatRoomId),
-        Variable.withInt(targetSentAt),
-        Variable.withInt(half),
-
-        Variable.withString(chatRoomId),
-        Variable.withInt(targetSentAt),
-        Variable.withInt(half),
-      ],
-      readsFrom: {messages},
-    ).watch().map((rows) => rows.map((row) => messages.map(row.data)).toList());
-  }
-
-  // ==============================
-  // WATCH CHAT ROOM MESSAGES
-  // ==============================
-  /// Only watch messages limited in chat room
-  Stream<List<Message>> watchMessages(
+  /// Watch every cached messages in Drift.
+  /// For every data in Drift, proceed show it into app
+  Stream<List<Message>> watchAllCachedMessages(
     String chatRoomId,
-    String currentUid, {
-    int limit = 100,
-  }) =>
+    String currentUid,
+  ) =>
       (select(messages)
             ..where((m) => m.chatRoomId.equals(chatRoomId))
             ..where((m) => m.deletedFor.like('%"$currentUid"%').not())
-            ..orderBy([(m) => OrderingTerm.desc(m.sentAt)])
-            ..limit(limit))
+            ..orderBy([(m) => OrderingTerm.desc(m.sentAt)]))
           .watch();
 
   /// Unbounded watch. **Deprecated** — kept only for legacy callers and tests.
@@ -652,7 +597,6 @@ class MessageDatabase extends _$MessageDatabase {
     }
 
     final minSent = row.data['min_sent'] as int? ?? 0;
-    final count = row.data['cnt'] as int? ?? 0;
 
     await updateChatSyncState(
       chatId: chatId,
@@ -692,7 +636,7 @@ class MessageDatabase extends _$MessageDatabase {
   /// [chats] table. All rows share the same denormalized values; picking
   /// any row is correct. Returns defaults when the table is empty.
   Future<({bool hasMore, int? activityAt, String? chatId})>
-      getChatListPaginationState() async {
+  getChatListPaginationState() async {
     final row = await (select(chats)..limit(1)).getSingleOrNull();
     if (row == null) {
       return (hasMore: true, activityAt: null, chatId: null);

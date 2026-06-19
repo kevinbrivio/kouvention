@@ -9,7 +9,10 @@ String lastMessageLabel(String text, MessageType type, String fileName) {
     case MessageType.video:
       return '🎥 $fileName';
     case MessageType.audio:
-      return '🎵 $fileName';
+      if (fileName.startsWith('kou_audio_')) {
+        return 'Audio message';
+      }
+      return fileName;
     case MessageType.file:
       return '📎 $fileName';
     case MessageType.sticker:
