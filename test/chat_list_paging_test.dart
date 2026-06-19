@@ -50,8 +50,6 @@ void main() {
 
     expect(await db.getChatCount(), seedCount);
 
-    final remaining = await db.getChatCount();
-
     // The oldest (seedCount - kChatListMaxCached = 51) should be evicted.
     // With updatedAt increasing monotonically (c0 oldest, c550 newest),
     // the survivors are c51..c550. Sorted DESC, the LAST row is the
