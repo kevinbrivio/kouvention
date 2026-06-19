@@ -149,7 +149,10 @@ class _BubbleStyleSection extends ConsumerWidget {
                   scheme: scheme,
                   isSelected: scheme.id == currentScheme.id,
                   onTap: () =>
-                      ref.read(bubbleSchemeProvider.notifier).select(scheme),
+                      ref.read(bubbleSchemeProvider.notifier).select(
+                        scheme,
+                        isDark ? Brightness.dark : Brightness.light,
+                      ),
                 ),
               )
               .toList(),

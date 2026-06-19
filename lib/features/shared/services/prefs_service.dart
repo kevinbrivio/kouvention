@@ -23,7 +23,6 @@ class PrefsService {
   static const String _notificationVibrationKey =
       'notification_vibration_enabled';
   static const String _themeModeKey = 'theme_mode';
-  static const String _bubbleSchemeKey = 'bubble_color_scheme';
   static const String _wallpaperPathKey = 'chat_wallpaper_path';
 
   // --- ONBOARDING
@@ -123,15 +122,23 @@ class PrefsService {
   }
 
   // --- BUBBLE COLOR SCHEME
-  String? getBubbleSchemeId() => _prefs.getString(_bubbleSchemeKey);
-
-  Future<void> setBubbleSchemeId(String? id) async {
-    if (id != null) {
-      await _prefs.setString(_bubbleSchemeKey, id);
-    } else {
-      await _prefs.remove(_bubbleSchemeKey);
-    }
+  static const String _bubbleSchemeLightKey = 'bubble_color_scheme_light';
+  static const String _bubbleSchemeDarkKey = 'bubble_color_scheme_dark';
+  static const String _legacyBubbleSchemeKey = 'bubble_color_scheme';
+  
+  String? getBubbleSchemeId({required bool isDark}) {
+    final key = isDark ? _bubbleSchemeDarkKey : _bubbleSchemeLightKey;
+    return _prefs.getString(key) ?? _prefs.getString(_legacyBubbleSchemeKey);
   }
+  
+  Future<void> setBubbleSchemeId(String? id, {required bool isDark}) async {
+    final key = isDark ? _bubbleSchemeDarkKey : _bubbleSchemeLightKey;
+    if (id != null) {
+      await _prefs.setString(key, id);
+    } else {
+      await _prefs.remove(key);
+    }
+  }  
 
   // --- CHAT WALLPAPER
   // Stored value uses a prefix scheme so PrefsService stays format-agnostic:
