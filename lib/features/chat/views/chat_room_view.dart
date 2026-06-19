@@ -159,14 +159,26 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     final sentAt = int.parse(widget.scrollToSentAt!);
     vm.setJumpTarget(sentAt);
 
-    final index = _currentMessagesList.indexWhere(
-      (m) => m.id == widget.scrollToMessageId,
-    );
+    int? index;
+    for (int i = 0; i < 3; i++) {
+      index = _currentMessagesList.indexWhere(
+        (m) => m.id == widget.scrollToMessageId,
+      );
+      if (index != -1) break;
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
 
-    if (index != -1 && mounted) {
-      setState(() => _initialScrollIndex = index);
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (index != null && index != -1 && mounted) {
+      final targetIndex = (index - 3).clamp(0, _currentMessagesList.length - 1);
+      if (_itemScrollController.isAttached) {
+        _itemScrollController.jumpTo(index: targetIndex);
+      }
+      setState(() => _initialScrollIndex = targetIndex);
+
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
         vm.highlightMessage(widget.scrollToMessageId!);
+        await Future.delayed(const Duration(milliseconds: 800));
+        vm.clearHighlight();
       });
     }
   }
@@ -973,23 +985,17 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     }
 
     int? index;
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 3; i++) {
       index = _currentMessagesList.indexWhere((m) => m.id == messageId);
       if (index != -1) break;
       await Future.delayed(const Duration(milliseconds: 50));
     }
 
-    if (index == null || index == -1) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          ctx,
-        ).showSnackBar(const SnackBar(content: Text('Message not found')));
+    if (index != null && index != -1 && mounted) {
+      final targetIndex = (index - 3).clamp(0, _currentMessagesList.length - 1);
+      if (_itemScrollController.isAttached) {
+        _itemScrollController.jumpTo(index: targetIndex);
       }
-      return;
-    }
-
-    if (_itemScrollController.isAttached) {
-      _itemScrollController.jumpTo(index: index);
     }
 
     vm.highlightMessage(messageId);
@@ -1009,8 +1015,6 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     final maxIndex = positions
         .map((p) => p.index)
         .reduce((a, b) => a > b ? a : b);
-
-    debugPrint('===== Current pagination position: $maxIndex');
 
     final threshold = _currentMessagesCount - 5;
 
