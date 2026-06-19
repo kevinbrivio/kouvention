@@ -132,6 +132,8 @@ class MessageBubble extends ConsumerWidget {
     final sentBubbleColor = scheme.sentBubble;
     final receivedBubbleColor = scheme.receivedBubble;
     final isLightReceived = receivedBubbleColor.computeLuminance() > 0.5;
+    final colorScheme = Theme.of(context).colorScheme;
+    
     return Column(
       crossAxisAlignment: isMe
           ? CrossAxisAlignment.end
@@ -257,19 +259,12 @@ class MessageBubble extends ConsumerWidget {
                                   style: context.text.bodySmall.copyWith(
                                     color: isMe
                                         ? message.isDeleted
-                                              ? Theme.of(context)
-                                                    .colorScheme
-                                                    .onSurface
+                                              ? colorScheme.onSurface
                                                     .withValues(alpha: 0.5)
-                                              : Colors.white
-                                        : message.isDeleted
-                                        ? Theme.of(context)
-                                              .colorScheme
-                                              .onSurface
-                                              .withValues(alpha: 0.5)
-                                        : (isLightReceived
-                                              ? Colors.black87
-                                              : Colors.white),
+                                              : context.text.secondaryText
+                                        : colorScheme.onSurface.withValues(
+                                            alpha: 0.5,
+                                          ),
                                     fontStyle: message.isDeleted
                                         ? FontStyle.italic
                                         : FontStyle.normal,
