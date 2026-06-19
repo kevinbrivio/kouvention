@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:kouvention/cores/utils/id_generator.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -993,8 +994,17 @@ class SyncService {
     required List<String> messageIds,
   }) async {
     if (_currentUid == null) return;
-    // Soft delete
+    // Soft delete on local
     await _db.softDeleteMessages(messageIds: messageIds);
+
+    // update the deletion state in remote
+    try {
+      await _chatService.deleteMessageForEveryone(
+        chatId, messageIds
+      );
+    } catch (e) {
+      if (kDebugMode) debugPrint('Failed to delete-for-everyone on Cloud: $e');
+    }
   }
 
   // =========================================

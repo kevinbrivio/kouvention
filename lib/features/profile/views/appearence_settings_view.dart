@@ -89,8 +89,9 @@ class AppearanceSettingsView extends ConsumerWidget {
                       ],
                       selected: {themeMode},
                       onSelectionChanged: (set) {
-                        final controller =
-                            ref.read(themeIrisControllerProvider.notifier);
+                        final controller = ref.read(
+                          themeIrisControllerProvider.notifier,
+                        );
                         controller.changeTheme(
                           context,
                           set.first,
@@ -149,7 +150,10 @@ class _BubbleStyleSection extends ConsumerWidget {
                   scheme: scheme,
                   isSelected: scheme.id == currentScheme.id,
                   onTap: () =>
-                      ref.read(bubbleSchemeProvider.notifier).select(scheme),
+                      ref.read(bubbleSchemeProvider.notifier).select(
+                        scheme,
+                        isDark ? Brightness.dark : Brightness.light,
+                      ),
                 ),
               )
               .toList(),
@@ -203,7 +207,7 @@ class _ColorSchemeCard extends StatelessWidget {
                   width: 20.w,
                   height: 20.w,
                   decoration: BoxDecoration(
-                    color: scheme.sentBubble,
+                    color: scheme.receivedBubble,
                     borderRadius: BorderRadius.circular(4.r),
                   ),
                 ),
@@ -212,7 +216,7 @@ class _ColorSchemeCard extends StatelessWidget {
                   width: 20.w,
                   height: 20.w,
                   decoration: BoxDecoration(
-                    color: scheme.receivedBubble,
+                    color: scheme.sentBubble,
                     borderRadius: BorderRadius.circular(4.r),
                     border: scheme.receivedBubble == Colors.white
                         ? Border.all(color: Colors.grey.shade300)
@@ -356,9 +360,7 @@ class _PreviewAppBar extends StatelessWidget {
             alignment: Alignment.center,
             child: Text(
               'A',
-              style: context.text.labelMedium.copyWith(
-                color: scheme.primary,
-              ),
+              style: context.text.labelMedium.copyWith(color: scheme.primary),
             ),
           ),
           Gap(AppSpacing.sm.w),
@@ -448,13 +450,8 @@ class _PreviewBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = isMe ? scheme.sentBubble : scheme.receivedBubble;
-    final isLightReceived = !isMe && color.computeLuminance() > 0.5;
-    final textColor = isMe
-        ? Colors.white
-        : (isLightReceived ? Colors.black87 : Colors.white);
-    final timeColor = isMe
-        ? Colors.white70
-        : (isLightReceived ? Colors.grey.shade500 : Colors.white60);
+    final textColor = context.text.secondaryText;
+    final timeColor = context.text.secondaryText.withValues(alpha: 0.2);
 
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
@@ -488,10 +485,7 @@ class _PreviewBubble extends StatelessWidget {
               children: [
                 Text(
                   time,
-                  style: context.text.labelSmall.copyWith(
-                    color: timeColor,
-                    fontSize: 9.sp,
-                  ),
+                  style: context.text.labelSmall.copyWith(color: timeColor),
                 ),
                 if (showRead) ...[
                   Gap(3.w),
