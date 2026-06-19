@@ -91,66 +91,51 @@ class _CustomNavItem extends StatefulWidget {
 }
 
 class _CustomNavItemState extends State<_CustomNavItem> {
-  bool _isInteracting = false;
-
   @override
-  Widget build(BuildContext context) => MouseRegion(
-    onEnter: (_) => setState(() => _isInteracting = true),
-    onExit: (_) => setState(() => _isInteracting = false),
-    child: GestureDetector(
-      onTapDown: (_) => setState(() => _isInteracting = true),
-      onTapUp: (_) {
-        setState(() => _isInteracting = false);
-        widget.onTap();
-      },
-      onTapCancel: () => setState(() => _isInteracting = false),
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        padding: EdgeInsets.all(AppSpacing.xxs.w),
-        child:
-            Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      widget.icon,
-                      size: AppSizing.iconMd.r,
+  Widget build(BuildContext context) => GestureDetector(
+    onTapUp: (_) => widget.onTap(),
+    behavior: HitTestBehavior.opaque,
+    child: Container(
+      padding: EdgeInsets.all(AppSpacing.xxs.w),
+      child:
+          Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    widget.icon,
+                    size: AppSizing.iconMd.r,
+                    color: widget.isSelected
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.5),
+                  ),
+                  Gap(4.h),
+                  Text(
+                    widget.label,
+                    style: context.text.labelSmall.copyWith(
                       color: widget.isSelected
                           ? Theme.of(context).colorScheme.primary
                           : Theme.of(
                               context,
                             ).colorScheme.onSurface.withValues(alpha: 0.5),
+                      fontWeight: widget.isSelected
+                          ? FontWeight.w500
+                          : FontWeight.w400,
                     ),
-                    Gap(4.h),
-                    Text(
-                      widget.label,
-                      style: context.text.labelSmall.copyWith(
-                        color: widget.isSelected
-                            ? Theme.of(context).colorScheme.primary
-                            : Theme.of(
-                                context,
-                              ).colorScheme.onSurface.withValues(alpha: 0.5),
-                        fontWeight: widget.isSelected
-                            ? FontWeight.w500
-                            : FontWeight.w400,
-                      ),
-                    ),
-                  ],
-                )
-                .animate(target: widget.isSelected ? 1 : 0)
-                .scale(
-                  begin: const Offset(0.9, 0.9),
-                  end: const Offset(1, 1),
-                  duration: 300.ms,
-                  curve: Curves.easeOutBack,
-                )
-                .shimmer(angle: 1.57, size: 2, duration: 400.ms)
-                .flipV(
-                  curve: Curves.easeInOutCubic,
-                  duration: 400.ms,
-                  end: 0.1,
-                )
-                .scaleXY(end: 1, alignment: const Alignment(0, 0.1)),
-      ),
+                  ),
+                ],
+              )
+              .animate(target: widget.isSelected ? 1 : 0)
+              .scale(
+                begin: const Offset(0.9, 0.9),
+                end: const Offset(1, 1),
+                duration: 300.ms,
+                curve: Curves.easeOutBack,
+              )
+              .shimmer(angle: 1.57, size: 2, duration: 400.ms)
+              .flipV(curve: Curves.easeInOutCubic, duration: 400.ms, end: 0.1)
+              .scaleXY(end: 1, alignment: const Alignment(0, 0.1)),
     ),
   );
 }

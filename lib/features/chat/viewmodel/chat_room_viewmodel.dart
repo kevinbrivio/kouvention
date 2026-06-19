@@ -47,10 +47,8 @@ class ChatRoomVM extends BaseNotifier {
 
   // Pagination
   static const messagePaginationThreshold = 100;
-  int _oldestLoadedSentAt = 0;
   bool _hasMoreMessages = true;
   bool _isLoadingOlder = false;
-  List<Message> _loadedOlderMessages = [];
 
   String? _highlightedMessageId;
 
@@ -106,54 +104,6 @@ class ChatRoomVM extends BaseNotifier {
   String? get recordingPath => _recordingPath;
   bool get hasMoreMessges => _hasMoreMessages;
   bool get isLoadingOlder => _isLoadingOlder;
-  int get oldestLoadedSentAt => _oldestLoadedSentAt;
-  List<Message> get loadedOlderMessages => _loadedOlderMessages;
-
-  /// Maps [_loadedOlderMessages] (Drift `Message` rows appended by
-  /// [loadOlderMessages] on scroll-up) to `MessageModel` for the view.
-  ///
-  /// The view combines this with the latest 50 from
-  /// `chatMessagesStreamProvider` to render the full visible window.
-  /// Mapping logic mirrors `chatMessagesStreamProvider`.
-  List<MessageModel> get loadedOlderMessageModels {
-    if (_loadedOlderMessages.isEmpty) return const <MessageModel>[];
-    return _loadedOlderMessages.map(_toMessageModel).toList(growable: false);
-  }
-
-  static MessageModel _toMessageModel(Message m) => MessageModel(
-    id: m.id,
-    senderId: m.senderId,
-    senderName: m.senderName,
-    text: m.textContent,
-    type: MessageType.values.firstWhere(
-      (e) => e.name.toLowerCase() == m.type.toLowerCase(),
-      orElse: () => MessageType.text,
-    ),
-    sentAt: DateTime.fromMillisecondsSinceEpoch(m.sentAt),
-    updatedAt: DateTime.fromMillisecondsSinceEpoch(m.updatedAt),
-    isDeleted: m.isDeleted,
-    deletedFor: m.deletedFor,
-    syncStatus: m.syncStatus,
-    mediaUrls: m.mediaUrls ?? [],
-    mediaCaptions: m.mediaCaptions,
-    fileSizeBytes: m.fileSizeBytes,
-    fileName: m.fileName,
-    mimeType: m.mimeType ?? '',
-    mediaDuration: m.mediaDuration,
-    replyTo: m.replyToId != null
-        ? ReplyToModel(
-            messageId: m.replyToId!,
-            senderId: m.replyToSenderId ?? '',
-            senderName: m.replyToSenderName ?? '',
-            text: m.replyToText ?? '',
-            sentAt: m.replyToSentAt != null
-                ? DateTime.fromMillisecondsSinceEpoch(m.replyToSentAt!)
-                : DateTime.fromMillisecondsSinceEpoch(m.sentAt),
-            mediaType: m.replyToMediaType,
-            mediaUrl: m.replyToMediaUrl,
-          )
-        : null,
-  );
 
   @override
   FutureOr<void> init() async {
@@ -270,146 +220,40 @@ class ChatRoomVM extends BaseNotifier {
   // SYNC MESSAGES & PAGINATION
   // ========================================
   /// Loads the next older page of messages for this chat.
-  ///
-  /// Per AGENTS.md §5 / §8 / §11.2, scroll-up behavior is:
-  ///   1. Try the local cache first (`db.fetchOlderMessages`).
-  ///   2. If the local page is short OR empty AND the chat's
-  ///      `hasMoreOlderRemote` flag is `true`, fall back to one
-  ///      remote older page (`SyncService.fetchOlderMessages`).
-  ///   3. Stop only when both local and remote are exhausted.
-  ///
-  /// Re-entrant guard: the entire body is wrapped in
-  /// `if (_isLoadingOlder || !_hasMoreMessages) return` so scroll
-  /// events can't double-fire mid-flight.
   Future<void> loadOlderMessages() async {
-    if (_isLoadingOlder || !_hasMoreMessages) {
-      if (kDebugMode) {
-        debugPrint(
-          '[loadOlder] SKIP isLoading=$_isLoadingOlder hasMore=$_hasMoreMessages',
-        );
-      }
-      return;
-    }
-
-    final db = ref.read(messageDatabaseProvider);
-    const threshold = messagePaginationThreshold;
-    bool fetchedRemote = false;
-    int insertedCount = 0;
-
-    if (kDebugMode) {
-      debugPrint(
-        '[loadOlder] ENTRY oldestLoaded=$_oldestLoadedSentAt '
-        'loaded=${_loadedOlderMessages.length}',
-      );
-    }
+    if (_isLoadingOlder || !_hasMoreMessages) return;
 
     try {
       _isLoadingOlder = true;
       notifyListeners();
-      // 1. Local page.
-      final older = await db.fetchOlderMessages(
-        chatId,
-        beforeSentAt: _oldestLoadedSentAt,
-        limit: threshold,
-      );
 
-      if (kDebugMode) {
-        debugPrint(
-          '[loadOlder] LOCAL fetched=${older.length} '
-          'oldest=${older.isNotEmpty ? older.last.sentAt : "n/a"}',
-        );
-      }
-
-      if (older.isNotEmpty) {
-        _loadedOlderMessages = [..._loadedOlderMessages, ...older];
-        _oldestLoadedSentAt = older.last.sentAt;
-        insertedCount = older.length;
-      }
-
-      // 2. Fall back to a remote page only if the local cache was
-      //    short AND the 4-field sync state says the server still
-      //    has older rows.
-      final localExhausted = older.length < threshold;
-      if (kDebugMode) {
-        debugPrint('[loadOlder] localExhausted=$localExhausted');
-      }
-      if (localExhausted) {
-        final chat = await db.getChatById(chatId);
-        if (kDebugMode) {
-          debugPrint(
-            '[loadOlder] CHAT row '
-            'hasMoreOlderRemote=${chat?.hasMoreOlderRemote} '
-            'oldestCachedAt=${chat?.oldestCachedAt} '
-            'latestSeenRemoteAt=${chat?.latestSeenRemoteAt}',
-          );
-        }
-        if (chat?.hasMoreOlderRemote ?? false) {
-          final remote = await _messageRepository.fetchOlderMessages(chatId);
-          fetchedRemote = remote.messages > 0;
-          insertedCount += remote.messages;
-          if (kDebugMode) {
-            debugPrint(
-              '[loadOlder] REMOTE fetched=${remote.messages} '
-              'insertedCount=$insertedCount',
-            );
-          }
-
-          // The Drift watch upstream will re-emit. Refresh the local
-          // cursor and bounds from the chat row. Deduplicate by message
-          // ID to avoid inserting rows already in _loadedOlderMessages
-          // from step 1 (the local fetch just above).
-          if (fetchedRemote) {
-            final reRead = await db.fetchOlderMessages(
-              chatId,
-              beforeSentAt: _oldestLoadedSentAt,
-              limit: threshold,
-            );
-            if (reRead.isNotEmpty) {
-              final existingIds = _loadedOlderMessages.map((m) => m.id).toSet();
-              final newRows = reRead
-                  .where((m) => !existingIds.contains(m.id))
-                  .toList();
-              if (newRows.isNotEmpty) {
-                _loadedOlderMessages = [..._loadedOlderMessages, ...newRows];
-                _oldestLoadedSentAt = newRows.last.sentAt;
-                insertedCount += newRows.length;
-              }
-            }
-          } else if (kDebugMode) {
-            debugPrint(
-              '[loadOlder] remote not needed '
-              '(hasMoreOlderRemote=false or chat missing)',
-            );
-          }
-        }
-      }
-
-      // 3. Decide if there's anything left to load.
+      // 1. Get chat metadata
+      final db = ref.read(messageDatabaseProvider);
       final chat = await db.getChatById(chatId);
-      final remoteExhausted = !(chat?.hasMoreOlderRemote ?? false);
-      if (remoteExhausted &&
-          (insertedCount == 0 ||
-              (insertedCount < threshold && !fetchedRemote))) {
+
+      // 2. Validate from chat, if there is still data from Firestore
+      if (!(chat?.hasMoreOlderRemote ?? false)) {
+        _hasMoreMessages = false;
+        return;
+      }
+
+      // 3. Fetch data from Firestore
+      final result = await _messageRepository.fetchOlderMessages(
+        chatId,
+        limit: 50,
+        maxPages: 1,
+      );
+      final refreshed = await db.getChatById(chatId);
+      if (result.messages == 0 || (!(refreshed?.hasMoreOlderRemote ?? false))) {
         _hasMoreMessages = false;
       }
-      if (kDebugMode) {
-        debugPrint(
-          '[loadOlder] EXIT loaded=${_loadedOlderMessages.length} '
-          'hasMore=$_hasMoreMessages oldestLoaded=$_oldestLoadedSentAt',
-        );
-      }
-    } catch (e, st) {
-      // Re-open the gate on error; the user can scroll up again.
+    } catch (e) {
       _hasMoreMessages = true;
-      debugPrint('=== ERROR on Load More Messages: $e\n$st');
+      debugPrint('===== loadOlderMessages failed: $e\n');
     } finally {
       _isLoadingOlder = false;
       notifyListeners();
     }
-  }
-
-  void setOldestLoadedSentAt(int lastSentAt) {
-    _oldestLoadedSentAt = lastSentAt;
   }
 
   // ========================================
@@ -1011,10 +855,11 @@ final chatMessagesStreamProvider = StreamProvider.autoDispose
       } else {
         // No target sent means nothing for us to jump
         final uid = ref.read(currentUidProvider);
-        localStream = db.watchMessages(chatId, uid!, limit: 100);
+        localStream = db.watchAllCachedMessages(chatId, uid!);
       }
 
       return localStream.map((localMsgs) {
+        if (kDebugMode) debugPrint('Drift messages in chat room: ${localMsgs.length}');
         return localMsgs
             .map(
               (m) => MessageModel(
