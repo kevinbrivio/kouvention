@@ -39,7 +39,12 @@ class _RecordingBarState extends State<RecordingBar> {
   void initState() {
     super.initState();
     _playerSub = AudioManager.instance.playerStateStream.listen((state) {
-      if (mounted) setState(() => _isPlaying = state.playing);
+      if (mounted) {
+        setState(() {
+          _isPlaying = state.playing &&
+              AudioManager.instance.currentMessageId == AudioManager.reviewKey;
+        });
+      }
     });
   }
 
@@ -47,7 +52,9 @@ class _RecordingBarState extends State<RecordingBar> {
   void didUpdateWidget(RecordingBar oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!widget.isReviewing && oldWidget.isReviewing) {
-      AudioManager.instance.stop();
+      if (AudioManager.instance.currentMessageId == AudioManager.reviewKey) {
+        AudioManager.instance.stop();
+      }
       _isPlaying = false;
     }
   }
@@ -55,7 +62,9 @@ class _RecordingBarState extends State<RecordingBar> {
   @override
   void dispose() {
     _playerSub?.cancel();
-    AudioManager.instance.stop();
+    if (AudioManager.instance.currentMessageId == AudioManager.reviewKey) {
+      AudioManager.instance.stop();
+    }
     super.dispose();
   }
 
@@ -65,7 +74,10 @@ class _RecordingBarState extends State<RecordingBar> {
     if (_isPlaying) {
       await AudioManager.instance.pause();
     } else {
-      await AudioManager.instance.play('file://$path');
+      await AudioManager.instance.play(
+        messageId: AudioManager.reviewKey,
+        url: 'file://$path',
+      );
     }
   }
 

@@ -424,6 +424,7 @@ class AppTheme {
         color: scheme.outlineVariant,
         thickness: 1,
       ),
+      segmentedButtonTheme: _segmentedButtonTheme(scheme),
       extensions: [_skeletonConfig(isDark: false)],
     );
   }
@@ -455,6 +456,7 @@ class AppTheme {
         color: scheme.outlineVariant,
         thickness: 1,
       ),
+      segmentedButtonTheme: _segmentedButtonTheme(scheme),
       extensions: [_skeletonConfig(isDark: true)],
     );
   }
@@ -511,6 +513,37 @@ class AppTheme {
       contentPadding: EdgeInsets.symmetric(
         horizontal: AppSpacing.inputPadding.w,
         vertical: AppSpacing.sm.h,
+      ),
+    );
+  }
+
+  // --- Segmented Button Theme
+  static SegmentedButtonThemeData _segmentedButtonTheme(ColorScheme scheme) {
+    return SegmentedButtonThemeData(
+      style: ButtonStyle(
+        backgroundColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return scheme.primary;
+          }
+          return scheme.surface;
+        }),
+
+        foregroundColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return scheme.onPrimary;
+          }
+          return scheme.onSurface.withValues(alpha: 0.6);
+        }),
+
+        side: WidgetStateProperty.resolveWith((states) {
+          return BorderSide(color: scheme.primary.withValues(alpha: 0.4));
+        }),
+
+        shape: WidgetStateProperty.all(
+          RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.button.r),
+          ),
+        ),
       ),
     );
   }

@@ -14,12 +14,31 @@ class UserService {
 
   // --- READ -----------------------------
   // Stream a single user data in real-time
-  Stream<UserModel?> streamUser(String uid) {
-    return _userRef.doc(uid).snapshots().map((snapshot) {
-      if (!snapshot.exists || snapshot.data() == null) return null;
-      return UserModel.fromMap(snapshot.data()!);
-    });
-  }
+  Stream<UserModel?> streamUser(String uid) =>
+      _userRef.doc(uid).snapshots().map((snapshot) {
+        if (!snapshot.exists || snapshot.data() == null) return null;
+        return UserModel.fromMap(snapshot.data()!);
+      });
+
+  // --- Stream user when creating new chat
+  ///Saved the streamed user in a state, then proceed search later.
+  ///Due to Firestore unable to search substring
+  // Stream<List<UserModel>> streamAllUser() => _userRef
+  //   .snapshots()
+  //   .map((snapshot) => snapshot.docs
+  //     .map((doc) => UserModel.fromMap(doc.data()))
+  //   .toList());
+  Stream<List<UserSearchModel>> streamAllUser() => _userRef
+  .snapshots()
+  .map((snapshot) => snapshot.docs.map((doc) {
+      try {
+        return UserSearchModel.fromMap(doc.data());
+      } catch (e) {
+        print('ERROR parsing user: $e');
+        rethrow;
+      }
+    }).toList(),
+  );
 
   /// One-shot read a user -> Didn't automatically live updates.
   /// e.g. building memberInfo when creating a new chat
@@ -34,15 +53,17 @@ class UserService {
   Future<List<UserModel>> searchUsers({
     required String query,
     required String currentUid,
-    int limit = 20,
   }) async {
     final lowerQuery = query.trim().toLowerCase();
     if (lowerQuery.isEmpty) return [];
 
     final snapshot = await _userRef
-        .where('displayNameLower', isGreaterThanOrEqualTo: lowerQuery)
-        .where('displayNameLower', isLessThanOrEqualTo: lowerQuery + '\uf8ff')
-        .limit(limit)
+        .orderBy('displayNameLower')
+        .startAt([query])
+        .startAt(['$query\uf8ff'])
+        // .where('displayNameLower', isGreaterThanOrEqualTo: lowerQuery)
+        // .where('displayNameLower', isLessThanOrEqualTo: lowerQuery + '\uf8ff')
+        // .limit(limit)
         .get();
 
     return snapshot.docs
@@ -124,7 +145,9 @@ class UserService {
   // --- Profile Chunks -----------------------
   Future<List<UserModel>> fetchUserByUids(List<String> uids) async {
     if (uids.isEmpty) return [];
-    final snapshot = await _userRef.where(FieldPath.documentId, whereIn: uids).get();
+    final snapshot = await _userRef
+        .where(FieldPath.documentId, whereIn: uids)
+        .get();
 
     return snapshot.docs.map((doc) => UserModel.fromMap(doc.data())).toList();
   }

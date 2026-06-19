@@ -105,10 +105,11 @@ class ChatModel {
   }
 
   /// Returns the other user's UID in a direct chat.
-  String otherMemberUid(String currentUid) {
-    assert(isDirect, 'otherMemberUid() is only valid for direct chats');
-    return members.firstWhere((uid) => uid != currentUid);
-  }
+  String otherMemberUid(String currentUid) =>  members.firstWhere(
+    (uid) => uid != currentUid,
+    orElse: () => '',
+  );
+
 
   /// Returns the display name for this chat.
   String displayName(String currentUid) {

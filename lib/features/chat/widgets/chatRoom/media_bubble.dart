@@ -85,9 +85,11 @@ class MediaBubble extends StatelessWidget {
       );
     if (isAudio)
       return _AudioMedia(
+        messageId: message.id,
         urls: urls,
         isMe: isMe,
         byteSizes: bytesSizes,
+        mediaDuration: message.mediaDuration,
         scheme: scheme,
       );
     if (isVideo) return _VideoMedia(urls: urls, isMe: isMe);
@@ -790,43 +792,50 @@ class _StickerMedia extends StatelessWidget {
 }
 
 class _AudioMedia extends StatelessWidget {
+  final String messageId;
   final List<String> urls;
   final bool isMe;
   final int? byteSizes;
+  final int? mediaDuration;
   final BubbleColorScheme scheme;
   const _AudioMedia({
+    required this.messageId,
     required this.urls,
     required this.isMe,
     this.byteSizes = 0,
+    this.mediaDuration,
     required this.scheme,
   });
   @override
-  Widget build(BuildContext context) {
-    // Single audio or list
-    return Column(
-      children: urls
-          .map(
-            (url) => _AudioTile(
-              url: url,
-              isMe: isMe,
-              byteSizes: byteSizes,
-              scheme: scheme,
-            ),
-          )
-          .toList(),
-    );
-  }
+  Widget build(BuildContext context) => Column(
+    children: urls
+        .map(
+          (url) => _AudioTile(
+            messageId: messageId,
+            url: url,
+            isMe: isMe,
+            byteSizes: byteSizes,
+            mediaDuration: mediaDuration,
+            scheme: scheme,
+          ),
+        )
+        .toList(),
+  );
 }
 
 class _AudioTile extends StatefulWidget {
+  final String messageId;
   final String url;
   final bool isMe;
   final int? byteSizes;
+  final int? mediaDuration;
   final BubbleColorScheme scheme;
   const _AudioTile({
+    required this.messageId,
     required this.url,
     required this.isMe,
     this.byteSizes,
+    this.mediaDuration,
     required this.scheme,
   });
 
@@ -839,7 +848,7 @@ class _AudioTileState extends State<_AudioTile> with RouteAware {
   bool _isPlaying = false;
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
-
+  double? _dragValue;
   StreamSubscription? _posSub;
   StreamSubscription? _durSub;
   StreamSubscription? _stateSub;
@@ -847,16 +856,30 @@ class _AudioTileState extends State<_AudioTile> with RouteAware {
   @override
   void initState() {
     super.initState();
+    print('======= Duration: ${widget.mediaDuration ?? -1}');
+    if (widget.mediaDuration != null && widget.mediaDuration! > 0) {
+      _duration = Duration(seconds: widget.mediaDuration!);
+    }
+
     _posSub = _manager.positionStream.listen((pos) {
-      if (mounted) setState(() => _position = pos);
+      if (mounted && _manager.currentMessageId == widget.messageId)
+        setState(() => _position = pos);
     });
     _durSub = _manager.durationStream.listen((dur) {
-      if (mounted) setState(() => _duration = dur ?? Duration.zero);
+      if (mounted && _manager.currentMessageId == widget.messageId)
+        setState(() => _duration = dur ?? Duration.zero);
     });
     _stateSub = _manager.playerStateStream.listen((state) {
+      final isMyAudio = _manager.currentMessageId == widget.messageId;
       if (mounted) {
         setState(() {
-          _isPlaying = state.playing && _manager.currentUrl == widget.url;
+          _isPlaying = state.playing && isMyAudio;
+
+          if (!isMyAudio) {
+            _position = Duration.zero;
+            _duration = Duration.zero;
+            _dragValue = null;
+          }
         });
       }
     });
@@ -873,7 +896,7 @@ class _AudioTileState extends State<_AudioTile> with RouteAware {
     _posSub?.cancel();
     _durSub?.cancel();
     _stateSub?.cancel();
-    if (_manager.currentUrl == widget.url) {
+    if (_manager.currentMessageId == widget.messageId) {
       _manager.stop();
     }
     routeObserver.unsubscribe(this);
@@ -888,8 +911,12 @@ class _AudioTileState extends State<_AudioTile> with RouteAware {
   String _formatDuration(Duration duration) {
     final minutes = duration.inMinutes;
     final seconds = duration.inSeconds.remainder(60);
-
     return '$minutes:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  double get _sliderValue {
+    if (_dragValue != null) return _dragValue!;
+    return _position.inSeconds.toDouble();
   }
 
   @override
@@ -919,27 +946,35 @@ class _AudioTileState extends State<_AudioTile> with RouteAware {
                   if (_isPlaying) {
                     _manager.pause();
                   } else {
-                    _manager.play(widget.url);
+                    _manager.play(messageId: widget.messageId, url: widget.url);
                   }
                 },
               ),
               // Slider
               Expanded(
                 child: Slider(
-                  value: _position.inSeconds.toDouble(),
+                  value: _sliderValue.clamp(
+                    0.0,
+                    _duration.inSeconds.toDouble().clamp(0.0, double.infinity),
+                  ),
                   max: _duration.inSeconds.toDouble(),
-                  onChanged: (val) {
-                    // Seek ke posisi baru
+                  onChangeStart: (val) => setState(() => _dragValue = val),
+                  onChanged: (val) => setState(() => _dragValue = val),
+                  onChangeEnd: (val) {
+                    _manager.seek(Duration(seconds: val.toInt()));
+                    setState(() => _dragValue = null);
                   },
-                  activeColor: widget.isMe
-                      ? widget.scheme.receivedBubble
-                      : widget.scheme.sentBubble,
+                  activeColor: widget.scheme.sentBubble,
+                  inactiveColor: widget.scheme.sentBubble.withValues(
+                    alpha: 0.7,
+                  ),
                 ),
               ),
               Text(
-                _formatDuration(_position),
-                style: context.text.labelMedium.copyWith(
-                  color: context.text.secondaryText,
+                // '${_dragValue != null ? _formatDuration(Duration(seconds: _dragValue!.toInt())) : _formatDuration(_position)} / ${_formatDuration(_duration)}',
+                '${_formatDuration(_position)} / ${_formatDuration(_duration)}',
+                style: context.text.labelSmall.copyWith(
+                  color: context.text.tertiaryText,
                 ),
               ),
             ],

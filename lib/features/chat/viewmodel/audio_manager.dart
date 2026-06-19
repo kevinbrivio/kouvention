@@ -1,37 +1,76 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 
 class AudioManager {
   static final AudioManager instance = AudioManager._();
-  AudioManager._();
+  AudioManager._() {
+    _lifecycleSub = _player.playerStateStream.listen((state) {
+      if (state.processingState == ProcessingState.completed) {
+        _player.seek(Duration.zero);
+      }
+    });
+    _player.positionStream.listen((pos) {
+      if (_currentMessageId != null) {
+        _positionController.add(pos);
+      }
+    });
+    _player.durationStream.listen((dur) {
+      if (_currentMessageId != null) {
+        _durationController.add(dur);
+      }
+    });
+  }
+
+  static const reviewKey = '__review__';
 
   final AudioPlayer _player = AudioPlayer();
-  String? currentUrl;
+  String? _currentMessageId;
 
-  Future<void> play(String url) async {
+  final _positionController = StreamController<Duration>.broadcast();
+  final _durationController = StreamController<Duration?>.broadcast();
+  late final StreamSubscription _lifecycleSub;
+
+  String? get currentMessageId => _currentMessageId;
+
+  Stream<Duration> get positionStream => _positionController.stream;
+  Stream<Duration?> get durationStream => _durationController.stream;
+  Stream<PlayerState> get playerStateStream => _player.playerStateStream;
+
+  Future<void> play({required String messageId, required String url}) async {
     try {
-      if (currentUrl == url) {
+      if (_currentMessageId == messageId) {
         await _player.play();
         return;
       }
-      currentUrl = url;
+
+      _currentMessageId = messageId;
       await _player.setUrl(url);
       await _player.play();
     } catch (e) {
+      _currentMessageId = null;
+
+      try {
+        await _player.stop();
+      } catch (_) {}
       debugPrint('AudioManager.play error: $e');
     }
   }
 
-  Future<void> pause() async => await _player.pause();
+  Future<void> pause() => _player.pause();
+
   Future<void> stop() async {
-    currentUrl = null;
+    _currentMessageId = null;
     await _player.stop();
   }
 
-  // Stream current position for slider
-  Stream<Duration> get positionStream => _player.positionStream;
-  // Stream duration used for displaying in UI
-  Stream<Duration?> get durationStream => _player.durationStream;
-  // Stream status of current recording state
-  Stream<PlayerState> get playerStateStream => _player.playerStateStream;
+  Future<void> seek(Duration position) => _player.seek(position);
+
+  Future<void> dispose() async {
+    await _lifecycleSub.cancel();
+    await _positionController.close();
+    await _durationController.close();
+    await _player.dispose();
+  }
 }
