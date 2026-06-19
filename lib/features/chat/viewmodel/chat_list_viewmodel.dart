@@ -13,7 +13,7 @@ import 'package:oktoast/oktoast.dart';
 
 enum ChatFilter { all, direct, group }
 
-const int kChatListPageSize = 20;
+const int kChatListPageSize = 50;
 
 class ChatListVM extends BaseNotifier {
   final ChatRepository _chatRepository;
@@ -342,12 +342,7 @@ final pagedChatListRowsProvider = StreamProvider.autoDispose<List<Chat>>((ref) {
         typeFilter: typeFilter,
         currentUid: currentUid,
       )
-      .map((rows) {
-        debugPrint(
-          '=== 📊 Drift return: ${rows.length} rows',
-        );
-        return rows;
-      });
+      .map((rows) => rows);
 });
 
 /// Maps Drift rows to [ChatModel] and injects the typing users from the
