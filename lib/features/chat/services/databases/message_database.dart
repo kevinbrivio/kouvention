@@ -418,6 +418,18 @@ class MessageDatabase extends _$MessageDatabase {
             ..limit(limit))
           .watch();
 
+  /// Watch every cached messages in Drift.
+  /// For every data in Drift, proceed show it into app
+  Stream<List<Message>> watchAllCachedMessages(
+    String chatRoomId,
+    String currentUid,
+  ) =>
+      (select(messages)
+            ..where((m) => m.chatRoomId.equals(chatRoomId))
+            ..where((m) => m.deletedFor.like('%"$currentUid"%').not())
+            ..orderBy([(m) => OrderingTerm.desc(m.sentAt)]))
+          .watch();
+
   /// Unbounded watch. **Deprecated** — kept only for legacy callers and tests.
   /// The chat list screen must use [watchPagedChats] or `fetchPagedChats` instead.
   Stream<List<Chat>> watchChatRooms() =>
@@ -652,7 +664,6 @@ class MessageDatabase extends _$MessageDatabase {
     }
 
     final minSent = row.data['min_sent'] as int? ?? 0;
-    final count = row.data['cnt'] as int? ?? 0;
 
     await updateChatSyncState(
       chatId: chatId,
@@ -692,7 +703,7 @@ class MessageDatabase extends _$MessageDatabase {
   /// [chats] table. All rows share the same denormalized values; picking
   /// any row is correct. Returns defaults when the table is empty.
   Future<({bool hasMore, int? activityAt, String? chatId})>
-      getChatListPaginationState() async {
+  getChatListPaginationState() async {
     final row = await (select(chats)..limit(1)).getSingleOrNull();
     if (row == null) {
       return (hasMore: true, activityAt: null, chatId: null);

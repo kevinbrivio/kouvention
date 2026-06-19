@@ -46,28 +46,35 @@ class MessageRepository {
     String chatId, {
     required int targetSentAt,
     int limit = 100,
-  }) => _db.watchMessagesAround(chatId, targetSentAt: targetSentAt, limit: limit);
+  }) =>
+      _db.watchMessagesAround(chatId, targetSentAt: targetSentAt, limit: limit);
+
+  /// Watch all messages from local
+  Stream<List<Message>> watchAllCachedMessages(
+    String chatId,
+    String currentUid,
+  ) => _db.watchAllCachedMessages(chatId, currentUid);
 
   // --- Read: remote sync -----------------------------
 
   /// One-shot fetch of the latest [limit] messages for a chat. Used by
   /// the search VM to show recent messages from contact-matched chats.
-  Future<List<Message>> fetchRecentMessages(
-    String chatId, {
-    int limit = 20,
-  }) => _db.fetchRecentMessages(chatId, limit: limit);
+  Future<List<Message>> fetchRecentMessages(String chatId, {int limit = 20}) =>
+      _db.fetchRecentMessages(chatId, limit: limit);
 
   /// Fetches every message newer than the chat's `latestSeenRemoteAt`
   /// in bounded pages. Returns a summary `{pages, messages}`.
-  Future<({int pages, int messages})> fetchMissedMessages(
-    String chatId,
-  ) => _sync.fetchMissedMessagesBounded(chatId);
+  Future<({int pages, int messages})> fetchMissedMessages(String chatId) =>
+      _sync.fetchMissedMessagesBounded(chatId);
 
   /// Fetches one older page using the 4-field sync state. Returns
   /// `{pages, messages}` — `messages == 0` means "we've reached the
   /// beginning of the chat".
-  Future<({int pages, int messages})> fetchOlderMessages(String chatId) =>
-      _sync.fetchOlderMessages(chatId);
+  Future<({int pages, int messages})> fetchOlderMessages(
+    String chatId, {
+    int limit = 50,
+    int maxPages = 1,
+  }) => _sync.fetchOlderMessages(chatId, limit: limit, maxPages: maxPages);
 
   /// Loads a window of messages around [sentAt] (used by the
   /// jump-to-message path).
