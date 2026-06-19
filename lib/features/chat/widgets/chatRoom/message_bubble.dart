@@ -244,61 +244,66 @@ class MessageBubble extends ConsumerWidget {
                             Gap(4.h),
                           ],
                           if (message.type == MessageType.text) ...[
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  (message.text == '' && message.isDeleted)
-                                      ? isMe
-                                            ? 'You deleted this message'
-                                            : 'This message was deleted'
-                                      : message.text,
-                                  style: context.text.bodySmall.copyWith(
-                                    color: isMe
-                                        ? message.isDeleted
-                                              ? Theme.of(context)
-                                                    .colorScheme
-                                                    .onSurface
-                                                    .withValues(alpha: 0.5)
-                                              : Colors.white
-                                        : message.isDeleted
-                                        ? Theme.of(context)
-                                              .colorScheme
-                                              .onSurface
-                                              .withValues(alpha: 0.5)
-                                        : (isLightReceived
-                                              ? Colors.black87
-                                              : Colors.white),
-                                    fontStyle: message.isDeleted
-                                        ? FontStyle.italic
-                                        : FontStyle.normal,
-                                  ),
-                                ),
-                                Gap(AppSpacing.sm.w),
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                                    Flexible(
-                                      child: Text(
-                                        time,
-                                        style: context.text.labelSmall.copyWith(
-                                          color: isMe
-                                              ? Colors.white70
-                                              : (isLightReceived
-                                                    ? Colors.grey[500]
-                                                    : Colors.white60),
+                            ConstrainedBox(
+                              constraints: BoxConstraints(
+                                maxWidth: MediaQuery.sizeOf(context).width * 0.8,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Flexible(child: Text(
+                                    (message.text == '' && message.isDeleted)
+                                        ? isMe
+                                              ? 'You deleted this message'
+                                              : 'This message was deleted'
+                                        : message.text,
+                                    style: context.text.bodySmall.copyWith(
+                                      color: isMe
+                                          ? message.isDeleted
+                                                ? Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurface
+                                                      .withValues(alpha: 0.5)
+                                                : Colors.white
+                                          : message.isDeleted
+                                          ? Theme.of(context)
+                                                .colorScheme
+                                                .onSurface
+                                                .withValues(alpha: 0.5)
+                                          : (isLightReceived
+                                                ? Colors.black87
+                                                : Colors.white),
+                                      fontStyle: message.isDeleted
+                                          ? FontStyle.italic
+                                          : FontStyle.normal,
+                                    ),
+                                  ),),
+                                  Gap(AppSpacing.xxs.w),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      Flexible(
+                                        child: Text(
+                                          time,
+                                          style: context.text.labelSmall.copyWith(
+                                            color: isMe
+                                                ? Colors.white70
+                                                : (isLightReceived
+                                                      ? Colors.grey[500]
+                                                      : Colors.white60),
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                    if (isMe) ...[
-                                      Gap(4.w),
-                                      _buildMessageStatus(status),
+                                      if (isMe) ...[
+                                        Gap(4.w),
+                                        _buildMessageStatus(status),
+                                      ],
                                     ],
-                                  ],
-                                ),
-                              ],
+                                  ),
+                                ],
+                              ),
                             ),
                           ] else if (message.mediaUrls != null &&
                               message.mediaUrls!.isNotEmpty) ...[
