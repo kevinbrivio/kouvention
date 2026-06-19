@@ -34,6 +34,20 @@ class MediaBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (message.isDeleted) {
+      final label = isMe
+          ? 'You deleted this message'
+          : 'This message was deleted';
+
+      return Text(
+        label,
+        style: context.text.bodySmall.copyWith(
+          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+          fontStyle: FontStyle.italic,
+        ),
+      );
+    }
+
     final rawUrls = message.mediaUrls ?? [];
     if (rawUrls.isEmpty) return const SizedBox.shrink();
 
@@ -122,7 +136,7 @@ class _ImageMedia extends StatelessWidget {
                 child: Text(
                   effectiveCaption,
                   style: context.text.bodySmall.copyWith(
-                    color: isMe ? context.text.tertiaryText : Colors.white,
+                    color: context.text.secondaryText,
                   ),
                 ),
               ),
@@ -233,7 +247,7 @@ class _ImageMedia extends StatelessWidget {
     } else {
       return ConstrainedBox(
         constraints: BoxConstraints(
-          maxWidth: MediaQuery.sizeOf(context).width * 0.7,
+          maxWidth: MediaQuery.sizeOf(context).width * 0.8,
         ),
         child: Column(
           children: [
@@ -253,7 +267,7 @@ class _ImageMedia extends StatelessWidget {
             ),
             Gap(2.h),
             SizedBox(
-              height: 100.h,
+              height: 120.h,
               child: Row(
                 children: [
                   Expanded(
@@ -441,6 +455,7 @@ class _FullScreenViewerState extends State<FullScreenViewer> {
               ),
             ),
           ),
+
           if (widget.captions.length > _currentIndex &&
               widget.captions[_currentIndex].isNotEmpty)
             Positioned(
@@ -915,12 +930,11 @@ class _AudioTileState extends State<_AudioTile> with RouteAware {
         Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppRadius.sm.r),
-            color: Colors.white.withValues(alpha: 0.3),
+            color: widget.isMe
+                ? widget.scheme.receivedBubble
+                : widget.scheme.sentBubble.withValues(alpha: 0.7),
           ),
-          padding: EdgeInsets.only(
-            left: AppSpacing.xxs.w,
-            right: AppSpacing.xs.w,
-          ),
+          padding: EdgeInsets.only(left: 2.w, right: AppSpacing.xs.w),
           child: Row(
             children: [
               IconButton(
@@ -971,7 +985,7 @@ class _AudioTileState extends State<_AudioTile> with RouteAware {
           Text(
             formatBytes(widget.byteSizes!),
             style: context.text.labelSmall.copyWith(
-              color: context.text.tertiaryText,
+              color: context.text.secondaryText,
             ),
           ),
         ],
@@ -1017,7 +1031,7 @@ class _FileMedia extends StatelessWidget {
         Text(
           '${urls.length} files',
           style: context.text.labelSmall.copyWith(
-            color: isMe ? Colors.white : Colors.black,
+            color: context.text.secondaryText,
           ),
         ),
         Gap(AppSpacing.xs.h),
@@ -1029,37 +1043,42 @@ class _FileMedia extends StatelessWidget {
               color: isMe ? Colors.white24 : Colors.black12,
               borderRadius: BorderRadius.circular(AppRadius.sm.r),
             ),
-            child: Row(
-              children: [
-                const Icon(Icons.folder),
-                Gap(4.h),
-                Expanded(
-                  child: Text(
-                    fileName ?? '${urls.length} files',
-                    style: TextStyle(
-                      color: isMe ? Colors.white : Colors.black87,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.sizeOf(context).width * 0.6,
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.folder),
+                  Gap(4.h),
+                  Expanded(
+                    child: Text(
+                      fileName ?? '${urls.length} files',
+                      style: TextStyle(
+                        color: isMe ? Colors.white : Colors.black87,
+                      ),
                     ),
                   ),
-                ),
-                if (totalSize != null)
-                  Text(
-                    formatBytes(totalSize),
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.5),
+                  if (totalSize != null)
+                    Text(
+                      formatBytes(totalSize),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.5),
+                      ),
                     ),
-                  ),
 
-                Icon(
-                  Icons.chevron_right,
-                  size: 20.sp,
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withValues(alpha: 0.5),
-                ),
-              ],
+                  Icon(
+                    Icons.chevron_right,
+                    size: 20.sp,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.5),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -1178,9 +1197,6 @@ class _FileTileState extends State<_FileTile> {
       final mimeType = _getMimeType(name); // extension present → correct MIME
 
       if (await file.exists()) {
-        print('=============================================');
-        print('MIME TYPE: ${mimeType}');
-        print('=============================================');
         await OpenFile.open(file.path, type: mimeType);
         if (mounted) setState(() => _isDownloading = false);
         return;
@@ -1356,47 +1372,44 @@ class _FileTileState extends State<_FileTile> {
       Gap(AppSpacing.xs.h),
       GestureDetector(
         onTap: _downloadAndOpen,
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.name,
-                    style: context.text.bodyMedium.copyWith(
-                      fontSize: 13.sp,
-                      color: widget.isMe ? Colors.white : Colors.black,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Gap(2.h),
-                  if (widget.size != null && !_isDownloading)
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.sizeOf(context).width * 0.6,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Text(
-                      formatBytes(widget.size ?? 0),
-                      style: context.text.labelSmall.copyWith(
-                        color: widget.isMe
-                            ? Colors.white
-                            : Theme.of(
-                                context,
-                              ).colorScheme.onSurface.withValues(alpha: 0.5),
+                      widget.name,
+                      style: context.text.bodyMedium.copyWith(
+                        fontSize: 13.sp,
+                        color: widget.isMe ? Colors.white : Colors.black,
                         fontWeight: FontWeight.w500,
                       ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                ],
+                    Gap(2.h),
+                    if (widget.size != null && !_isDownloading)
+                      Text(
+                        formatBytes(widget.size ?? 0),
+                        style: context.text.labelSmall.copyWith(
+                          color: context.text.secondaryText,
+                        ),
+                      ),
+                  ],
+                ),
               ),
-            ),
-            Icon(
-              _isDownloading ? Icons.hourglass_empty : Icons.download,
-              color: widget.isMe
-                  ? Colors.white70
-                  : Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withValues(alpha: 0.5),
-            ),
-          ],
+              Icon(
+                _isDownloading ? Icons.hourglass_empty : Icons.download,
+                color: context.text.secondaryText,
+              ),
+            ],
+          ),
         ),
       ),
     ],
@@ -1413,38 +1426,28 @@ class _FileTileState extends State<_FileTile> {
         color: widget.isMe ? Colors.white24 : Colors.black12,
         borderRadius: BorderRadius.circular(AppRadius.sm.r),
       ),
-      child: Row(
-        children: [
-          Icon(
-            _getFileIcon(widget.name),
-            size: 32,
-            color: widget.isMe
-                ? Colors.white70
-                : Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withValues(alpha: 0.5),
-          ),
-          Gap(AppSpacing.sm.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.name,
-                  style: context.text.labelSmall.copyWith(
-                    color: widget.isMe
-                        ? Colors.white
-                        : Theme.of(
-                            context,
-                          ).colorScheme.onSurface.withValues(alpha: 0.5),
-                    fontWeight: FontWeight.w500,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (widget.size != null && !_isDownloading)
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).width * 0.6,
+        ),
+        child: Row(
+          children: [
+            Icon(
+              _getFileIcon(widget.name),
+              size: 32,
+              color: widget.isMe
+                  ? Colors.white70
+                  : Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.5),
+            ),
+            Gap(AppSpacing.sm.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    formatBytes(widget.size!),
+                    widget.name,
                     style: context.text.labelSmall.copyWith(
                       color: widget.isMe
                           ? Colors.white
@@ -1453,27 +1456,42 @@ class _FileTileState extends State<_FileTile> {
                             ).colorScheme.onSurface.withValues(alpha: 0.5),
                       fontWeight: FontWeight.w500,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                if (_isDownloading)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8.0),
-                    child: LinearProgressIndicator(
-                      value: _downloadProgress,
-                      color: Theme.of(context).colorScheme.primary,
+                  if (widget.size != null && !_isDownloading)
+                    Text(
+                      formatBytes(widget.size!),
+                      style: context.text.labelSmall.copyWith(
+                        color: widget.isMe
+                            ? Colors.white
+                            : Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withValues(alpha: 0.5),
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  ),
-              ],
+                  if (_isDownloading)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: LinearProgressIndicator(
+                        value: _downloadProgress,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                ],
+              ),
             ),
-          ),
-          Icon(
-            _isDownloading ? Icons.hourglass_empty : Icons.download,
-            color: widget.isMe
-                ? Colors.white70
-                : Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withValues(alpha: 0.5),
-          ),
-        ],
+            Icon(
+              _isDownloading ? Icons.hourglass_empty : Icons.download,
+              color: widget.isMe
+                  ? Colors.white70
+                  : Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.5),
+            ),
+          ],
+        ),
       ),
     ),
   );

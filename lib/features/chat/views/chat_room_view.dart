@@ -337,6 +337,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
               ref.watch(bubbleSchemeProvider),
             ),
           MessageBubble(
+            key: ValueKey(message.id),
             chat: chat,
             chatId: chat?.id ?? '',
             isFirstSequence: isFirstSequence,

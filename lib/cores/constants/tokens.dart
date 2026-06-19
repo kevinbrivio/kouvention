@@ -252,7 +252,9 @@ class _AppTextStyles {
 
   // ── Public color resolvers (for .copyWith at call sites) ──
   Color get primaryText => _scheme.onSurface;
-  Color get secondaryText => _scheme.onSurface.withValues(alpha: 0.85);
+  Color get secondaryText => _scheme.brightness == Brightness.dark
+      ? Color(0xFFFFFDF7)
+      : Color(0xFF0C0C0C);
   Color get tertiaryText => _scheme.onSurface.withValues(alpha: 0.5);
   Color get accentText => _scheme.primary;
 
@@ -349,12 +351,6 @@ class _AppTextStyles {
   );
   TextStyle get labelMedium => TextStyle(
     fontSize: 12.sp,
-    fontWeight: FontWeight.w400,
-    color: primaryText,
-    height: 1.5,
-  );
-  TextStyle get labelMediumSmall => TextStyle(
-    fontSize: 11.sp,
     fontWeight: FontWeight.w400,
     color: primaryText,
     height: 1.5,

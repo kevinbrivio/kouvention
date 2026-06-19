@@ -88,7 +88,7 @@ class ChatSelectionVM extends BaseNotifier {
   }
 
   List<MessageModel> getSelectedMessages() =>
-      _currentMessages.where((m) => state.selectedIds.contains(m)).toList();
+      _currentMessages.where((m) => state.selectedIds.contains(m.id)).toList();
 
   void copyToClipboard() async {
     if (state.selectedIds.isEmpty) return;

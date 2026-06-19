@@ -131,7 +131,8 @@ class MessageBubble extends ConsumerWidget {
   }) {
     final sentBubbleColor = scheme.sentBubble;
     final receivedBubbleColor = scheme.receivedBubble;
-    final isLightReceived = receivedBubbleColor.computeLuminance() > 0.5;
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Column(
       crossAxisAlignment: isMe
           ? CrossAxisAlignment.end
@@ -320,29 +321,6 @@ class MessageBubble extends ConsumerWidget {
                                       scheme: scheme,
                                     ),
                                     Gap(AppSpacing.xxs.h),
-
-                                    // Align(
-                                    //   alignment: Alignment.centerRight,
-                                    //   child: Row(
-                                    //     mainAxisSize: MainAxisSize.min,
-                                    //     children: [
-                                    //       Text(
-                                    //         time,
-                                    //         style: context.text.labelSmall.copyWith(
-                                    //           color: isMe
-                                    //               ? Colors.white70
-                                    //               : (isLightReceived
-                                    //                     ? Colors.grey[500]
-                                    //                     : Colors.white60),
-                                    //         ),
-                                    //       ),
-                                    //       if (isMe) ...[
-                                    //         Gap(4.w),
-                                    //         _buildMessageStatus(status),
-                                    //       ],
-                                    //     ],
-                                    //   ),
-                                    // ),
                                   ],
                                 ),
 
@@ -354,17 +332,18 @@ class MessageBubble extends ConsumerWidget {
                                       child: Text(
                                         time,
                                         style: context.text.labelSmall.copyWith(
-                                          color: isMe
-                                              ? Colors.white70
-                                              : (isLightReceived
-                                                    ? Colors.grey[500]
-                                                    : Colors.white60),
+                                          color: context.text.secondaryText,
                                         ),
                                       ),
                                     ),
                                     if (isMe) ...[
                                       Gap(4.w),
-                                      _buildMessageStatus(status),
+                                      _buildMessageStatus(
+                                        status,
+                                        context.text.secondaryText.withValues(
+                                          alpha: 0.7,
+                                        ),
+                                      ),
                                     ],
                                   ],
                                 ),
@@ -397,14 +376,14 @@ class MessageBubble extends ConsumerWidget {
     );
   }
 
-  Widget _buildMessageStatus(MessageStatus status) {
+  Widget _buildMessageStatus(MessageStatus status, Color color) {
     switch (status) {
       case MessageStatus.sending:
-        return Icon(Icons.access_time, size: 12.sp, color: Colors.white70);
+        return Icon(Icons.access_time, size: AppSizing.iconXxs.r, color: color);
       case MessageStatus.sent:
-        return Icon(Icons.done_all, size: 14.sp, color: Colors.white70);
+        return Icon(Icons.done_all, size: AppSizing.iconXxs.r, color: color);
       case MessageStatus.read:
-        return Icon(Icons.done_all, size: 14.sp, color: Colors.blueAccent);
+        return Icon(Icons.done_all, size: AppSizing.iconXxs.r, color: color);
     }
   }
 
@@ -417,7 +396,7 @@ class MessageBubble extends ConsumerWidget {
     // When senderId is empty (Drift mapping limitation), skip "You" check.
     final isRepliedMessageMine =
         replyTo.senderId.isNotEmpty && replyTo.senderId == currentUid;
-    final _hasValidMediaUrl =
+    final hasValidMediaUrl =
         replyTo.mediaUrl != null &&
         replyTo.mediaUrl!.isNotEmpty &&
         replyTo.mediaUrl != '[]';
@@ -443,16 +422,12 @@ class MessageBubble extends ConsumerWidget {
         children: [
           Text(
             isRepliedMessageMine ? 'You' : (resolvedReplyName),
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 12.sp,
-              color: isMe
-                  ? Colors.white
-                  : AppColorTokens.senderNameColor(replyTo.senderId),
+            style: context.text.bodySmall.copyWith(
+              color: context.text.secondaryText,
             ),
           ),
           Gap(2.h),
-          if (replyTo.mediaType == 'text' || !_hasValidMediaUrl)
+          if (replyTo.mediaType == 'text' || !hasValidMediaUrl)
             Text(
               replyTo.text,
               maxLines: 2,
