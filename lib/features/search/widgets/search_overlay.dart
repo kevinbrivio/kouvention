@@ -22,7 +22,6 @@ class SearchOverlay extends StatefulWidget {
 
 class _SearchOverlayState extends State<SearchOverlay> {
   late final TextEditingController _controller;
-  String _text = '';
 
   @override
   void initState() {
@@ -71,11 +70,20 @@ class _SearchOverlayState extends State<SearchOverlay> {
   );
 
   Widget _buildSearchBar() => Padding(
-    padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w, vertical: AppSpacing.xs.h),
+    padding: EdgeInsets.symmetric(
+      horizontal: AppSpacing.md.w,
+      vertical: AppSpacing.xs.h,
+    ),
     child: Row(
       children: [
         IconButton(
-          icon: Icon(Icons.arrow_back, size: 20.sp, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)),
+          icon: Icon(
+            Icons.arrow_back,
+            size: 20.sp,
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.5),
+          ),
           onPressed: () {
             widget.onSearchChanged('');
             _controller.clear();
@@ -86,12 +94,14 @@ class _SearchOverlayState extends State<SearchOverlay> {
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20.r),
-              border: Border.all(color: Theme.of(context).colorScheme.primary, width: 2.w),
+              border: Border.all(
+                color: Theme.of(context).colorScheme.primary,
+                width: 2.w,
+              ),
             ),
             padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w),
             child: TextField(
               onChanged: (query) {
-                setState(() => _text = query);
                 widget.onSearchChanged(query);
               },
               controller: _controller,
@@ -103,7 +113,6 @@ class _SearchOverlayState extends State<SearchOverlay> {
                       : IconButton(
                           icon: Icon(Icons.close),
                           onPressed: () {
-                            setState(() => _text = '');
                             _controller.clear();
                             widget.onSearchChanged('');
                           },
