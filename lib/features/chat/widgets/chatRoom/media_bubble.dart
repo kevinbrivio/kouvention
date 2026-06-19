@@ -134,7 +134,7 @@ class _ImageMedia extends StatelessWidget {
                 child: Text(
                   effectiveCaption,
                   style: context.text.bodySmall.copyWith(
-                    color: isMe ? context.text.tertiaryText : Colors.white,
+                    color: context.text.secondaryText,
                   ),
                 ),
               ),
@@ -245,7 +245,7 @@ class _ImageMedia extends StatelessWidget {
     } else {
       return ConstrainedBox(
         constraints: BoxConstraints(
-          maxWidth: MediaQuery.sizeOf(context).width * 0.7,
+          maxWidth: MediaQuery.sizeOf(context).width * 0.8,
         ),
         child: Column(
           children: [
