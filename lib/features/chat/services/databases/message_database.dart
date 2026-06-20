@@ -413,8 +413,9 @@ class MessageDatabase extends _$MessageDatabase {
             ..orderBy([(m) => OrderingTerm.desc(m.sentAt)]))
           .watch();
 
-  /// Unbounded watch. **Deprecated** — kept only for legacy callers and tests.
-  /// The chat list screen must use [watchPagedChats] or `fetchPagedChats` instead.
+  ///Unbounded watch. **Deprecated** — kept only for legacy callers and tests.
+  ///The chat list screen must use [watchPagedChats] 
+  ///or `fetchPagedChats` instead.
   Stream<List<Chat>> watchChatRooms() =>
       (select(chats)..orderBy([(c) => OrderingTerm.desc(c.updatedAt)])).watch();
 
@@ -439,8 +440,8 @@ class MessageDatabase extends _$MessageDatabase {
   }) {
     final typeClause = typeFilter != null ? 'AND type = ?' : '';
     final pinnedOrder = currentUid != null
-        ? "CASE WHEN pinned_by LIKE ? THEN 0 ELSE 1 END"
-        : "0";
+        ? 'CASE WHEN pinned_by LIKE ? THEN 0 ELSE 1 END'
+        : '0';
 
     final sql =
         '''
@@ -476,8 +477,8 @@ class MessageDatabase extends _$MessageDatabase {
   }) async {
     final typeClause = typeFilter != null ? 'AND type = ?' : '';
     final pinnedOrder = currentUid != null
-        ? "CASE WHEN pinned_by LIKE ? THEN 0 ELSE 1 END"
-        : "0";
+        ? 'CASE WHEN pinned_by LIKE ? THEN 0 ELSE 1 END'
+        : '0';
 
     final sql =
         '''
@@ -631,7 +632,8 @@ class MessageDatabase extends _$MessageDatabase {
 
   Future<void> recomputeLocalMessageBounds(String chatId) async {
     final row = await customSelect(
-      'SELECT MIN(sent_at) AS min_sent, MAX(sent_at) AS max_sent, COUNT(*) AS cnt '
+      'SELECT MIN(sent_at) AS min_sent, MAX(sent_at) AS max_sent, '
+      'COUNT(*) AS cnt '
       'FROM messages WHERE chat_room_id = ?',
       variables: [Variable.withString(chatId)],
       readsFrom: {messages},
@@ -742,7 +744,8 @@ class MessageDatabase extends _$MessageDatabase {
   Future<int> hardDeleteMessages({required List<String> messageIds}) async {
     if (messageIds.isEmpty) return Future.value(0);
 
-    // Hard delete on SQLite, then StreamProvider will automatically updates the value
+    // Hard delete on SQLite, then StreamProvider will automatically
+    // updates the value
     return (delete(messages)..where((m) => m.id.isIn(messageIds))).go();
   }
 
@@ -876,6 +879,66 @@ class MessageDatabase extends _$MessageDatabase {
           ..limit(limit))
         .get();
   }
+
+  Stream<List<Story>> watchActiveStories({
+    required String currentUid,
+    required int nowMs,
+    int limit = 50,
+  }) {
+    final uidLikeParam = '%"$currentUid"%';
+
+    return (select(stories)
+          ..where((s) => s.expiresAt.isBiggerThanValue(nowMs))
+          ..where((s) => s.deletedAt.isNull())
+          ..where((s) => s.visibleTo.like(uidLikeParam))
+          ..orderBy([(s) => OrderingTerm.desc(s.createdAt)])
+          ..limit(limit))
+        .watch();
+  }
+
+  Future<List<Story>> fetchStoriesByAuthor({
+    required String authorUid,
+    required int nowMs,
+    int limit = 20,
+    int? beforeCreatedAt,
+  }) {
+    final query = select(stories)
+      ..where((s) => s.authorUid.equals(authorUid))
+      ..where((s) => s.expiresAt.isBiggerThanValue(nowMs))
+      ..where((s) => s.deletedAt.isNull())
+      ..orderBy([(s) => OrderingTerm.desc(s.createdAt)])
+      ..limit(limit);
+
+    if (beforeCreatedAt != null) {
+      query.where((s) => s.createdAt.isSmallerThanValue(beforeCreatedAt));
+    }
+
+    return query.get();
+  }
+
+  Future<List<StoryView>> getPendingStoryViews() =>
+      (select(storyViews)
+            ..where((v) => v.syncStatus.equals(SyncStatus.pending.name))
+            ..orderBy([(v) => OrderingTerm.asc(v.viewedAt)]))
+          .get();
+
+  Future<void> updateStoryViewStatus({
+    required String storyId,
+    required String viewerUid,
+    required SyncStatus status,
+    int? retryCount,
+  }) =>
+      (update(storyViews)
+            ..where((v) => v.storyId.equals(storyId))
+            ..where((v) => v.viewerUid.equals(viewerUid)))
+          .write(
+            StoryViewsCompanion(
+              syncStatus: Value(status),
+              retryCount: retryCount == null
+                  ? const Value.absent()
+                  : Value(retryCount),
+            ),
+          );
 }
 
 class StringListConverter extends TypeConverter<List<String>, String> {
