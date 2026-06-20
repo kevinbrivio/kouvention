@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/cores/services/db_key_manager.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
+import 'package:kouvention/features/story/models/story_model.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqlite3/sqlite3.dart' as sqlite3;
@@ -14,10 +15,6 @@ import 'package:sqlite3/sqlite3.dart' as sqlite3;
 part 'message_database.g.dart';
 
 enum SyncStatus { pending, sent, failed }
-
-enum StoryType { image, video, audio, text }
-
-enum StorySyncStatus { pending, uploading, synced, failed, deleting }
 
 // ===============================
 // Table Chats
