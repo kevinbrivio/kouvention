@@ -714,6 +714,28 @@ class MessageDatabase extends _$MessageDatabase {
     ),
   );
 
+  Future<void> upsertStories(List<StoriesCompanion> newStories) async {
+    await batch((b) {
+      for (final story in newStories) {
+        b.insert(stories, story, onConflict: DoUpdate((old) => story));
+      }
+    });
+  }
+
+  Future<void> upsertStory(StoriesCompanion newStory) =>
+      into(stories).insertOnConflictUpdate(newStory);
+
+  Future<void> upsertStoryViews(List<StoryViewsCompanion> newViews) async {
+    await batch((b) {
+      for (final view in newViews) {
+        b.insert(storyViews, view, onConflict: DoUpdate((old) => view));
+      }
+    });
+  }
+
+  Future<void> upsertStoryView(StoryViewsCompanion newView) =>
+      into(storyViews).insertOnConflictUpdate(newView);
+
   // ===========================
   // DELETE
   // ===========================
