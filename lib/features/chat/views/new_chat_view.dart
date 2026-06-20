@@ -85,7 +85,7 @@ class _NewChatBodyState extends State<_NewChatBody> {
                     ),
                     child: Text(
                       'Available users',
-                      style: context.text.labelMediumSmall.copyWith(
+                      style: context.text.labelMedium.copyWith(
                         color: context.text.tertiaryText,
                       ),
                     ),
