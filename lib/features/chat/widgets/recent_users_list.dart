@@ -23,7 +23,6 @@ class RecentUsersList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final recentUsersAsync = ref.watch(recentUsersProvider);
-    final scheme = Theme.of(context).colorScheme;
 
     return recentUsersAsync.when(
       loading: () => const Center(

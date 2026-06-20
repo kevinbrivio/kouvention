@@ -131,7 +131,6 @@ class MessageBubble extends ConsumerWidget {
   }) {
     final sentBubbleColor = scheme.sentBubble;
     final receivedBubbleColor = scheme.receivedBubble;
-    final colorScheme = Theme.of(context).colorScheme;
 
     return Column(
       crossAxisAlignment: isMe
