@@ -1,10 +1,35 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:kouvention/cores/bases/base_notifier.dart';
+import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/story/models/story_feed_item.dart';
 import 'package:kouvention/features/story/models/story_model.dart';
 import 'package:kouvention/features/story/repositories/story_repository.dart';
-import 'package:path/path.dart';
+import 'package:kouvention/features/user/models/user_model.dart';
+import 'package:kouvention/features/user/services/user_service.dart';
 
 const int storyFeedLimit = 50;
+
+class StoryFeedVM extends BaseNotifier {
+  StoryFeedVM(super.ref)
+    : currentUid = ref.read(authServiceProvider).currentUser?.uid;
+
+  final String? currentUid;
+
+  @override
+  FutureOr<void> init() {}
+}
+
+final storyFeedVM = ChangeNotifierProvider.autoDispose<StoryFeedVM>(
+  StoryFeedVM.new,
+);
+
+final storyCurrentUserProfileProvider = StreamProvider.autoDispose
+    .family<UserModel?, String>(
+      (ref, currentUid) =>
+          ref.watch(userServiceProvider).streamUser(currentUid),
+    );
 
 /// Firestore listener used only while the story feed screen is mounted.
 /// Emissions are persisted to Drift by StoryRepository.
@@ -60,7 +85,7 @@ final viewedStoryIdsProvider = StreamProvider.autoDispose
 
 final storyFeedItemsProvider = Provider.autoDispose
     .family<AsyncValue<List<StoryFeedItem>>, String>((ref, currentUid) {
-      final storiesAsync = ref.watch(activeStoriesProvider(current));
+      final storiesAsync = ref.watch(activeStoriesProvider(currentUid));
       final viewedIdsAsync = ref.watch(viewedStoryIdsProvider(currentUid));
 
       return storiesAsync.when(
