@@ -16,6 +16,7 @@ class StoryModel {
   final String? thumbnailUrl;
   final String? text;
   final String? caption;
+  final int? backgroundColorArgb;
   final String? cloudinaryPublicId;
   final List<String> visibleTo;
   final DateTime createdAt;
@@ -35,6 +36,7 @@ class StoryModel {
     this.thumbnailUrl,
     this.text,
     this.caption,
+    this.backgroundColorArgb,
     this.cloudinaryPublicId,
     required this.visibleTo,
     required this.createdAt,
@@ -56,6 +58,7 @@ class StoryModel {
         thumbnailUrl: data['thumbnailUrl'] as String?,
         text: data['text'] as String?,
         caption: data['caption'] as String?,
+        backgroundColorArgb: (data['backgroundColorArgb'] as num?)?.toInt(),
         cloudinaryPublicId: data['cloudinaryPublicId'] as String?,
         visibleTo: List<String>.from(data['visibleTo'] as List? ?? const []),
         createdAt: (data['createdAt'] as Timestamp).toDate(),
@@ -97,6 +100,7 @@ class StoryModel {
     if (thumbnailUrl != null) 'thumbnailUrl': thumbnailUrl,
     if (text != null) 'text': text,
     if (caption != null) 'caption': caption,
+    if (backgroundColorArgb != null) 'backgroundColorArgb': backgroundColorArgb,
     if (cloudinaryPublicId != null) 'cloudinaryPublicId': cloudinaryPublicId,
     'visibleTo': visibleTo,
     'createdAt': Timestamp.fromDate(createdAt),
@@ -114,6 +118,7 @@ class StoryModel {
     thumbnailUrl: Value(thumbnailUrl),
     textContent: Value(text),
     caption: Value(caption),
+    backgroundColorArgb: Value(backgroundColorArgb),
     cloudinaryPublicId: Value(cloudinaryPublicId),
     visibleTo: Value(visibleTo),
     createdAt: Value(createdAt.millisecondsSinceEpoch),

@@ -169,6 +169,7 @@ class Stories extends Table {
   TextColumn get thumbnailUrl => text().nullable()();
   TextColumn get textContent => text().nullable()();
   TextColumn get caption => text().nullable()();
+  IntColumn get backgroundColorArgb => integer().nullable()();
 
   TextColumn get cloudinaryPublicId => text().nullable()();
   TextColumn get visibleTo => text()
