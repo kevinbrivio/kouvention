@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:drift/drift.dart';
 import 'package:kouvention/features/story/models/story_model.dart';
 import 'package:kouvention/features/story/models/story_page.dart';
 import 'package:kouvention/features/story/models/story_view_model.dart';
@@ -24,14 +23,14 @@ class StoryFirestoreService {
     required int limit,
     StoryCursor? cursor,
   }) {
-    final pageSie = limit.clamp(1, maxFeedPageSize);
+    final pageSize = limit.clamp(1, maxFeedPageSize);
 
     Query<Map<String, dynamic>> query = _storiesRef
         .where('visibleTo', arrayContains: currentUid)
         .where('createdAt', isGreaterThan: Timestamp.fromDate(cutoff))
         .orderBy('createdAt', descending: true)
         .orderBy(FieldPath.documentId, descending: true)
-        .limit(pageSie);
+        .limit(pageSize);
 
     if (cursor != null) {
       query = query.startAfter([
