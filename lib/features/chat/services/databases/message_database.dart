@@ -1000,6 +1000,23 @@ class MessageDatabase extends _$MessageDatabase {
       syncStatus: const Value(StorySyncStatus.deleting),
     ),
   );
+
+  Stream<Set<String>> watchActiveViewedStoryIds({
+    required String viewerUid,
+    required int nowMs,
+  }) {
+    final query =
+        select(
+            storyViews,
+          ).join([innerJoin(stories, stories.id.equalsExp(storyViews.storyId))])
+          ..where(storyViews.viewerUid.equals(viewerUid))
+          ..where(stories.expiresAt.isBiggerThanValue(nowMs))
+          ..where(stories.deletedAt.isNull());
+
+    return query.watch().map(
+      (rows) => rows.map((row) => row.readTable(storyViews).storyId).toSet(),
+    );
+  }
 }
 
 class StringListConverter extends TypeConverter<List<String>, String> {

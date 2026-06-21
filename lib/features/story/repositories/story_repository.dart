@@ -262,6 +262,15 @@ class StoryRepository {
       }).toList(),
     );
   }
+
+  Stream<Set<String>> watchActiveViewedStoryIds({
+    required String viewerUid,
+    required DateTime now,
+  }) =>
+  _db.watchActiveViewedStoryIds(
+    viewerUid: viewerUid,
+    nowMs: now.millisecondsSinceEpoch,
+  );
 }
 
 final storyRepositoryProvider = Provider<StoryRepository>(
