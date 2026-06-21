@@ -8,6 +8,7 @@ import 'package:kouvention/cores/bases/base_view.dart';
 import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
+import 'package:kouvention/features/story/models/story_composer_args.dart';
 import 'package:kouvention/features/story/models/story_feed_item.dart';
 import 'package:kouvention/features/story/models/story_viewer_args.dart';
 import 'package:kouvention/features/story/viewmodel/story_feed_viewmodel.dart';
@@ -93,7 +94,10 @@ class StoryFeedView extends ConsumerWidget {
                             photoUrl: currentProfile?.photoUrl,
                             ownStory: ownStory,
                             onTap: ownStory == null
-                                ? null
+                                ? () => _openComposer(
+                                    context,
+                                    StoryCreationMode.text,
+                                  )
                                 : () => _openStory(context, ownStory),
                           ),
                           if (unseenUpdates.isEmpty && viewedUpdates.isEmpty)
@@ -154,6 +158,13 @@ class StoryFeedView extends ConsumerWidget {
     );
   }
 
+  void _openComposer(BuildContext context, StoryCreationMode initialMode) {
+    context.push(
+      RouterRoutes.storyComposer.path,
+      extra: StoryComposerArgs(initialMode: initialMode),
+    );
+  }
+
   Future<void> _showCreateStorySheet(BuildContext context) =>
       showModalBottomSheet<void>(
         context: context,
@@ -182,33 +193,49 @@ class StoryFeedView extends ConsumerWidget {
                   children: [
                     Expanded(
                       child: _StoryCreationOption(
-                        icon: Icons.text_fields_rounded,
-                        label: 'Text',
-                        onTap: () => Navigator.pop(sheetContext),
-                      ),
-                    ),
-                    SizedBox(width: AppSpacing.sm.w),
-                    Expanded(
-                      child: _StoryCreationOption(
-                        icon: Icons.camera_alt_outlined,
-                        label: 'Camera',
-                        onTap: () => Navigator.pop(sheetContext),
+                        icon: Icons.videocam_outlined,
+                        label: 'Video',
+                        onTap: () => _selectCreationMode(
+                          context,
+                          sheetContext,
+                          StoryCreationMode.video,
+                        ),
                       ),
                     ),
                     SizedBox(width: AppSpacing.sm.w),
                     Expanded(
                       child: _StoryCreationOption(
                         icon: Icons.photo_library_outlined,
-                        label: 'Gallery',
-                        onTap: () => Navigator.pop(sheetContext),
+                        label: 'Photo',
+                        onTap: () => _selectCreationMode(
+                          context,
+                          sheetContext,
+                          StoryCreationMode.photo,
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: AppSpacing.sm.w),
+                    Expanded(
+                      child: _StoryCreationOption(
+                        icon: Icons.text_fields_rounded,
+                        label: 'Text',
+                        onTap: () => _selectCreationMode(
+                          context,
+                          sheetContext,
+                          StoryCreationMode.text,
+                        ),
                       ),
                     ),
                     SizedBox(width: AppSpacing.sm.w),
                     Expanded(
                       child: _StoryCreationOption(
                         icon: Icons.mic_none_rounded,
-                        label: 'Audio',
-                        onTap: () => Navigator.pop(sheetContext),
+                        label: 'Voice',
+                        onTap: () => _selectCreationMode(
+                          context,
+                          sheetContext,
+                          StoryCreationMode.voice,
+                        ),
                       ),
                     ),
                   ],
@@ -218,6 +245,15 @@ class StoryFeedView extends ConsumerWidget {
           ),
         ),
       );
+
+  void _selectCreationMode(
+    BuildContext context,
+    BuildContext sheetContext,
+    StoryCreationMode mode,
+  ) {
+    Navigator.pop(sheetContext);
+    _openComposer(context, mode);
+  }
 }
 
 class _StoryCreationOption extends StatelessWidget {

@@ -78,6 +78,7 @@ class StoryModel {
     thumbnailUrl: row.thumbnailUrl,
     text: row.textContent,
     caption: row.caption,
+    backgroundColorArgb: row.backgroundColorArgb,
     cloudinaryPublicId: row.cloudinaryPublicId,
     visibleTo: row.visibleTo,
     createdAt: DateTime.fromMillisecondsSinceEpoch(row.createdAt),

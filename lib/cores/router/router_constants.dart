@@ -50,6 +50,10 @@ class RouterRoutes {
     path: '/stories/viewer',
     name: 'storyViewer',
   );
+  static const storyComposer = RouterRoute(
+    path: '/stories/create',
+    name: 'storyComposer',
+  );
   static const chatRoom = RouterRoute(path: '/chats/:chatId', name: 'chatRoom');
   static const newChat = RouterRoute(path: '/new-chat', name: 'newChat');
   static const newGroupChat = RouterRoute(

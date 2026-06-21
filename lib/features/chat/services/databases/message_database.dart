@@ -211,7 +211,7 @@ class MessageDatabase extends _$MessageDatabase {
   MessageDatabase.forExecutor(super.executor);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -284,6 +284,10 @@ class MessageDatabase extends _$MessageDatabase {
       if (from < 6) {
         await m.createTable(stories);
         await m.createTable(storyViews);
+      }
+
+      if (from >= 6 && from < 7) {
+        await m.addColumn(stories, stories.backgroundColorArgb);
       }
     },
 
@@ -930,6 +934,19 @@ class MessageDatabase extends _$MessageDatabase {
             ..orderBy([(s) => OrderingTerm.asc(s.createdAt)])
             ..limit(limit))
           .get();
+
+  Future<Set<String>> getCachedDirectContactUids(String currentUid) async {
+    final rows = await (select(
+      chats,
+    )..where((chat) => chat.type.equals('direct'))).get();
+
+    return {
+      currentUid,
+      for (final chat in rows)
+        for (final uid in chat.members)
+          if (uid != currentUid) uid,
+    };
+  }
 
   Future<StoryView?> getStoryView({
     required String storyId,
