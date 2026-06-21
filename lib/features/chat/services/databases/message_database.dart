@@ -945,6 +945,30 @@ class MessageDatabase extends _$MessageDatabase {
                   : Value(retryCount),
             ),
           );
+
+  Future<Story?> getStoryById(String storyId) =>
+      (select(stories)..where((s) => s.id.equals(storyId))).getSingleOrNull();
+
+  Future<void> updateStorySyncStatus({
+    required String storyId,
+    required StorySyncStatus status,
+    int? retryCount,
+  }) => (update(stories)..where((s) => s.id.equals(storyId))).write(
+    StoriesCompanion(
+      syncStatus: Value(status),
+      retryCount: retryCount == null ? const Value.absent() : Value(retryCount),
+    ),
+  );
+
+  Future<void> markStoryDeletedLocally({
+    required String storyId,
+    required int deletedAt,
+  }) => (update(stories)..where((s) => s.id.equals(storyId))).write(
+    StoriesCompanion(
+      deletedAt: Value(deletedAt),
+      syncStatus: const Value(StorySyncStatus.deleting),
+    ),
+  );
 }
 
 class StringListConverter extends TypeConverter<List<String>, String> {
