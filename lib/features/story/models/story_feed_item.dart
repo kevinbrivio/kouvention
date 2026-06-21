@@ -25,5 +25,10 @@ class StoryFeedItem {
 
   bool get hasUnseen => unseenCount > 0;
 
-  String? get coverUrl => latestStory.thumbnailUrl ?? latestStory.mediaUrl;
+  String? get coverUrl => switch (latestStory.type) {
+    StoryType.image => latestStory.thumbnailUrl ?? latestStory.mediaUrl,
+    StoryType.video ||
+    StoryType.audio ||
+    StoryType.text => latestStory.thumbnailUrl,
+  };
 }

@@ -36,8 +36,8 @@ class _MainShellState extends ConsumerState<MainShell> {
 
     return Padding(
       padding: EdgeInsets.only(
-        left: 60.w,
-        right: 60.w,
+        left: AppSpacing.screenH.w,
+        right: AppSpacing.screenH.w,
         bottom: MediaQuery.of(context).padding.bottom + AppSpacing.xxs.h,
       ),
       child: Container(
@@ -61,10 +61,16 @@ class _MainShellState extends ConsumerState<MainShell> {
               onTap: () => widget.navigationShell.goBranch(0),
             ),
             _CustomNavItem(
-              icon: Icons.person_rounded,
-              label: 'Profile',
+              icon: Icons.auto_stories_outlined,
+              label: 'Updates',
               isSelected: currentIndex == 1,
               onTap: () => widget.navigationShell.goBranch(1),
+            ),
+            _CustomNavItem(
+              icon: Icons.person_rounded,
+              label: 'Profile',
+              isSelected: currentIndex == 2,
+              onTap: () => widget.navigationShell.goBranch(2),
             ),
           ],
         ),

@@ -25,6 +25,9 @@ import 'package:kouvention/features/profile/views/notification_settings_view.dar
 import 'package:kouvention/features/profile/views/privacy_settings_view.dart';
 import 'package:kouvention/features/profile/views/profile_view.dart';
 import 'package:kouvention/features/splash/views/splash_view.dart';
+import 'package:kouvention/features/story/models/story_viewer_args.dart';
+import 'package:kouvention/features/story/views/story_feed_view.dart';
+import 'package:kouvention/features/story/views/story_viewer_view.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
 
 GoRouter? _router;
@@ -38,6 +41,9 @@ final GlobalKey<NavigatorState> _chatBranchKey = GlobalKey<NavigatorState>(
 );
 final GlobalKey<NavigatorState> _profileBranchKey = GlobalKey<NavigatorState>(
   debugLabel: 'profileBranch',
+);
+final GlobalKey<NavigatorState> _storyBranchKey = GlobalKey<NavigatorState>(
+  debugLabel: 'storyBranch',
 );
 
 setupRouter({
@@ -170,7 +176,18 @@ setupRouter({
               ),
             ],
           ),
-          // Tab 1: Profile
+          // Tab 1: Stories
+          StatefulShellBranch(
+            navigatorKey: _storyBranchKey,
+            routes: [
+              GoRoute(
+                path: RouterRoutes.storyFeed.path,
+                name: RouterRoutes.storyFeed.name,
+                builder: (_, _) => const StoryFeedView(),
+              ),
+            ],
+          ),
+          // Tab 2: Profile
           StatefulShellBranch(
             navigatorKey: _profileBranchKey,
             routes: [
@@ -185,6 +202,12 @@ setupRouter({
       ),
 
       // ── Protected routes (no navbar) ──────────────
+      GoRoute(
+        path: RouterRoutes.storyViewer.path,
+        name: RouterRoutes.storyViewer.name,
+        builder: (_, state) =>
+            StoryViewerView(args: state.extra as StoryViewerArgs),
+      ),
       GoRoute(
         path: RouterRoutes.chatRoom.path,
         name: RouterRoutes.chatRoom.name,
