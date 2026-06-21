@@ -16,6 +16,7 @@ import 'package:kouvention/features/story/models/story_composer_args.dart';
 import 'package:kouvention/features/story/models/story_model.dart';
 import 'package:kouvention/features/story/repositories/story_repository.dart';
 import 'package:kouvention/features/story/viewmodel/story_feed_viewmodel.dart';
+import 'package:kouvention/features/story/widgets/story_audio_composer.dart';
 import 'package:kouvention/features/story/widgets/story_photo_composer.dart';
 import 'package:kouvention/features/story/widgets/story_video_composer.dart';
 
@@ -43,8 +44,10 @@ class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
   late final CarouselSliderController _carouselController;
   late int _currentIndex;
   Color _backgroundColor = storyBackgroundColors.first;
+  Color _audioBackgroundColor = storyBackgroundColors.last;
   File? _photoFile;
   File? _videoFile;
+  File? _audioFile;
   bool _isPublishing = false;
 
   StoryCreationMode get _currentMode => StoryCreationMode.values[_currentIndex];
@@ -251,6 +254,68 @@ class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
     }
   }
 
+  Future<void> _publishAudioStory() async {
+    final audio = _audioFile;
+    if (audio == null || _isPublishing) return;
+
+    final currentUser = ref.read(authServiceProvider).currentUser;
+    if (currentUser == null) {
+      showToast('Session expired. Please sign in again.');
+      return;
+    }
+
+    setState(() => _isPublishing = true);
+
+    try {
+      final upload = await ref
+          .read(cloudMediaServiceProvider)
+          .uploadFile(file: audio, mediaType: MessageType.audio);
+      if (upload == null || upload.url.isEmpty) {
+        showToast('Could not upload the recording. Please try again.');
+        return;
+      }
+
+      final db = ref.read(messageDatabaseProvider);
+      final visibleTo = await db.getCachedDirectContactUids(currentUser.uid);
+      final profile = ref
+          .read(storyCurrentUserProfileProvider(currentUser.uid))
+          .valueOrNull;
+      final createdAt = DateTime.now();
+      final story = StoryModel(
+        id: const Uuid().v4(),
+        authorUid: currentUser.uid,
+        authorName:
+            profile?.displayName ?? currentUser.displayName ?? 'Unknown',
+        authorPhotoUrl: profile?.photoUrl ?? currentUser.photoURL,
+        type: StoryType.audio,
+        mediaUrl: upload.url,
+        localPath: audio.path,
+        backgroundColorArgb: _audioBackgroundColor.toARGB32(),
+        visibleTo: visibleTo.toList(growable: false),
+        createdAt: createdAt,
+        expiresAt: storyExpiryFrom(createdAt),
+        syncStatus: StorySyncStatus.pending,
+      );
+
+      try {
+        await ref.read(storyRepositoryProvider).publishStory(story);
+        if (mounted) context.pop();
+      } catch (_) {
+        final localStory = await db.getStoryById(story.id);
+        if (localStory != null) {
+          showToast('Story saved and queued for retry.');
+          if (mounted) context.pop();
+        } else {
+          showToast('Could not save the story. Please try again.');
+        }
+      }
+    } catch (_) {
+      showToast('Could not publish the recording. Please try again.');
+    } finally {
+      if (mounted) setState(() => _isPublishing = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final canPublish =
@@ -289,9 +354,19 @@ class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
                 focusNode: _textFocusNode,
                 backgroundColor: _backgroundColor,
               ),
-              const _StoryModePlaceholder(
-                icon: Icons.mic_none_rounded,
-                label: 'Voice',
+              StoryAudioComposer(
+                isActive: _currentMode == StoryCreationMode.voice,
+                audio: _audioFile,
+                backgroundColor: _audioBackgroundColor,
+                backgroundColors: storyBackgroundColors,
+                isPublishing: _isPublishing,
+                onAudioSelected: (audio) {
+                  setState(() => _audioFile = audio);
+                },
+                onBackgroundColorSelected: (color) {
+                  setState(() => _audioBackgroundColor = color);
+                },
+                onPublish: _publishAudioStory,
               ),
             ],
             options: CarouselOptions(
@@ -419,33 +494,6 @@ class _TextStoryComposer extends StatelessWidget {
             counterText: '',
           ),
         ),
-      ),
-    ),
-  );
-}
-
-class _StoryModePlaceholder extends StatelessWidget {
-  const _StoryModePlaceholder({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) => ColoredBox(
-    color: const Color(0xFF181818),
-    child: Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 72, color: Colors.white70),
-          const SizedBox(height: 16),
-          Text(
-            '$label coming soon',
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(color: Colors.white),
-          ),
-        ],
       ),
     ),
   );
