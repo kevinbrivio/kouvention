@@ -85,29 +85,23 @@ class StoryFirestoreService {
             .toList(),
       );
 
-  Future<void> createStory(StoryModel story) async {
-    final ref = _storiesRef.doc(story.id);
-
-    await _firestore.runTransaction((transaction) async {
-      final existing = await transaction.get(ref);
-      if (existing.exists) return;
-
-      transaction.set(ref, story.toFirestoreMap());
-    });
-  }
+  Future<void> createStory(StoryModel story) => _storiesRef
+      .doc(story.id)
+      .set(story.toFirestoreMap(), SetOptions(merge: true));
 
   Future<void> softDeleteStory({
-    required String storyId,
+    required StoryModel story,
     required DateTime deletedAt,
-  }) => _storiesRef.doc(storyId).update({
+  }) => _storiesRef.doc(story.id).set({
+    ...story.toFirestoreMap(),
     'deletedAt': Timestamp.fromDate(deletedAt),
-  });
+  }, SetOptions(merge: true));
 
   Future<void> markViewed(StoryViewModel view) => _storyViewsRef(
     view.storyId,
   ).doc(view.viewerUid).set(view.toFirestoreMap());
 }
 
-final storyFirestoreServicProvider = Provider<StoryFirestoreService>(
+final storyFirestoreServiceProvider = Provider<StoryFirestoreService>(
   (ref) => StoryFirestoreService(),
 );
