@@ -414,7 +414,7 @@ class MessageDatabase extends _$MessageDatabase {
           .watch();
 
   ///Unbounded watch. **Deprecated** — kept only for legacy callers and tests.
-  ///The chat list screen must use [watchPagedChats] 
+  ///The chat list screen must use [watchPagedChats]
   ///or `fetchPagedChats` instead.
   Stream<List<Chat>> watchChatRooms() =>
       (select(chats)..orderBy([(c) => OrderingTerm.desc(c.updatedAt)])).watch();
@@ -837,6 +837,8 @@ class MessageDatabase extends _$MessageDatabase {
       await delete(messages).go();
       await delete(chats).go();
       await delete(userProfiles).go();
+      await delete(stories).go();
+      await delete(storyViews).go();
     });
   }
 
