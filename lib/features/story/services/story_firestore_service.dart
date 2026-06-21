@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:drift/drift.dart';
 import 'package:kouvention/features/story/models/story_model.dart';
 import 'package:kouvention/features/story/models/story_page.dart';
+import 'package:kouvention/features/story/models/story_view_model.dart';
 
 class StoryFirestoreService {
   static const int maxFeedPageSize = 50;
@@ -82,4 +84,26 @@ class StoryFirestoreService {
             .map((doc) => StoryModel.fromFirestore(doc.id, doc.data()))
             .toList(),
       );
+
+  Future<void> createStory(StoryModel story) async {
+    final ref = _storiesRef.doc(story.id);
+
+    await _firestore.runTransaction((transaction) async {
+      final existing = await transaction.get(ref);
+      if (existing.exists) return;
+
+      transaction.set(ref, story.toFirestoreMap());
+    });
+  }
+
+  Future<void> softDeleteStory({
+    required String storyId,
+    required DateTime deletedAt,
+  }) => _storiesRef.doc(storyId).update({
+    'deletedAt': Timestamp.fromDate(deletedAt),
+  });
+
+  Future<void> markViewed(StoryViewModel view) => _storyViewsRef(
+    view.storyId,
+  ).doc(view.viewerUid).set(view.toFirestoreMap());
 }
