@@ -79,6 +79,12 @@ class StoryPresenterMapper {
   static StoryItem _audio(BuildContext context, StoryModel story) {
     final source = _mediaSource(story);
     if (source == null) return _unavailableStory();
+    final backgroundColor = story.backgroundColorArgb == null
+        ? Theme.of(context).colorScheme.secondaryContainer
+        : Color(story.backgroundColorArgb!);
+    final foregroundColor = story.backgroundColorArgb == null
+        ? Theme.of(context).colorScheme.onSecondaryContainer
+        : Colors.white;
 
     return StoryItem(
       storyItemType: StoryItemType.custom,
@@ -88,8 +94,12 @@ class StoryPresenterMapper {
         source: source.source,
         onAudioStart: (_) {},
       ),
-      customWidget: (_, audioPlayer) =>
-          _AudioStoryContent(story: story, audioPlayer: audioPlayer),
+      customWidget: (_, audioPlayer) => _AudioStoryContent(
+        story: story,
+        audioPlayer: audioPlayer,
+        backgroundColor: backgroundColor,
+        foregroundColor: foregroundColor,
+      ),
     );
   }
 
@@ -117,61 +127,60 @@ class StoryPresenterMapper {
 }
 
 class _AudioStoryContent extends StatelessWidget {
-  const _AudioStoryContent({required this.story, required this.audioPlayer});
+  const _AudioStoryContent({
+    required this.story,
+    required this.audioPlayer,
+    required this.backgroundColor,
+    required this.foregroundColor,
+  });
 
   final StoryModel story;
   final AudioPlayer? audioPlayer;
+  final Color backgroundColor;
+  final Color foregroundColor;
 
   @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
-    return ColoredBox(
-      color: scheme.secondaryContainer,
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.xl),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.graphic_eq_rounded,
-                size: 88,
-                color: scheme.onSecondaryContainer,
+  Widget build(BuildContext context) => ColoredBox(
+    color: backgroundColor,
+    child: SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.graphic_eq_rounded, size: 88, color: foregroundColor),
+            const SizedBox(height: AppSpacing.lg),
+            Text(
+              story.caption?.trim().isNotEmpty == true
+                  ? story.caption!
+                  : 'Audio story',
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: context.text.titleLarge.copyWith(
+                color: foregroundColor,
+                fontWeight: FontWeight.w600,
               ),
-              const SizedBox(height: AppSpacing.lg),
-              Text(
-                story.caption?.trim().isNotEmpty == true
-                    ? story.caption!
-                    : 'Audio story',
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: context.text.titleLarge.copyWith(
-                  color: scheme.onSecondaryContainer,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              StreamBuilder<Duration>(
-                stream: audioPlayer?.positionStream,
-                initialData: Duration.zero,
-                builder: (context, snapshot) {
-                  final position = snapshot.data ?? Duration.zero;
-                  return Text(
-                    _formatDuration(position),
-                    style: context.text.bodyMedium.copyWith(
-                      color: scheme.onSecondaryContainer,
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            StreamBuilder<Duration>(
+              stream: audioPlayer?.positionStream,
+              initialData: Duration.zero,
+              builder: (context, snapshot) {
+                final position = snapshot.data ?? Duration.zero;
+                return Text(
+                  _formatDuration(position),
+                  style: context.text.bodyMedium.copyWith(
+                    color: foregroundColor,
+                  ),
+                );
+              },
+            ),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
 
   String _formatDuration(Duration duration) {
     final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
