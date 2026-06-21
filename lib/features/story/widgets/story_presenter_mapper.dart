@@ -45,20 +45,24 @@ class StoryPresenterMapper {
 
   static StoryItem _text(BuildContext context, StoryModel story) {
     final text = story.text?.trim();
+    final backgroundColor = textBackgroundColor(context, story);
+    final foregroundColor = story.backgroundColorArgb == null
+        ? Theme.of(context).colorScheme.onPrimaryContainer
+        : Colors.white;
 
     return StoryItem(
       url: text == null || text.isEmpty ? ' ' : text,
       storyItemType: StoryItemType.text,
       duration: const Duration(seconds: 5),
       textConfig: StoryViewTextConfig(
-        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+        backgroundColor: backgroundColor,
         textWidget: Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
           child: Text(
             text == null || text.isEmpty ? ' ' : text,
             textAlign: TextAlign.center,
             style: context.text.headlineMedium.copyWith(
-              color: Theme.of(context).colorScheme.onPrimaryContainer,
+              color: foregroundColor,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -66,6 +70,11 @@ class StoryPresenterMapper {
       ),
     );
   }
+
+  static Color textBackgroundColor(BuildContext context, StoryModel story) =>
+      story.backgroundColorArgb == null
+      ? Theme.of(context).colorScheme.primaryContainer
+      : Color(story.backgroundColorArgb!);
 
   static StoryItem _audio(BuildContext context, StoryModel story) {
     final source = _mediaSource(story);

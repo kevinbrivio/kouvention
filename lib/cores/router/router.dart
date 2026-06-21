@@ -25,7 +25,9 @@ import 'package:kouvention/features/profile/views/notification_settings_view.dar
 import 'package:kouvention/features/profile/views/privacy_settings_view.dart';
 import 'package:kouvention/features/profile/views/profile_view.dart';
 import 'package:kouvention/features/splash/views/splash_view.dart';
+import 'package:kouvention/features/story/models/story_composer_args.dart';
 import 'package:kouvention/features/story/models/story_viewer_args.dart';
+import 'package:kouvention/features/story/views/story_composer_view.dart';
 import 'package:kouvention/features/story/views/story_feed_view.dart';
 import 'package:kouvention/features/story/views/story_viewer_view.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
@@ -207,6 +209,12 @@ setupRouter({
         name: RouterRoutes.storyViewer.name,
         builder: (_, state) =>
             StoryViewerView(args: state.extra as StoryViewerArgs),
+      ),
+      GoRoute(
+        path: RouterRoutes.storyComposer.path,
+        name: RouterRoutes.storyComposer.name,
+        builder: (_, state) =>
+            StoryComposerView(args: state.extra as StoryComposerArgs),
       ),
       GoRoute(
         path: RouterRoutes.chatRoom.path,
