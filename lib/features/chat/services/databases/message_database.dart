@@ -837,8 +837,8 @@ class MessageDatabase extends _$MessageDatabase {
       await delete(messages).go();
       await delete(chats).go();
       await delete(userProfiles).go();
-      await delete(stories).go();
       await delete(storyViews).go();
+      await delete(stories).go();
     });
   }
 
