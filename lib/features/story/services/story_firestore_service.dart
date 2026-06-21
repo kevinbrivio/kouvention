@@ -71,5 +71,15 @@ class StoryFirestoreService {
     );
   }
 
-  
+  Stream<List<StoryModel>> streamLatestFeed({
+    required String currentUid,
+    required DateTime cutoff,
+    int limit = maxFeedPageSize,
+  }) => _feedQuery(currentUid: currentUid, cutoff: cutoff, limit: limit)
+      .snapshots()
+      .map(
+        (snapshot) => snapshot.docs
+            .map((doc) => StoryModel.fromFirestore(doc.id, doc.data()))
+            .toList(),
+      );
 }
