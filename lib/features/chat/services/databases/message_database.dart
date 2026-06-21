@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/cores/services/db_key_manager.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
+import 'package:kouvention/features/story/models/story_model.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqlite3/sqlite3.dart' as sqlite3;
@@ -132,6 +133,9 @@ class Messages extends Table {
   Set<Column<Object>>? get primaryKey => {id};
 }
 
+// ===============================
+// Table User Profiles
+// ===============================
 class UserProfiles extends Table {
   TextColumn get uid => text()();
   TextColumn get displayName => text()();
@@ -143,7 +147,59 @@ class UserProfiles extends Table {
   Set<Column<Object>>? get primaryKey => {uid};
 }
 
-@DriftDatabase(tables: [Chats, Messages, UserProfiles])
+// ===============================
+// Table Story
+// ===============================
+@TableIndex(
+  name: 'idx_stories_author_created',
+  columns: {#authorUid, #createdAt},
+)
+@TableIndex(
+  name: 'idx_stories_expires_created',
+  columns: {#expiresAt, #createdAt},
+)
+class Stories extends Table {
+  TextColumn get id => text()();
+  TextColumn get authorUid => text()();
+  TextColumn get authorName => text()();
+  TextColumn get authorPhotoUrl => text().nullable()();
+
+  TextColumn get type => textEnum<StoryType>()();
+  TextColumn get mediaUrl => text().nullable()();
+  TextColumn get thumbnailUrl => text().nullable()();
+  TextColumn get textContent => text().nullable()();
+  TextColumn get caption => text().nullable()();
+
+  TextColumn get cloudinaryPublicId => text().nullable()();
+  TextColumn get visibleTo => text()
+      .map(const StringListConverter())
+      .withDefault(const Constant('[]'))();
+
+  IntColumn get createdAt => integer()();
+  IntColumn get expiresAt => integer()();
+  IntColumn get deletedAt => integer().nullable()();
+
+  TextColumn get localPath => text().nullable()();
+  TextColumn get syncStatus => textEnum<StorySyncStatus>()();
+  IntColumn get retryCount => integer().withDefault(const Constant(0))();
+
+  @override
+  Set<Column<Object>>? get primaryKey => {id};
+}
+
+@TableIndex(name: 'idx_story_views_sync', columns: {#syncStatus, #viewedAt})
+class StoryViews extends Table {
+  TextColumn get storyId => text().references(Stories, #id)();
+  TextColumn get viewerUid => text()();
+  IntColumn get viewedAt => integer()();
+  TextColumn get syncStatus => textEnum<SyncStatus>()();
+  IntColumn get retryCount => integer().withDefault(const Constant(0))();
+
+  @override
+  Set<Column<Object>>? get primaryKey => {storyId, viewerUid};
+}
+
+@DriftDatabase(tables: [Chats, Messages, UserProfiles, Stories, StoryViews])
 class MessageDatabase extends _$MessageDatabase {
   MessageDatabase() : super(_openConnection());
 
@@ -154,17 +210,13 @@ class MessageDatabase extends _$MessageDatabase {
   MessageDatabase.forExecutor(super.executor);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (Migrator m) async {
-      print('🛠️ [DATABASE] Membuat tabel baru dari nol!');
       await m.createAll();
 
-      // ⚠️ sender_name is a HISTORICAL snapshot at message send time.
-      // Do NOT query against it. Search uses the UserProfileResolver
-      // for current sender names (AGENTS.md §9, Phase 8).
       await customStatement('''
         CREATE VIRTUAL TABLE messages_fts USING fts5(
           message_id UNINDEXED,
@@ -204,7 +256,6 @@ class MessageDatabase extends _$MessageDatabase {
     },
 
     onUpgrade: (Migrator m, int from, int to) async {
-      print('🛠️ [DATABASE] Migrasi dari v$from ke v$to');
       await customStatement('PRAGMA foreign_keys = OFF');
 
       if (from < 2) {
@@ -220,12 +271,6 @@ class MessageDatabase extends _$MessageDatabase {
 
       if (from < 3) {
         await m.addColumn(chats, chats.lastOpenedAt);
-        // Backfill: approximate lastOpenedAt from the best available
-        // timestamp. We use updated_at here (which is polluted by system
-        // actions like markChatAsRead, deleteMessageForMe) because it's
-        // the only per-row timestamp we have at migration time. The v2→v3
-        // migration is one-time — after it, only ChatRoomVM.init() writes
-        // to last_opened_at.
         await customStatement(
           'UPDATE chats SET last_opened_at = COALESCE(updated_at, created_at)',
         );
@@ -233,6 +278,11 @@ class MessageDatabase extends _$MessageDatabase {
 
       if (from < 4) {
         await m.createTable(userProfiles);
+      }
+
+      if (from < 6) {
+        await m.createTable(stories);
+        await m.createTable(storyViews);
       }
     },
 
@@ -363,8 +413,9 @@ class MessageDatabase extends _$MessageDatabase {
             ..orderBy([(m) => OrderingTerm.desc(m.sentAt)]))
           .watch();
 
-  /// Unbounded watch. **Deprecated** — kept only for legacy callers and tests.
-  /// The chat list screen must use [watchPagedChats] or `fetchPagedChats` instead.
+  ///Unbounded watch. **Deprecated** — kept only for legacy callers and tests.
+  ///The chat list screen must use [watchPagedChats]
+  ///or `fetchPagedChats` instead.
   Stream<List<Chat>> watchChatRooms() =>
       (select(chats)..orderBy([(c) => OrderingTerm.desc(c.updatedAt)])).watch();
 
@@ -389,8 +440,8 @@ class MessageDatabase extends _$MessageDatabase {
   }) {
     final typeClause = typeFilter != null ? 'AND type = ?' : '';
     final pinnedOrder = currentUid != null
-        ? "CASE WHEN pinned_by LIKE ? THEN 0 ELSE 1 END"
-        : "0";
+        ? 'CASE WHEN pinned_by LIKE ? THEN 0 ELSE 1 END'
+        : '0';
 
     final sql =
         '''
@@ -426,8 +477,8 @@ class MessageDatabase extends _$MessageDatabase {
   }) async {
     final typeClause = typeFilter != null ? 'AND type = ?' : '';
     final pinnedOrder = currentUid != null
-        ? "CASE WHEN pinned_by LIKE ? THEN 0 ELSE 1 END"
-        : "0";
+        ? 'CASE WHEN pinned_by LIKE ? THEN 0 ELSE 1 END'
+        : '0';
 
     final sql =
         '''
@@ -581,7 +632,8 @@ class MessageDatabase extends _$MessageDatabase {
 
   Future<void> recomputeLocalMessageBounds(String chatId) async {
     final row = await customSelect(
-      'SELECT MIN(sent_at) AS min_sent, MAX(sent_at) AS max_sent, COUNT(*) AS cnt '
+      'SELECT MIN(sent_at) AS min_sent, MAX(sent_at) AS max_sent, '
+      'COUNT(*) AS cnt '
       'FROM messages WHERE chat_room_id = ?',
       variables: [Variable.withString(chatId)],
       readsFrom: {messages},
@@ -664,13 +716,36 @@ class MessageDatabase extends _$MessageDatabase {
     ),
   );
 
+  Future<void> upsertStories(List<StoriesCompanion> newStories) async {
+    await batch((b) {
+      for (final story in newStories) {
+        b.insert(stories, story, onConflict: DoUpdate((old) => story));
+      }
+    });
+  }
+
+  Future<void> upsertStory(StoriesCompanion newStory) =>
+      into(stories).insertOnConflictUpdate(newStory);
+
+  Future<void> upsertStoryViews(List<StoryViewsCompanion> newViews) async {
+    await batch((b) {
+      for (final view in newViews) {
+        b.insert(storyViews, view, onConflict: DoUpdate((old) => view));
+      }
+    });
+  }
+
+  Future<void> upsertStoryView(StoryViewsCompanion newView) =>
+      into(storyViews).insertOnConflictUpdate(newView);
+
   // ===========================
   // DELETE
   // ===========================
   Future<int> hardDeleteMessages({required List<String> messageIds}) async {
     if (messageIds.isEmpty) return Future.value(0);
 
-    // Hard delete on SQLite, then StreamProvider will automatically updates the value
+    // Hard delete on SQLite, then StreamProvider will automatically
+    // updates the value
     return (delete(messages)..where((m) => m.id.isIn(messageIds))).go();
   }
 
@@ -762,6 +837,8 @@ class MessageDatabase extends _$MessageDatabase {
       await delete(messages).go();
       await delete(chats).go();
       await delete(userProfiles).go();
+      await delete(storyViews).go();
+      await delete(stories).go();
     });
   }
 
@@ -803,6 +880,142 @@ class MessageDatabase extends _$MessageDatabase {
           ..orderBy([(m) => OrderingTerm.desc(m.sentAt)])
           ..limit(limit))
         .get();
+  }
+
+  Stream<List<Story>> watchActiveStories({
+    required String currentUid,
+    required int nowMs,
+    int limit = 50,
+  }) {
+    final uidLikeParam = '%"$currentUid"%';
+
+    return (select(stories)
+          ..where((s) => s.expiresAt.isBiggerThanValue(nowMs))
+          ..where((s) => s.deletedAt.isNull())
+          ..where((s) => s.visibleTo.like(uidLikeParam))
+          ..orderBy([(s) => OrderingTerm.desc(s.createdAt)])
+          ..limit(limit))
+        .watch();
+  }
+
+  Future<List<Story>> fetchStoriesByAuthor({
+    required String authorUid,
+    required int nowMs,
+    int limit = 20,
+    int? beforeCreatedAt,
+  }) {
+    final query = select(stories)
+      ..where((s) => s.authorUid.equals(authorUid))
+      ..where((s) => s.expiresAt.isBiggerThanValue(nowMs))
+      ..where((s) => s.deletedAt.isNull())
+      ..orderBy([(s) => OrderingTerm.desc(s.createdAt)])
+      ..limit(limit);
+
+    if (beforeCreatedAt != null) {
+      query.where((s) => s.createdAt.isSmallerThanValue(beforeCreatedAt));
+    }
+
+    return query.get();
+  }
+
+  Future<List<Story>> getPendingStories({int limit = 20}) =>
+      (select(stories)
+            ..where(
+              (s) =>
+                  s.syncStatus.equals(StorySyncStatus.pending.name) |
+                  s.syncStatus.equals(StorySyncStatus.failed.name) |
+                  s.syncStatus.equals(StorySyncStatus.deleting.name),
+            )
+            ..orderBy([(s) => OrderingTerm.asc(s.createdAt)])
+            ..limit(limit))
+          .get();
+
+  Future<StoryView?> getStoryView({
+    required String storyId,
+    required String currentUid,
+  }) =>
+      (select(storyViews)
+            ..where((v) => v.storyId.equals(storyId))
+            ..where((v) => v.viewerUid.equals(currentUid)))
+          .getSingleOrNull();
+
+  Future<List<StoryView>> getPendingStoryViews({int limit = 50}) =>
+      (select(storyViews)
+            ..where(
+              (v) =>
+                  v.syncStatus.equals(SyncStatus.pending.name) |
+                  v.syncStatus.equals(SyncStatus.failed.name),
+            )
+            ..orderBy([(v) => OrderingTerm.asc(v.viewedAt)])
+            ..limit(limit))
+          .get();
+
+  Future<void> updateStoryViewStatus({
+    required String storyId,
+    required String viewerUid,
+    required SyncStatus status,
+    int? retryCount,
+  }) =>
+      (update(storyViews)
+            ..where((v) => v.storyId.equals(storyId))
+            ..where((v) => v.viewerUid.equals(viewerUid)))
+          .write(
+            StoryViewsCompanion(
+              syncStatus: Value(status),
+              retryCount: retryCount == null
+                  ? const Value.absent()
+                  : Value(retryCount),
+            ),
+          );
+
+  Future<Story?> getStoryById(String storyId) =>
+      (select(stories)..where((s) => s.id.equals(storyId))).getSingleOrNull();
+
+  Future<Map<String, Story>> getStoriesByIds(List<String> storyIds) async {
+    if (storyIds.isEmpty) return const {};
+
+    final rows = await (select(
+      stories,
+    )..where((s) => s.id.isIn(storyIds))).get();
+    return {for (final row in rows) row.id: row};
+  }
+
+  Future<void> updateStorySyncStatus({
+    required String storyId,
+    required StorySyncStatus status,
+    int? retryCount,
+  }) => (update(stories)..where((s) => s.id.equals(storyId))).write(
+    StoriesCompanion(
+      syncStatus: Value(status),
+      retryCount: retryCount == null ? const Value.absent() : Value(retryCount),
+    ),
+  );
+
+  Future<void> markStoryDeletedLocally({
+    required String storyId,
+    required int deletedAt,
+  }) => (update(stories)..where((s) => s.id.equals(storyId))).write(
+    StoriesCompanion(
+      deletedAt: Value(deletedAt),
+      syncStatus: const Value(StorySyncStatus.deleting),
+    ),
+  );
+
+  Stream<Set<String>> watchActiveViewedStoryIds({
+    required String viewerUid,
+    required int nowMs,
+  }) {
+    final query =
+        select(
+            storyViews,
+          ).join([innerJoin(stories, stories.id.equalsExp(storyViews.storyId))])
+          ..where(storyViews.viewerUid.equals(viewerUid))
+          ..where(stories.expiresAt.isBiggerThanValue(nowMs))
+          ..where(stories.deletedAt.isNull());
+
+    return query.watch().map(
+      (rows) => rows.map((row) => row.readTable(storyViews).storyId).toSet(),
+    );
   }
 }
 

@@ -25,6 +25,14 @@
         { "fieldPath": "chatRoomId", "mode": "ASCENDING" },
         { "fieldPath": "sentAt", "mode": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "stories",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "visibleTo", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "createdAt", "mode": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
