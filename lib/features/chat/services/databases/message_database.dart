@@ -918,6 +918,27 @@ class MessageDatabase extends _$MessageDatabase {
     return query.get();
   }
 
+  Future<List<Story>> getPendingStories({int limit = 20}) =>
+      (select(stories)
+            ..where(
+              (s) =>
+                  s.syncStatus.equals(StorySyncStatus.pending.name) |
+                  s.syncStatus.equals(StorySyncStatus.failed.name) |
+                  s.syncStatus.equals(StorySyncStatus.deleting.name),
+            )
+            ..orderBy([(s) => OrderingTerm.asc(s.createdAt)])
+            ..limit(limit))
+          .get();
+
+  Future<StoryView?> getStoryView({
+    required String storyId,
+    required String currentUid,
+  }) =>
+      (select(storyViews)
+            ..where((v) => v.storyId.equals(storyId))
+            ..where((v) => v.viewerUid.equals(currentUid)))
+          .getSingleOrNull();
+
   Future<List<StoryView>> getPendingStoryViews({int limit = 50}) =>
       (select(storyViews)
             ..where(
@@ -949,6 +970,15 @@ class MessageDatabase extends _$MessageDatabase {
 
   Future<Story?> getStoryById(String storyId) =>
       (select(stories)..where((s) => s.id.equals(storyId))).getSingleOrNull();
+
+  Future<Map<String, Story>> getStoriesByIds(List<String> storyIds) async {
+    if (storyIds.isEmpty) return const {};
+
+    final rows = await (select(
+      stories,
+    )..where((s) => s.id.isIn(storyIds))).get();
+    return {for (final row in rows) row.id: row};
+  }
 
   Future<void> updateStorySyncStatus({
     required String storyId,
