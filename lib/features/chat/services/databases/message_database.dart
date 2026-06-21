@@ -918,14 +918,15 @@ class MessageDatabase extends _$MessageDatabase {
     return query.get();
   }
 
-  Future<List<StoryView>> getPendingStoryViews() =>
+  Future<List<StoryView>> getPendingStoryViews({int limit = 50}) =>
       (select(storyViews)
             ..where(
               (v) =>
                   v.syncStatus.equals(SyncStatus.pending.name) |
                   v.syncStatus.equals(SyncStatus.failed.name),
             )
-            ..orderBy([(v) => OrderingTerm.asc(v.viewedAt)]))
+            ..orderBy([(v) => OrderingTerm.asc(v.viewedAt)])
+            ..limit(limit))
           .get();
 
   Future<void> updateStoryViewStatus({
