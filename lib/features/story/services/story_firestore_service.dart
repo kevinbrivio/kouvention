@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/features/story/models/story_model.dart';
 import 'package:kouvention/features/story/models/story_page.dart';
 import 'package:kouvention/features/story/models/story_view_model.dart';
@@ -106,3 +107,7 @@ class StoryFirestoreService {
     view.storyId,
   ).doc(view.viewerUid).set(view.toFirestoreMap());
 }
+
+final storyFirestoreServicProvider = Provider<StoryFirestoreService>(
+  (ref) => StoryFirestoreService(),
+);
