@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/features/story/models/story_model.dart';
 import 'package:kouvention/features/story/repositories/story_repository.dart';
 
-const int storyFeedLimit = 20;
+const int storyFeedLimit = 50;
 
 /// Firestore listener used only while the story feed screen is mounted.
 /// Emissions are persisted to Drift by StoryRepository.
