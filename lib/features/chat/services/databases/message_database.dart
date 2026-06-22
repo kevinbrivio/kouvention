@@ -928,6 +928,7 @@ class MessageDatabase extends _$MessageDatabase {
             ..where(
               (s) =>
                   s.syncStatus.equals(StorySyncStatus.pending.name) |
+                  s.syncStatus.equals(StorySyncStatus.uploading.name) |
                   s.syncStatus.equals(StorySyncStatus.failed.name) |
                   s.syncStatus.equals(StorySyncStatus.deleting.name),
             )
@@ -1006,6 +1007,20 @@ class MessageDatabase extends _$MessageDatabase {
     StoriesCompanion(
       syncStatus: Value(status),
       retryCount: retryCount == null ? const Value.absent() : Value(retryCount),
+    ),
+  );
+
+  Future<void> updateStoryUploadResult({
+    required String storyId,
+    required String mediaUrl,
+    String? cloudinaryPublicId,
+    String? thumbnailUrl,
+  }) => (update(stories)..where((s) => s.id.equals(storyId))).write(
+    StoriesCompanion(
+      mediaUrl: Value(mediaUrl),
+      cloudinaryPublicId: Value(cloudinaryPublicId),
+      thumbnailUrl: Value(thumbnailUrl),
+      syncStatus: const Value(StorySyncStatus.pending),
     ),
   );
 
