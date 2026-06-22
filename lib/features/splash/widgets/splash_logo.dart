@@ -20,19 +20,8 @@ class SplashLogo extends StatelessWidget {
         ),
       ).animate()
         .fadeIn(duration: 400.ms)
-          .scale(duration: 400.ms)
-          .blurXY(
-            begin: 0.0,
-            end: 8.0,
-            duration: 400.ms,
-          )
-        .then(delay: 200.ms)
-        .blurXY(
-          begin: 8.0,
-          end: 0.0,
-          duration: 400.ms
-          ),
-        
+        .scale(duration: 400.ms)
+        .then(delay: 200.ms),
       Text.rich(
         TextSpan(
           text: 'Kouvént',
@@ -48,12 +37,18 @@ class SplashLogo extends StatelessWidget {
             ),
           ],
         ),
-      ),
+      ).animate()
+        .fadeIn(duration: 600.ms)
+        .scale(duration: 600.ms)
+        .then(delay: 200.ms),
 
       Text(
         'Connect instantly, anywhere.',
         style: context.text.bodyMedium.copyWith(color: AppColorTokens.info),
-      ),
+      ).animate()
+        .fadeIn(duration: 800.ms)
+        .scale(duration: 800.ms)
+        .then(delay: 200.ms),
     ],
   );
 }
