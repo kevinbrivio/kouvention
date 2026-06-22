@@ -32,6 +32,9 @@ class StoryFeedView extends ConsumerWidget {
     }
 
     final feed = ref.watch(storyFeedItemsProvider(currentUser.uid));
+    final viewedStoryIds =
+        ref.watch(viewedStoryIdsProvider(currentUser.uid)).valueOrNull ??
+        const <String>{};
     final currentProfile = ref
         .watch(storyCurrentUserProfileProvider(currentUser.uid))
         .valueOrNull;
@@ -98,7 +101,7 @@ class StoryFeedView extends ConsumerWidget {
                                     context,
                                     StoryCreationMode.text,
                                   )
-                                : () => _openStory(context, ownStory),
+                                : () => _openIsolatedStory(context, ownStory),
                           ),
                           if (unseenUpdates.isEmpty && viewedUpdates.isEmpty)
                             const Padding(
@@ -113,14 +116,24 @@ class StoryFeedView extends ConsumerWidget {
                               title: 'Recent updates',
                               items: unseenUpdates,
                               initiallyExpanded: true,
-                              onStoryTap: (item) => _openStory(context, item),
+                              onStoryTap: (item) => _openFeedStory(
+                                context,
+                                item: item,
+                                items: [...unseenUpdates, ...viewedUpdates],
+                                viewedStoryIds: viewedStoryIds,
+                              ),
                             ),
                           if (viewedUpdates.isNotEmpty)
                             _StoryUpdateSection(
                               title: 'Viewed updates',
                               items: viewedUpdates,
                               initiallyExpanded: false,
-                              onStoryTap: (item) => _openStory(context, item),
+                              onStoryTap: (item) => _openFeedStory(
+                                context,
+                                item: item,
+                                items: viewedUpdates,
+                                viewedStoryIds: viewedStoryIds,
+                              ),
                             ),
                         ],
                       );
@@ -134,9 +147,17 @@ class StoryFeedView extends ConsumerWidget {
             right: AppSpacing.md.w,
             bottom: MediaQuery.of(context).padding.bottom + AppSpacing.md.h,
             child: FloatingActionButton(
+              backgroundColor: scheme.primary,
+              foregroundColor: scheme.onPrimary.withValues(alpha: 0.1),
+              splashColor: scheme.onPrimary.withValues(alpha: 0.3),
+              heroTag: null,
               tooltip: 'Add story',
               onPressed: () => _showCreateStorySheet(context),
-              child: const Icon(Icons.add_rounded),
+              child: Icon(
+                Icons.add_rounded,
+                color: scheme.surface,
+                size: AppSizing.iconSm.sp,
+              ),
             ),
           ),
         ],
@@ -151,10 +172,31 @@ class StoryFeedView extends ConsumerWidget {
     return null;
   }
 
-  void _openStory(BuildContext context, StoryFeedItem item) {
+  void _openIsolatedStory(BuildContext context, StoryFeedItem item) {
     context.push(
       RouterRoutes.storyViewer.path,
       extra: StoryViewerArgs(feedItem: item),
+    );
+  }
+
+  void _openFeedStory(
+    BuildContext context, {
+    required StoryFeedItem item,
+    required List<StoryFeedItem> items,
+    required Set<String> viewedStoryIds,
+  }) {
+    final initialFeedIndex = items.indexWhere(
+      (candidate) => candidate.authorUid == item.authorUid,
+    );
+    if (initialFeedIndex < 0) return;
+
+    context.push(
+      RouterRoutes.storyViewer.path,
+      extra: StoryViewerArgs.feed(
+        feedItems: items,
+        initialFeedIndex: initialFeedIndex,
+        viewedStoryIds: viewedStoryIds,
+      ),
     );
   }
 

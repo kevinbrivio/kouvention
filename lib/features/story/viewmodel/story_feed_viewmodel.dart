@@ -104,9 +104,9 @@ final storyFeedItemsProvider = Provider.autoDispose
 
             final items = grouped.entries.map((entry) {
               final authorStories = entry.value
-                ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+                ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
-              final latest = authorStories.first;
+              final latest = authorStories.last;
 
               return StoryFeedItem(
                 authorUid: entry.key,

@@ -7,13 +7,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/constants/tokens.dart';
+import 'package:kouvention/features/story/repositories/story_repository.dart';
 import 'package:oktoast/oktoast.dart';
 import 'package:uuid/uuid.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/services/databases/message_database.dart';
 import 'package:kouvention/features/story/models/story_composer_args.dart';
 import 'package:kouvention/features/story/models/story_model.dart';
-import 'package:kouvention/features/story/repositories/story_repository.dart';
 import 'package:kouvention/features/story/services/story_sync_coordinator.dart';
 import 'package:kouvention/features/story/viewmodel/story_feed_viewmodel.dart';
 import 'package:kouvention/features/story/widgets/story_audio_composer.dart';
@@ -195,7 +195,7 @@ class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
           .read(storyCurrentUserProfileProvider(currentUser.uid))
           .valueOrNull;
       final createdAt = DateTime.now();
-      final caption = _audioCaptionController.text.trim();
+      final caption = captionController.text.trim();
       final story = StoryModel(
         id: const Uuid().v4(),
         authorUid: currentUser.uid,
@@ -229,139 +229,130 @@ class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
         isValidTextStory(_textController.text) &&
         !_isPublishing;
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      resizeToAvoidBottomInset: false,
-      body: Stack(
-        children: [
-          CarouselSlider(
-            carouselController: _carouselController,
-            items: [
-              StoryVideoComposer(
-                isActive: _currentMode == StoryCreationMode.video,
-                video: _videoFile,
-                captionController: _videoCaptionController,
-                isPublishing: _isPublishing,
-                onVideoSelected: (video) {
-                  setState(() => _videoFile = video);
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        resizeToAvoidBottomInset: false,
+        body: Stack(
+          children: [
+            CarouselSlider(
+              carouselController: _carouselController,
+              items: [
+                StoryVideoComposer(
+                  isActive: _currentMode == StoryCreationMode.video,
+                  video: _videoFile,
+                  captionController: _videoCaptionController,
+                  isPublishing: _isPublishing,
+                  onVideoSelected: (video) {
+                    setState(() => _videoFile = video);
+                  },
+                  onPublish: _publishVideoStory,
+                ),
+                StoryPhotoComposer(
+                  isActive: _currentMode == StoryCreationMode.photo,
+                  photo: _photoFile,
+                  captionController: _photoCaptionController,
+                  isPublishing: _isPublishing,
+                  onPhotoSelected: (photo) {
+                    setState(() => _photoFile = photo);
+                  },
+                  onPublish: _publishPhotoStory,
+                ),
+                _TextStoryComposer(
+                  controller: _textController,
+                  focusNode: _textFocusNode,
+                  backgroundColor: _backgroundColor,
+                ),
+                StoryAudioComposer(
+                  isActive: _currentMode == StoryCreationMode.voice,
+                  audio: _audioFile,
+                  captionController: _audioCaptionController,
+                  backgroundColor: _audioBackgroundColor,
+                  backgroundColors: storyBackgroundColors,
+                  isPublishing: _isPublishing,
+                  onAudioSelected: (audio) {
+                    setState(() => _audioFile = audio);
+                  },
+                  onBackgroundColorSelected: (color) {
+                    setState(() => _audioBackgroundColor = color);
+                  },
+                  onPublish: _publishAudioStory,
+                ),
+              ],
+              options: CarouselOptions(
+                initialPage: widget.args.initialMode.index,
+                height: double.infinity,
+                viewportFraction: 1,
+                enableInfiniteScroll: false,
+                onPageChanged: (index, _) {
+                  setState(() => _currentIndex = index);
+                  if (_currentMode == StoryCreationMode.text) {
+                    _textFocusNode.requestFocus();
+                  } else {
+                    _textFocusNode.unfocus();
+                  }
                 },
-                onPublish: _publishVideoStory,
               ),
-              StoryPhotoComposer(
-                isActive: _currentMode == StoryCreationMode.photo,
-                photo: _photoFile,
-                captionController: _photoCaptionController,
-                isPublishing: _isPublishing,
-                onPhotoSelected: (photo) {
-                  setState(() => _photoFile = photo);
-                },
-                onPublish: _publishPhotoStory,
-              ),
-              _TextStoryComposer(
-                controller: _textController,
-                focusNode: _textFocusNode,
-                backgroundColor: _backgroundColor,
-              ),
-              StoryAudioComposer(
-                isActive: _currentMode == StoryCreationMode.voice,
-                audio: _audioFile,
-                captionController: _audioCaptionController,
-                backgroundColor: _audioBackgroundColor,
-                backgroundColors: storyBackgroundColors,
-                isPublishing: _isPublishing,
-                onAudioSelected: (audio) {
-                  setState(() => _audioFile = audio);
-                },
-                onBackgroundColorSelected: (color) {
-                  setState(() => _audioBackgroundColor = color);
-                },
-                onPublish: _publishAudioStory,
-              ),
-            ],
-            options: CarouselOptions(
-              initialPage: widget.args.initialMode.index,
-              height: double.infinity,
-              viewportFraction: 1,
-              enableInfiniteScroll: false,
-              onPageChanged: (index, _) {
-                setState(() => _currentIndex = index);
-                if (_currentMode == StoryCreationMode.text) {
-                  _textFocusNode.requestFocus();
-                } else {
-                  _textFocusNode.unfocus();
-                }
-              },
             ),
-          ),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Row(
-                children: [
-                  IconButton(
-                    tooltip: 'Close',
-                    onPressed: _isPublishing ? null : context.pop,
-                    icon: const Icon(Icons.close, color: Colors.white),
-                  ),
-                  Expanded(
-                    child: Text(
-                      _currentMode.label,
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Row(
+                  children: [
+                    IconButton(
+                      tooltip: 'Close',
+                      onPressed: _isPublishing ? null : context.pop,
+                      icon: Icon(
+                        Icons.close,
                         color: Colors.white,
-                        fontWeight: FontWeight.w600,
+                        size: AppSizing.iconMd.r,
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 48),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-          if (_currentMode == StoryCreationMode.text)
-            Positioned(
-              left: 16,
-              right: 16,
-              bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _ColorPalette(
-                      selectedColor: _backgroundColor,
-                      onSelected: (color) {
-                        setState(() => _backgroundColor = color);
-                      },
+            if (_currentMode == StoryCreationMode.text)
+              Positioned(
+                left: 16,
+                right: 16,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _ColorPalette(
+                        selectedColor: _backgroundColor,
+                        onSelected: (color) {
+                          setState(() => _backgroundColor = color);
+                        },
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  FloatingActionButton.small(
-                    tooltip: 'Publish story',
-                    onPressed: canPublish ? _publishTextStory : null,
-                    backgroundColor: canPublish ? Colors.white : Colors.white38,
-                    foregroundColor: _backgroundColor,
-                    child: _isPublishing
-                        ? const SizedBox.square(
-                            dimension: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.send_rounded),
-                  ),
-                ],
+                    const SizedBox(width: 12),
+                    FloatingActionButton.small(
+                      heroTag: null,
+                      tooltip: 'Publish status',
+                      onPressed: canPublish ? _publishTextStory : null,
+                      backgroundColor: canPublish
+                          ? Colors.white
+                          : Colors.white38,
+                      foregroundColor: _backgroundColor,
+                      child: _isPublishing
+                          ? const SizedBox.square(
+                              dimension: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.send_rounded),
+                    ),
+                  ],
+                ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
-}
-
-extension on StoryCreationMode {
-  String get label => switch (this) {
-    StoryCreationMode.video => 'Video',
-    StoryCreationMode.photo => 'Photo',
-    StoryCreationMode.text => 'Text',
-    StoryCreationMode.voice => 'Voice',
-  };
 }
 
 class _TextStoryComposer extends StatelessWidget {
