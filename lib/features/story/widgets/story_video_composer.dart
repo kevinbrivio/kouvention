@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/features/chat/services/media/media_picker_service.dart';
 import 'package:kouvention/features/chat/widgets/preview/video_preview.dart';
+import 'package:kouvention/features/story/widgets/story_caption_field.dart';
 import 'package:oktoast/oktoast.dart';
 
 const storyVideoMaxDuration = Duration(seconds: 30);
@@ -15,6 +16,7 @@ class StoryVideoComposer extends ConsumerStatefulWidget {
     super.key,
     required this.isActive,
     required this.video,
+    required this.captionController,
     required this.isPublishing,
     required this.onVideoSelected,
     required this.onPublish,
@@ -22,6 +24,7 @@ class StoryVideoComposer extends ConsumerStatefulWidget {
 
   final bool isActive;
   final File? video;
+  final TextEditingController captionController;
   final bool isPublishing;
   final ValueChanged<File?> onVideoSelected;
   final VoidCallback onPublish;
@@ -389,27 +392,40 @@ class _StoryVideoComposerState extends ConsumerState<StoryVideoComposer>
         Positioned(
           left: 24,
           right: 24,
-          bottom: MediaQuery.of(context).padding.bottom + 24,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          bottom:
+              MediaQuery.of(context).padding.bottom +
+              MediaQuery.of(context).viewInsets.bottom +
+              24,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              _VideoAction(
-                tooltip: 'Gallery',
-                icon: Icons.video_library_outlined,
-                onPressed: widget.isPublishing ? null : _pickFromGallery,
+              StoryCaptionField(
+                controller: widget.captionController,
+                enabled: !widget.isPublishing,
               ),
-              _VideoAction(
-                tooltip: 'Retake',
-                icon: Icons.videocam_outlined,
-                onPressed: widget.isPublishing
-                    ? null
-                    : () => widget.onVideoSelected(null),
-              ),
-              _VideoAction(
-                tooltip: 'Publish story',
-                icon: Icons.send_rounded,
-                isLoading: widget.isPublishing,
-                onPressed: widget.isPublishing ? null : widget.onPublish,
+              const SizedBox(height: 14),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _VideoAction(
+                    tooltip: 'Gallery',
+                    icon: Icons.video_library_outlined,
+                    onPressed: widget.isPublishing ? null : _pickFromGallery,
+                  ),
+                  _VideoAction(
+                    tooltip: 'Retake',
+                    icon: Icons.videocam_outlined,
+                    onPressed: widget.isPublishing
+                        ? null
+                        : () => widget.onVideoSelected(null),
+                  ),
+                  _VideoAction(
+                    tooltip: 'Publish story',
+                    icon: Icons.send_rounded,
+                    isLoading: widget.isPublishing,
+                    onPressed: widget.isPublishing ? null : widget.onPublish,
+                  ),
+                ],
               ),
             ],
           ),

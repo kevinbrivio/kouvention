@@ -9,6 +9,7 @@ import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/story/models/story_feed_item.dart';
 import 'package:kouvention/features/story/models/story_model.dart';
+import 'package:kouvention/features/story/services/story_upload_progress.dart';
 import 'package:kouvention/features/story/viewmodel/story_feed_viewmodel.dart';
 
 class StoriesRow extends ConsumerWidget {
@@ -47,15 +48,29 @@ class StoriesRow extends ConsumerWidget {
   }
 }
 
-class _StoryAvatar extends StatelessWidget {
+class _StoryAvatar extends ConsumerWidget {
   const _StoryAvatar({required this.item, required this.onTap});
 
   final StoryFeedItem item;
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
+    final story = item.latestStory;
+    final syncStatus = story.syncStatus;
+    final isPendingOwnStory =
+        item.isOwnStory &&
+        (syncStatus == StorySyncStatus.pending ||
+            syncStatus == StorySyncStatus.uploading);
+    final isFailedOwnStory =
+        item.isOwnStory && syncStatus == StorySyncStatus.failed;
+    final uploadProgress = ref.watch(storyUploadProgressProvider(story.id));
+    final borderColor = isFailedOwnStory
+        ? scheme.error
+        : item.hasUnseen || isPendingOwnStory
+        ? scheme.primary
+        : scheme.outline.withValues(alpha: 0.35);
 
     return SizedBox(
       width: 68.w,
@@ -70,14 +85,24 @@ class _StoryAvatar extends StatelessWidget {
               padding: EdgeInsets.all(3.r),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(
-                  width: 2.r,
-                  color: item.hasUnseen
-                      ? scheme.primary
-                      : scheme.outline.withValues(alpha: 0.35),
-                ),
+                border: Border.all(width: 2.r, color: borderColor),
               ),
-              child: ClipOval(child: _StoryCover(item: item)),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  ClipOval(child: _StoryCover(item: item)),
+                  if (isPendingOwnStory)
+                    _StoryUploadRing(progress: uploadProgress),
+                  if (isFailedOwnStory)
+                    Align(
+                      alignment: Alignment.bottomRight,
+                      child: _StoryUploadBadge(
+                        color: scheme.error,
+                        icon: Icons.priority_high_rounded,
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
           Gap(5.h),
@@ -150,4 +175,44 @@ class _StoryCover extends StatelessWidget {
       ),
     };
   }
+}
+
+class _StoryUploadRing extends StatelessWidget {
+  const _StoryUploadRing({required this.progress});
+
+  final double? progress;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.22)),
+    child: Padding(
+      padding: EdgeInsets.all(4.r),
+      child: CircularProgressIndicator(
+        value: progress,
+        strokeWidth: 3.r,
+        backgroundColor: Colors.white.withValues(alpha: 0.28),
+        valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+      ),
+    ),
+  );
+}
+
+class _StoryUploadBadge extends StatelessWidget {
+  const _StoryUploadBadge({required this.color, required this.icon});
+
+  final Color color;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: BoxDecoration(
+      color: color,
+      shape: BoxShape.circle,
+      border: Border.all(color: Colors.white, width: 1.5.r),
+    ),
+    child: SizedBox.square(
+      dimension: 18.r,
+      child: Icon(icon, size: 12.r, color: Colors.white),
+    ),
+  );
 }

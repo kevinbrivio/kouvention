@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/cores/configs/env.dart';
 import 'package:kouvention/cores/configs/flavor_config.dart';
@@ -22,6 +23,7 @@ class CloudMediaService {
   Future<UploadResultModel?> uploadFile({
     required File file,
     required MessageType mediaType,
+    void Function(int sent, int total)? onSendProgress,
   }) async {
     // Upload to Cloudinary to get the URL
     try {
@@ -29,13 +31,15 @@ class CloudMediaService {
         'file': await MultipartFile.fromFile(file.path),
         'upload_preset': _uploadPreset,
       });
-      final mediaName = (mediaType == MessageType.file || mediaType == MessageType.audio) 
-        ? 'auto' 
-        : mediaType.name;
-      
+      final mediaName =
+          (mediaType == MessageType.file || mediaType == MessageType.audio)
+          ? 'auto'
+          : mediaType.name;
+
       final response = await _dio.post(
         '/$mediaName/upload',
         data: formData,
+        onSendProgress: onSendProgress,
       );
 
       if (response.statusCode == 200) {
@@ -52,7 +56,7 @@ class CloudMediaService {
       }
       return null;
     } on DioException catch (e) {
-      print('Upload error: ${e.response?.data}');
+      debugPrint('Upload error: ${e.response?.data}');
     }
 
     return null;

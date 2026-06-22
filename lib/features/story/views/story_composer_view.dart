@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:carousel_slider/carousel_slider.dart';
@@ -6,8 +7,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/constants/tokens.dart';
-import 'package:kouvention/features/chat/models/message_type.dart';
-import 'package:kouvention/features/chat/services/media/cloud_media_service.dart';
 import 'package:oktoast/oktoast.dart';
 import 'package:uuid/uuid.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
@@ -15,6 +14,7 @@ import 'package:kouvention/features/chat/services/databases/message_database.dar
 import 'package:kouvention/features/story/models/story_composer_args.dart';
 import 'package:kouvention/features/story/models/story_model.dart';
 import 'package:kouvention/features/story/repositories/story_repository.dart';
+import 'package:kouvention/features/story/services/story_sync_coordinator.dart';
 import 'package:kouvention/features/story/viewmodel/story_feed_viewmodel.dart';
 import 'package:kouvention/features/story/widgets/story_audio_composer.dart';
 import 'package:kouvention/features/story/widgets/story_photo_composer.dart';
@@ -40,6 +40,9 @@ class StoryComposerView extends ConsumerStatefulWidget {
 
 class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
   final _textController = TextEditingController();
+  final _photoCaptionController = TextEditingController();
+  final _videoCaptionController = TextEditingController();
+  final _audioCaptionController = TextEditingController();
   final _textFocusNode = FocusNode();
   late final CarouselSliderController _carouselController;
   late int _currentIndex;
@@ -70,6 +73,9 @@ class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
     _textController
       ..removeListener(_onTextChanged)
       ..dispose();
+    _photoCaptionController.dispose();
+    _videoCaptionController.dispose();
+    _audioCaptionController.dispose();
     _textFocusNode.dispose();
     super.dispose();
   }
@@ -135,129 +141,45 @@ class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
   Future<void> _publishPhotoStory() async {
     final photo = _photoFile;
     if (photo == null || _isPublishing) return;
-
-    final currentUser = ref.read(authServiceProvider).currentUser;
-    if (currentUser == null) {
-      showToast('Session expired. Please sign in again.');
-      return;
-    }
-
-    setState(() => _isPublishing = true);
-
-    try {
-      final upload = await ref
-          .read(cloudMediaServiceProvider)
-          .uploadFile(file: photo, mediaType: MessageType.image);
-      if (upload == null || upload.url.isEmpty) {
-        showToast('Could not upload the photo. Please try again.');
-        return;
-      }
-
-      final db = ref.read(messageDatabaseProvider);
-      final visibleTo = await db.getCachedDirectContactUids(currentUser.uid);
-      final profile = ref
-          .read(storyCurrentUserProfileProvider(currentUser.uid))
-          .valueOrNull;
-      final createdAt = DateTime.now();
-      final story = StoryModel(
-        id: const Uuid().v4(),
-        authorUid: currentUser.uid,
-        authorName:
-            profile?.displayName ?? currentUser.displayName ?? 'Unknown',
-        authorPhotoUrl: profile?.photoUrl ?? currentUser.photoURL,
-        type: StoryType.image,
-        mediaUrl: upload.url,
-        localPath: photo.path,
-        visibleTo: visibleTo.toList(growable: false),
-        createdAt: createdAt,
-        expiresAt: storyExpiryFrom(createdAt),
-        syncStatus: StorySyncStatus.pending,
-      );
-
-      try {
-        await ref.read(storyRepositoryProvider).publishStory(story);
-        if (mounted) context.pop();
-      } catch (_) {
-        final localStory = await db.getStoryById(story.id);
-        if (localStory != null) {
-          showToast('Story saved and queued for retry.');
-          if (mounted) context.pop();
-        } else {
-          showToast('Could not save the story. Please try again.');
-        }
-      }
-    } catch (_) {
-      showToast('Could not publish the photo. Please try again.');
-    } finally {
-      if (mounted) setState(() => _isPublishing = false);
-    }
+    await _queueMediaStory(
+      file: photo,
+      type: StoryType.image,
+      captionController: _photoCaptionController,
+      failureMessage: 'Could not save the photo story. Please try again.',
+    );
   }
 
   Future<void> _publishVideoStory() async {
     final video = _videoFile;
     if (video == null || _isPublishing) return;
-
-    final currentUser = ref.read(authServiceProvider).currentUser;
-    if (currentUser == null) {
-      showToast('Session expired. Please sign in again.');
-      return;
-    }
-
-    setState(() => _isPublishing = true);
-
-    try {
-      final upload = await ref
-          .read(cloudMediaServiceProvider)
-          .uploadFile(file: video, mediaType: MessageType.video);
-      if (upload == null || upload.url.isEmpty) {
-        showToast('Could not upload the video. Please try again.');
-        return;
-      }
-
-      final db = ref.read(messageDatabaseProvider);
-      final visibleTo = await db.getCachedDirectContactUids(currentUser.uid);
-      final profile = ref
-          .read(storyCurrentUserProfileProvider(currentUser.uid))
-          .valueOrNull;
-      final createdAt = DateTime.now();
-      final story = StoryModel(
-        id: const Uuid().v4(),
-        authorUid: currentUser.uid,
-        authorName:
-            profile?.displayName ?? currentUser.displayName ?? 'Unknown',
-        authorPhotoUrl: profile?.photoUrl ?? currentUser.photoURL,
-        type: StoryType.video,
-        mediaUrl: upload.url,
-        localPath: video.path,
-        visibleTo: visibleTo.toList(growable: false),
-        createdAt: createdAt,
-        expiresAt: storyExpiryFrom(createdAt),
-        syncStatus: StorySyncStatus.pending,
-      );
-
-      try {
-        await ref.read(storyRepositoryProvider).publishStory(story);
-        if (mounted) context.pop();
-      } catch (_) {
-        final localStory = await db.getStoryById(story.id);
-        if (localStory != null) {
-          showToast('Story saved and queued for retry.');
-          if (mounted) context.pop();
-        } else {
-          showToast('Could not save the story. Please try again.');
-        }
-      }
-    } catch (_) {
-      showToast('Could not publish the video. Please try again.');
-    } finally {
-      if (mounted) setState(() => _isPublishing = false);
-    }
+    await _queueMediaStory(
+      file: video,
+      type: StoryType.video,
+      captionController: _videoCaptionController,
+      failureMessage: 'Could not save the video story. Please try again.',
+    );
   }
 
   Future<void> _publishAudioStory() async {
     final audio = _audioFile;
     if (audio == null || _isPublishing) return;
 
+    await _queueMediaStory(
+      file: audio,
+      type: StoryType.audio,
+      captionController: _audioCaptionController,
+      backgroundColorArgb: _audioBackgroundColor.toARGB32(),
+      failureMessage: 'Could not save the recording story. Please try again.',
+    );
+  }
+
+  Future<void> _queueMediaStory({
+    required File file,
+    required StoryType type,
+    required TextEditingController captionController,
+    required String failureMessage,
+    int? backgroundColorArgb,
+  }) async {
     final currentUser = ref.read(authServiceProvider).currentUser;
     if (currentUser == null) {
       showToast('Session expired. Please sign in again.');
@@ -266,51 +188,35 @@ class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
 
     setState(() => _isPublishing = true);
 
+    final db = ref.read(messageDatabaseProvider);
     try {
-      final upload = await ref
-          .read(cloudMediaServiceProvider)
-          .uploadFile(file: audio, mediaType: MessageType.audio);
-      if (upload == null || upload.url.isEmpty) {
-        showToast('Could not upload the recording. Please try again.');
-        return;
-      }
-
-      final db = ref.read(messageDatabaseProvider);
       final visibleTo = await db.getCachedDirectContactUids(currentUser.uid);
       final profile = ref
           .read(storyCurrentUserProfileProvider(currentUser.uid))
           .valueOrNull;
       final createdAt = DateTime.now();
+      final caption = _audioCaptionController.text.trim();
       final story = StoryModel(
         id: const Uuid().v4(),
         authorUid: currentUser.uid,
         authorName:
             profile?.displayName ?? currentUser.displayName ?? 'Unknown',
         authorPhotoUrl: profile?.photoUrl ?? currentUser.photoURL,
-        type: StoryType.audio,
-        mediaUrl: upload.url,
-        localPath: audio.path,
-        backgroundColorArgb: _audioBackgroundColor.toARGB32(),
+        type: type,
+        caption: caption.isEmpty ? null : caption,
+        localPath: file.path,
+        backgroundColorArgb: backgroundColorArgb,
         visibleTo: visibleTo.toList(growable: false),
         createdAt: createdAt,
         expiresAt: storyExpiryFrom(createdAt),
         syncStatus: StorySyncStatus.pending,
       );
 
-      try {
-        await ref.read(storyRepositoryProvider).publishStory(story);
-        if (mounted) context.pop();
-      } catch (_) {
-        final localStory = await db.getStoryById(story.id);
-        if (localStory != null) {
-          showToast('Story saved and queued for retry.');
-          if (mounted) context.pop();
-        } else {
-          showToast('Could not save the story. Please try again.');
-        }
-      }
+      await ref.read(storyRepositoryProvider).queueStory(story);
+      unawaited(ref.read(storySyncCoordinatorProvider).flushPending());
+      if (mounted) context.pop();
     } catch (_) {
-      showToast('Could not publish the recording. Please try again.');
+      showToast(failureMessage);
     } finally {
       if (mounted) setState(() => _isPublishing = false);
     }
@@ -334,6 +240,7 @@ class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
               StoryVideoComposer(
                 isActive: _currentMode == StoryCreationMode.video,
                 video: _videoFile,
+                captionController: _videoCaptionController,
                 isPublishing: _isPublishing,
                 onVideoSelected: (video) {
                   setState(() => _videoFile = video);
@@ -343,6 +250,7 @@ class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
               StoryPhotoComposer(
                 isActive: _currentMode == StoryCreationMode.photo,
                 photo: _photoFile,
+                captionController: _photoCaptionController,
                 isPublishing: _isPublishing,
                 onPhotoSelected: (photo) {
                   setState(() => _photoFile = photo);
@@ -357,6 +265,7 @@ class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
               StoryAudioComposer(
                 isActive: _currentMode == StoryCreationMode.voice,
                 audio: _audioFile,
+                captionController: _audioCaptionController,
                 backgroundColor: _audioBackgroundColor,
                 backgroundColors: storyBackgroundColors,
                 isPublishing: _isPublishing,

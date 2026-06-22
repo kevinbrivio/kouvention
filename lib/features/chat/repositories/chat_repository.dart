@@ -51,6 +51,20 @@ class ChatRepository {
     return remote;
   }
 
+  Future<ChatModel?> getOrCreateDirectChat({
+    required String currentUid,
+    required String otherUid,
+    required Map<String, MemberInfo> memberInfo,
+  }) async {
+    final chatId = await _chatService.createDirectChat(
+      currentUid: currentUid,
+      otherUid: otherUid,
+      memberInfo: memberInfo,
+    );
+
+    return getChat(chatId);
+  }
+
   // --- Inbox (first page) ----------------------------
 
   /// Streams the first page of the inbox (top [limit] chats). The stream
@@ -181,12 +195,12 @@ class ChatRepository {
   }
 }
 
-final chatRepositoryProvider = Provider<ChatRepository>((ref) {
-  return ChatRepository(
+final chatRepositoryProvider = Provider<ChatRepository>(
+  (ref) => ChatRepository(
     chatService: ref.watch(chatServiceProvider),
     db: ref.watch(messageDatabaseProvider),
-  );
-});
+  ),
+);
 
 // Re-export the page-size constants so consumers that already import
 // the repository don't also need the viewmodel header.

@@ -1,20 +1,31 @@
+import 'dart:io';
+
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/services/databases/message_database.dart';
+import 'package:kouvention/features/chat/services/media/cloud_media_service.dart';
 import 'package:kouvention/features/story/models/story_model.dart';
 import 'package:kouvention/features/story/models/story_page.dart';
 import 'package:kouvention/features/story/models/story_view_model.dart';
 import 'package:kouvention/features/story/services/story_firestore_service.dart';
+import 'package:kouvention/features/story/services/story_upload_progress.dart';
 
 class StoryRepository {
   StoryRepository({
     required StoryFirestoreService remote,
     required MessageDatabase db,
+    required CloudMediaService media,
+    void Function(String storyId, double? progress)? setUploadProgress,
   }) : _remote = remote,
-       _db = db;
+       _db = db,
+       _media = media,
+       _setUploadProgress = setUploadProgress ?? ((_, _) {});
 
   final StoryFirestoreService _remote;
   final MessageDatabase _db;
+  final CloudMediaService _media;
+  final void Function(String storyId, double? progress) _setUploadProgress;
 
   Stream<List<StoryModel>> watchActiveStories({
     required String currentUid,
@@ -102,6 +113,18 @@ class StoryRepository {
       );
       rethrow;
     }
+  }
+
+  Future<void> queueStory(StoryModel story) async {
+    final existing = await _db.getStoryById(story.id);
+    final retryCount = existing?.retryCount ?? story.retryCount;
+
+    await _db.upsertStory(
+      story.toCompanion().copyWith(
+        syncStatus: const Value(StorySyncStatus.pending),
+        retryCount: Value(retryCount),
+      ),
+    );
   }
 
   Future<void> deleteStory({
@@ -212,7 +235,7 @@ class StoryRepository {
             deletedAt: DateTime.fromMillisecondsSinceEpoch(row.deletedAt!),
           );
         } else {
-          await _remote.createStory(StoryModel.fromDrift(row));
+          await _publishPendingStory(row);
         }
 
         await _db.updateStorySyncStatus(
@@ -220,15 +243,75 @@ class StoryRepository {
           status: StorySyncStatus.synced,
           retryCount: 0,
         );
+        _setUploadProgress(row.id, null);
       } catch (_) {
         await _db.updateStorySyncStatus(
           storyId: row.id,
           status: StorySyncStatus.failed,
           retryCount: row.retryCount + 1,
         );
+        _setUploadProgress(row.id, null);
       }
     }
   }
+
+  Future<void> _publishPendingStory(Story row) async {
+    var localRow = row;
+
+    if (_needsMediaUpload(localRow)) {
+      await _db.updateStorySyncStatus(
+        storyId: localRow.id,
+        status: StorySyncStatus.uploading,
+      );
+      _setUploadProgress(localRow.id, 0);
+
+      final localPath = localRow.localPath?.trim();
+      if (localPath == null || localPath.isEmpty) {
+        throw StateError('Cannot upload story without a local media path.');
+      }
+
+      final upload = await _media.uploadFile(
+        file: File(localPath),
+        mediaType: _messageTypeForStory(localRow.type),
+        onSendProgress: (sent, total) {
+          if (total <= 0) return;
+          _setUploadProgress(localRow.id, (sent / total).clamp(0, 1));
+        },
+      );
+
+      if (upload == null || upload.url.isEmpty) {
+        throw StateError('Story media upload failed.');
+      }
+
+      await _db.updateStoryUploadResult(
+        storyId: localRow.id,
+        mediaUrl: upload.url,
+      );
+
+      final updated = await _db.getStoryById(localRow.id);
+      if (updated == null) {
+        throw StateError('Uploaded story disappeared locally.');
+      }
+      localRow = updated;
+    }
+
+    await _remote.createStory(StoryModel.fromDrift(localRow));
+  }
+
+  bool _needsMediaUpload(Story row) {
+    if (row.mediaUrl?.trim().isNotEmpty == true) return false;
+    return switch (row.type) {
+      StoryType.image || StoryType.video || StoryType.audio => true,
+      StoryType.text => false,
+    };
+  }
+
+  MessageType _messageTypeForStory(StoryType type) => switch (type) {
+    StoryType.image => MessageType.image,
+    StoryType.video => MessageType.video,
+    StoryType.audio => MessageType.audio,
+    StoryType.text => throw ArgumentError('Text stories do not upload media.'),
+  };
 
   Future<void> _persistRemoteStories(List<StoryModel> stories) async {
     if (stories.isEmpty) return;
@@ -276,5 +359,9 @@ final storyRepositoryProvider = Provider<StoryRepository>(
   (ref) => StoryRepository(
     remote: ref.watch(storyFirestoreServiceProvider),
     db: ref.watch(messageDatabaseProvider),
+    media: ref.watch(cloudMediaServiceProvider),
+    setUploadProgress: (storyId, progress) {
+      ref.read(storyUploadProgressProvider(storyId).notifier).state = progress;
+    },
   ),
 );

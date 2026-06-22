@@ -11,6 +11,10 @@ class ReplyToModel {
   final String? mediaUrl;
   final String? mediaType;
 
+  bool get isStoryReference => mediaType?.startsWith('story:') ?? false;
+
+  String? get storyType => isStoryReference ? mediaType!.substring(6) : null;
+
   ReplyToModel({
     required this.messageId,
     required this.text,
@@ -18,7 +22,7 @@ class ReplyToModel {
     required this.senderName,
     required this.sentAt,
     this.mediaUrl,
-    this.mediaType
+    this.mediaType,
   });
 
   factory ReplyToModel.fromMap(Map<String, dynamic> map) => ReplyToModel(
