@@ -271,7 +271,7 @@ class _StoryReplyBar extends StatelessWidget {
                   decoration: InputDecoration(
                     hintText: 'Reply',
                     hintStyle: context.text.bodySmall.copyWith(
-                      color: context.text.secondaryText,
+                      color: Colors.white,
                     ),
                     filled: true,
                     counterStyle: TextStyle(color: scheme.primary),
@@ -399,7 +399,7 @@ class _StoryReplyOverlay extends StatelessWidget {
                             decoration: InputDecoration(
                               hintText: 'Reply',
                               hintStyle: context.text.bodySmall.copyWith(
-                                color: context.text.secondaryText,
+                                color: Colors.white,
                               ),
                               filled: true,
                               counterStyle: TextStyle(color: scheme.primary),

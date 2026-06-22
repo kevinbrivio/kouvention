@@ -137,3 +137,19 @@ final storyFeedItemsProvider = Provider.autoDispose
         ),
       );
     });
+
+List<StoryFeedItem> searchStoryFeedItemsByAuthor(
+  List<StoryFeedItem> items,
+  String query,
+) {
+  final normalizedQuery = query.trim().toLowerCase();
+  if (normalizedQuery.isEmpty) return items;
+
+  return items
+      .where(
+        (item) =>
+            !item.isOwnStory &&
+            item.authorName.toLowerCase().contains(normalizedQuery),
+      )
+      .toList();
+}

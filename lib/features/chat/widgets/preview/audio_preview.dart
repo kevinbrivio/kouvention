@@ -41,7 +41,6 @@ class AudioPreview extends StatelessWidget {
                   fileName,
                   style: context.text.headlineSmall.copyWith(
                     color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-                    fontWeight: FontWeight.w400,
                   ),
                   textAlign: TextAlign.center,
                 ),

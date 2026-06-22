@@ -265,19 +265,19 @@ class _AppTextStyles {
   // ── Display ──
   TextStyle get displayLarge => TextStyle(
     fontSize: 57.sp,
-    fontWeight: FontWeight.w400,
+    fontWeight: FontWeight.w300,
     color: primaryText,
     height: 1.5,
   );
   TextStyle get displayMedium => TextStyle(
     fontSize: 45.sp,
-    fontWeight: FontWeight.w400,
+    fontWeight: FontWeight.w300,
     color: primaryText,
     height: 1.5,
   );
   TextStyle get displaySmall => TextStyle(
     fontSize: 36.sp,
-    fontWeight: FontWeight.w400,
+    fontWeight: FontWeight.w300,
     color: primaryText,
     height: 1.5,
   );
@@ -285,19 +285,19 @@ class _AppTextStyles {
   // ── Headline ──
   TextStyle get headlineLarge => TextStyle(
     fontSize: 32.sp,
-    fontWeight: FontWeight.w400,
+    fontWeight: FontWeight.w300,
     color: primaryText,
     height: 1.5,
   );
   TextStyle get headlineMedium => TextStyle(
     fontSize: 28.sp,
-    fontWeight: FontWeight.w400,
+    fontWeight: FontWeight.w300,
     color: primaryText,
     height: 1.5,
   );
   TextStyle get headlineSmall => TextStyle(
     fontSize: 24.sp,
-    fontWeight: FontWeight.w400,
+    fontWeight: FontWeight.w300,
     color: primaryText,
     height: 1.5,
   );
@@ -305,19 +305,19 @@ class _AppTextStyles {
   // ── Title ──
   TextStyle get titleLarge => TextStyle(
     fontSize: 22.sp,
-    fontWeight: FontWeight.w400,
+    fontWeight: FontWeight.w300,
     color: primaryText,
     height: 1.5,
   );
   TextStyle get titleMedium => TextStyle(
     fontSize: 16.sp,
-    fontWeight: FontWeight.w400,
+    fontWeight: FontWeight.w300,
     color: primaryText,
     height: 1.5,
   );
   TextStyle get titleSmall => TextStyle(
     fontSize: 14.sp,
-    fontWeight: FontWeight.w400,
+    fontWeight: FontWeight.w300,
     color: primaryText,
     height: 1.5,
   );
@@ -325,19 +325,19 @@ class _AppTextStyles {
   // ── Body ──
   TextStyle get bodyLarge => TextStyle(
     fontSize: 16.sp,
-    fontWeight: FontWeight.w400,
+    fontWeight: FontWeight.w300,
     color: primaryText,
     height: 1.5,
   );
   TextStyle get bodyMedium => TextStyle(
     fontSize: 14.sp,
-    fontWeight: FontWeight.w400,
+    fontWeight: FontWeight.w300,
     color: primaryText,
     height: 1.5,
   );
   TextStyle get bodySmall => TextStyle(
     fontSize: 12.sp,
-    fontWeight: FontWeight.w400,
+    fontWeight: FontWeight.w300,
     color: primaryText,
     height: 1.5,
   );
@@ -345,19 +345,19 @@ class _AppTextStyles {
   // ── Label ──
   TextStyle get labelLarge => TextStyle(
     fontSize: 14.sp,
-    fontWeight: FontWeight.w400,
+    fontWeight: FontWeight.w300,
     color: primaryText,
     height: 1.5,
   );
   TextStyle get labelMedium => TextStyle(
     fontSize: 12.sp,
-    fontWeight: FontWeight.w400,
+    fontWeight: FontWeight.w300,
     color: primaryText,
     height: 1.5,
   );
   TextStyle get labelSmall => TextStyle(
     fontSize: 9.sp,
-    fontWeight: FontWeight.w400,
+    fontWeight: FontWeight.w300,
     color: primaryText,
     height: 1.5,
   );
@@ -368,20 +368,20 @@ class _AppTextStyles {
       bodyMedium.copyWith(fontWeight: FontWeight.w600, color: secondaryText);
   TextStyle get typeMessage => TextStyle(
     fontSize: 13.sp,
-    fontWeight: FontWeight.w400,
+    fontWeight: FontWeight.w300,
     color: secondaryText,
     height: 1.5,
     decoration: TextDecoration.none,
   );
   TextStyle get contactName => TextStyle(
     fontSize: 13.sp,
-    fontWeight: FontWeight.w400,
+    fontWeight: FontWeight.w300,
     color: tertiaryText,
     height: 1.5,
   );
   TextStyle get buttonText => TextStyle(
     fontSize: 12.sp,
-    fontWeight: FontWeight.w400,
+    fontWeight: FontWeight.w300,
     color: _scheme.onPrimary,
     height: 1.5,
   );
