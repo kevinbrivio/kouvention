@@ -6,7 +6,7 @@ class StoryComposerArgs {
   final StoryCreationMode initialMode;
 }
 
-const storyLifetime = Duration(minutes: 1);
+const storyLifetime = Duration(hours: 24);
 
 bool isValidTextStory(String text) => text.trim().isNotEmpty;
 
