@@ -219,9 +219,17 @@ class _StoryFeedViewState extends ConsumerState<StoryFeedView> {
   }
 
   void _openIsolatedStory(BuildContext context, StoryFeedItem item) {
+    final activeItem = activeStoryFeedItemAt(item, DateTime.now());
+    if (activeItem == null) {
+      if (item.isOwnStory) {
+        _openComposer(context, StoryCreationMode.text);
+      }
+      return;
+    }
+
     context.push(
       RouterRoutes.storyViewer.path,
-      extra: StoryViewerArgs(feedItem: item),
+      extra: StoryViewerArgs(feedItem: activeItem),
     );
   }
 
@@ -231,7 +239,8 @@ class _StoryFeedViewState extends ConsumerState<StoryFeedView> {
     required List<StoryFeedItem> items,
     required Set<String> viewedStoryIds,
   }) {
-    final initialFeedIndex = items.indexWhere(
+    final activeItems = activeStoryFeedItemsAt(items, DateTime.now());
+    final initialFeedIndex = activeItems.indexWhere(
       (candidate) => candidate.authorUid == item.authorUid,
     );
     if (initialFeedIndex < 0) return;
@@ -239,7 +248,7 @@ class _StoryFeedViewState extends ConsumerState<StoryFeedView> {
     context.push(
       RouterRoutes.storyViewer.path,
       extra: StoryViewerArgs.feed(
-        feedItems: items,
+        feedItems: activeItems,
         initialFeedIndex: initialFeedIndex,
         viewedStoryIds: viewedStoryIds,
       ),
@@ -415,7 +424,7 @@ class _StorySearchField extends StatelessWidget {
         hintStyle: context.text.bodySmall.copyWith(
           color: context.text.tertiaryText,
         ),
-        prefixIcon:Icon(
+        prefixIcon: Icon(
           Icons.search,
           color: scheme.onSurface.withValues(alpha: 0.5),
           size: AppSpacing.md.sp,

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_story_presenter/flutter_story_presenter.dart';
@@ -38,6 +39,7 @@ class StoryViewerVM extends ChangeNotifier {
   final FocusNode replyFocusNode = FocusNode();
 
   Timer? _viewTimer;
+  Timer? _chromeHideTimer;
   int _feedIndex;
   int _currentIndex;
   double _dragDistance = 0;
@@ -50,6 +52,7 @@ class StoryViewerVM extends ChangeNotifier {
   bool _isAuthorTransitioning = false;
   bool _isStoryPaused = false;
   bool _isDisposed = false;
+  bool _isChromeHiddenByLongPress = false;
 
   FlutterStoryController get controller => _controller;
   bool get isStoryPaused => _isStoryPaused;
@@ -79,6 +82,7 @@ class StoryViewerVM extends ChangeNotifier {
   int get _initialStoryIndex => args.storyIndexFor(currentFeedItem);
   bool get _hasFocusedReplyText =>
       replyFocusNode.hasFocus && replyController.text.trim().isNotEmpty;
+  bool get isStoryChromeVisible => !_isChromeHiddenByLongPress;
 
   bool moveToNextAuthor() => _moveToAuthor(_feedIndex + 1);
 
@@ -267,8 +271,10 @@ class StoryViewerVM extends ChangeNotifier {
     if (feedIndex < 0 || feedIndex >= args.feedItems.length) return false;
 
     _viewTimer?.cancel();
+    _chromeHideTimer?.cancel();
     FocusManager.instance.primaryFocus?.unfocus();
     replyController.clear();
+    _isChromeHiddenByLongPress = false;
     _isReplyOverlayVisible = false;
     _isSendingReply = false;
     _isDismissing = false;
@@ -430,6 +436,34 @@ class StoryViewerVM extends ChangeNotifier {
     if (notify) _notify();
   }
 
+  void onStoryPressStart() {
+    if (_isReplyOverlayVisible) return;
+
+    _chromeHideTimer?.cancel();
+    _chromeHideTimer = Timer(kLongPressTimeout, () {
+      if (_isDisposed) return;
+      _isChromeHiddenByLongPress = true;
+      _notify();
+    });
+  }
+
+  void onStoryPressEnd() {
+    _chromeHideTimer?.cancel();
+
+    var shouldNotify = false;
+    if (_isChromeHiddenByLongPress) {
+      _isChromeHiddenByLongPress = false;
+      shouldNotify = true;
+    }
+
+    if (!_isDismissing && _dragOffset != 0) {
+      _dragOffset = 0;
+      shouldNotify = true;
+    }
+
+    if (shouldNotify) _notify();
+  }
+
   void _notify() {
     if (!_isDisposed) notifyListeners();
   }
@@ -438,6 +472,7 @@ class StoryViewerVM extends ChangeNotifier {
   void dispose() {
     _isDisposed = true;
     _viewTimer?.cancel();
+    _chromeHideTimer?.cancel();
     replyFocusNode.removeListener(_onReplyFocusChanged);
     replyController.removeListener(_onReplyTextChanged);
     replyFocusNode.dispose();

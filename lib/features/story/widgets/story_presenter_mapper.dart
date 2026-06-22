@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_story_presenter/flutter_story_presenter.dart';
 import 'package:just_audio/just_audio.dart';
@@ -114,7 +116,9 @@ class StoryPresenterMapper {
   ) {
     final localPath = story.localPath?.trim();
     if (localPath != null && localPath.isNotEmpty) {
-      return (path: localPath, source: StoryItemSource.file);
+      if (File(localPath).existsSync()) {
+        return (path: localPath, source: StoryItemSource.file);
+      }
     }
 
     final mediaUrl = story.mediaUrl?.trim();

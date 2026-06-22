@@ -12,6 +12,24 @@ import 'package:kouvention/features/story/viewmodel/story_viewer_viewmodel.dart'
 import 'package:kouvention/features/story/widgets/story_author_avatar.dart';
 import 'package:kouvention/features/story/widgets/story_presenter_mapper.dart';
 
+final _visibleStoryIndicatorConfig = StoryViewIndicatorConfig(
+  activeColor: Colors.white,
+  backgroundCompletedColor: Colors.white,
+  backgroundDisabledColor: Colors.white38,
+  margin: EdgeInsets.fromLTRB(
+    12.w, 8.h, 12.w, 0
+  ),
+);
+
+final _hiddenStoryIndicatorConfig = StoryViewIndicatorConfig(
+  activeColor: Colors.transparent,
+  backgroundCompletedColor: Colors.transparent,
+  backgroundDisabledColor: Colors.transparent,
+  margin: EdgeInsets.fromLTRB(
+    12.w, 8.h, 12.w, 0
+  ),
+);
+
 class StoryViewerView extends ConsumerWidget {
   const StoryViewerView({super.key, required this.args});
 
@@ -34,8 +52,9 @@ class StoryViewerView extends ConsumerWidget {
       resizeToAvoidBottomInset: false,
       backgroundColor: Colors.black,
       body: Listener(
-        onPointerUp: (_) => vm.resetDragOffset(),
-        onPointerCancel: (_) => vm.resetDragOffset(),
+        onPointerDown: (_) => vm.onStoryPressStart(),
+        onPointerUp: (_) => vm.onStoryPressEnd(),
+        onPointerCancel: (_) => vm.onStoryPressEnd(),
         child: Stack(
           children: [
             GestureDetector(
@@ -98,20 +117,25 @@ class StoryViewerView extends ConsumerWidget {
                             },
                           );
                         },
-                        storyViewIndicatorConfig:
-                            const StoryViewIndicatorConfig(
-                              activeColor: Colors.white,
-                              backgroundCompletedColor: Colors.white,
-                              backgroundDisabledColor: Colors.white38,
-                              margin: EdgeInsets.fromLTRB(12, 10, 12, 0),
+                        storyViewIndicatorConfig: vm.isStoryChromeVisible
+                            ? _visibleStoryIndicatorConfig
+                            : _hiddenStoryIndicatorConfig,
+                        headerWidget: AnimatedOpacity(
+                          duration: const Duration(milliseconds: 120),
+                          opacity: vm.isStoryChromeVisible ? 1 : 0,
+                          child: IgnorePointer(
+                            ignoring: !vm.isStoryChromeVisible,
+                            child: _StoryViewerHeader(
+                              story: story,
+                              authorName:
+                                  currentProfile?.displayName ??
+                                  story.authorName,
+                              authorPhotoUrl:
+                                  currentProfile?.photoUrl ??
+                                  story.authorPhotoUrl,
+                              onClose: context.pop,
                             ),
-                        headerWidget: _StoryViewerHeader(
-                          story: story,
-                          authorName:
-                              currentProfile?.displayName ?? story.authorName,
-                          authorPhotoUrl:
-                              currentProfile?.photoUrl ?? story.authorPhotoUrl,
-                          onClose: context.pop,
+                          ),
                         ),
                         footerWidget: vm.canReply
                             ? vm.isReplyOverlayVisible
