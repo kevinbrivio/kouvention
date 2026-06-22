@@ -853,21 +853,26 @@ class _AudioTileState extends State<_AudioTile> with RouteAware {
   StreamSubscription? _durSub;
   StreamSubscription? _stateSub;
 
+  Duration get _messageDuration {
+    final seconds = widget.mediaDuration;
+    if (seconds == null || seconds <= 0) return Duration.zero;
+    return Duration(seconds: seconds);
+  }
+
   @override
   void initState() {
     super.initState();
-    print('======= Duration: ${widget.mediaDuration ?? -1}');
-    if (widget.mediaDuration != null && widget.mediaDuration! > 0) {
-      _duration = Duration(seconds: widget.mediaDuration!);
-    }
+    _duration = _messageDuration;
 
     _posSub = _manager.positionStream.listen((pos) {
-      if (mounted && _manager.currentMessageId == widget.messageId)
+      if (mounted && _manager.currentMessageId == widget.messageId) {
         setState(() => _position = pos);
+      }
     });
     _durSub = _manager.durationStream.listen((dur) {
-      if (mounted && _manager.currentMessageId == widget.messageId)
-        setState(() => _duration = dur ?? Duration.zero);
+      if (mounted && _manager.currentMessageId == widget.messageId) {
+        setState(() => _duration = dur ?? _messageDuration);
+      }
     });
     _stateSub = _manager.playerStateStream.listen((state) {
       final isMyAudio = _manager.currentMessageId == widget.messageId;
@@ -877,12 +882,21 @@ class _AudioTileState extends State<_AudioTile> with RouteAware {
 
           if (!isMyAudio) {
             _position = Duration.zero;
-            _duration = Duration.zero;
+            _duration = _messageDuration;
             _dragValue = null;
           }
         });
       }
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant _AudioTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.mediaDuration != widget.mediaDuration &&
+        _manager.currentMessageId != widget.messageId) {
+      _duration = _messageDuration;
+    }
   }
 
   @override
@@ -971,7 +985,6 @@ class _AudioTileState extends State<_AudioTile> with RouteAware {
                 ),
               ),
               Text(
-                // '${_dragValue != null ? _formatDuration(Duration(seconds: _dragValue!.toInt())) : _formatDuration(_position)} / ${_formatDuration(_duration)}',
                 '${_formatDuration(_position)} / ${_formatDuration(_duration)}',
                 style: context.text.labelSmall.copyWith(
                   color: context.text.tertiaryText,

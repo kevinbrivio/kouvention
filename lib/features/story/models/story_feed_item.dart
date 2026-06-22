@@ -17,7 +17,10 @@ class StoryFeedItem {
     required this.isOwnStory,
   });
 
-  StoryModel get latestStory => stories.first;
+  StoryModel get latestStory => stories.reduce(
+    (latest, story) =>
+        story.createdAt.isAfter(latest.createdAt) ? story : latest,
+  );
 
   DateTime get latestCreatedAt => latestStory.createdAt;
 

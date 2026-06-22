@@ -96,6 +96,7 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
                 right: AppSpacing.md.w,
                 bottom: MediaQuery.of(context).padding.bottom + AppSpacing.md.h,
                 child: FloatingActionButton(
+                  heroTag: null,
                   backgroundColor: scheme.primary,
                   foregroundColor: scheme.onPrimary.withValues(alpha: 0.1),
                   splashColor: scheme.onPrimary.withValues(alpha: 0.3),

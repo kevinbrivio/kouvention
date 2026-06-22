@@ -126,8 +126,8 @@ class _CustomNavItemState extends State<_CustomNavItem> {
                               context,
                             ).colorScheme.onSurface.withValues(alpha: 0.5),
                       fontWeight: widget.isSelected
-                          ? FontWeight.w500
-                          : FontWeight.w400,
+                          ? FontWeight.w400
+                          : FontWeight.w300,
                     ),
                   ),
                 ],

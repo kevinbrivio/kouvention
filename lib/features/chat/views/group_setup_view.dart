@@ -67,6 +67,7 @@ class _GroupSetupViewState extends ConsumerState<GroupSetupView> {
             bottom: 12.h,
             right: 16.w,
             child: FloatingActionButton(
+              heroTag: null,
               backgroundColor: Theme.of(context).colorScheme.primary,
               onPressed: () async {
                 if (!_formKey.currentState!.validate()) return;

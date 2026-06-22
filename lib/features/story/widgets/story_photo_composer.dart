@@ -5,6 +5,8 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:gap/gap.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/features/chat/services/media/media_picker_service.dart';
 import 'package:kouvention/features/story/widgets/story_caption_field.dart';
 import 'package:oktoast/oktoast.dart';
@@ -313,7 +315,7 @@ class _StoryPhotoComposerState extends ConsumerState<StoryPhotoComposer>
                 controller: widget.captionController,
                 enabled: !widget.isPublishing,
               ),
-              const SizedBox(height: 14),
+              Gap(AppSpacing.lg.h),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [

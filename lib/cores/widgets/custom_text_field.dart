@@ -204,7 +204,7 @@ class _CustomTextFieldState extends State<CustomTextField>
                 hintText: widget.hint,
                 hintStyle: bodyStyle.copyWith(
                   color: defaultHintColor,
-                  fontWeight: FontWeight.w400,
+                  fontWeight: FontWeight.w300,
                 ),
                 filled: true,
                 fillColor:

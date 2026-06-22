@@ -104,9 +104,9 @@ final storyFeedItemsProvider = Provider.autoDispose
 
             final items = grouped.entries.map((entry) {
               final authorStories = entry.value
-                ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+                ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
-              final latest = authorStories.first;
+              final latest = authorStories.last;
 
               return StoryFeedItem(
                 authorUid: entry.key,
@@ -137,3 +137,57 @@ final storyFeedItemsProvider = Provider.autoDispose
         ),
       );
     });
+
+List<StoryFeedItem> searchStoryFeedItemsByAuthor(
+  List<StoryFeedItem> items,
+  String query,
+) {
+  final normalizedQuery = query.trim().toLowerCase();
+  if (normalizedQuery.isEmpty) return items;
+
+  return items
+      .where(
+        (item) =>
+            !item.isOwnStory &&
+            item.authorName.toLowerCase().contains(normalizedQuery),
+      )
+      .toList();
+}
+
+StoryFeedItem? activeStoryFeedItemAt(StoryFeedItem item, DateTime now) {
+  final activeStories =
+      item.stories
+          .where(
+            (story) => story.deletedAt == null && story.expiresAt.isAfter(now),
+          )
+          .toList()
+        ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+
+  if (activeStories.isEmpty) return null;
+
+  final latest = activeStories.last;
+  final unseenCount = item.unseenCount > activeStories.length
+      ? activeStories.length
+      : item.unseenCount;
+
+  return StoryFeedItem(
+    authorUid: item.authorUid,
+    authorName: latest.authorName,
+    authorPhotoUrl: latest.authorPhotoUrl,
+    stories: List.unmodifiable(activeStories),
+    unseenCount: unseenCount,
+    isOwnStory: item.isOwnStory,
+  );
+}
+
+List<StoryFeedItem> activeStoryFeedItemsAt(
+  List<StoryFeedItem> items,
+  DateTime now,
+) {
+  final activeItems = <StoryFeedItem>[];
+  for (final item in items) {
+    final activeItem = activeStoryFeedItemAt(item, now);
+    if (activeItem != null) activeItems.add(activeItem);
+  }
+  return activeItems;
+}

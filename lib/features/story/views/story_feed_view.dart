@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:kouvention/cores/bases/base_view.dart';
 import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
+import 'package:kouvention/cores/widgets/custom_divider.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/story/models/story_composer_args.dart';
 import 'package:kouvention/features/story/models/story_feed_item.dart';
@@ -14,11 +15,25 @@ import 'package:kouvention/features/story/models/story_viewer_args.dart';
 import 'package:kouvention/features/story/viewmodel/story_feed_viewmodel.dart';
 import 'package:kouvention/features/story/widgets/story_author_avatar.dart';
 
-class StoryFeedView extends ConsumerWidget {
+class StoryFeedView extends ConsumerStatefulWidget {
   const StoryFeedView({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<StoryFeedView> createState() => _StoryFeedViewState();
+}
+
+class _StoryFeedViewState extends ConsumerState<StoryFeedView> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final currentUser = ref.watch(authServiceProvider).currentUser;
     final scheme = Theme.of(context).colorScheme;
 
@@ -32,6 +47,9 @@ class StoryFeedView extends ConsumerWidget {
     }
 
     final feed = ref.watch(storyFeedItemsProvider(currentUser.uid));
+    final viewedStoryIds =
+        ref.watch(viewedStoryIdsProvider(currentUser.uid)).valueOrNull ??
+        const <String>{};
     final currentProfile = ref
         .watch(storyCurrentUserProfileProvider(currentUser.uid))
         .valueOrNull;
@@ -39,7 +57,6 @@ class StoryFeedView extends ConsumerWidget {
     return BaseView(
       provider: storyFeedVM,
       useGradient: false,
-      backgroundColor: scheme.surface,
       builder: (context, _) => Stack(
         children: [
           SafeArea(
@@ -61,6 +78,24 @@ class StoryFeedView extends ConsumerWidget {
                     ),
                   ),
                 ),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    AppSpacing.md.w,
+                    0,
+                    AppSpacing.md.w,
+                    AppSpacing.sm.h,
+                  ),
+                  child: _StorySearchField(
+                    controller: _searchController,
+                    onChanged: (value) => setState(() => _searchQuery = value),
+                    onClear: _searchQuery.isEmpty
+                        ? null
+                        : () {
+                            _searchController.clear();
+                            setState(() => _searchQuery = '');
+                          },
+                  ),
+                ),
                 Expanded(
                   child: feed.when(
                     loading: () =>
@@ -71,10 +106,15 @@ class StoryFeedView extends ConsumerWidget {
                     ),
                     data: (items) {
                       final ownStory = _ownStory(items);
-                      final unseenUpdates = items
+                      final visibleItems = searchStoryFeedItemsByAuthor(
+                        items,
+                        _searchQuery,
+                      );
+                      final isSearching = _searchQuery.trim().isNotEmpty;
+                      final unseenUpdates = visibleItems
                           .where((item) => !item.isOwnStory && item.hasUnseen)
                           .toList();
-                      final viewedUpdates = items
+                      final viewedUpdates = visibleItems
                           .where((item) => !item.isOwnStory && !item.hasUnseen)
                           .toList();
 
@@ -85,27 +125,32 @@ class StoryFeedView extends ConsumerWidget {
                               AppSpacing.xl.h,
                         ),
                         children: [
-                          _CurrentUserStatusHeader(
-                            currentUid: currentUser.uid,
-                            currentName:
-                                currentProfile?.displayName ??
-                                currentUser.displayName ??
-                                'You',
-                            photoUrl: currentProfile?.photoUrl,
-                            ownStory: ownStory,
-                            onTap: ownStory == null
-                                ? () => _openComposer(
-                                    context,
-                                    StoryCreationMode.text,
-                                  )
-                                : () => _openStory(context, ownStory),
-                          ),
+                          if (!isSearching)
+                            _CurrentUserStatusHeader(
+                              currentUid: currentUser.uid,
+                              currentName:
+                                  currentProfile?.displayName ??
+                                  currentUser.displayName ??
+                                  'You',
+                              photoUrl: currentProfile?.photoUrl,
+                              ownStory: ownStory,
+                              onTap: ownStory == null
+                                  ? () => _openComposer(
+                                      context,
+                                      StoryCreationMode.text,
+                                    )
+                                  : () => _openIsolatedStory(context, ownStory),
+                            ),
                           if (unseenUpdates.isEmpty && viewedUpdates.isEmpty)
-                            const Padding(
-                              padding: EdgeInsets.only(top: AppSpacing.xl),
+                            Padding(
+                              padding: EdgeInsets.only(top: AppSpacing.xl.h),
                               child: _StoryFeedMessage(
-                                icon: Icons.auto_stories_outlined,
-                                message: 'No contact updates',
+                                icon: isSearching
+                                    ? Icons.search_off_rounded
+                                    : Icons.auto_stories_outlined,
+                                message: isSearching
+                                    ? 'No matching stories'
+                                    : 'No contact updates',
                               ),
                             ),
                           if (unseenUpdates.isNotEmpty)
@@ -113,15 +158,32 @@ class StoryFeedView extends ConsumerWidget {
                               title: 'Recent updates',
                               items: unseenUpdates,
                               initiallyExpanded: true,
-                              onStoryTap: (item) => _openStory(context, item),
+                              onStoryTap: (item) => _openFeedStory(
+                                context,
+                                item: item,
+                                items: [...unseenUpdates, ...viewedUpdates],
+                                viewedStoryIds: viewedStoryIds,
+                              ),
                             ),
-                          if (viewedUpdates.isNotEmpty)
+                          if (viewedUpdates.isNotEmpty) ...[
+                            Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: AppSpacing.screenH.w,
+                              ),
+                              child: CustomDivider(),
+                            ),
                             _StoryUpdateSection(
                               title: 'Viewed updates',
                               items: viewedUpdates,
-                              initiallyExpanded: false,
-                              onStoryTap: (item) => _openStory(context, item),
+                              initiallyExpanded: true,
+                              onStoryTap: (item) => _openFeedStory(
+                                context,
+                                item: item,
+                                items: viewedUpdates,
+                                viewedStoryIds: viewedStoryIds,
+                              ),
                             ),
+                          ],
                         ],
                       );
                     },
@@ -134,9 +196,14 @@ class StoryFeedView extends ConsumerWidget {
             right: AppSpacing.md.w,
             bottom: MediaQuery.of(context).padding.bottom + AppSpacing.md.h,
             child: FloatingActionButton(
+              heroTag: null,
               tooltip: 'Add story',
               onPressed: () => _showCreateStorySheet(context),
-              child: const Icon(Icons.add_rounded),
+              child: Icon(
+                Icons.add_rounded,
+                color: scheme.surface,
+                size: AppSizing.iconSm.sp,
+              ),
             ),
           ),
         ],
@@ -151,10 +218,40 @@ class StoryFeedView extends ConsumerWidget {
     return null;
   }
 
-  void _openStory(BuildContext context, StoryFeedItem item) {
+  void _openIsolatedStory(BuildContext context, StoryFeedItem item) {
+    final activeItem = activeStoryFeedItemAt(item, DateTime.now());
+    if (activeItem == null) {
+      if (item.isOwnStory) {
+        _openComposer(context, StoryCreationMode.text);
+      }
+      return;
+    }
+
     context.push(
       RouterRoutes.storyViewer.path,
-      extra: StoryViewerArgs(feedItem: item),
+      extra: StoryViewerArgs(feedItem: activeItem),
+    );
+  }
+
+  void _openFeedStory(
+    BuildContext context, {
+    required StoryFeedItem item,
+    required List<StoryFeedItem> items,
+    required Set<String> viewedStoryIds,
+  }) {
+    final activeItems = activeStoryFeedItemsAt(items, DateTime.now());
+    final initialFeedIndex = activeItems.indexWhere(
+      (candidate) => candidate.authorUid == item.authorUid,
+    );
+    if (initialFeedIndex < 0) return;
+
+    context.push(
+      RouterRoutes.storyViewer.path,
+      extra: StoryViewerArgs.feed(
+        feedItems: activeItems,
+        initialFeedIndex: initialFeedIndex,
+        viewedStoryIds: viewedStoryIds,
+      ),
     );
   }
 
@@ -298,6 +395,69 @@ class _StoryCreationOption extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _StorySearchField extends StatelessWidget {
+  const _StorySearchField({
+    required this.controller,
+    required this.onChanged,
+    required this.onClear,
+  });
+
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+  final VoidCallback? onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return TextField(
+      controller: controller,
+      onChanged: onChanged,
+      textInputAction: TextInputAction.search,
+      textAlignVertical: TextAlignVertical.center,
+      decoration: InputDecoration(
+        hintText: 'Search stories',
+        hintStyle: context.text.bodySmall.copyWith(
+          color: context.text.tertiaryText,
+        ),
+        prefixIcon: Icon(
+          Icons.search,
+          color: scheme.onSurface.withValues(alpha: 0.5),
+          size: AppSpacing.md.sp,
+        ),
+        suffixIcon: onClear == null
+            ? null
+            : IconButton(
+                tooltip: 'Clear search',
+                onPressed: onClear,
+                icon: Icon(
+                  Icons.close_rounded,
+                  color: scheme.onSurfaceVariant,
+                  size: AppSizing.iconSm.sp,
+                ),
+              ),
+        filled: true,
+        fillColor: scheme.surface.withValues(alpha: 0.1),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.full.r),
+          borderSide: BorderSide(color: scheme.outline.withValues(alpha: 0.2)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.full.r),
+          borderSide: BorderSide(color: scheme.outline.withValues(alpha: 0.2)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.full.r),
+          borderSide: BorderSide(color: scheme.primary),
+        ),
+        contentPadding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w),
+      ),
+      showCursor: true,
+      cursorColor: scheme.primary,
     );
   }
 }
@@ -450,7 +610,7 @@ class _StoryFeedTile extends StatelessWidget {
       child: Padding(
         padding: EdgeInsets.symmetric(
           horizontal: AppSpacing.md.w,
-          vertical: AppSpacing.sm.h,
+          vertical: AppSpacing.xs.h,
         ),
         child: Row(
           children: [
