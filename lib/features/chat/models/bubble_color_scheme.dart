@@ -76,8 +76,15 @@ class BubbleColorScheme {
       receivedBubble: Color(0xFF232525),
     ),
     BubbleColorScheme(
-      id: 'blue_dark',
-      name: 'Blue Dark',
+      id: 'pearl_dark',
+      name: 'Dark Pearl',
+      isDark: true,
+      sentBubble: Color(0xFF2c2a5b),
+      receivedBubble: Color(0xFF232525),
+    ),
+    BubbleColorScheme(
+      id: 'orange_dark',
+      name: 'Orange Dark',
       isDark: true,
       sentBubble: Color(0xFF4c2c24),
       receivedBubble: Color(0xFF232525),
