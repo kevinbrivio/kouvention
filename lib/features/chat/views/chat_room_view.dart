@@ -1,5 +1,4 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,6 +16,8 @@ import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/models/message_status.dart';
+import 'package:kouvention/features/chat/models/reply_to_model.dart';
+import 'package:kouvention/features/chat/services/databases/message_database.dart';
 import 'package:kouvention/features/chat/utils/display_name_resolver.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_profile_provider.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
@@ -32,6 +33,11 @@ import 'package:kouvention/features/chat/widgets/chatRoom/typing_dots.dart';
 import 'package:kouvention/features/chat/widgets/chatRoom/record_button.dart';
 import 'package:kouvention/features/chat/widgets/chatRoom/recording_overlay.dart';
 import 'package:kouvention/features/chat/widgets/chatRoom/recording_bar.dart';
+import 'package:kouvention/features/story/models/story_feed_item.dart';
+import 'package:kouvention/features/story/models/story_model.dart';
+import 'package:kouvention/features/story/models/story_viewer_args.dart';
+import 'package:kouvention/features/story/repositories/story_repository.dart';
+import 'package:oktoast/oktoast.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:kouvention/features/chat/widgets/chatRoom/chat_room_appbar.dart';
 import 'package:kouvention/features/chat/widgets/chatRoom/chat_room_appbar_skeleton.dart';
@@ -147,7 +153,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     });
 
     if (widget.scrollToMessageId != null && widget.scrollToSentAt != null) {
-      Future(() => _handlePendingScroll());
+      Future(_handlePendingScroll);
     }
   }
 
@@ -345,12 +351,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
             isMe: isMe,
             senderName: message.senderName,
             onReplyMessage: () => vm.onSwipedMessage(message),
-            onTapReply: (_) => _scrollToMessage(
-              message.replyTo != null ? message.replyTo!.messageId : message.id,
-              sentAt: message.replyTo != null
-                  ? message.replyTo!.sentAt
-                  : message.sentAt,
-            ),
+            onTapReply: _handleReplyPreviewTap,
           ),
         ],
       );
@@ -572,7 +573,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
               child: isRecording
                   ? ValueListenableBuilder<Offset>(
                       valueListenable: _fingerOffset,
-                      builder: (_, offset, __) => RecordingOverlay(
+                      builder: (context, offset, child) => RecordingOverlay(
                         isLocked: false,
                         fingerOffset: offset,
                       ),
@@ -654,10 +655,11 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
                             padding: EdgeInsets.only(bottom: 4.h),
                             child: ValueListenableBuilder<Offset>(
                               valueListenable: _fingerOffset,
-                              builder: (_, offset, __) => RecordingOverlay(
-                                isLocked: true,
-                                fingerOffset: offset,
-                              ),
+                              builder: (context, offset, child) =>
+                                  RecordingOverlay(
+                                    isLocked: true,
+                                    fingerOffset: offset,
+                                  ),
                             ),
                           ),
                       ],
@@ -957,8 +959,9 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
       }
     }
     if (message.isVideo) return Icons.videocam_outlined;
-    if (message.type == MessageType.sticker)
+    if (message.type == MessageType.sticker) {
       return Icons.emoji_emotions_outlined;
+    }
     return Icons.image_outlined;
   }
 
@@ -1000,6 +1003,57 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     }
 
     vm.highlightMessage(messageId);
+  }
+
+  Future<void> _handleReplyPreviewTap(ReplyToModel replyTo) async {
+    if (replyTo.isStoryReference) {
+      await _openStoryReply(replyTo);
+      return;
+    }
+
+    await _scrollToMessage(replyTo.messageId, sentAt: replyTo.sentAt);
+  }
+
+  Future<void> _openStoryReply(ReplyToModel replyTo) async {
+    final now = DateTime.now();
+    final row = await ref
+        .read(messageDatabaseProvider)
+        .getStoryById(replyTo.messageId);
+
+    if (row == null ||
+        row.deletedAt != null ||
+        row.expiresAt <= now.millisecondsSinceEpoch) {
+      showToast('This story has expired.');
+      return;
+    }
+
+    final story = StoryModel.fromDrift(row);
+    final stories = await ref
+        .read(storyRepositoryProvider)
+        .fetchStoriesByAuthor(authorUid: story.authorUid, now: now, limit: 20);
+    final index = stories.indexWhere((item) => item.id == story.id);
+    if (index < 0) {
+      showToast('This story has expired.');
+      return;
+    }
+
+    if (!mounted) return;
+    final currentUid = ref.read(currentUidProvider);
+    final latest = stories.first;
+    context.push(
+      RouterRoutes.storyViewer.path,
+      extra: StoryViewerArgs(
+        feedItem: StoryFeedItem(
+          authorUid: latest.authorUid,
+          authorName: latest.authorName,
+          authorPhotoUrl: latest.authorPhotoUrl,
+          stories: List.unmodifiable(stories),
+          unseenCount: 0,
+          isOwnStory: latest.authorUid == currentUid,
+        ),
+        initialIndex: index,
+      ),
+    );
   }
 
   void _onPositionChanged() {

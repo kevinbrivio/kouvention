@@ -29,7 +29,7 @@ class MessageBubble extends ConsumerWidget {
   final VoidCallback onReplyMessage;
   final bool isGroup;
   final ChatModel? chat; // Bisa nullable agar lebih aman
-  final void Function(String messageId)? onTapReply;
+  final void Function(ReplyToModel replyTo)? onTapReply;
 
   const MessageBubble({
     super.key,
@@ -160,7 +160,9 @@ class MessageBubble extends ConsumerWidget {
                     backgroundImage: showSenderPhoto
                         ? NetworkImage(senderPhotoUrl!)
                         : null,
-                    onBackgroundImageError: showSenderPhoto ? (_, __) {} : null,
+                    onBackgroundImageError: showSenderPhoto
+                        ? (exception, stackTrace) {}
+                        : null,
                     child: !showSenderPhoto
                         ? Text(
                             senderName.isNotEmpty
@@ -213,7 +215,7 @@ class MessageBubble extends ConsumerWidget {
                                 onTap: onTapReply != null
                                     ? () {
                                         HapticFeedback.selectionClick();
-                                        onTapReply!(replyMsg.messageId);
+                                        onTapReply!(replyMsg);
                                       }
                                     : null,
                                 child: _buildInBubbleReplyPreview(
@@ -435,7 +437,9 @@ class MessageBubble extends ConsumerWidget {
             ),
           ),
           Gap(2.h),
-          if (replyTo.mediaType == 'text' || !hasValidMediaUrl)
+          if (replyTo.isStoryReference)
+            _buildStoryReplyPreview(context, replyTo)
+          else if (replyTo.mediaType == 'text' || !hasValidMediaUrl)
             Text(
               replyTo.text,
               maxLines: 2,
@@ -452,6 +456,77 @@ class MessageBubble extends ConsumerWidget {
     );
   }
 
+  Widget _buildStoryReplyPreview(BuildContext context, ReplyToModel replyTo) {
+    final text = replyTo.text.trim();
+    final hasThumb =
+        replyTo.mediaUrl != null &&
+        replyTo.mediaUrl!.isNotEmpty &&
+        (replyTo.storyType == 'image' || replyTo.storyType == 'video');
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (hasThumb)
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6.r),
+            child: Image.network(
+              replyTo.mediaUrl!,
+              width: 44.w,
+              height: 44.w,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) =>
+                  _storyIconBox(context, replyTo.storyType),
+            ),
+          )
+        else
+          _storyIconBox(context, replyTo.storyType),
+        Gap(8.w),
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Story',
+                style: context.text.labelSmall.copyWith(
+                  color: context.text.secondaryText,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (text.isNotEmpty)
+                Text(
+                  text,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.text.labelSmall.copyWith(
+                    color: context.text.secondaryText,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _storyIconBox(BuildContext context, String? storyType) => Container(
+    width: 44.w,
+    height: 44.w,
+    decoration: BoxDecoration(
+      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(6.r),
+    ),
+    child: Icon(
+      switch (storyType) {
+        'video' => Icons.play_circle_fill,
+        'audio' => Icons.graphic_eq_rounded,
+        'text' => Icons.format_quote_rounded,
+        _ => Icons.auto_stories_outlined,
+      },
+      size: 22.sp,
+      color: context.text.secondaryText,
+    ),
+  );
+
   Widget _buildReplyMediaPreview(BuildContext context, ReplyToModel replyTo) {
     final type = replyTo.mediaType ?? '';
     final url = replyTo.mediaUrl!;
@@ -459,12 +534,15 @@ class MessageBubble extends ConsumerWidget {
     final ext = filename.split('.').last.toLowerCase();
 
     if (ext == 'pdf') return _pdfThumbnailOrIcon(context, url, filename);
-    if (ext == 'docx' || ext == 'doc')
+    if (ext == 'docx' || ext == 'doc') {
       return _iconBox(context, Icons.description, 'Document');
-    if (ext == 'xlsx' || ext == 'xls')
+    }
+    if (ext == 'xlsx' || ext == 'xls') {
       return _iconBox(context, Icons.table_chart, 'Spreadsheet');
-    if (ext == 'mp3' || ext == 'wav' || ext == 'ogg')
+    }
+    if (ext == 'mp3' || ext == 'wav' || ext == 'ogg') {
       return _iconBox(context, Icons.audiotrack, 'Audio');
+    }
 
     if (type == 'image') return _thumbnailBox(imageUrl: url);
     if (type == 'video') {
@@ -494,7 +572,8 @@ class MessageBubble extends ConsumerWidget {
           child: Image.network(
             imageUrl!,
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => Icon(Icons.broken_image, size: 20.sp),
+            errorBuilder: (context, error, stackTrace) =>
+                Icon(Icons.broken_image, size: 20.sp),
           ),
         ),
         if (icon != null)
@@ -519,7 +598,7 @@ class MessageBubble extends ConsumerWidget {
         child: Image.network(
           thumbUrl,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) =>
+          errorBuilder: (context, error, stackTrace) =>
               _iconBox(context, Icons.picture_as_pdf, filename),
         ),
       ),

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:kouvention/features/story/widgets/story_caption_field.dart';
 import 'package:oktoast/oktoast.dart';
 import 'package:record/record.dart';
 
@@ -11,6 +12,7 @@ class StoryAudioComposer extends StatefulWidget {
     super.key,
     required this.isActive,
     required this.audio,
+    required this.captionController,
     required this.backgroundColor,
     required this.backgroundColors,
     required this.isPublishing,
@@ -21,6 +23,7 @@ class StoryAudioComposer extends StatefulWidget {
 
   final bool isActive;
   final File? audio;
+  final TextEditingController captionController;
   final Color backgroundColor;
   final List<Color> backgroundColors;
   final bool isPublishing;
@@ -258,8 +261,16 @@ class _StoryAudioComposerState extends State<StoryAudioComposer>
                 ],
               ),
             ),
-            _buildActions(),
+            if (widget.audio != null) ...[
+              const SizedBox(height: 16),
+              StoryCaptionField(
+                controller: widget.captionController,
+                enabled: !widget.isPublishing,
+              ),
+            ],
             const SizedBox(height: 20),
+            _buildActions(),
+            const SizedBox(height: 16),
             _AudioColorPalette(
               colors: widget.backgroundColors,
               selectedColor: widget.backgroundColor,

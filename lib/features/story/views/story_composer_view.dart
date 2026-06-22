@@ -40,6 +40,9 @@ class StoryComposerView extends ConsumerStatefulWidget {
 
 class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
   final _textController = TextEditingController();
+  final _photoCaptionController = TextEditingController();
+  final _videoCaptionController = TextEditingController();
+  final _audioCaptionController = TextEditingController();
   final _textFocusNode = FocusNode();
   late final CarouselSliderController _carouselController;
   late int _currentIndex;
@@ -70,6 +73,9 @@ class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
     _textController
       ..removeListener(_onTextChanged)
       ..dispose();
+    _photoCaptionController.dispose();
+    _videoCaptionController.dispose();
+    _audioCaptionController.dispose();
     _textFocusNode.dispose();
     super.dispose();
   }
@@ -159,6 +165,7 @@ class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
           .read(storyCurrentUserProfileProvider(currentUser.uid))
           .valueOrNull;
       final createdAt = DateTime.now();
+      final caption = _photoCaptionController.text.trim();
       final story = StoryModel(
         id: const Uuid().v4(),
         authorUid: currentUser.uid,
@@ -167,6 +174,7 @@ class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
         authorPhotoUrl: profile?.photoUrl ?? currentUser.photoURL,
         type: StoryType.image,
         mediaUrl: upload.url,
+        caption: caption.isEmpty ? null : caption,
         localPath: photo.path,
         visibleTo: visibleTo.toList(growable: false),
         createdAt: createdAt,
@@ -220,6 +228,7 @@ class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
           .read(storyCurrentUserProfileProvider(currentUser.uid))
           .valueOrNull;
       final createdAt = DateTime.now();
+      final caption = _videoCaptionController.text.trim();
       final story = StoryModel(
         id: const Uuid().v4(),
         authorUid: currentUser.uid,
@@ -228,6 +237,7 @@ class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
         authorPhotoUrl: profile?.photoUrl ?? currentUser.photoURL,
         type: StoryType.video,
         mediaUrl: upload.url,
+        caption: caption.isEmpty ? null : caption,
         localPath: video.path,
         visibleTo: visibleTo.toList(growable: false),
         createdAt: createdAt,
@@ -281,6 +291,7 @@ class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
           .read(storyCurrentUserProfileProvider(currentUser.uid))
           .valueOrNull;
       final createdAt = DateTime.now();
+      final caption = _audioCaptionController.text.trim();
       final story = StoryModel(
         id: const Uuid().v4(),
         authorUid: currentUser.uid,
@@ -289,6 +300,7 @@ class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
         authorPhotoUrl: profile?.photoUrl ?? currentUser.photoURL,
         type: StoryType.audio,
         mediaUrl: upload.url,
+        caption: caption.isEmpty ? null : caption,
         localPath: audio.path,
         backgroundColorArgb: _audioBackgroundColor.toARGB32(),
         visibleTo: visibleTo.toList(growable: false),
@@ -334,6 +346,7 @@ class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
               StoryVideoComposer(
                 isActive: _currentMode == StoryCreationMode.video,
                 video: _videoFile,
+                captionController: _videoCaptionController,
                 isPublishing: _isPublishing,
                 onVideoSelected: (video) {
                   setState(() => _videoFile = video);
@@ -343,6 +356,7 @@ class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
               StoryPhotoComposer(
                 isActive: _currentMode == StoryCreationMode.photo,
                 photo: _photoFile,
+                captionController: _photoCaptionController,
                 isPublishing: _isPublishing,
                 onPhotoSelected: (photo) {
                   setState(() => _photoFile = photo);
@@ -357,6 +371,7 @@ class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
               StoryAudioComposer(
                 isActive: _currentMode == StoryCreationMode.voice,
                 audio: _audioFile,
+                captionController: _audioCaptionController,
                 backgroundColor: _audioBackgroundColor,
                 backgroundColors: storyBackgroundColors,
                 isPublishing: _isPublishing,

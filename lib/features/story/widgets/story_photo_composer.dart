@@ -4,7 +4,9 @@ import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:kouvention/features/chat/services/media/media_picker_service.dart';
+import 'package:kouvention/features/story/widgets/story_caption_field.dart';
 import 'package:oktoast/oktoast.dart';
 
 class StoryPhotoComposer extends ConsumerStatefulWidget {
@@ -12,6 +14,7 @@ class StoryPhotoComposer extends ConsumerStatefulWidget {
     super.key,
     required this.isActive,
     required this.photo,
+    required this.captionController,
     required this.isPublishing,
     required this.onPhotoSelected,
     required this.onPublish,
@@ -19,6 +22,7 @@ class StoryPhotoComposer extends ConsumerStatefulWidget {
 
   final bool isActive;
   final File? photo;
+  final TextEditingController captionController;
   final bool isPublishing;
   final ValueChanged<File?> onPhotoSelected;
   final VoidCallback onPublish;
@@ -296,29 +300,42 @@ class _StoryPhotoComposerState extends ConsumerState<StoryPhotoComposer>
       children: [
         Image.file(photo, fit: BoxFit.contain),
         Positioned(
-          left: 24,
-          right: 24,
-          bottom: MediaQuery.of(context).padding.bottom + 24,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          left: 24.w,
+          right: 24.w,
+          bottom:
+              MediaQuery.of(context).padding.bottom +
+              MediaQuery.of(context).viewInsets.bottom +
+              24.h,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              _CameraAction(
-                tooltip: 'Gallery',
-                icon: Icons.photo_library_outlined,
-                onPressed: widget.isPublishing ? null : _pickFromGallery,
+              StoryCaptionField(
+                controller: widget.captionController,
+                enabled: !widget.isPublishing,
               ),
-              _CameraAction(
-                tooltip: 'Retake',
-                icon: Icons.camera_alt_outlined,
-                onPressed: widget.isPublishing
-                    ? null
-                    : () => widget.onPhotoSelected(null),
-              ),
-              _CameraAction(
-                tooltip: 'Publish story',
-                icon: Icons.send_rounded,
-                isLoading: widget.isPublishing,
-                onPressed: widget.isPublishing ? null : widget.onPublish,
+              const SizedBox(height: 14),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _CameraAction(
+                    tooltip: 'Gallery',
+                    icon: Icons.photo_library_outlined,
+                    onPressed: widget.isPublishing ? null : _pickFromGallery,
+                  ),
+                  _CameraAction(
+                    tooltip: 'Retake',
+                    icon: Icons.camera_alt_outlined,
+                    onPressed: widget.isPublishing
+                        ? null
+                        : () => widget.onPhotoSelected(null),
+                  ),
+                  _CameraAction(
+                    tooltip: 'Publish story',
+                    icon: Icons.send_rounded,
+                    isLoading: widget.isPublishing,
+                    onPressed: widget.isPublishing ? null : widget.onPublish,
+                  ),
+                ],
               ),
             ],
           ),

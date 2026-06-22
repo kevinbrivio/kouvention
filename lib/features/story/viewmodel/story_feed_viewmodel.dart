@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
+import 'package:kouvention/features/story/models/story_composer_args.dart';
 import 'package:kouvention/features/story/models/story_feed_item.dart';
 import 'package:kouvention/features/story/models/story_model.dart';
 import 'package:kouvention/features/story/repositories/story_repository.dart';
@@ -36,7 +37,7 @@ final storyCurrentUserProfileProvider = StreamProvider.autoDispose
 final storyRemoteFeedSyncProvider = StreamProvider.autoDispose
     .family<void, String>((ref, currentUid) {
       final repository = ref.watch(storyRepositoryProvider);
-      final cutoff = DateTime.now().subtract(const Duration(hours: 24));
+      final cutoff = DateTime.now().subtract(storyLifetime);
 
       return repository.syncLatestFeed(
         currentUid: currentUid,
@@ -53,7 +54,7 @@ final storyExpiryClockProvider = StreamProvider.autoDispose<DateTime>((
   yield DateTime.now();
 
   yield* Stream<DateTime>.periodic(
-    const Duration(minutes: 1),
+    const Duration(seconds: 5),
     (_) => DateTime.now(),
   );
 });
