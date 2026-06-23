@@ -316,9 +316,12 @@ class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
             ),
             if (_currentMode == StoryCreationMode.text)
               Positioned(
-                left: 16,
-                right: 16,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+                left: 16.w,
+                right: 16.w,
+                bottom:
+                    MediaQuery.of(context).viewInsets.bottom +
+                    MediaQuery.of(context).padding.bottom +
+                    8.h,
                 child: Row(
                   children: [
                     Expanded(
@@ -367,31 +370,34 @@ class _TextStoryComposer extends StatelessWidget {
   final Color backgroundColor;
 
   @override
-  Widget build(BuildContext context) => ColoredBox(
-    color: backgroundColor,
-    child: Center(
-      child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: AppSpacing.screenH.w,
-          vertical: AppSpacing.betweenCards.h,
-        ),
-        child: TextField(
-          controller: controller,
-          focusNode: focusNode,
-          maxLines: null,
-          maxLength: 100,
-          textAlign: TextAlign.center,
-          keyboardType: TextInputType.multiline,
-          style: context.text.headlineSmall,
-          decoration: const InputDecoration(
-            hintText: 'Type a story',
-            hintStyle: TextStyle(color: Colors.white60),
-            filled: true,
-            fillColor: Colors.transparent,
-            border: InputBorder.none,
-            enabledBorder: InputBorder.none,
-            focusedBorder: InputBorder.none,
-            counterText: '',
+  Widget build(BuildContext context) => SafeArea(
+    top: false,
+    child: ColoredBox(
+      color: backgroundColor,
+      child: Center(
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: AppSpacing.screenH.w,
+            vertical: AppSpacing.betweenCards.h,
+          ),
+          child: TextField(
+            controller: controller,
+            focusNode: focusNode,
+            maxLines: null,
+            maxLength: 100,
+            textAlign: TextAlign.center,
+            keyboardType: TextInputType.multiline,
+            style: context.text.headlineSmall,
+            decoration: const InputDecoration(
+              hintText: 'Type a story',
+              hintStyle: TextStyle(color: Colors.white60),
+              filled: true,
+              fillColor: Colors.transparent,
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              counterText: '',
+            ),
           ),
         ),
       ),
@@ -418,8 +424,8 @@ class _ColorPalette extends StatelessWidget {
               onTap: () => onSelected(color),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
-                width: 34,
-                height: 34,
+                width: AppSizing.iconLg.w,
+                height: AppSizing.iconLg.w,
                 decoration: BoxDecoration(
                   color: color,
                   shape: BoxShape.circle,
