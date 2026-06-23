@@ -173,7 +173,7 @@ class StoryViewerVM extends ChangeNotifier {
 
     final uid = currentUid;
     final story = stories[index];
-    if (uid == null || story.authorUid == uid) return;
+    if (uid == null) return;
 
     _viewTimer = Timer(const Duration(seconds: 1), () {
       if (_isDisposed) return;
