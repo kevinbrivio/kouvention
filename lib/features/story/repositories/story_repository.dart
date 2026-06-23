@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/services/databases/message_database.dart';
@@ -244,7 +245,8 @@ class StoryRepository {
           retryCount: 0,
         );
         _setUploadProgress(row.id, null);
-      } catch (_) {
+      } catch (error, stackTrace) {
+        debugPrint('Story sync failed for ${row.id}: $error\n$stackTrace');
         await _db.updateStorySyncStatus(
           storyId: row.id,
           status: StorySyncStatus.failed,

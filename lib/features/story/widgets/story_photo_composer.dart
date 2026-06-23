@@ -207,7 +207,7 @@ class _StoryPhotoComposerState extends ConsumerState<StoryPhotoComposer>
     return ColoredBox(
       color: Colors.black,
       child: Stack(
-        // fit: StackFit.expand,
+        fit: StackFit.expand,
         children: [
           _buildCameraPreview(),
           Positioned(

@@ -6,6 +6,7 @@ import 'package:flutter_story_presenter/flutter_story_presenter.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/features/story/models/story_model.dart';
+import 'package:video_player/video_player.dart';
 
 class StoryPresenterMapper {
   const StoryPresenterMapper._();
@@ -38,6 +39,17 @@ class StoryPresenterMapper {
   static StoryItem _video(StoryModel story) {
     final source = _mediaSource(story);
     if (source == null) return _unavailableStory();
+
+    if (source.source == StoryItemSource.file) {
+      return StoryItem(
+        storyItemType: StoryItemType.custom,
+        duration: const Duration(seconds: 30),
+        customWidget: (storyController, _) => _LocalVideoStoryContent(
+          path: source.path,
+          storyController: storyController,
+        ),
+      );
+    }
 
     return StoryItem(
       url: source.path,
@@ -129,6 +141,124 @@ class StoryPresenterMapper {
     }
 
     return null;
+  }
+}
+
+class _LocalVideoStoryContent extends StatefulWidget {
+  const _LocalVideoStoryContent({
+    required this.path,
+    required this.storyController,
+  });
+
+  final String path;
+  final FlutterStoryController? storyController;
+
+  @override
+  State<_LocalVideoStoryContent> createState() =>
+      _LocalVideoStoryContentState();
+}
+
+class _LocalVideoStoryContentState extends State<_LocalVideoStoryContent> {
+  VideoPlayerController? _videoController;
+  bool _hasError = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.storyController?.addListener(_syncPlayback);
+    _initialize();
+  }
+
+  @override
+  void didUpdateWidget(covariant _LocalVideoStoryContent oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.storyController != widget.storyController) {
+      oldWidget.storyController?.removeListener(_syncPlayback);
+      widget.storyController?.addListener(_syncPlayback);
+    }
+  }
+
+  Future<void> _initialize() async {
+    final controller = VideoPlayerController.file(File(widget.path));
+    _videoController = controller;
+
+    try {
+      await controller.initialize();
+      await controller.setLooping(true);
+      await controller.play();
+    } catch (_) {
+      if (mounted && controller == _videoController) {
+        setState(() => _hasError = true);
+      }
+      return;
+    }
+
+    if (!mounted || controller != _videoController) {
+      await controller.dispose();
+      return;
+    }
+
+    setState(() {});
+    _syncPlayback();
+  }
+
+  void _syncPlayback() {
+    final controller = _videoController;
+    final action = widget.storyController?.storyStatus;
+    if (controller == null || !controller.value.isInitialized) return;
+
+    switch (action) {
+      case StoryAction.pause:
+        controller.pause();
+        return;
+      case StoryAction.play:
+      case StoryAction.playCustomWidget:
+        controller.play();
+        return;
+      case StoryAction.mute:
+        controller.setVolume(0);
+        return;
+      case StoryAction.unMute:
+        controller.setVolume(1);
+        return;
+      case StoryAction.next:
+      case StoryAction.previous:
+      case null:
+        return;
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.storyController?.removeListener(_syncPlayback);
+    _videoController?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = _videoController;
+    if (_hasError) return const _UnavailableStoryContent();
+    if (controller == null || !controller.value.isInitialized) {
+      return const ColoredBox(
+        color: Colors.black,
+        child: Center(child: CupertinoActivityIndicator(color: Colors.white)),
+      );
+    }
+
+    return ColoredBox(
+      color: Colors.black,
+      child: Center(
+        child: FittedBox(
+          fit: BoxFit.cover,
+          child: SizedBox(
+            width: controller.value.size.width,
+            height: controller.value.size.height,
+            child: VideoPlayer(controller),
+          ),
+        ),
+      ),
+    );
   }
 }
 

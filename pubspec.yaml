@@ -23,6 +23,7 @@ dependencies:
   envied: ^1.3.4
   firebase_auth: ^6.4.0
   video_player: ^2.11.1
+  flutter_native_video_trimmer: ^1.1.9
   carousel_slider: ^5.1.2
   connectivity_plus: ^7.1.1
   google_sign_in: ^7.2.0
