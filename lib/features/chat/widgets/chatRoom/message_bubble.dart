@@ -257,8 +257,9 @@ class MessageBubble extends ConsumerWidget {
                                 maxWidth:
                                     MediaQuery.sizeOf(context).width * 0.8,
                               ),
-                              child: IntrinsicWidth(
-                                child: Column(
+                              child: Builder(
+                                builder: (_) {
+                                  final content = Column(
                                   mainAxisSize: MainAxisSize.min,
                                   crossAxisAlignment:
                                       CrossAxisAlignment.stretch,
@@ -319,8 +320,16 @@ class MessageBubble extends ConsumerWidget {
                                         ],
                                       ),
                                     ),
-                                  ],
-                                ),
+                                    ],
+                                  );
+
+                                  return replyMsg == null
+                                      ? IntrinsicWidth(child: content)
+                                      : SizedBox(
+                                          width: double.infinity,
+                                          child: content,
+                                        );
+                                },
                               ),
                             ),
                           ] else if (message.mediaUrls != null &&
@@ -429,11 +438,13 @@ class MessageBubble extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            isRepliedMessageMine ? 'You' : (resolvedReplyName),
-            style: context.text.bodySmall.copyWith(
-              color: context.text.secondaryText,
+              isRepliedMessageMine ? 'You' : resolvedReplyName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: context.text.bodySmall.copyWith(
+                color: context.text.secondaryText,
+              ),
             ),
-          ),
           Gap(2.h),
           if (replyTo.isStoryReference)
             _buildStoryReplyPreview(context, replyTo)
@@ -552,7 +563,7 @@ class MessageBubble extends ConsumerWidget {
     );
   }
 
-  Widget _storyIconBox(BuildContext context, String? storyType) => Container(
+    Widget _storyIconBox(BuildContext context, String? storyType) => Container(
     width: 44.w,
     height: 44.w,
     decoration: BoxDecoration(
