@@ -56,7 +56,9 @@ class _StoryPhotoComposerState extends ConsumerState<StoryPhotoComposer>
   void didUpdateWidget(covariant StoryPhotoComposer oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    if (!widget.isActive || widget.photo != null) {
+    if ((!widget.isActive || widget.photo != null) &&
+        oldWidget.isActive &&
+        oldWidget.photo == null) {
       unawaited(_disposeCamera());
     } else if (!oldWidget.isActive || oldWidget.photo != null) {
       unawaited(_initializeCamera());
@@ -168,7 +170,7 @@ class _StoryPhotoComposerState extends ConsumerState<StoryPhotoComposer>
     setState(() => _isCapturing = true);
     try {
       final captured = await controller.takePicture();
-      await _disposeCamera();
+      if (!mounted) return;
       widget.onPhotoSelected(File(captured.path));
     } on CameraException {
       showToast('Could not take the photo. Please try again.');
@@ -184,7 +186,7 @@ class _StoryPhotoComposerState extends ConsumerState<StoryPhotoComposer>
           .pickImage(fromGallery: true);
       if (picked == null) return;
 
-      await _disposeCamera();
+      if (!mounted) return;
       widget.onPhotoSelected(File(picked.path));
     } catch (_) {
       showToast('Could not open the photo gallery.');
@@ -205,13 +207,13 @@ class _StoryPhotoComposerState extends ConsumerState<StoryPhotoComposer>
     return ColoredBox(
       color: Colors.black,
       child: Stack(
-        fit: StackFit.expand,
+        // fit: StackFit.expand,
         children: [
           _buildCameraPreview(),
           Positioned(
-            left: 24,
-            right: 24,
-            bottom: MediaQuery.of(context).padding.bottom + 24,
+            left: 24.w,
+            right: 24.w,
+            bottom: MediaQuery.of(context).padding.bottom + 24.h,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -223,9 +225,9 @@ class _StoryPhotoComposerState extends ConsumerState<StoryPhotoComposer>
                 GestureDetector(
                   onTap: _isCapturing ? null : _capturePhoto,
                   child: Container(
-                    width: 76,
-                    height: 76,
-                    padding: const EdgeInsets.all(5),
+                    width: AppSizing.avatarXl.w,
+                    height: AppSizing.avatarXl.w,
+                    padding: EdgeInsets.all(AppSpacing.xxs.w),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 4),
@@ -256,7 +258,7 @@ class _StoryPhotoComposerState extends ConsumerState<StoryPhotoComposer>
     if (controller != null && controller.value.isInitialized) {
       return Center(
         child: AspectRatio(
-          aspectRatio: controller.value.aspectRatio,
+          aspectRatio: 9 / 16,
           child: CameraPreview(controller),
         ),
       );
@@ -300,7 +302,7 @@ class _StoryPhotoComposerState extends ConsumerState<StoryPhotoComposer>
     child: Stack(
       fit: StackFit.expand,
       children: [
-        Image.file(photo, fit: BoxFit.contain),
+        Image.file(photo, fit: BoxFit.cover),
         Positioned(
           left: 24.w,
           right: 24.w,
@@ -334,6 +336,7 @@ class _StoryPhotoComposerState extends ConsumerState<StoryPhotoComposer>
                   _CameraAction(
                     tooltip: 'Publish story',
                     icon: Icons.send_rounded,
+                    iconColor: AppColorTokens.primary,
                     isLoading: widget.isPublishing,
                     onPressed: widget.isPublishing ? null : widget.onPublish,
                   ),
@@ -363,12 +366,14 @@ class _CameraAction extends StatelessWidget {
     required this.icon,
     required this.onPressed,
     this.isLoading = false,
+    this.iconColor,
   });
 
   final String tooltip;
   final IconData icon;
   final VoidCallback? onPressed;
   final bool isLoading;
+  final Color? iconColor;
 
   @override
   Widget build(BuildContext context) => IconButton.filled(
@@ -389,6 +394,6 @@ class _CameraAction extends StatelessWidget {
               strokeWidth: 2,
             ),
           )
-        : Icon(icon),
+        : Icon(icon, color: iconColor ?? AppColorTokens.primary,),
   );
 }

@@ -43,6 +43,7 @@ class _StoryVideoComposerState extends ConsumerState<StoryVideoComposer>
   Duration _recordingDuration = Duration.zero;
   bool _isInitializing = false;
   bool _isRecording = false;
+  bool _isStoppingRecording = false;
   String? _cameraError;
 
   @override
@@ -58,7 +59,9 @@ class _StoryVideoComposerState extends ConsumerState<StoryVideoComposer>
   void didUpdateWidget(covariant StoryVideoComposer oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    if (!widget.isActive || widget.video != null) {
+    if ((!widget.isActive || widget.video != null) &&
+        oldWidget.isActive &&
+        oldWidget.video == null) {
       unawaited(_disposeCamera());
     } else if (!oldWidget.isActive || oldWidget.video != null) {
       unawaited(_initializeCamera());
@@ -167,12 +170,15 @@ class _StoryVideoComposerState extends ConsumerState<StoryVideoComposer>
       setState(() {
         _isInitializing = false;
         _isRecording = false;
+        _isStoppingRecording = false;
         _recordingDuration = Duration.zero;
       });
     }
   }
 
   Future<void> _toggleRecording() async {
+    if (_isStoppingRecording) return;
+
     if (_isRecording) {
       await _stopRecording();
     } else {
@@ -213,16 +219,25 @@ class _StoryVideoComposerState extends ConsumerState<StoryVideoComposer>
 
   Future<void> _stopRecording() async {
     final controller = _controller;
-    if (controller == null || !controller.value.isRecordingVideo) return;
+    if (_isStoppingRecording ||
+        controller == null ||
+        !controller.value.isRecordingVideo) {
+      return;
+    }
 
+    setState(() => _isStoppingRecording = true);
     _recordingTimer?.cancel();
     _recordingTimer = null;
     try {
       final captured = await controller.stopVideoRecording();
-      await _disposeCamera();
+      if (!mounted) return;
       widget.onVideoSelected(File(captured.path));
     } on CameraException {
       showToast('Could not save the video. Please try again.');
+    } finally {
+      if (mounted && widget.video == null) {
+        setState(() => _isStoppingRecording = false);
+      }
     }
   }
 
@@ -233,7 +248,7 @@ class _StoryVideoComposerState extends ConsumerState<StoryVideoComposer>
           .pickVideo(maxDuration: storyVideoMaxDuration);
       if (picked == null) return;
 
-      await _disposeCamera();
+      if (!mounted) return;
       widget.onVideoSelected(File(picked.path));
     } catch (_) {
       showToast('Could not open the video gallery.');
@@ -297,7 +312,7 @@ class _StoryVideoComposerState extends ConsumerState<StoryVideoComposer>
                   onPressed: _isRecording ? null : _pickFromGallery,
                 ),
                 GestureDetector(
-                  onTap: _toggleRecording,
+                  onTap: _isStoppingRecording ? null : _toggleRecording,
                   child: Container(
                     width: 76,
                     height: 76,
@@ -344,7 +359,7 @@ class _StoryVideoComposerState extends ConsumerState<StoryVideoComposer>
     if (controller != null && controller.value.isInitialized) {
       return Center(
         child: AspectRatio(
-          aspectRatio: controller.value.aspectRatio,
+          aspectRatio: 9 / 16,
           child: CameraPreview(controller),
         ),
       );

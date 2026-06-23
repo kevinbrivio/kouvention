@@ -11,6 +11,7 @@ import 'package:kouvention/cores/widgets/custom_divider.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/story/models/story_composer_args.dart';
 import 'package:kouvention/features/story/models/story_feed_item.dart';
+import 'package:kouvention/features/story/models/story_model.dart';
 import 'package:kouvention/features/story/models/story_viewer_args.dart';
 import 'package:kouvention/features/story/viewmodel/story_feed_viewmodel.dart';
 import 'package:kouvention/features/story/widgets/story_author_avatar.dart';
@@ -64,17 +65,14 @@ class _StoryFeedViewState extends ConsumerState<StoryFeedView> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    AppSpacing.md.w,
-                    AppSpacing.md.h,
-                    AppSpacing.md.w,
-                    AppSpacing.sm.h,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md.w,
+                    vertical: AppSpacing.sm.h,
                   ),
                   child: Text(
                     'Updates',
                     style: context.text.titleLarge.copyWith(
                       color: scheme.primary,
-                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
@@ -139,8 +137,19 @@ class _StoryFeedViewState extends ConsumerState<StoryFeedView> {
                                       context,
                                       StoryCreationMode.text,
                                     )
-                                  : () => _openIsolatedStory(context, ownStory),
+                                  : () => _openIsolatedStory(
+                                      context,
+                                      ownStory,
+                                      viewedStoryIds,
+                                    ),
                             ),
+
+                          Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: AppSpacing.screenH.w,
+                            ),
+                            child: CustomDivider(),
+                          ),
                           if (unseenUpdates.isEmpty && viewedUpdates.isEmpty)
                             Padding(
                               padding: EdgeInsets.only(top: AppSpacing.xl.h),
@@ -166,12 +175,6 @@ class _StoryFeedViewState extends ConsumerState<StoryFeedView> {
                               ),
                             ),
                           if (viewedUpdates.isNotEmpty) ...[
-                            Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: AppSpacing.screenH.w,
-                              ),
-                              child: CustomDivider(),
-                            ),
                             _StoryUpdateSection(
                               title: 'Viewed updates',
                               items: viewedUpdates,
@@ -218,7 +221,11 @@ class _StoryFeedViewState extends ConsumerState<StoryFeedView> {
     return null;
   }
 
-  void _openIsolatedStory(BuildContext context, StoryFeedItem item) {
+  void _openIsolatedStory(
+    BuildContext context,
+    StoryFeedItem item,
+    Set<String> viewedStoryIds,
+  ) {
     final activeItem = activeStoryFeedItemAt(item, DateTime.now());
     if (activeItem == null) {
       if (item.isOwnStory) {
@@ -229,7 +236,10 @@ class _StoryFeedViewState extends ConsumerState<StoryFeedView> {
 
     context.push(
       RouterRoutes.storyViewer.path,
-      extra: StoryViewerArgs(feedItem: activeItem),
+      extra: StoryViewerArgs(
+        feedItem: activeItem,
+        initialIndex: firstUnseenStoryIndex(activeItem, viewedStoryIds),
+      ),
     );
   }
 
@@ -454,7 +464,10 @@ class _StorySearchField extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppRadius.full.r),
           borderSide: BorderSide(color: scheme.primary),
         ),
-        contentPadding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w),
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: AppSpacing.md.w,
+          vertical: AppSpacing.sm.h,
+        ),
       ),
       showCursor: true,
       cursorColor: scheme.primary,
@@ -481,6 +494,15 @@ class _CurrentUserStatusHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final hasStatus = ownStory != null;
+    final syncStatus = ownStory?.latestStory.syncStatus;
+    final isPending =
+        syncStatus == StorySyncStatus.pending ||
+        syncStatus == StorySyncStatus.uploading;
+    final ringColor = syncStatus == StorySyncStatus.failed
+        ? scheme.error
+        : ownStory?.hasUnseen == true || isPending
+        ? scheme.primary
+        : scheme.outline.withValues(alpha: 0.35);
 
     return InkWell(
       onTap: onTap,
@@ -501,7 +523,7 @@ class _CurrentUserStatusHeader extends StatelessWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: hasStatus
-                        ? Border.all(color: scheme.primary, width: 2.r)
+                        ? Border.all(color: ringColor, width: 2.r)
                         : null,
                   ),
                   child: StoryAuthorAvatar(
@@ -537,11 +559,11 @@ class _CurrentUserStatusHeader extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Add status', style: context.text.titleMedium),
+                  Text('Add status', style: context.text.labelMedium),
                   Gap(AppSpacing.xxs.h),
                   Text(
                     'Disappear after 24 hours',
-                    style: context.text.bodySmall.copyWith(
+                    style: context.text.labelSmall.copyWith(
                       color: context.text.tertiaryText,
                     ),
                   ),
@@ -643,14 +665,12 @@ class _StoryFeedTile extends StatelessWidget {
                     item.authorName,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: context.text.titleMedium.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: context.text.labelMedium,
                   ),
                   SizedBox(height: AppSpacing.xxs.h),
                   Text(
                     _subtitle(item),
-                    style: context.text.bodySmall.copyWith(
+                    style: context.text.labelSmall.copyWith(
                       color: context.text.tertiaryText,
                     ),
                   ),

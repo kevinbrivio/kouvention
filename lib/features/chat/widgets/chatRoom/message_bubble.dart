@@ -184,6 +184,11 @@ class MessageBubble extends ConsumerWidget {
                   clipBehavior: Clip.none,
                   children: [
                     Container(
+                      constraints: isMe
+                          ? null
+                          : BoxConstraints(
+                              maxWidth: MediaQuery.sizeOf(context).width * 0.8,
+                            ),
                       padding: EdgeInsets.symmetric(
                         horizontal: AppSpacing.xs.w,
                         vertical: AppSpacing.xs.w,
@@ -248,15 +253,18 @@ class MessageBubble extends ConsumerWidget {
                           if (message.type == MessageType.text) ...[
                             ConstrainedBox(
                               constraints: BoxConstraints(
+                                minWidth: 120.w,
                                 maxWidth:
                                     MediaQuery.sizeOf(context).width * 0.8,
                               ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Flexible(
-                                    child: Text(
+                              child: Builder(
+                                builder: (_) {
+                                  final content = Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    Text(
                                       (message.text == '' && message.isDeleted)
                                           ? isMe
                                                 ? 'You deleted this message'
@@ -276,74 +284,73 @@ class MessageBubble extends ConsumerWidget {
                                             : FontStyle.normal,
                                       ),
                                     ),
-                                  ),
-                                  Gap(AppSpacing.xxs.w),
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    mainAxisAlignment: MainAxisAlignment.end,
-                                    children: [
-                                      Flexible(
-                                        child: Text(
-                                          time,
-                                          style: context.text.labelSmall
-                                              .copyWith(
-                                                color: isMe
-                                                    ? message.isDeleted
-                                                          ? Theme.of(context)
-                                                                .colorScheme
-                                                                .onSurface
-                                                                .withValues(
-                                                                  alpha: 0.5,
-                                                                )
-                                                          : context
-                                                                .text
-                                                                .secondaryText
-                                                    : context
-                                                          .text
-                                                          .secondaryText,
-                                              ),
-                                        ),
+                                    Gap(AppSpacing.xxs.h),
+                                    Align(
+                                      alignment: Alignment.centerRight,
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            time,
+                                            style: context.text.labelSmall
+                                                .copyWith(
+                                                  color: isMe
+                                                      ? message.isDeleted
+                                                            ? Theme.of(context)
+                                                                  .colorScheme
+                                                                  .onSurface
+                                                                  .withValues(
+                                                                    alpha: 0.5,
+                                                                  )
+                                                            : context
+                                                                  .text
+                                                                  .secondaryText
+                                                      : context
+                                                            .text
+                                                            .secondaryText,
+                                                ),
+                                          ),
+                                          if (isMe) ...[
+                                            Gap(4.w),
+                                            _buildMessageStatus(
+                                              status,
+                                              context.text.secondaryText,
+                                            ),
+                                          ],
+                                        ],
                                       ),
-                                      if (isMe) ...[
-                                        Gap(4.w),
-                                        _buildMessageStatus(
-                                          status,
-                                          context.text.secondaryText,
-                                        ),
-                                      ],
+                                    ),
                                     ],
-                                  ),
-                                ],
+                                  );
+
+                                  return replyMsg == null
+                                      ? IntrinsicWidth(child: content)
+                                      : SizedBox(
+                                          width: double.infinity,
+                                          child: content,
+                                        );
+                                },
                               ),
                             ),
                           ] else if (message.mediaUrls != null &&
                               message.mediaUrls!.isNotEmpty) ...[
                             Column(
+                              mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    MediaBubble(
-                                      message: message,
-                                      isMe: isMe,
-                                      scheme: scheme,
-                                    ),
-                                    Gap(AppSpacing.xxs.h),
-                                  ],
+                                MediaBubble(
+                                  message: message,
+                                  isMe: isMe,
+                                  scheme: scheme,
                                 ),
-
+                                Gap(AppSpacing.xxs.h),
                                 Row(
                                   mainAxisSize: MainAxisSize.min,
-                                  mainAxisAlignment: MainAxisAlignment.end,
                                   children: [
-                                    Flexible(
-                                      child: Text(
-                                        time,
-                                        style: context.text.labelSmall.copyWith(
-                                          color: context.text.secondaryText,
-                                        ),
+                                    Text(
+                                      time,
+                                      style: context.text.labelSmall.copyWith(
+                                        color: context.text.secondaryText,
                                       ),
                                     ),
                                     if (isMe) ...[
@@ -431,11 +438,13 @@ class MessageBubble extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            isRepliedMessageMine ? 'You' : (resolvedReplyName),
-            style: context.text.bodySmall.copyWith(
-              color: context.text.secondaryText,
+              isRepliedMessageMine ? 'You' : resolvedReplyName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: context.text.bodySmall.copyWith(
+                color: context.text.secondaryText,
+              ),
             ),
-          ),
           Gap(2.h),
           if (replyTo.isStoryReference)
             _buildStoryReplyPreview(context, replyTo)
@@ -456,59 +465,105 @@ class MessageBubble extends ConsumerWidget {
     );
   }
 
-  Widget _buildStoryReplyPreview(BuildContext context, ReplyToModel replyTo) {
-    final text = replyTo.text.trim();
-    final hasThumb =
-        replyTo.mediaUrl != null &&
-        replyTo.mediaUrl!.isNotEmpty &&
-        (replyTo.storyType == 'image' || replyTo.storyType == 'video');
+  Widget _buildStoryReplyPreview(BuildContext context, ReplyToModel replyTo) =>
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Story',
+            style: context.text.labelSmall.copyWith(
+              color: context.text.secondaryText,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          Gap(4.h),
+          switch (replyTo.storyType) {
+            'image' || 'video' => _buildStoryThumbnail(context, replyTo),
+            'text' => Text(
+              replyTo.text,
+              maxLines: 4,
+              overflow: TextOverflow.ellipsis,
+              style: context.text.bodySmall.copyWith(
+                color: context.text.secondaryText,
+              ),
+            ),
+            'audio' => _buildStoryAudioWaveform(context),
+            _ => _storyIconBox(context, replyTo.storyType),
+          },
+        ],
+      );
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (hasThumb)
+  Widget _buildStoryThumbnail(BuildContext context, ReplyToModel replyTo) {
+    final thumbnailUrl = replyTo.mediaUrl?.trim();
+    if (thumbnailUrl == null || thumbnailUrl.isEmpty) {
+      return _storyIconBox(context, replyTo.storyType);
+    }
+
+    return SizedBox(
+      width: 120.w,
+      height: 84.h,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(6.r),
             child: Image.network(
-              replyTo.mediaUrl!,
-              width: 44.w,
-              height: 44.w,
+              thumbnailUrl,
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) =>
                   _storyIconBox(context, replyTo.storyType),
             ),
-          )
-        else
-          _storyIconBox(context, replyTo.storyType),
-        Gap(8.w),
-        Flexible(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Story',
-                style: context.text.labelSmall.copyWith(
-                  color: context.text.secondaryText,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              if (text.isNotEmpty)
-                Text(
-                  text,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: context.text.labelSmall.copyWith(
-                    color: context.text.secondaryText,
-                  ),
-                ),
-            ],
           ),
-        ),
-      ],
+          if (replyTo.storyType == 'video')
+            Center(
+              child: Icon(
+                Icons.play_circle_fill,
+                size: 32.sp,
+                color: Colors.white.withValues(alpha: 0.9),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
-  Widget _storyIconBox(BuildContext context, String? storyType) => Container(
+  Widget _buildStoryAudioWaveform(BuildContext context) {
+    const samples = <double>[
+      0.35,
+      0.7,
+      0.45,
+      0.9,
+      0.55,
+      0.3,
+      0.75,
+      0.5,
+      0.85,
+      0.4,
+      0.65,
+      0.35,
+    ];
+
+    return SizedBox(
+      width: 120.w,
+      height: 36.h,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          for (final sample in samples)
+            Container(
+              width: 3.w,
+              height: (8 + (sample * 24)).h,
+              decoration: BoxDecoration(
+                color: context.text.secondaryText.withValues(alpha: 0.8),
+                borderRadius: BorderRadius.circular(2.r),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+    Widget _storyIconBox(BuildContext context, String? storyType) => Container(
     width: 44.w,
     height: 44.w,
     decoration: BoxDecoration(

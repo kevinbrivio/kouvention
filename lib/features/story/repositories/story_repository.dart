@@ -286,6 +286,7 @@ class StoryRepository {
       await _db.updateStoryUploadResult(
         storyId: localRow.id,
         mediaUrl: upload.url,
+        thumbnailUrl: _storyThumbnailUrl(upload.url, localRow.type),
       );
 
       final updated = await _db.getStoryById(localRow.id);
@@ -311,6 +312,21 @@ class StoryRepository {
     StoryType.video => MessageType.video,
     StoryType.audio => MessageType.audio,
     StoryType.text => throw ArgumentError('Text stories do not upload media.'),
+  };
+
+  String? _storyThumbnailUrl(String mediaUrl, StoryType type) => switch (type) {
+    StoryType.image => mediaUrl.replaceFirst(
+      '/image/upload/',
+      '/image/upload/c_fill,w_320,h_568,q_auto,f_auto/',
+    ),
+    StoryType.video =>
+      mediaUrl
+          .replaceFirst(
+            '/video/upload/',
+            '/video/upload/so_0,c_fill,w_320,h_568,q_auto,f_jpg/',
+          )
+          .replaceFirst(RegExp(r'\.[^.]+$'), '.jpg'),
+    StoryType.audio || StoryType.text => null,
   };
 
   Future<void> _persistRemoteStories(List<StoryModel> stories) async {

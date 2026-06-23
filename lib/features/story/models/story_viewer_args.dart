@@ -2,6 +2,13 @@ import 'package:kouvention/features/story/models/story_feed_item.dart';
 
 enum StoryViewerTraversal { isolated, feed }
 
+int firstUnseenStoryIndex(StoryFeedItem item, Set<String> viewedStoryIds) {
+  final index = item.stories.indexWhere(
+    (story) => !viewedStoryIds.contains(story.id),
+  );
+  return index < 0 ? 0 : index;
+}
+
 class StoryViewerArgs {
   StoryViewerArgs({required StoryFeedItem feedItem, this.initialIndex = 0})
     : feedItems = List.unmodifiable([feedItem]),
@@ -34,9 +41,6 @@ class StoryViewerArgs {
       return initialIndex.clamp(0, item.stories.length - 1);
     }
 
-    final firstUnseen = item.stories.indexWhere(
-      (story) => !viewedStoryIds.contains(story.id),
-    );
-    return firstUnseen < 0 ? 0 : firstUnseen;
+    return firstUnseenStoryIndex(item, viewedStoryIds);
   }
 }

@@ -42,7 +42,6 @@ class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
   final _textController = TextEditingController();
   final _photoCaptionController = TextEditingController();
   final _videoCaptionController = TextEditingController();
-  final _audioCaptionController = TextEditingController();
   final _textFocusNode = FocusNode();
   late final CarouselSliderController _carouselController;
   late int _currentIndex;
@@ -75,7 +74,6 @@ class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
       ..dispose();
     _photoCaptionController.dispose();
     _videoCaptionController.dispose();
-    _audioCaptionController.dispose();
     _textFocusNode.dispose();
     super.dispose();
   }
@@ -167,7 +165,6 @@ class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
     await _queueMediaStory(
       file: audio,
       type: StoryType.audio,
-      captionController: _audioCaptionController,
       backgroundColorArgb: _audioBackgroundColor.toARGB32(),
       failureMessage: 'Could not save the recording story. Please try again.',
     );
@@ -176,8 +173,8 @@ class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
   Future<void> _queueMediaStory({
     required File file,
     required StoryType type,
-    required TextEditingController captionController,
     required String failureMessage,
+    TextEditingController? captionController,
     int? backgroundColorArgb,
   }) async {
     final currentUser = ref.read(authServiceProvider).currentUser;
@@ -195,7 +192,7 @@ class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
           .read(storyCurrentUserProfileProvider(currentUser.uid))
           .valueOrNull;
       final createdAt = DateTime.now();
-      final caption = captionController.text.trim();
+      final caption = captionController?.text.trim();
       final story = StoryModel(
         id: const Uuid().v4(),
         authorUid: currentUser.uid,
@@ -203,7 +200,7 @@ class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
             profile?.displayName ?? currentUser.displayName ?? 'Unknown',
         authorPhotoUrl: profile?.photoUrl ?? currentUser.photoURL,
         type: type,
-        caption: caption.isEmpty ? null : caption,
+        caption: caption?.isEmpty == false ? caption : null,
         localPath: file.path,
         backgroundColorArgb: backgroundColorArgb,
         visibleTo: visibleTo.toList(growable: false),
@@ -268,7 +265,6 @@ class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
                 StoryAudioComposer(
                   isActive: _currentMode == StoryCreationMode.voice,
                   audio: _audioFile,
-                  captionController: _audioCaptionController,
                   backgroundColor: _audioBackgroundColor,
                   backgroundColors: storyBackgroundColors,
                   isPublishing: _isPublishing,
@@ -316,9 +312,12 @@ class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
             ),
             if (_currentMode == StoryCreationMode.text)
               Positioned(
-                left: 16,
-                right: 16,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+                left: 16.w,
+                right: 16.w,
+                bottom:
+                    MediaQuery.of(context).viewInsets.bottom +
+                    MediaQuery.of(context).padding.bottom +
+                    8.h,
                 child: Row(
                   children: [
                     Expanded(
@@ -367,31 +366,36 @@ class _TextStoryComposer extends StatelessWidget {
   final Color backgroundColor;
 
   @override
-  Widget build(BuildContext context) => ColoredBox(
-    color: backgroundColor,
-    child: Center(
-      child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: AppSpacing.screenH.w,
-          vertical: AppSpacing.betweenCards.h,
-        ),
-        child: TextField(
-          controller: controller,
-          focusNode: focusNode,
-          maxLines: null,
-          maxLength: 100,
-          textAlign: TextAlign.center,
-          keyboardType: TextInputType.multiline,
-          style: context.text.headlineSmall,
-          decoration: const InputDecoration(
-            hintText: 'Type a story',
-            hintStyle: TextStyle(color: Colors.white60),
-            filled: true,
-            fillColor: Colors.transparent,
-            border: InputBorder.none,
-            enabledBorder: InputBorder.none,
-            focusedBorder: InputBorder.none,
-            counterText: '',
+  Widget build(BuildContext context) => SafeArea(
+    top: false,
+    child: ColoredBox(
+      color: backgroundColor,
+      child: Center(
+        child: Padding(
+          padding: EdgeInsets.only(
+            left: AppSpacing.screenH.w,
+            right: AppSpacing.screenH.w,
+            top: AppSpacing.betweenCards.h,
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: TextField(
+            controller: controller,
+            focusNode: focusNode,
+            maxLines: null,
+            maxLength: 100,
+            textAlign: TextAlign.center,
+            keyboardType: TextInputType.multiline,
+            style: context.text.headlineSmall,
+            decoration: const InputDecoration(
+              hintText: 'Type a story',
+              hintStyle: TextStyle(color: Colors.white60),
+              filled: true,
+              fillColor: Colors.transparent,
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              counterText: '',
+            ),
           ),
         ),
       ),
@@ -418,8 +422,8 @@ class _ColorPalette extends StatelessWidget {
               onTap: () => onSelected(color),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
-                width: 34,
-                height: 34,
+                width: AppSizing.iconLg.w,
+                height: AppSizing.iconLg.w,
                 decoration: BoxDecoration(
                   color: color,
                   shape: BoxShape.circle,

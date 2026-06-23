@@ -23,7 +23,11 @@ class EmailSignInView extends StatelessWidget {
 
   Widget _buildScreen(BuildContext context, EmailSignInVM vm) => SafeArea(
     child: SingleChildScrollView(
-      padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w),
+      padding: EdgeInsets.only(
+        left: AppSpacing.md.w, 
+        right: AppSpacing.md.w, 
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: SizedBox(
         height:
             MediaQuery.of(context).size.height -
