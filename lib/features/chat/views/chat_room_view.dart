@@ -1031,15 +1031,15 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     final stories = await ref
         .read(storyRepositoryProvider)
         .fetchStoriesByAuthor(authorUid: story.authorUid, now: now, limit: 20);
-    final index = stories.indexWhere((item) => item.id == story.id);
-    if (index < 0) {
-      showToast('This story has expired.', position: ToastPosition.bottom);
-      return;
-    }
+    final orderedStories = [
+      ...stories,
+      if (!stories.any((item) => item.id == story.id)) story,
+    ]..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    final index = orderedStories.indexWhere((item) => item.id == story.id);
 
     if (!mounted) return;
     final currentUid = ref.read(currentUidProvider);
-    final latest = stories.first;
+    final latest = orderedStories.last;
     context.push(
       RouterRoutes.storyViewer.path,
       extra: StoryViewerArgs(
@@ -1047,7 +1047,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
           authorUid: latest.authorUid,
           authorName: latest.authorName,
           authorPhotoUrl: latest.authorPhotoUrl,
-          stories: List.unmodifiable(stories),
+          stories: List.unmodifiable(orderedStories),
           unseenCount: 0,
           isOwnStory: latest.authorUid == currentUid,
         ),
