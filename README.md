@@ -2,6 +2,10 @@
 
 A new Flutter project.
 
+## Architecture Roadmap
+
+- [Chat scaling roadmap](docs/chat_scaling_roadmap.md)
+
 ## Getting Started
 
 This project is a starting point for a Flutter application.

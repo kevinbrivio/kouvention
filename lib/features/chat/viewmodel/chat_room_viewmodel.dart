@@ -1,50 +1,61 @@
 import 'dart:async';
-import 'dart:convert';
+import 'dart:io';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
+import 'package:kouvention/features/chat/utils/display_name_resolver.dart';
+import 'package:kouvention/features/chat/viewmodel/chat_room_profile_provider.dart';
+import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/models/reply_to_model.dart';
-import 'package:kouvention/features/chat/services/chat_service.dart';
-import 'package:kouvention/features/chat/services/databases/cached_messages.dart';
-import 'package:kouvention/features/notification/services/notification_service.dart';
+import 'package:kouvention/features/chat/models/sticker_model.dart';
+import 'package:kouvention/features/chat/models/upload_result_model.dart';
+import 'package:kouvention/features/chat/repositories/chat_repository.dart';
+import 'package:kouvention/features/chat/repositories/message_repository.dart';
+import 'package:kouvention/features/chat/services/media/cloud_media_service.dart';
+import 'package:kouvention/features/chat/services/databases/message_database.dart';
+import 'package:kouvention/features/chat/viewmodel/audio_manager.dart';
 import 'package:kouvention/features/notification/viewmodel/active_chat_id_provider.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
 import 'package:kouvention/features/user/services/user_service.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:record/record.dart';
+import 'package:snackify/enums/snack_enums.dart';
+import 'package:snackify/snackify.dart';
+
+/// Voice recording state machine (§3.1 of recap).
+///
+/// Transitions:
+///   idle → recording → locked → reviewing → sending → idle
+///     ↓                 ↓
+///   (tap)            (discard)
+enum RecordingState { idle, recording, locked, reviewing, sending }
 
 class ChatRoomVM extends BaseNotifier {
-  final ChatService _chatService;
-  final UserService _userService;
+  final ChatRepository _chatRepository;
+  final MessageRepository _messageRepository;
+  final CloudMediaService _cloudMediaService;
   final String? _currentUid;
   final String chatId;
-  final MessageDatabase _db;
 
-  // Messages from newest
-  List<MessageModel> _messages = [];
-  StreamSubscription? _localSubscription; // SQLite
-  StreamSubscription? _syncSubscription; // Firestore -> SQLite
-
-  // Chat metadata
-  ChatModel? _chat;
-  StreamSubscription? _chatSubscription;
-  StreamSubscription? _otherUserSubscription;
-  UserModel? _otherUser;
+  // Subscribing to Firestore
+  StreamSubscription? _firestoreSubscription;
 
   // Pagination
-  DocumentSnapshot? _lastDocument;
+  static const messagePaginationThreshold = 100;
   bool _hasMoreMessages = true;
-  bool _isLoadingMore = false;
+  bool _isLoadingOlder = false;
+
   String? _highlightedMessageId;
-  String? _pendingScrollMessageId;
-  DateTime? _pendingScrollSentAt;
 
   // Typing indicator debounce
   Timer? _typingTimer;
+  Timer? _typingDebounce;
+  static const _typingDebounceWindow = Duration(seconds: 2);
   bool _isTyping = false;
 
   // Sending message
@@ -53,337 +64,117 @@ class ChatRoomVM extends BaseNotifier {
   // Reply Message
   MessageModel? _replyMessage;
 
-  // Jump to searched message
-  int? _jumpToSentAt;
-  bool _isJumpMode = false;
+  // Upload file
+  bool _isUploading = false;
+  bool _showMediaPanel = false;
+
+  // Stickers
+  bool _showStickerPanel = false;
+
+  // audio record
+  final AudioRecorder _audioRecorder = AudioRecorder();
+  RecordingState _recordingState = RecordingState.idle;
+  String? _recordingPath;
+  int _recordingDuration = 0;
+  final List<double> _amplitudeSamples = [];
+  Timer? _recordingTimer;
+  StreamSubscription? _amplitudeSub;
 
   String? _error;
 
   ChatRoomVM(super.ref, {required this.chatId})
-    : _chatService = ref.read(chatServiceProvider),
-      _currentUid = ref.read(authServiceProvider).currentUser?.uid,
-      _userService = ref.read(userServiceProvider),
-      _db = ref.read(messageDatabaseProvider);
+    : _chatRepository = ref.read(chatRepositoryProvider),
+      _messageRepository = ref.read(messageRepositoryProvider),
+      _cloudMediaService = ref.read(cloudMediaServiceProvider),
+      _currentUid = ref.read(authServiceProvider).currentUser?.uid;
 
   // --- GETTERS ------------------------------
-  List<MessageModel> get messages => _messages;
-  ChatModel? get chat => _chat;
   String? get currentUid => _currentUid;
-  bool get hasMoreMessages => _hasMoreMessages;
-  bool get isLoadingMore => _isLoadingMore;
   bool get isTyping => _isTyping;
-  bool get isGroup => _chat?.type == 'group';
   bool get isSending => _isSending;
   MessageModel? get replyMessage => _replyMessage;
   String? get error => _error;
   String? get highlightedMessageId => _highlightedMessageId;
-  String? get pendingScrollMessageId => _pendingScrollMessageId;
-  DateTime? get pendingScrollSentAt => _pendingScrollSentAt;
-  bool get isJumpMode => _isJumpMode;
-
-  /// Display name for the chat header
-  String get chatDisplayName {
-    if (_chat == null || _currentUid == null) return '';
-    return _chat!.displayName(_currentUid);
-  }
-
-  /// Display sender name
-  String senderDisplayName(String senderId) =>
-      _chat?.memberInfo[senderId]?.displayName ?? '';
-
-  /// Display sender name
-  String? senderPhotoUrl(String senderId) =>
-      _chat?.memberInfo[senderId]?.photoUrl ?? '';
-
-  /// Photo URL
-  String? get chatPhotoUrl {
-    if (_chat == null || _currentUid == null) return null;
-    return _chat!.displayPhotoUrl(_currentUid);
-  }
-
-  /// Get current user whose typing..
-  String? get typingText {
-    if (_chat == null || _currentUid == null) return null;
-
-    final others = _chat!.typingUsers
-        .where((uid) => uid != _currentUid)
-        .toList();
-
-    if (others.isEmpty) return null;
-
-    final names = others
-        .map((uid) => _chat!.memberInfo[uid]?.displayName ?? '')
-        .toList();
-
-    if (names.length == 1) return '${names.first} is typing...';
-    return '${names.join(', ')} are typing...';
-  }
-
-  /// Get other user status
-  String? get onlineStatusText {
-    if (_chat == null) return null;
-
-    if (_chat!.type != 'direct') return null;
-    if (_otherUser == null) return null;
-
-    if (!_otherUser!.privacy.showOnlineStatus) return null;
-
-    if (_otherUser!.isOnline) return 'Online';
-    if (_otherUser!.privacy.showLastSeen && _otherUser!.lastSeen != null) {
-      return _formatLastSeen(_otherUser!.lastSeen!);
-    }
-    return null;
-  }
-
-  String _formatLastSeen(DateTime lastSeen) {
-    final now = DateTime.now();
-    final diff = now.difference(lastSeen);
-
-    if (diff.inMinutes < 60) return 'Last seen ${diff.inMinutes}m ago';
-    if (diff.inHours < 24) return 'Last seen ${diff.inHours}h ago';
-    if (diff.inDays == 1) return 'Last seen yesterday';
-    return 'Last seen ${lastSeen.day}/${lastSeen.month}/${lastSeen.year}';
-  }
-
-  bool isMyMessage(MessageModel message) => message.senderId == _currentUid;
-  bool isRepliedMessageMine(String senderId) => _currentUid == senderId;
-
-  void setJumpTarget(int sentAt) {
-    _jumpToSentAt = sentAt;
-    _isJumpMode = true;
-
-    _localSubscription?.cancel();
-    _subscribeToLocalMessages();
-  }
-
-  Future<void> switchToNormalMode() async {
-    if (!_isJumpMode) return;
-    _isJumpMode = false;
-    _jumpToSentAt = null;
-
-    final latestMessages = await _db.fetchNewerMessages(
-      chatId,
-      afterSentAt: 0, // fetch from newest to latest
-    );
-    if (latestMessages.isNotEmpty) {
-      _messages = latestMessages.map(_cachedToMessageModel).toList();
-      notifyListeners();
-    }
-    _localSubscription?.cancel();
-    _subscribeToLocalMessages();
-  }
+  bool get isUploading => _isUploading;
+  bool get showMediaPanel => _showMediaPanel;
+  bool get showStickerPanel => _showStickerPanel;
+  RecordingState get recordingState => _recordingState;
+  int get recordingDuration => _recordingDuration;
+  List<double> get recordingAmplitudeSamples => _amplitudeSamples;
+  String? get recordingPath => _recordingPath;
+  bool get hasMoreMessges => _hasMoreMessages;
+  bool get isLoadingOlder => _isLoadingOlder;
 
   @override
   FutureOr<void> init() async {
     if (_currentUid == null) {
       _error = 'Not authenticated';
-    } else {
-      scheduleMicrotask(() {
-        ref.read(activeChatIdProvider.notifier).state = chatId;
-      });
-
-      _subscribeToChat();
-      _subscribeToLocalMessages();
-      _syncFromFirestore();
-      _resetUnreadCount();
-
-      // Mark read when opening the chat
-      await _chatService.markChatAsRead(chatId, _currentUid);
+      return;
     }
-  }
 
-  // --- STREAMS -----------------------------
-  void _subscribeToChat() {
-    _chatSubscription = _chatService
-        .streamChat(chatId)
-        .listen(
-          (chat) {
-            _chat = chat;
+    // Turn off notification when in the chatId room
+    Future.microtask(() async {
+      ref.read(activeChatIdProvider.notifier).state = chatId;
 
-            if (chat != null &&
-                chat.type == 'direct' &&
-                _otherUserSubscription == null &&
-                _currentUid != null) {
-              final otherUid = chat.otherMemberUid(_currentUid);
-              _subscribeToOtherUser(otherUid);
-            }
-            notifyListeners();
-          },
-          onError: (error) {
-            _error = error.toString();
-            notifyListeners();
-          },
-        );
-  }
+      // 1. Fetch missed messages for this chat (bounded, idempotent).
+      await _messageRepository.fetchMissedMessages(chatId);
 
-  /// Subscribe to the latest messages
-  /// This stream stays live - when someone send a new message
-  void _subscribeToLocalMessages() {
-    final sw = Stopwatch()..start();
+      // 🔄 Force chatMessagesStreamProvider to re-read from Drift.
+      ref.read(chatRoomRefreshProvider(chatId).notifier).state++;
+      notifyListeners();
 
-    try {
-      final stream = _db.watchMessages(chatId);
-
-      _localSubscription = stream.listen(
-        (cachedMessages) {
-          _messages = cachedMessages
-              .where((m) {
-                // parse from json in local version
-                final deletedFor = _parseDeletedFor(m.deletedFor);
-                return !deletedFor.contains(_currentUid!);
-              })
-              .map(_cachedToMessageModel)
-              .toList();
-          _error = null;
-
-          if (sw.isRunning) {
-            sw.stop();
-            debugPrint('Messages loaded: ${_messages.length}');
-            debugPrint('Load time: ${sw.elapsedMilliseconds}ms');
-          }
-
-          notifyListeners();
-        },
-        onError: (error) {
-          _error = error.toString();
-          notifyListeners();
-        },
-      );
-    } catch (e, s) {
-      print(e);
-      print(s);
-    }
-  }
-
-  // Catch up newest message -> Update -> Stream
-  Future<void> _syncFromFirestore() async {
-    try {
-      // Catch up latest sync
-      final lastSync = await _db.getLastSyncTimestamp(chatId);
-      final sinceDate = DateTime.fromMillisecondsSinceEpoch(lastSync);
-
-      // check missed out messages from last sync
-      final missedMessages = await _chatService.fetchMessagesSince(
-        chatId,
-        since: sinceDate,
-      );
-
-      debugPrint('---- missed messages: ${missedMessages.length} ---------');
-
-      if (missedMessages.isNotEmpty) {
-        // if there is message, UPSERT to local
-        debugPrint('----- UPSERTING MESSAGE -----');
-        await _db.upsertMessages(
-          missedMessages.map(_messageToCompanion).toList(),
-        );
-        debugPrint('----- SUCCESS UPSERTING -----');
+      // 2. Mirror chat metadata into Drift so the chat list reflects
+      //    the latest unread / typing / lastMessage fields.
+      try {
+        await _chatRepository.getChat(chatId);
+      } catch (e) {
+        debugPrint('Chat metadata sync skipped ($e)');
       }
 
-      // update last sync
-      final now = DateTime.now().millisecondsSinceEpoch;
-      await _db.updateLastSync(chatId, now);
+      // 3. Attach the realtime listener so incoming messages land in
+      //    Drift and reconcile any locally-pending row by messageId.
+      _firestoreSubscription = _messageRepository
+          .watchActiveChatRealtime(chatId)
+          .listen((_) {
+            debugPrint('New messages arrived in Drift local database');
+          });
 
-      // Stream new message
-      _syncSubscription = _chatService
-          .streamMessages(chatId)
-          .listen(
-            (newMessages) {
-              // Titik 1: apakah stream fire?
-              debugPrint('🔥 Stream fired! ${newMessages.length} messages');
-              
-              if (newMessages.isNotEmpty) {
-                // Titik 2: apakah upsert jalan?
-                debugPrint('🔥 Upserting ${newMessages.length} messages');
-                _db.upsertMessages(
-                  newMessages.map(_messageToCompanion).toList(),
-                ).then((_) {
-                  // Titik 3: apakah upsert selesai?
-                  debugPrint('🔥 Upsert complete!');
-                });
-              }
-            },
-          );
-    } catch (e) {
-      debugPrint('Catch-up sync error: $e');
-    }
+      // 4. Non-critical: reset unread + advance lastReadAt.
+      try {
+        await _messageRepository.markChatAsRead(chatId, _currentUid);
+      } catch (e) {
+        // Implicit retry: opening the chat again writes a fresh
+        // lastReadAt + reset unreadCount. networkAutoSyncProvider
+        // covers pending messages, not read receipts.
+        debugPrint('Offline: unread/read update skipped ($e)');
+      }
+
+      // 5. Update lastOpenedAt so the LRU eviction ranks this chat as
+      //    recently used and preserves it from eviction. Non-critical.
+      try {
+        await ref.read(messageDatabaseProvider).updateLastOpenedAt(chatId);
+      } catch (e) {
+        debugPrint('lastOpenedAt update skipped ($e)');
+      }
+    });
   }
 
-  /// Subscribe to the latest messages from the other user
-  void _subscribeToOtherUser(String otherUserId) {
-    _otherUserSubscription = _userService
-        .streamUser(otherUserId)
-        .listen(
-          (user) {
-            _otherUser = user;
-            notifyListeners();
-          },
-          onError: (error) {
-            _error = error.toString();
-            notifyListeners();
-          },
-        );
-  }
-
-  /// Convert CachedMessage → MessageModel (SQLite → UI)
-  MessageModel _cachedToMessageModel(CachedMessage m) => MessageModel(
-    id: m.id,
-    senderId: m.senderId,
-    senderName: m.senderName,
-    text: m.messageText,
-    type: m.type,
-    sentAt: DateTime.fromMillisecondsSinceEpoch(m.sentAt),
-    isDeleted: m.isDeleted,
-    replyTo: m.replyToId != null
-        ? ReplyToModel(
-            messageId: m.replyToId!,
-            text: m.replyToText ?? '',
-            senderId: '',
-            senderName: m.replyToSender ?? '',
-            sentAt: DateTime.fromMillisecondsSinceEpoch(m.replyToSentAt ?? 0),
-          )
-        : null,
-    mediaUrl: m.mediaUrl,
-    fileName: m.fileName,
-    fileSizeBytes: m.fileSizeBytes,
-  );
-
-  /// Convert MessageModel → CachedMessagesCompanion (Firestore → SQLite)
-  CachedMessagesCompanion _messageToCompanion(MessageModel m) =>
-      CachedMessagesCompanion(
-        id: Value(m.id),
-        chatRoomId: Value(chatId),
-        messageText: Value(m.text),
-        textLower: Value(m.text.toLowerCase()),
-        senderId: Value(m.senderId),
-        senderName: Value(m.senderName),
-        sentAt: Value(m.sentAt.millisecondsSinceEpoch),
-        type: Value(m.type),
-        isDeleted: Value(m.isDeleted),
-        deletedFor: Value(m.deletedFor.toString()),
-        replyToId: Value(m.replyTo?.messageId),
-        replyToText: Value(m.replyTo?.text),
-        replyToSender: Value(m.replyTo?.senderName),
-        replyToSentAt: Value(m.replyTo?.sentAt.millisecondsSinceEpoch),
-        mediaUrl: Value(m.mediaUrl),
-        fileName: Value(m.fileName),
-        fileSizeBytes: Value(m.fileSizeBytes),
-        syncedAt: Value(DateTime.now().millisecondsSinceEpoch),
-      );
-
-  /// Parse deletedFor JSON string ke List<String>
-  List<String> _parseDeletedFor(String json) {
-    try {
-      final list = (jsonDecode(json) as List).cast<String>();
-      return list;
-    } catch (_) {
-      return [];
-    }
-  }
-
-  // --- METHODS -----------------------------
   Future<void> sendMessage(String text) async {
     final trimmed = text.trim();
-    if (trimmed.isEmpty || _currentUid == null || _chat == null) return;
+    if (trimmed.isEmpty || _currentUid == null) return;
+
+    final chat = ref.read(chatMetadataStreamProvider(chatId)).value;
+    if (chat == null) {
+      _error = 'Getting chat room ready';
+      notifyListeners();
+      return;
+    }
+
+    UserModel? otherUser;
+    if (chat.type == 'direct') {
+      final otherUid = chat.otherMemberUid(_currentUid);
+      otherUser = ref.read(otherUserStreamProvider(otherUid)).value;
+    }
 
     try {
       _isSending = true;
@@ -394,47 +185,28 @@ class ChatRoomVM extends BaseNotifier {
           ? ReplyToModel(
               messageId: _replyMessage!.id,
               senderId: _replyMessage!.senderId,
-              senderName: senderDisplayName(_replyMessage!.senderId),
+              senderName: _replyMessage!.senderName,
               text: _replyMessage!.text,
               sentAt: _replyMessage!.sentAt,
+              mediaUrl: _replyMessage!.allMediaUrls.firstOrNull,
+              mediaType: _replyMessage!.type.name,
             )
           : null;
 
+      await _messageRepository.sendTextMessage(
+        chatRoomId: chat.id,
+        textContent: text,
+        senderName: resolveDisplayName(
+          chat: chat,
+          currentUid: _currentUid,
+          resolver: ref.read(chatRoomProfileResolverProvider(chatId)),
+        ),
+        memberUids: chat.members,
+        otherUserFcmTokens: otherUser?.fcmTokens,
+        replyTo: replyTo,
+      );
+
       onCancelReply();
-
-      // Write get Id
-      final docId = FirebaseFirestore.instance
-          .collection('chats')
-          .doc(chatId)
-          .collection('messages')
-          .doc()
-          .id;
-
-      final now = DateTime.now();
-      final localMessage = MessageModel(
-        id: docId,
-        senderId: _currentUid,
-        senderName: senderDisplayName(_currentUid),
-        text: trimmed,
-        type: 'text',
-        sentAt: now,
-        isDeleted: false,
-        replyTo: replyTo,
-      );
-
-      await _db.upsertMessage(_messageToCompanion(localMessage));
-
-      await _chatService.sendMessage(
-        chatId: chatId,
-        messageId: docId,
-        senderId: _currentUid,
-        senderName: senderDisplayName(_currentUid),
-        text: trimmed,
-        memberUids: _chat!.members,
-        replyTo: replyTo,
-      );
-
-      _sendNotification(trimmed);
     } catch (e) {
       _error = e.toString();
       notifyListeners();
@@ -444,196 +216,165 @@ class ChatRoomVM extends BaseNotifier {
     }
   }
 
-  void _sendNotification(String messageText) {
-    if (_chat?.type != 'direct') return;
+  // ========================================
+  // SYNC MESSAGES & PAGINATION
+  // ========================================
+  /// Loads the next older page of messages for this chat.
+  Future<void> loadOlderMessages() async {
+    if (_isLoadingOlder || !_hasMoreMessages) return;
 
-    final fcmTokens = _otherUser?.fcmTokens;
-    if (fcmTokens == null) return;
-
-    final notificationService = ref.read(notificationServiceProvider);
-    for (final tokenString in fcmTokens.keys) {
-      notificationService.sendChatNotification(
-        targetToken: tokenString,
-        messageText: messageText,
-        chatId: chatId,
-        senderId: _currentUid!,
-        senderName: senderDisplayName(_currentUid),
-        senderImageUrl: senderPhotoUrl(_currentUid),
-      );
-    }
-  }
-
-  /// Load more messages when the user scrolls to the top.
-  Future<void> loadMoreMessages() async {
-    // if (_isLoadingMore) return;
-
-    // _isLoadingMore = true;
-    // notifyListeners();
-
-    // await _loadOlderBatch();
-
-    // _isLoadingMore = false;
-    // notifyListeners();
-  }
-
-  void highlightMessage(String messageId) {
-    _highlightedMessageId = messageId;
-    notifyListeners();
-
-    Future.delayed(Duration(milliseconds: 200), () {
-      if (_highlightedMessageId == messageId) {
-        _highlightedMessageId = null;
-        notifyListeners();
-      }
-    });
-  }
-
-  void scrollToTarget({required String messageId, required DateTime sentAt}) {
-    _pendingScrollMessageId = messageId;
-    _pendingScrollSentAt = sentAt;
-    notifyListeners();
-  }
-
-  void clearPendingScroll() {
-    _pendingScrollMessageId = null;
-    _pendingScrollSentAt = null;
-  }
-
-  Future<int?> findMessageIndex(String messageId, {DateTime? sentAt}) async {
-    // find from recent messages
-    final index = _messages.indexWhere((m) => m.id == messageId);
-    if (index != -1) return index;
-
-    // find via timestamp in sqlite
-    int? targetSentAt = sentAt?.millisecondsSinceEpoch;
-    debugPrint('$targetSentAt');
-
-    List<CachedMessage> allBatch = [];
-    if (targetSentAt == null) {
-      // jump to latest messages
-      final batch = await _db.fetchNewerMessages(chatId, afterSentAt: 0);
-      return _addBatchAndFind(batch, messageId);
-    }
-
-    final cached = await _db.getMessageByDateTime(chatId, targetSentAt);
-
-    if (cached != null) {
-      final olderBatch = await _db.fetchOlderMessages(
-        chatId,
-        beforeSentAt: cached.sentAt,
-        limit: 50,
-      );
-      allBatch.addAll(olderBatch);
-
-      final newerBatch = await _db.fetchNewerMessages(
-        chatId,
-        afterSentAt: cached.sentAt,
-        limit: 50,
-      );
-      allBatch.addAll(newerBatch);
-    }
-
-    return _addBatchAndFind(allBatch, messageId);
-
-    // final found = _messages.indexWhere((m) => m.id == messageId);
-    // if (found != -1) return found;
-
-    // // Not found in SQLite but try to fetch from Firestore
-    // final firestoreBatch = await _chatService.fetchOlderMessages(
-    //   chatId,
-    //   before: DateTime.fromMillisecondsSinceEpoch(targetSentAt),
-    // );
-
-    // if (firestoreBatch.isNotEmpty) {
-    //   await _db.upsertMessages(
-    //     firestoreBatch.map(_messageToCompanion).toList(),
-    //   );
-
-    //   final freshModels = firestoreBatch
-    //       .where((m) => !existingIds.contains(m.id))
-    //       .toList();
-    //   _messages.addAll(freshModels);
-    //   _messages.sort((a, b) => b.sentAt.compareTo(a.sentAt));
-    //   notifyListeners();
-
-    //   return _messages.indexWhere((m) => m.id == messageId);
-    // }
-
-    // return null;
-  }
-
-  Future<int?> _addBatchAndFind(
-    List<CachedMessage> batch,
-    String messageId,
-  ) async {
-    if (batch.isEmpty) return null;
-
-    final batchModels = batch.map(_cachedToMessageModel).toList();
-    final existingIds = _messages.map((m) => m.id).toSet();
-    final newMessages = batchModels
-        .where((m) => !existingIds.contains(m.id))
-        .toList();
-    _messages.addAll(newMessages);
-    _messages.sort((a, b) => b.sentAt.compareTo(a.sentAt));
-    notifyListeners();
-    return _messages.indexWhere((m) => m.id == messageId);
-  }
-
-  /// Load pesan lama — cek SQLite dulu, baru Firestore kalau gap
-  Future<void> loadOlderFromLocal() async {
-    if (_isLoadingMore || _messages.isEmpty) return;
-
-    _isLoadingMore = true;
-    notifyListeners();
-
-    final oldestSentAt = _messages.last.sentAt.millisecondsSinceEpoch;
-
-    // Step 1: Cek SQLite
-    final localOlder = await _db.fetchOlderMessages(
-      chatId,
-      beforeSentAt: oldestSentAt,
-    );
-
-    if (localOlder.isNotEmpty) {
-      // Ada di SQLite — gratis, ga perlu Firestore
-      final olderModels = localOlder.map(_cachedToMessageModel).toList();
-      _messages = [..._messages, ...olderModels];
+    try {
+      _isLoadingOlder = true;
       notifyListeners();
-    } else {
-      _hasMoreMessages = false;
-    }
 
-    _isLoadingMore = false;
+      // 1. Get chat metadata
+      final db = ref.read(messageDatabaseProvider);
+      final chat = await db.getChatById(chatId);
+
+      // 2. Validate from chat, if there is still data from Firestore
+      if (!(chat?.hasMoreOlderRemote ?? false)) {
+        _hasMoreMessages = false;
+        return;
+      }
+
+      // 3. Fetch data from Firestore
+      final result = await _messageRepository.fetchOlderMessages(
+        chatId,
+        limit: 50,
+        maxPages: 1,
+      );
+      final refreshed = await db.getChatById(chatId);
+      if (result.messages == 0 || (!(refreshed?.hasMoreOlderRemote ?? false))) {
+        _hasMoreMessages = false;
+      }
+    } catch (e) {
+      _hasMoreMessages = true;
+      debugPrint('===== loadOlderMessages failed: $e\n');
+    } finally {
+      _isLoadingOlder = false;
+      notifyListeners();
+    }
+  }
+
+  // ========================================
+  // UPLOAD FILES
+  // ========================================
+  void toggleMediaPanel(BuildContext context) {
+    _showMediaPanel = !_showMediaPanel;
+    if (_showMediaPanel) {
+      _showStickerPanel = false;
+      FocusScope.of(context).unfocus();
+    }
     notifyListeners();
+  }
+
+  void closeMediaPanel() {
+    _showMediaPanel = false;
+    notifyListeners();
+  }
+
+  void toggleStickerPanel(BuildContext context) {
+    _showStickerPanel = !_showStickerPanel;
+    if (_showStickerPanel) {
+      _showMediaPanel = false;
+      FocusScope.of(context).unfocus();
+    }
+    notifyListeners();
+  }
+
+  void closeStickerPanel() {
+    _showStickerPanel = false;
+    notifyListeners();
+  }
+
+  void dismissPanels() {
+    if (_showMediaPanel || _showStickerPanel) {
+      _showMediaPanel = false;
+      _showStickerPanel = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> sendSticker(StickerModel sticker) async {
+    if (_currentUid == null) return;
+
+    final chat = ref.read(chatMetadataStreamProvider(chatId)).value;
+    if (chat == null) return;
+
+    try {
+      _isSending = true;
+      notifyListeners();
+
+      final replyTo = _replyMessage != null
+          ? ReplyToModel(
+              messageId: _replyMessage!.id,
+              senderId: _replyMessage!.senderId,
+              senderName: _replyMessage!.senderName,
+              text: _replyMessage!.text,
+              sentAt: _replyMessage!.sentAt,
+              mediaUrl: _replyMessage!.allMediaUrls.firstOrNull,
+              mediaType: _replyMessage!.type.name,
+            )
+          : null;
+
+      UserModel? otherUser;
+      if (chat.type == 'direct') {
+        final otherUid = chat.otherMemberUid(_currentUid);
+        otherUser = ref.read(otherUserStreamProvider(otherUid)).value;
+      }
+
+      await _messageRepository.sendSticker(
+        chatRoomId: chatId,
+        stickerUrl: sticker.url,
+        senderName: resolveDisplayName(
+          chat: chat,
+          currentUid: _currentUid,
+          resolver: ref.read(chatRoomProfileResolverProvider(chatId)),
+        ),
+        memberUids: chat.members,
+        otherUserFcmTokens: otherUser?.fcmTokens,
+        replyTo: replyTo,
+      );
+    } catch (e, s) {
+      print('Error sending sticker: $e $s');
+    } finally {
+      _isSending = false;
+      notifyListeners();
+    }
   }
 
   // --- Typing Indicator --------------------
-  /// Calls this when user types in the text field.
-  /// Set debounce for 2 seconds when user type first keystroke.
   void onTextChanged(String text) {
     if (_currentUid == null) return;
 
-    if (text.isNotEmpty || !_isTyping) {
-      _isTyping = true;
-      _chatService.setTyping(chatId, _currentUid);
+    if (text.isEmpty) {
+      clearTyping();
+      return;
     }
 
-    // Reset debounce timer
-    _typingTimer?.cancel();
-    _typingTimer = Timer(const Duration(seconds: 10), () => clearTyping());
+    _typingDebounce?.cancel();
+    _typingDebounce = Timer(_typingDebounceWindow, () {
+      if (_isTyping) return;
+      _isTyping = true;
+      _messageRepository.setTyping(chatId, _currentUid);
+    });
 
-    if (text.isEmpty) clearTyping();
+    _typingTimer?.cancel();
+    _typingTimer = Timer(const Duration(seconds: 10), clearTyping);
   }
 
   Future<void> clearTyping() async {
-    if (_currentUid != null && _isTyping) {
+    if (_isTyping && _currentUid != null) {
       _isTyping = false;
       _typingTimer?.cancel();
-      await _chatService.clearTyping(chatId, _currentUid);
+      _typingDebounce?.cancel();
+      await _messageRepository.clearTyping(chatId, _currentUid);
     }
   }
 
-  // ---- Reply Message -----------------------
+  // ========================================
+  // UI HELPERS (Reply & Scroll)
+  // ========================================
   void onSwipedMessage(MessageModel message) {
     _replyMessage = message;
     notifyListeners();
@@ -644,59 +385,541 @@ class ChatRoomVM extends BaseNotifier {
     notifyListeners();
   }
 
-  // --- Unread Count --------------------------
-  void _resetUnreadCount() {
-    if (_currentUid != null) {
-      _chatService.resetUnreadCount(chatId, _currentUid);
+  void highlightMessage(String messageId) {
+    ref.read(highlightMessageProvider(chatId).notifier).state = messageId;
+
+    // reset
+    Future.delayed(const Duration(seconds: 2), () {
+      ref.read(highlightMessageProvider(chatId).notifier).state = null;
+    });
+  }
+
+  void clearHighlight() {
+    ref.read(highlightMessageProvider(chatId).notifier).state = null;
+  }
+
+  bool isMyMessage(MessageModel message) => message.senderId == _currentUid;
+  bool isRepliedMessageMine(String senderId) => _currentUid == senderId;
+
+  void setJumpTarget(int sentAt) {
+    ref.read(jumpToTargetProvider(chatId).notifier).state = sentAt;
+  }
+
+  /// Clear jump target and highlight. Call when the user explicitly returns to
+  /// latest messages (scroll-to-bottom, close button, etc.).
+  void switchToNormalMode() {
+    ref.read(jumpToTargetProvider(chatId).notifier).state = null;
+    ref.read(highlightMessageProvider(chatId).notifier).state = null;
+  }
+
+  Future<void> fetchMessagesAround(DateTime sentAt) async {
+    await _messageRepository.fetchMessagesAround(chatId, sentAt);
+  }
+
+  Future<void> sendMediaMessage({
+    required List<UploadResultModel> files,
+  }) async {
+    try {
+      _isUploading = true;
+      notifyListeners();
+
+      final captionedFiles = files
+          .where((f) => f.caption != null && f.caption!.isNotEmpty)
+          .toList();
+
+      final mediaCaptions = files.map((f) => f.caption ?? '').toList();
+
+      if (captionedFiles.length <= 1) {
+        await _sendSingleBubble(
+          caption: captionedFiles.isNotEmpty
+              ? captionedFiles.first.caption!
+              : '',
+          files: files,
+          mediaCaptions: mediaCaptions,
+        );
+      } else {
+        for (final file in files) {
+          try {
+            await _sendSingleBubble(
+              caption: file.caption ?? '',
+              files: [file],
+              mediaCaptions: [file.caption ?? ''],
+            );
+          } catch (_) {
+            break;
+          }
+        }
+      }
+
+      onCancelReply();
+    } catch (e) {
+      _error = 'Failed to send media message';
+      notifyListeners();
+    } finally {
+      _isUploading = false;
+      notifyListeners();
     }
   }
 
-  // ---- Message Status ----------------------
-  MessageStatus getMessageStatus(MessageModel message) {
-    if (message.senderId != _currentUid) return MessageStatus.sent;
+  Future<void> _sendSingleBubble({
+    required String caption,
+    required List<UploadResultModel> files,
+    List<String>? mediaCaptions,
+  }) async {
+    if (_currentUid == null) return;
+    if (files.isEmpty) return;
+    if (files.any((f) => f.localPath == null)) return;
 
-    // Use the flag you already have
-    if (_isSending) return MessageStatus.sending;
-
-    if (_chat?.type == 'direct') {
-      final otherUid = _chat!.otherMemberUid(_currentUid!);
-      final otherLastRead = _chat!.lastReadAt[otherUid];
-
-      if (otherLastRead != null && !message.sentAt.isAfter(otherLastRead)) {
-        return MessageStatus.read;
-      }
-    } else if (_chat != null) {
-      final anyRead = _chat!.members.where((uid) => uid != _currentUid).any((
-        uid,
-      ) {
-        final lastRead = _chat!.lastReadAt[uid];
-        return lastRead != null && !message.sentAt.isAfter(lastRead);
-      });
-      if (anyRead) return MessageStatus.read;
+    final chat = ref.read(chatMetadataStreamProvider(chatId)).value;
+    if (chat == null) {
+      _error = 'Getting chat room ready';
+      notifyListeners();
+      return;
     }
 
-    return MessageStatus.sent;
+    UserModel? otherUser;
+    if (chat.type == 'direct') {
+      final otherUid = chat.otherMemberUid(_currentUid);
+      otherUser = ref.read(otherUserStreamProvider(otherUid)).value;
+    }
+
+    final captions =
+        mediaCaptions ?? files.map((f) => f.caption ?? '').toList();
+
+    try {
+      await _messageRepository.sendMediaMessageDirect(
+        chatRoomId: chatId,
+        senderName: resolveDisplayName(
+          chat: chat,
+          currentUid: _currentUid,
+          resolver: ref.read(chatRoomProfileResolverProvider(chatId)),
+        ),
+        memberUids: chat.members,
+        caption: caption,
+        uploadResults: files,
+        mediaCaptions: captions,
+        type: files.first.messageType,
+        otherUserFcmTokens: otherUser?.fcmTokens,
+        replyTo: _replyMessage != null
+            ? ReplyToModel(
+                messageId: _replyMessage!.id,
+                senderId: _replyMessage!.senderId,
+                senderName: _replyMessage!.senderName,
+                text: _replyMessage!.text,
+                sentAt: _replyMessage!.sentAt,
+                mediaUrl: _replyMessage!.mediaUrls?.firstOrNull,
+                mediaType: _replyMessage!.type.name,
+              )
+            : null,
+      );
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  // =================================
+  // VOICE RECORDING (state machine)
+  // =================================
+
+  /// Start recording audio from microphone.
+  /// Transitions: idle → recording.
+  Future<void> startRecording(
+    BuildContext context, {
+    required bool startsLocked,
+  }) async {
+    if (_recordingState != RecordingState.idle) return;
+
+    final status = await Permission.microphone.request();
+    if (status.isPermanentlyDenied || status.isRestricted) {
+      Snackify.show(
+        context: context,
+        type: SnackType.error,
+        title: Text('Enable microphone access on settings'),
+        action: TextButton(
+          onPressed: openAppSettings,
+          child: Text('Open Settings'),
+        ),
+      );
+      return;
+    }
+
+    // Generate temp file path
+    final tempDir = await Directory.systemTemp.createTemp('kou_audio_');
+    final supported = await _audioRecorder.isEncoderSupported(
+      AudioEncoder.opus,
+    );
+    final encoder = supported ? AudioEncoder.opus : AudioEncoder.aacLc;
+    final ext = supported ? 'opus' : 'm4a';
+    final tempPath =
+        '${tempDir.path}${DateTime.now().millisecondsSinceEpoch}.$ext';
+    _recordingPath = tempPath;  
+
+    try {
+      await _audioRecorder.start(
+        RecordConfig(
+          encoder: encoder,
+          bitRate: 32000,
+          sampleRate: 16000,
+          numChannels: 1,
+          autoGain: true,
+          noiseSuppress: true,
+        ),
+        path: tempPath,
+      );
+
+      _recordingState = startsLocked
+          ? RecordingState.locked
+          : RecordingState.recording;
+      _recordingDuration = 0;
+      _amplitudeSamples.clear();
+
+      // Duration timer
+      _recordingTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+        _recordingDuration++;
+        notifyListeners();
+      });
+
+      // Amplitude subscription
+      _amplitudeSub = _audioRecorder
+          .onAmplitudeChanged(const Duration(milliseconds: 100))
+          .listen((amp) {
+            const double minDb = -60.0;
+            const double maxDb = 0.0;
+
+            final normalized = ((amp.current - minDb) / (maxDb - minDb)).clamp(
+              0.0,
+              1.0,
+            );
+
+            _amplitudeSamples.add(normalized);
+            // Cap at 1 hour (36000 samples @ 10/sec)
+            if (_amplitudeSamples.length > 36000) {
+              _amplitudeSub?.cancel();
+            }
+            notifyListeners();
+          });
+    } catch (e) {
+      debugPrint('Error starting recording: $e');
+      _resetRecording();
+    }
+  }
+
+  /// Lock the recording (finger slid up). Continues recording.
+  /// Transitions: recording → locked.
+  void lockRecording() {
+    if (_recordingState != RecordingState.recording) return;
+    _recordingState = RecordingState.locked;
+    notifyListeners();
+  }
+
+  /// Cancel/discard recording. Silently deletes temp file.
+  /// Transitions: recording/locked → idle.
+  Future<void> cancelRecording() async {
+    if (_recordingState == RecordingState.idle) return;
+    if (_recordingState == RecordingState.reviewing ||
+        _recordingState == RecordingState.sending)
+      return;
+
+    await _audioRecorder.cancel();
+    _deleteTempFile();
+    _resetRecording();
+    notifyListeners();
+  }
+
+  /// Stop recording and enter review state.
+  /// Transitions: locked → reviewing.
+  Future<void> stopRecording() async {
+    if (_recordingState != RecordingState.locked) return;
+
+    try {
+      final path = await _audioRecorder.stop();
+      if (path != null) {
+        _recordingPath = path;
+      }
+
+      _recordingTimer?.cancel();
+      _amplitudeSub?.cancel();
+
+      _recordingState = RecordingState.reviewing;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error stopping recording: $e');
+      _resetRecording();
+    }
+  }
+
+  /// Pause recording and enter review state (tap path).
+  /// Transitions: locked → reviewing.
+  Future<void> pauseRecording() async {
+    if (_recordingState != RecordingState.locked) return;
+
+    try {
+      await _audioRecorder.stop();
+
+      _recordingTimer?.cancel();
+      _recordingTimer = null;
+      _amplitudeSub?.cancel();
+      _amplitudeSub = null;
+
+      _recordingState = RecordingState.reviewing;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error pausing recording: $e');
+      _resetRecording();
+    }
+  }
+
+  /// Transitions: locked/reviewing → sending → idle.
+  Future<void> sendRecordedAudio() async {
+    if (_recordingState != RecordingState.reviewing &&
+        _recordingState != RecordingState.locked)
+      return;
+    if (_recordingPath == null || _currentUid == null) return;
+
+    // If still recording (locked), stop the recorder first
+    if (_recordingState == RecordingState.locked) {
+      final path = await _audioRecorder.stop();
+      if (path != null) _recordingPath = path;
+      _recordingTimer?.cancel();
+      _recordingTimer = null;
+      _amplitudeSub?.cancel();
+      _amplitudeSub = null;
+    }
+
+    // Update the recording state to sent
+    _recordingState = RecordingState.sending;
+    _isSending = true;
+    notifyListeners();
+
+    // Stop any playback
+    AudioManager.instance.stop();
+
+    try {
+      final file = File(_recordingPath!);
+
+      // Upload to Cloudinary
+      final uploadResult = await _cloudMediaService.uploadFile(
+        file: file,
+        mediaType: MessageType.audio,
+      );
+
+      if (uploadResult == null) throw Exception('Audio upload failed');
+
+      // Get chat metadata
+      final chat = ref.read(chatMetadataStreamProvider(chatId)).value;
+      if (chat == null) throw Exception('Chat not ready');
+
+      // Enrich with local path for traceability
+      final enriched = uploadResult.copyWith(
+        localPath: _recordingPath,
+        mediaDuration: _recordingDuration,
+      );
+
+      // Determine other user for FCM if direct chat
+      UserModel? otherUser;
+      if (chat.type == 'direct') {
+        final otherUid = chat.otherMemberUid(_currentUid);
+        otherUser = ref.read(otherUserStreamProvider(otherUid)).value;
+      }
+
+      await _messageRepository.sendMediaMessageDirect(
+        chatRoomId: chatId,
+        senderName: resolveDisplayName(
+          chat: chat,
+          currentUid: _currentUid,
+          resolver: ref.read(chatRoomProfileResolverProvider(chatId)),
+        ),
+        memberUids: chat.members,
+        caption: 'Audio message',
+        uploadResults: [enriched],
+        type: MessageType.audio,
+        otherUserFcmTokens: otherUser?.fcmTokens,
+        replyTo: _replyMessage != null
+            ? ReplyToModel(
+                messageId: _replyMessage!.id,
+                senderId: _replyMessage!.senderId,
+                senderName: _replyMessage!.senderName,
+                text: _replyMessage!.text,
+                sentAt: _replyMessage!.sentAt,
+                mediaUrl: _replyMessage!.mediaUrls?.firstOrNull,
+                mediaType: _replyMessage!.type.name,
+              )
+            : null,
+      );
+
+      onCancelReply();
+      await file.delete();
+      _resetRecording();
+    } catch (e) {
+      debugPrint('Error sending recorded audio: $e');
+      _error = 'Failed to send audio. Tap to retry.';
+      _recordingState = RecordingState.reviewing;
+    } finally {
+      _isSending = false;
+      notifyListeners();
+    }
+  }
+
+  /// Discard recorded audio. Deletes temp file.
+  void discardRecording() {
+    if (_recordingState != RecordingState.reviewing &&
+        _recordingState != RecordingState.locked)
+      return;
+    _deleteTempFile();
+    _resetRecording();
+    notifyListeners();
+  }
+
+  // ── Helpers ──
+
+  void _resetRecording() {
+    try {
+      _audioRecorder.stop();
+    } catch (_) {}
+    _recordingState = RecordingState.idle;
+    _recordingPath = null;
+    _recordingDuration = 0;
+    _amplitudeSamples.clear();
+    _recordingTimer?.cancel();
+    _recordingTimer = null;
+    _amplitudeSub?.cancel();
+    _amplitudeSub = null;
+  }
+
+  void _deleteTempFile() {
+    if (_recordingPath != null) {
+      try {
+        File(_recordingPath!).delete();
+      } catch (_) {}
+      _recordingPath = null;
+    }
+  }
+
+  String getCloudinaryThumbnail(String videoUrl) {
+    if (videoUrl.isEmpty) return '';
+    return videoUrl.replaceAll(RegExp(r'\.[^.]+$'), '.jpg');
   }
 
   // --- CleanUp ----------------------------------
   @override
   void dispose() {
     ref.read(activeChatIdProvider.notifier).state = null;
-
-    _localSubscription?.cancel();
-    _syncSubscription?.cancel();
-    _chatSubscription?.cancel();
-    _otherUserSubscription?.cancel();
+    _firestoreSubscription?.cancel();
     clearTyping();
     _typingTimer?.cancel();
+    _typingDebounce?.cancel();
+    _recordingTimer?.cancel();
+    _amplitudeSub?.cancel();
+    _audioRecorder.dispose();
+    _deleteTempFile();
     super.dispose();
   }
 }
 
+// ==========================
+// PROVIDER
+// ==========================
 // Use .family because each chat room will have its own vm
-final chatRoomVM = ChangeNotifierProvider.autoDispose
+final chatRoomVMProvider = ChangeNotifierProvider.autoDispose
     .family<ChatRoomVM, String>(
       (ref, chatId) => ChatRoomVM(ref, chatId: chatId),
     );
 
-enum MessageStatus { sending, sent, read }
+final jumpToTargetProvider = StateProvider.autoDispose.family<int?, String>(
+  (ref, chatId) => null,
+);
+
+/// Increment this to force `chatMessagesStreamProvider` to re-create its
+/// Drift subscription (e.g. after the initial fetch in `init()` completes).
+/// Drift's `watch()` stream often misses the re-emission when a `batch()`
+/// upsert happens shortly after subscription — re-subscribing re-reads the
+/// now-populated cache immediately.
+final chatRoomRefreshProvider = StateProvider.autoDispose.family<int, String>(
+  (ref, chatId) => 0,
+);
+
+final chatMessagesStreamProvider = StreamProvider.autoDispose
+    .family<List<MessageModel>, String>((ref, chatId) {
+      final db = ref.watch(messageDatabaseProvider);
+      // Watch refresh trigger — re-creates stream when init fetches data.
+      ref.watch(chatRoomRefreshProvider(chatId));
+
+      final uid = ref.read(currentUidProvider);
+      final localStream = db.watchAllCachedMessages(chatId, uid!);
+
+      return localStream.map((localMsgs) {
+        if (kDebugMode) debugPrint('Drift messages in chat room: ${localMsgs.length}');
+        return localMsgs
+            .map(
+              (m) => MessageModel(
+                id: m.id,
+                senderId: m.senderId,
+                senderName: m.senderName,
+                text: m.textContent,
+                type: MessageType.values.firstWhere(
+                  (e) => e.name.toLowerCase() == m.type.toLowerCase(),
+                  orElse: () => MessageType.text,
+                ),
+                sentAt: DateTime.fromMillisecondsSinceEpoch(m.sentAt),
+                updatedAt: DateTime.fromMillisecondsSinceEpoch(m.updatedAt),
+                isDeleted: m.isDeleted,
+                deletedFor: m.deletedFor,
+
+                syncStatus: m.syncStatus,
+
+                // Decode array jika ada
+                mediaUrls: m.mediaUrls ?? [],
+                mediaCaptions: m.mediaCaptions,
+                fileSizeBytes: m.fileSizeBytes,
+                fileName: m.fileName,
+                mimeType: m.mimeType ?? '',
+                mediaDuration: m.mediaDuration,
+
+                // Mapping Reply
+                replyTo: m.replyToId != null
+                    ? ReplyToModel(
+                        messageId: m.replyToId!,
+                        senderId: m.replyToSenderId ?? '',
+                        senderName: m.replyToSenderName ?? '',
+                        text: m.replyToText ?? '',
+                        sentAt: m.replyToSentAt != null
+                            ? DateTime.fromMillisecondsSinceEpoch(
+                                m.replyToSentAt!,
+                              )
+                            : DateTime.fromMillisecondsSinceEpoch(m.sentAt),
+                        mediaType: m.replyToMediaType,
+                        mediaUrl: m.replyToMediaUrl,
+                      )
+                    : null,
+              ),
+            )
+            .toList();
+      });
+    });
+
+final chatMetadataStreamProvider = StreamProvider.autoDispose
+    .family<ChatModel?, String>((ref, chatId) {
+      final repo = ref.watch(chatRepositoryProvider);
+      return repo.watchChat(chatId);
+    });
+
+/// Debug-only: streams the raw Drift [Chat] row so the 4-field sync
+/// state can be rendered live in the chat room's debug overlay.
+/// Hidden behind [kDebugMode] in the view; this provider is always
+/// available but cheap to subscribe to.
+final chatRowDebugStreamProvider = StreamProvider.autoDispose
+    .family<Chat?, String>((ref, chatId) {
+      final db = ref.watch(messageDatabaseProvider);
+      return db.watchChatRow(chatId);
+    });
+
+final otherUserStreamProvider = StreamProvider.autoDispose
+    .family<UserModel?, String>((ref, otherUserId) {
+      final userService = ref.watch(userServiceProvider);
+      return userService.streamUser(otherUserId);
+    });
+
+final highlightMessageProvider = StateProvider.autoDispose
+    .family<String?, String>((ref, chatId) => null);

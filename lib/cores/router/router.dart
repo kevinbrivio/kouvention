@@ -8,20 +8,29 @@ import 'package:kouvention/features/auth/views/add_name_view.dart';
 import 'package:kouvention/features/auth/views/email_sign_in_view.dart';
 import 'package:kouvention/features/auth/views/login_view.dart';
 import 'package:kouvention/features/auth/views/sign_up_view.dart';
+import 'package:kouvention/features/chat/viewmodel/media/media_preview_viewmodel.dart';
 import 'package:kouvention/features/chat/views/chat_list_view.dart';
 import 'package:kouvention/features/chat/views/chat_profile_view.dart';
 import 'package:kouvention/features/chat/views/chat_room_view.dart';
 import 'package:kouvention/features/chat/views/group_setup_view.dart';
+import 'package:kouvention/features/chat/views/media_preview_view.dart';
 import 'package:kouvention/features/chat/views/new_chat_view.dart';
 import 'package:kouvention/features/chat/views/new_group_chat_view.dart';
 import 'package:kouvention/features/onboarding/views/onboarding_view.dart';
 import 'package:kouvention/features/privacy_policy/views/privacy_policy_view.dart';
+import 'package:kouvention/features/profile/views/appearence_settings_view.dart';
 import 'package:kouvention/features/profile/views/edit_name_view.dart';
 import 'package:kouvention/features/profile/views/edit_status_view..dart';
+import 'package:kouvention/features/profile/views/notification_settings_view.dart';
+import 'package:kouvention/features/profile/views/privacy_settings_view.dart';
 import 'package:kouvention/features/profile/views/profile_view.dart';
 import 'package:kouvention/features/splash/views/splash_view.dart';
+import 'package:kouvention/features/story/models/story_composer_args.dart';
+import 'package:kouvention/features/story/models/story_viewer_args.dart';
+import 'package:kouvention/features/story/views/story_composer_view.dart';
+import 'package:kouvention/features/story/views/story_feed_view.dart';
+import 'package:kouvention/features/story/views/story_viewer_view.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
-import 'package:path/path.dart';
 
 GoRouter? _router;
 GoRouter get router => _router!;
@@ -34,6 +43,9 @@ final GlobalKey<NavigatorState> _chatBranchKey = GlobalKey<NavigatorState>(
 );
 final GlobalKey<NavigatorState> _profileBranchKey = GlobalKey<NavigatorState>(
   debugLabel: 'profileBranch',
+);
+final GlobalKey<NavigatorState> _storyBranchKey = GlobalKey<NavigatorState>(
+  debugLabel: 'storyBranch',
 );
 
 setupRouter({
@@ -49,7 +61,6 @@ setupRouter({
     refreshListenable: routerGuard,
     observers: [routeObserver],
     redirect: (context, state) {
-      final isLoggedIn = authService.currentUser != null;
       final currentPath = state.matchedLocation;
       debugPrint('GUARD: path = $currentPath');
 
@@ -167,7 +178,18 @@ setupRouter({
               ),
             ],
           ),
-          // Tab 1: Profile
+          // Tab 1: Stories
+          StatefulShellBranch(
+            navigatorKey: _storyBranchKey,
+            routes: [
+              GoRoute(
+                path: RouterRoutes.storyFeed.path,
+                name: RouterRoutes.storyFeed.name,
+                builder: (_, _) => const StoryFeedView(),
+              ),
+            ],
+          ),
+          // Tab 2: Profile
           StatefulShellBranch(
             navigatorKey: _profileBranchKey,
             routes: [
@@ -183,12 +205,35 @@ setupRouter({
 
       // ── Protected routes (no navbar) ──────────────
       GoRoute(
+        path: RouterRoutes.storyViewer.path,
+        name: RouterRoutes.storyViewer.name,
+        builder: (_, state) =>
+            StoryViewerView(args: state.extra as StoryViewerArgs),
+      ),
+      GoRoute(
+        path: RouterRoutes.storyComposer.path,
+        name: RouterRoutes.storyComposer.name,
+        builder: (_, state) =>
+            StoryComposerView(args: state.extra as StoryComposerArgs),
+      ),
+      GoRoute(
         path: RouterRoutes.chatRoom.path,
         name: RouterRoutes.chatRoom.name,
         builder: (_, state) {
           final chatId = state.pathParameters['chatId']!;
           return ChatRoomView(chatId: chatId);
         },
+        routes: [
+          GoRoute(
+            path: 'media-preview',
+            name: RouterRoutes.mediaPreview.name,
+            builder: (context, state) {
+              final chatId = state.pathParameters['chatId']!;
+              final args = state.extra as MediaPreviewArgs;
+              return MediaPreviewView(chatId: chatId, args: args);
+            },
+          ),
+        ],
       ),
       GoRoute(
         path: RouterRoutes.newChat.path,
@@ -224,6 +269,21 @@ setupRouter({
         name: RouterRoutes.editStatus.name,
         builder: (_, state) =>
             EditStatusView(currentStatus: state.extra as String?),
+      ),
+      GoRoute(
+        path: RouterRoutes.privacySettings.path,
+        name: RouterRoutes.privacySettings.name,
+        builder: (_, _) => const PrivacySettingsView(),
+      ),
+      GoRoute(
+        path: RouterRoutes.notificationSettings.path,
+        name: RouterRoutes.notificationSettings.name,
+        builder: (_, _) => const NotificationSettingsView(),
+      ),
+      GoRoute(
+        path: RouterRoutes.appearanceSettings.path,
+        name: RouterRoutes.appearanceSettings.name,
+        builder: (_, _) => const AppearanceSettingsView(),
       ),
     ],
   );

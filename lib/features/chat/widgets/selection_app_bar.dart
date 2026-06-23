@@ -1,59 +1,67 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:kouvention/cores/constants/colors.dart';
-import 'package:kouvention/cores/constants/text_theme.dart';
-import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_selection_viewmodel.dart';
 
 class SelectionAppBar extends ConsumerWidget implements PreferredSizeWidget {
-  final ChatRoomVM chatVM; // used for get selected message
-  SelectionAppBar({super.key, required this.chatVM});
+  final String chatId;
+  final String currentUid;
+  const SelectionAppBar({
+    super.key,
+    required this.chatId,
+    required this.currentUid,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final vm = ref.watch(chatSelectionVM);
+    final vm = ref.watch(chatSelectionVM(chatId));
 
     return AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       elevation: 0.5,
       scrolledUnderElevation: 0,
       leading: IconButton(
-        icon: Icon(Icons.arrow_back, color: AppColors.primary),
+        icon: Icon(
+          Icons.arrow_back,
+          color: Theme.of(context).colorScheme.primary,
+        ),
         onPressed: vm.clearSelection,
       ),
       title: Text(
         '${vm.selectedCount}',
-        style: textTheme.subDescription.copyWith(color: AppColors.primary),
+        style: context.text.titleMedium.copyWith(
+          color: Theme.of(context).colorScheme.primary,
+        ),
       ),
       actions: [
         IconButton(
-          icon: Icon(Icons.copy, color: AppColors.primary),
-          onPressed: () => vm.copyToClipboard(chatVM),
+          icon: Icon(Icons.copy, color: Theme.of(context).colorScheme.primary),
+          onPressed: vm.copyToClipboard,
         ),
         IconButton(
-          icon: Icon(Icons.delete_outline, color: AppColors.primary),
+          icon: Icon(
+            Icons.delete_outline,
+            color: Theme.of(context).colorScheme.primary,
+          ),
           onPressed: () {
-            final selectedMessages = vm.getSelectedMessages(chatVM);
+            final selectedMessages = vm.getSelectedMessages();
             // filter for me
-            debugPrint('---- current uid: ${chatVM.currentUid}');
             final allMine = selectedMessages.every(
-              (m) => m.senderId == chatVM.currentUid,
+              (m) => m.senderId == currentUid,
             );
             final anyAlreadyDeleted = selectedMessages.any((m) => m.isDeleted);
 
             showDialog(
               context: context,
               builder: (dialogCtx) => AlertDialog(
-                backgroundColor: AppColors.grey,
+                backgroundColor: Theme.of(context).colorScheme.surface,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16.r),
+                  borderRadius: BorderRadius.circular(AppRadius.lg.r),
                 ),
                 title: Text(
                   'Delete ${vm.selectedCount} message${vm.selectedCount > 1 ? 's' : ''}?',
-                  style: textTheme.subDescription2.copyWith(
-                    color: AppColors.black,
-                  ),
+                  style: context.text.bodyLarge,
                 ),
                 content: Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
@@ -66,34 +74,28 @@ class SelectionAppBar extends ConsumerWidget implements PreferredSizeWidget {
                       },
                       child: Text(
                         'Cancel',
-                        style: textTheme.subDescription3.copyWith(
-                          color: AppColors.primary2,
-                        ),
+                        style: context.text.bodyMedium,
                       ),
                     ),
                     TextButton(
                       onPressed: () {
                         Navigator.of(context).pop();
-                        vm.deleteForMe(chatVM);
+                        vm.deleteForMe();
                       },
                       child: Text(
                         'Delete for me',
-                        style: textTheme.subDescription3.copyWith(
-                          color: AppColors.primary2,
-                        ),
+                        style: context.text.bodyMedium,
                       ),
                     ),
                     if (allMine && !anyAlreadyDeleted)
                       TextButton(
                         onPressed: () {
                           Navigator.of(context).pop();
-                          vm.deleteForEveryone(chatVM);
+                          vm.deleteForEveryone();
                         },
                         child: Text(
                           'Delete for everyone',
-                          style: textTheme.subDescription3.copyWith(
-                            color: AppColors.primary2,
-                          ),
+                          style: context.text.bodyMedium,
                         ),
                       ),
                   ],

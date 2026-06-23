@@ -10,16 +10,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:kouvention/cores/configs/env.dart';
 import 'package:kouvention/cores/configs/flavor_config.dart';
+import 'package:kouvention/cores/constants/custom_theme.dart';
 import 'package:kouvention/cores/router/auth_notifier.dart';
 import 'package:kouvention/cores/router/prefs_guard.dart';
 import 'package:kouvention/cores/router/router.dart';
 import 'package:kouvention/cores/router/router_guard.dart';
+import 'package:kouvention/cores/services/dio_handler.dart';
 import 'package:kouvention/cores/widgets/flavor_banner.dart';
+import 'package:kouvention/cores/widgets/theme_iris_overlay.dart';
+import 'package:kouvention/cores/viewmodels/theme_iris_controller.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/notification/services/notification_handler.dart';
 import 'package:kouvention/features/shared/services/prefs_service.dart';
-import 'package:kouvention/features/shared/services/security_service.dart';
+import 'package:kouvention/features/shared/viewmodel/connectivity_viewmodel.dart';
 import 'package:kouvention/features/shared/viewmodel/security_notifier.dart';
+import 'package:kouvention/features/shared/viewmodel/theme_mode_provider.dart';
 import 'package:kouvention/features/shared/views/device_blocked_view.dart';
 import 'package:kouvention/features/user/viewmodel/presence_notifier.dart';
 import 'package:oktoast/oktoast.dart';
@@ -48,9 +53,8 @@ void main() async {
       // FLAVOR SETUP
       const flavor = String.fromEnvironment('ENV');
       setupConfig(flavor);
-      // Register Jailbreak Detector
-      await SecurityService.initialize(isProd: flavor != 'staging');
-      SecurityNotifier.instance.attachListeners();
+      // Check for rooted / jailbroken device
+      await SecurityNotifier.instance.checkDeviceSecurity();
 
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
@@ -65,7 +69,14 @@ void main() async {
       );
 
       // Background handler for notification
-      FirebaseMessaging.onBackgroundMessage(firebaseBackgroundHandler);
+      try {
+        FirebaseMessaging.onBackgroundMessage(firebaseBackgroundHandler);
+        debugPrint('[main] firebaseBackgroundHandler registered');
+      } catch (e, s) {
+        debugPrint(
+          '[main] firebaseBackgroundHandler registration FAILED: $e\n$s',
+        );
+      }
 
       // Pass all uncuaught errors from Flutter to Crashlytics
       FlutterError.onError =
@@ -101,6 +112,9 @@ void main() async {
         authService: authService,
         routerGuard: routerGuard,
       );
+
+      // Register DIO Handler
+      DioHandler.setup();
 
       runApp(
         ProviderScope(
@@ -142,10 +156,16 @@ class _KouventionAppState extends ConsumerState<KouventionApp>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    ref.read(securityNotifierProvider).attachListeners();
+    debugPrint('[App] initState — reading providers...');
     ref.read(
       presenceNotifierProvider,
     ); // listen to presence notifier to check user presence throughout the use
+    try {
+      ref.read(notificationHandlerProvider);
+      debugPrint('[App] notificationHandlerProvider read OK');
+    } catch (e, s) {
+      debugPrint('[App] notificationHandlerProvider read FAILED: $e\n$s');
+    }
   }
 
   @override
@@ -163,7 +183,8 @@ class _KouventionAppState extends ConsumerState<KouventionApp>
     );
 
     final security = ref.watch(securityNotifierProvider);
-    
+    ref.listen(networkAutoSyncProvider, (_, __) {});
+
     if (security.isCompromised) {
       return MaterialApp(
         home: DeviceBlockedView(
@@ -174,14 +195,26 @@ class _KouventionAppState extends ConsumerState<KouventionApp>
     }
     return OKToast(
       child: MaterialApp.router(
-        builder: (_, child) => MediaQuery(
-          data: MediaQuery.of(context).copyWith(boldText: true),
-          child: FlavorBanner(child: child!),
-        ),
+        builder: (context, child) {
+          final snapshot = ref.watch(themeIrisControllerProvider);
+          return ThemeIrisOverlay(
+            snapshotImage: snapshot,
+            onComplete: () =>
+                ref.read(themeIrisControllerProvider.notifier).clear(),
+            child: RepaintBoundary(
+              key: ref.read(themeSnapshotKeyProvider),
+              child: MediaQuery(
+                data: MediaQuery.of(context).copyWith(boldText: true),
+                child: FlavorBanner(child: child!),
+              ),
+            ),
+          );
+        },
         title: 'Kouvention',
         debugShowCheckedModeBanner: FlavorConfig.showBanner(),
-        theme: ThemeData(primaryColor: FlavorConfig.instance!.color),
-        // theme: ,
+        theme: AppTheme.light,
+        darkTheme: AppTheme.dark,
+        themeMode: ref.watch(themeModeProvider),
         routerConfig: router,
       ),
     );

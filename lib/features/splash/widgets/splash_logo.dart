@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:kouvention/cores/constants/colors.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/constants/image_paths.dart';
-import 'package:kouvention/cores/constants/text_theme.dart';
 
 class SplashLogo extends StatelessWidget {
   const SplashLogo({super.key});
@@ -18,25 +18,37 @@ class SplashLogo extends StatelessWidget {
           height: 320.h,
           fit: BoxFit.cover,
         ),
-      ),
-
+      ).animate()
+        .fadeIn(duration: 400.ms)
+        .scale(duration: 400.ms)
+        .then(delay: 200.ms),
       Text.rich(
         TextSpan(
-          text: 'Kouvent',
-          style: textTheme.headline1,
+          text: 'Kouvént',
+          style: context.text.headlineLarge.copyWith(
+            color: AppColorTokens.info,
+          ),
           children: [
             TextSpan(
               text: 'ion',
-              style: textTheme.headline1.copyWith(
-                fontWeight: FontWeight.w300,
-                color: AppColors.white.withAlpha(200),
+              style: context.text.headlineLarge.copyWith(
+                color: AppColorTokens.info,
               ),
             ),
           ],
         ),
-      ),
+      ).animate()
+        .fadeIn(duration: 600.ms)
+        .scale(duration: 600.ms)
+        .then(delay: 200.ms),
 
-      Text('Connect instantly, anywhere.', style: textTheme.body2),
+      Text(
+        'Connect instantly, anywhere.',
+        style: context.text.bodyMedium.copyWith(color: AppColorTokens.info),
+      ).animate()
+        .fadeIn(duration: 800.ms)
+        .scale(duration: 800.ms)
+        .then(delay: 200.ms),
     ],
   );
 }

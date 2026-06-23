@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:kouvention/cores/constants/colors.dart';
-import 'package:kouvention/cores/constants/text_theme.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
+import 'package:kouvention/features/chat/utils/display_name_resolver.dart';
+import 'package:kouvention/features/chat/viewmodel/chat_list_profile_provider.dart';
+import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
 
-class ContactResultTile extends StatelessWidget {
+class ContactResultTile extends ConsumerWidget {
   final ChatModel chat;
   final String currentUid;
   final String query;
@@ -19,26 +22,44 @@ class ContactResultTile extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final name = chat.displayName(currentUid);
-    final photoUrl = chat.displayPhotoUrl(currentUid);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final resolver = ref.watch(chatListProfileResolverProvider);
+    final name = resolveDisplayName(
+      chat: chat,
+      currentUid: currentUid,
+      resolver: resolver,
+    );
+    final photoUrl = resolveDisplayPhotoUrl(
+      chat: chat,
+      currentUid: currentUid,
+      resolver: resolver,
+    );
+
+    bool showPhoto;
+    if (chat.isDirect && photoUrl != null) {
+      final otherUid = chat.otherMemberUid(currentUid);
+      final otherUser = ref.watch(otherUserStreamProvider(otherUid)).value;
+      showPhoto = otherUser?.privacy.showProfilePhoto ?? true;
+    } else {
+      showPhoto = photoUrl != null;
+    }
 
     return ListTile(
       contentPadding: EdgeInsetsGeometry.symmetric(
-        horizontal: 16.w,
+        horizontal: AppSpacing.md.w,
         vertical: 6.h,
       ),
       leading: CircleAvatar(
-        radius: 24.r,
-        backgroundColor: photoUrl == null
-            ? AppColors.senderNameColor(chat.id).withValues(alpha: 0.3)
-            : null,
-        backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
-        child: photoUrl == null
+        radius: AppRadius.xl.r,
+        backgroundColor: showPhoto
+            ? null
+            : AppColorTokens.senderNameColor(chat.id).withValues(alpha: 0.3),
+        backgroundImage: showPhoto ? NetworkImage(photoUrl!) : null,
+        child: !showPhoto
             ? Text(
                 name[0].toUpperCase(),
-                style: textTheme.senderName.copyWith(
-                  color: AppColors.senderNameColor(chat.id),
+                style: context.text.senderName.copyWith(
+                  color: AppColorTokens.senderNameColor(chat.id),
                 ),
               )
             : null,
@@ -61,7 +82,7 @@ class ContactResultTile extends StatelessWidget {
 
     return RichText(
       text: TextSpan(
-        style: textTheme.contactName.copyWith(color: AppColors.black),
+        style: context.text.contactName,
         children: [
           TextSpan(text: before),
           TextSpan(

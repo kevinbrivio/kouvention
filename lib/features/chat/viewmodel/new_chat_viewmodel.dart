@@ -6,6 +6,7 @@ import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/services/chat_service.dart';
+import 'package:kouvention/features/chat/services/databases/message_database.dart';
 import 'package:kouvention/features/chat/viewmodel/recent_users_provider.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
 import 'package:kouvention/features/user/services/user_service.dart';
@@ -20,12 +21,12 @@ class NewChatVM extends BaseNotifier {
   final String? _currentUid;
 
   // Search
-  List<UserModel> _searchResults = [];
+  StreamSubscription<List<UserSearchModel>>? _usersSubs;
+  bool _isLoadingUsers = true;
+  List<UserSearchModel> _allUsers = [];
+  List<UserSearchModel> _searchResults = [];
   Timer? _debounceTimer;
   bool _isSearching = false;
-
-  // Recent List
-  List<UserModel> _recentUsers = [];
 
   // Group chat selection
   final List<UserModel> _selectedUsers = [];
@@ -40,8 +41,8 @@ class NewChatVM extends BaseNotifier {
       _currentUid = ref.read(authServiceProvider).currentUser?.uid;
 
   // ── Getters ─────────────────────────────────────────
-
-  List<UserModel> get searchResults => _searchResults;
+  List<UserSearchModel> get allUsers => _allUsers;
+  List<UserSearchModel> get searchResults => _searchResults;
   List<UserModel> get recentUsers =>
       ref.watch(recentUsersProvider).valueOrNull ?? [];
   List<UserModel> get selectedUsers => _selectedUsers;
@@ -50,9 +51,24 @@ class NewChatVM extends BaseNotifier {
   String? get error => _error;
   String? get currentUid => _currentUid;
   bool get hasSelection => _selectedUsers.isNotEmpty;
+  bool get isLoadingUsers => _isLoadingUsers;
 
   @override
-  FutureOr<void> init() async {}
+  FutureOr<void> init() async {
+    _usersSubs = _userService.streamAllUser().listen(
+      (users) {
+        _allUsers = users.where((u) => u.uid != _currentUid).toList();
+        _isLoadingUsers = false;
+        notifyListeners();
+      },
+      onError: (e) {
+        _allUsers = [];
+        _isLoadingUsers = false;
+        debugPrint('streamAllUser error: $e');
+        notifyListeners();
+      },
+    );
+  }
 
   // ── Search ─────────────────────────────────────────
   /// Called on every keystroke in the search field.
@@ -67,32 +83,42 @@ class NewChatVM extends BaseNotifier {
     if (query.trim().isEmpty) {
       _searchResults = [];
       _isSearching = false;
+      _error = null; // clear any stale error from a previous failed search
       notifyListeners();
       return;
     }
 
     _isSearching = true;
+    _error = null; // clear previous error so the UI doesn't show it
+    // while the new search is in flight
     notifyListeners();
-
     _debounceTimer = Timer(const Duration(milliseconds: 500), () {
       _performSearch(query);
     });
   }
 
   Future<void> _performSearch(String query) async {
-    if (_currentUid == null) return;
-
-    try {
-      _searchResults = await _userService.searchUsers(
-        query: query,
-        currentUid: _currentUid,
-      );
-      _error = null;
-    } catch (e) {
-      _error = 'Search failed';
-      debugPrint('Search error: $e');
+    final q = query.trim().toLowerCase();
+  
+    // 🔍 Cek 1: Apakah _allUsers sudah terisi?
+    print('=== TOTAL allUsers: ${_allUsers.length}');
+  
+    // 🔍 Cek 2: Lihat isi _allUsers
+    for (final u in _allUsers) {
+      print('=== USER: ${u.displayName} | ${u.email}');
     }
-
+  
+    _searchResults = _allUsers
+        .where((u) => u.uid != _currentUid)
+        .where(
+          (u) =>
+              u.displayName.toLowerCase().contains(q) ||
+              u.email.toLowerCase().contains(q),
+        )
+        .toList();
+  
+    print('=== QUERY: $q');
+    print('=== Hasil: $_searchResults');
     _isSearching = false;
     notifyListeners();
   }
@@ -131,13 +157,29 @@ class NewChatVM extends BaseNotifier {
     if (_currentUid == null) return null;
 
     try {
-      final currentUser = await _userService.getUser(_currentUid);
-      if (currentUser == null) return null;
+      // Try Drift cache first; fall back to Firestore if missing (cold start).
+      final db = ref.read(messageDatabaseProvider);
+      final cached = await db.fetchProfileByIds({_currentUid});
+      final profile = cached.firstOrNull;
+
+      String? myDisplayName;
+      String? myPhotoUrl;
+
+      if (profile != null) {
+        myDisplayName = profile.displayName;
+        myPhotoUrl = profile.photoUrl;
+      } else {
+        final currentUser = await _userService.getUser(_currentUid);
+        myDisplayName = currentUser?.displayName;
+        myPhotoUrl = currentUser?.photoUrl;
+      }
+
+      if (myDisplayName == null) return null;
 
       final memberInfo = {
         _currentUid: MemberInfo(
-          displayName: currentUser.displayName,
-          photoUrl: currentUser.photoUrl,
+          displayName: myDisplayName,
+          photoUrl: myPhotoUrl,
         ),
         otherUser.uid: MemberInfo(
           displayName: otherUser.displayName,
@@ -169,15 +211,31 @@ class NewChatVM extends BaseNotifier {
     if (_currentUid == null || _selectedUsers.isEmpty) return null;
 
     try {
-      final currentUser = await _userService.getUser(_currentUid);
-      if (currentUser == null) return null;
+      // Try Drift cache first; fall back to Firestore if missing (cold start).
+      final db = ref.read(messageDatabaseProvider);
+      final cached = await db.fetchProfileByIds({_currentUid});
+      final profile = cached.firstOrNull;
+
+      String? myDisplayName;
+      String? myPhotoUrl;
+
+      if (profile != null) {
+        myDisplayName = profile.displayName;
+        myPhotoUrl = profile.photoUrl;
+      } else {
+        final currentUser = await _userService.getUser(_currentUid);
+        myDisplayName = currentUser?.displayName;
+        myPhotoUrl = currentUser?.photoUrl;
+      }
+
+      if (myDisplayName == null) return null;
 
       final allMembers = [_currentUid, ..._selectedUsers.map((u) => u.uid)];
 
       final memberInfo = <String, MemberInfo>{
         _currentUid: MemberInfo(
-          displayName: currentUser.displayName,
-          photoUrl: currentUser.photoUrl,
+          displayName: myDisplayName,
+          photoUrl: myPhotoUrl,
         ),
         for (final user in _selectedUsers)
           user.uid: MemberInfo(
@@ -188,7 +246,7 @@ class NewChatVM extends BaseNotifier {
 
       final chatId = await _chatService.createGroupChat(
         createdByUid: _currentUid,
-        createdByName: currentUser.displayName,
+        createdByName: myDisplayName,
         members: allMembers,
         memberInfo: memberInfo,
         groupName: groupName,
@@ -208,6 +266,7 @@ class NewChatVM extends BaseNotifier {
   @override
   void dispose() {
     _debounceTimer?.cancel();
+    _usersSubs?.cancel();
     super.dispose();
   }
 }

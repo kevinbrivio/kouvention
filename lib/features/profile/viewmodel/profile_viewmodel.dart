@@ -8,13 +8,16 @@ import 'package:go_router/go_router.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
-import 'package:kouvention/cores/constants/colors.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
+import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_list_viewmodel.dart';
-import 'package:kouvention/features/search/services/sync_service.dart';
-import 'package:kouvention/features/shared/services/fcm_service.dart';
-import 'package:kouvention/features/shared/services/storage_service.dart';
+import 'package:kouvention/features/chat/viewmodel/media/media_picker_helper.dart';
+import 'package:kouvention/features/shared/services/connectivity_service.dart';
+
+import 'package:kouvention/features/shared/services/sync_service.dart';
+import 'package:kouvention/features/shared/viewmodel/connectivity_viewmodel.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
 import 'package:kouvention/features/user/services/user_service.dart';
 import 'package:kouvention/features/user/viewmodel/presence_notifier.dart';
@@ -27,7 +30,8 @@ final profileVM = ChangeNotifierProvider.autoDispose<ProfileVM>(
 class ProfileVM extends BaseNotifier {
   final UserService _userService;
   final AuthService _authService;
-  final StorageService _storageService;
+  final MediaPickerHelper _mediaPickerHelper;
+  final ConnectivityService _connectivityService;
 
   UserModel? _user;
   StreamSubscription? _userSubscription;
@@ -35,13 +39,16 @@ class ProfileVM extends BaseNotifier {
   ProfileVM(super.ref)
     : _userService = ref.read(userServiceProvider),
       _authService = ref.read(authServiceProvider),
-      _storageService = ref.read(storageServiceProvider);
+      _mediaPickerHelper = ref.read(mediaPickerHelperProvider),
+      _connectivityService = ref.read(connectivityServiceProvider);
 
   bool _isButtonLoading = false;
+  int _photoVersion = 0;
 
   // Getters
   UserModel? get user => _user;
   bool get isButtonLoading => _isButtonLoading;
+  int get photoVersion => _photoVersion;
 
   String get authProviderLabel {
     final providerData = _authService.currentUser?.providerData ?? [];
@@ -68,15 +75,19 @@ class ProfileVM extends BaseNotifier {
         .streamUser(uid)
         .listen(
           (userModel) {
+            final oldUser = _user;
             _user = userModel;
+            if (oldUser != null && userModel != null) {
+              if (userModel.photoUrl != oldUser.photoUrl) {
+                _photoVersion++;
+              }
+            }
             notifyListeners();
           },
           onError: (e) {
             debugPrint("Profile stream error: $e");
           },
         );
-
-    print(_user);
   }
 
   @override
@@ -90,11 +101,6 @@ class ProfileVM extends BaseNotifier {
       isLoading = true;
       _isButtonLoading = true;
 
-      // Remove FCM Token
-      final fcmService = ref.read(fcmServiceProvider);
-      await fcmService.removeToken();
-
-      // Update user offline status
       final presence = ref.read(presenceNotifierProvider);
       await presence.signOutWithPresence(_authService);
 
@@ -134,7 +140,7 @@ class ProfileVM extends BaseNotifier {
         context: context,
         useRootNavigator: true,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12.r),
+          borderRadius: BorderRadius.circular(AppRadius.md.r),
         ),
         builder: (sheetContext) => SafeArea(
           child: Column(
@@ -173,8 +179,8 @@ class ProfileVM extends BaseNotifier {
         uiSettings: [
           AndroidUiSettings(
             toolbarTitle: 'Crop Photo',
-            toolbarColor: AppColors.primary,
-            toolbarWidgetColor: AppColors.white,
+            toolbarColor: AppColorTokens.primary,
+            toolbarWidgetColor: Colors.white,
             lockAspectRatio: true,
           ),
           IOSUiSettings(
@@ -189,15 +195,28 @@ class ProfileVM extends BaseNotifier {
     final uid = _authService.currentUser?.uid;
     if (uid == null) return;
 
+    final connected = await _connectivityService.isConnected;
+    if (!connected) {
+      showToast(
+        'No internet connection. Please check your network and try again.',
+      );
+      return;
+    }
+
     isLoading = true;
 
     try {
-      final downloadUrl = await _storageService.uploadFile(
-        path: 'users/$uid/profile.jpg',
-        file: file,
+      final results = await _mediaPickerHelper.uploadFiles(
+        files: [file],
+        type: MessageType.image,
       );
 
-      await _userService.updateProfile(uid: uid, photoURL: downloadUrl);
+      if (results.isEmpty) {
+        showToast('Failed to upload photo. Please try again.');
+        return;
+      }
+
+      await _userService.updateProfile(uid: uid, photoURL: results.first.url);
     } catch (e) {
       debugPrint('Profile photo upload failed: $e');
       showToast('Failed to update photo. Please try again.');

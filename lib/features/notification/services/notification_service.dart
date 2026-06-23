@@ -10,6 +10,8 @@ final notificationServiceProvider = Provider<NotificationService>(
   (ref) => NotificationService(),
 );
 
+enum FCMResult { success, unregistered, failed }
+
 class NotificationService {
   static const _projectId = 'kouvention';
 
@@ -18,6 +20,7 @@ class NotificationService {
   Future<http.Client> _getClient() async {
     if (_authenticationClient != null) return _authenticationClient!;
 
+    debugPrint('[NotificationService] Authenticating with Firebase Admin SDK...');
     final jsonString = await rootBundle.loadString('service-account.json');
     final accountCredentials = ServiceAccountCredentials.fromJson(
       jsonDecode(jsonString),
@@ -26,37 +29,48 @@ class NotificationService {
     _authenticationClient = await clientViaServiceAccount(accountCredentials, [
       'https://www.googleapis.com/auth/firebase.messaging',
     ]);
+    debugPrint('[NotificationService] Admin SDK authenticated successfully');
 
     return _authenticationClient!;
   }
 
-  Future<void> sendNotification({
+  Future<FCMResult> sendNotification({
     required String targetToken,
     required String title,
     required String body,
     Map<String, String>? data,
   }) async {
+    debugPrint('[NotificationService] Sending FCM to ${targetToken.substring(0, 20)}...');
     try {
       final response = await _trySend(targetToken, title, body, data);
 
-      if (response.statusCode != 200) {
-        debugPrint('FCM send failed: ${response.statusCode} ${response.body}');
+      if (response.statusCode == 200) {
+        debugPrint('[NotificationService] FCM sent successfully');
+        return FCMResult.success;
+      } 
+      if (response.statusCode == 404) {
+          final json = jsonDecode(response.body);
+          final errorCode = json['error']?['details']?[0]?['errorCode'];
+          if (errorCode == 'UNREGISTERED') {
+            debugPrint('[NotificationService] Token is dead: $targetToken');
+            return FCMResult.unregistered;
+          }
       }
+      
+      debugPrint('[NotificationService] FCM send failed: ${response.statusCode} ${response.body}');
+      return FCMResult.failed;
     } on http.ClientException {
       // Stale connection — reset client and retry once
-      debugPrint('FCM connection reset, retrying 3s...');
+      debugPrint('[NotificationService] Connection reset, retrying in 3s...');
       _authenticationClient = null;
 
       await Future.delayed(const Duration(seconds: 3));
 
-      try {
-        final response = await _trySend(targetToken, title, body, data);
-        debugPrint('FCM retry response: ${response.statusCode}');
-      } catch (e) {
-        debugPrint('FCM retry also failed: $e');
-      }
-    } catch (e) {
-      debugPrint('FCM send error: $e');
+      final response = await _trySend(targetToken, title, body, data);
+      debugPrint('[NotificationService] Retry response: ${response.statusCode}');
+      return response.statusCode == 200 
+            ? FCMResult.success 
+            : FCMResult.failed;
     }
   }
 
@@ -77,7 +91,22 @@ class NotificationService {
         'android': {
           'priority': 'high',
         },
-        if (data != null) 'data': data,
+        'apns': {
+          'headers': {
+            'apns-priority': '10',
+            'apns-push-type': 'alert',
+          },
+          'payload': {
+            'aps': {
+              'content-available': 1,
+            },
+          },
+        },
+        'data': {
+          'title': title,
+          'body': body,
+          if (data != null) ...data,
+        },
       },
     };
 
@@ -95,6 +124,7 @@ class NotificationService {
     required String senderId,
     required String senderName,
     required String? senderImageUrl,
+    bool isGroup = false,
   }) async {
     await sendNotification(
       targetToken: targetToken,
@@ -108,6 +138,8 @@ class NotificationService {
         'senderImageUrl': senderImageUrl ?? '',
         'title': senderName,
         'body': messageText,
+        'sentBy': 'client',
+        'chatType': isGroup ? 'group' : 'direct',
       },
     );
   }

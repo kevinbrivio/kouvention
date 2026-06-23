@@ -46,6 +46,42 @@ class ChatModel {
     this.lastReadAt = const {},
   });
 
+  ChatModel copyWith({
+    String? id,
+    String? type,
+    List<String>? members,
+    Map<String, MemberInfo>? memberInfo,
+    String? Function()? memberHash,
+    String? Function()? groupName,
+    String? Function()? groupPhotoUrl,
+    Map<String, String>? Function()? createdBy,
+    LastMessage? Function()? lastMessage,
+    Map<String, int>? unreadCount,
+    List<String>? typingUsers,
+    List<String>? pinnedBy,
+    Map<String, DateTime>? lastReadAt,
+    DateTime? createdAt,
+    DateTime? Function()? updatedAt,
+    Map<String, dynamic>? Function()? deletedBy,
+  }) => ChatModel(
+    id: id ?? this.id,
+    type: type ?? this.type,
+    members: members ?? this.members,
+    memberInfo: memberInfo ?? this.memberInfo,
+    memberHash: memberHash != null ? memberHash() : this.memberHash,
+    groupName: groupName != null ? groupName() : this.groupName,
+    groupPhotoUrl: groupPhotoUrl != null ? groupPhotoUrl() : this.groupPhotoUrl,
+    createdBy: createdBy != null ? createdBy() : this.createdBy,
+    lastMessage: lastMessage != null ? lastMessage() : this.lastMessage,
+    unreadCount: unreadCount ?? this.unreadCount,
+    typingUsers: typingUsers ?? this.typingUsers,
+    pinnedBy: pinnedBy ?? this.pinnedBy,
+    lastReadAt: lastReadAt ?? this.lastReadAt,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt != null ? updatedAt() : this.updatedAt,
+    deletedBy: deletedBy != null ? deletedBy() : this.deletedBy,
+  );
+
   bool get isDirect => type == 'direct';
   bool isPinnedBy(String uid) => pinnedBy.contains(uid);
 
@@ -53,7 +89,14 @@ class ChatModel {
     if (deletedBy == null || !deletedBy!.containsKey(uid)) return false;
     final rawVal = deletedBy![uid];
     if (rawVal == null) return true;
-    final deletedAt = (rawVal as Timestamp?)?.toDate();
+    DateTime? deletedAt;
+    if (rawVal is Timestamp) {
+      deletedAt = rawVal.toDate();
+    } else if (rawVal is DateTime) {
+      deletedAt = rawVal;
+    } else if (rawVal is int) {
+      deletedAt = DateTime.fromMillisecondsSinceEpoch(rawVal);
+    }
     if (deletedAt == null) return false;
     final lastSentAt = lastMessage?.sentAt;
     if (lastSentAt != null && lastSentAt.isAfter(deletedAt)) return false;
@@ -62,10 +105,11 @@ class ChatModel {
   }
 
   /// Returns the other user's UID in a direct chat.
-  String otherMemberUid(String currentUid) {
-    assert(isDirect, 'otherMemberUid() is only valid for direct chats');
-    return members.firstWhere((uid) => uid != currentUid);
-  }
+  String otherMemberUid(String currentUid) =>  members.firstWhere(
+    (uid) => uid != currentUid,
+    orElse: () => '',
+  );
+
 
   /// Returns the display name for this chat.
   String displayName(String currentUid) {
@@ -127,11 +171,11 @@ class ChatModel {
       memberHash: data['memberHash'] as String?,
       groupName: data['groupName'] as String?,
       groupPhotoUrl: data['groupPhotoUrl'] as String?,
-      createdBy: (data['createdBy'] as Map<String, dynamic>?)?.map(
-        (key, value) => MapEntry(key, value as String),
-      ),
+      createdBy: data['createdBy'] != null 
+          ? Map<String, String>.from(data['createdBy']) 
+          : null,
       lastMessage: data['lastMessage'] != null
-          ? LastMessage.fromMap(data['lastMessage'] as Map<String, dynamic>)
+          ? LastMessage.fromFirestore(data['lastMessage'] as Map<String, dynamic>)
           : null,
       unreadCount: parsedUnread,
       typingUsers: List<String>.from(data['typingUsers'] ?? []),
@@ -232,17 +276,34 @@ class LastMessage {
     required this.sentAt,
     this.type = 'text',
   });
+  
+  factory LastMessage.fromJson(Map<String, dynamic> data) => LastMessage(
+    text: data['text'] as String? ?? '',
+    sentBy: data['sentBy'] as String? ?? '',
+    sentAt: data['sentAt'] != null 
+        ? DateTime.fromMillisecondsSinceEpoch(data['sentAt'] as int)
+        : DateTime.now(),
+    type: data['type'] as String? ?? 'text',
+  );
 
-  factory LastMessage.fromMap(Map<String, dynamic> data) {
-    return LastMessage(
-      text: data['text'] as String? ?? '',
-      sentBy: data['sentBy'] as String? ?? '',
-      sentAt: (data['sentAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      type: data['type'] as String? ?? 'text',
-    );
+  Map<String, dynamic> toJson() {
+    return {
+      'text': text,
+      'sentBy': sentBy,
+      'sentAt': sentAt.millisecondsSinceEpoch, 
+      'type': type,
+    };
   }
 
-  Map<String, dynamic> toMap() {
+  factory LastMessage.fromFirestore(Map<String, dynamic> data) => LastMessage(
+    text: data['text'] as String? ?? '',
+    sentBy: data['sentBy'] as String? ?? '',
+    sentAt: (data['sentAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+    type: data['type'] as String? ?? 'text',
+  );
+
+
+  Map<String, dynamic> toFirestore() {
     return {
       'text': text,
       'sentBy': sentBy,

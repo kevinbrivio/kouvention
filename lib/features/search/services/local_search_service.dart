@@ -1,6 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
-import 'package:kouvention/features/chat/services/databases/cached_messages.dart';
+import 'package:kouvention/features/chat/services/databases/message_database.dart';
 import 'package:kouvention/features/search/models/search_result_model.dart';
 import 'package:kouvention/features/search/services/search_service.dart';
 
@@ -12,9 +13,6 @@ final localSearchServiceProvider = Provider<LocalSearchService>((ref) {
 class LocalSearchService implements SearchService {
   final MessageDatabase _db;
 
-  // For tracking down the SQL execution
-  bool _isCancelled = false;
-
   LocalSearchService(this._db);
 
   @override
@@ -22,41 +20,40 @@ class LocalSearchService implements SearchService {
     required String query,
     required String currentUid,
     required List<ChatModel> chatRooms,
-    int limit = 50,
+    int limit = 100,
   }) async {
-    _isCancelled = false;
+    final s0 = DateTime.now();
+    final messages = await _db.searchMessages(query, currentUid, limit: limit);
+    final s1 = DateTime.now();
+    debugPrint('🥷 SQL query only: ${s1.difference(s0).inMilliseconds}ms');
 
-    final chatRoomIds = chatRooms.map((chat) => chat.id).toList();
-
-    final rows = await _db.searchMessages(
-      query: query,
-      chatRoomIds: chatRoomIds,
-      // limit: limit,
-    );
-
-    // If user is typing another query, return empty array
-    if (_isCancelled) return [];
-
-    return rows.map(_toResultModel).toList();
+    final chatMap = {for (final c in chatRooms) c.id: c};
+    final s2 = DateTime.now();
+    debugPrint('🥷 chatMap build: ${s2.difference(s1).inMilliseconds}ms');
+    final resultList = messages.map((msg) {
+      final chat = chatMap[msg.chatRoomId];
+      return SearchResultModel(
+        messageId: msg.id,
+        chatRoomId: msg.chatRoomId,
+        chatName: chat?.displayName(currentUid) ?? '',
+        senderId: msg.senderId,
+        messageText: msg.textContent,
+        senderName: msg.senderName,
+        sentAt: DateTime.fromMillisecondsSinceEpoch(msg.sentAt),
+        messageType: msg.type,
+        mediaUrls: msg.mediaUrls,
+        mimeType: msg.mimeType,
+        fileName: msg.fileName,
+        fileSizeBytes: msg.fileSizeBytes,
+      );
+    }).toList();
+    final s3 = DateTime.now();
+    debugPrint('🥷 model mapping: ${s3.difference(s2).inMilliseconds}ms');
+    return resultList;
   }
-
-  /// Convert from database to result model
-  SearchResultModel _toResultModel(
-    ({CachedMessage message, String chatName}) row,
-  ) => SearchResultModel(
-    messageId: row.message.id,
-    chatRoomId: row.message.chatRoomId,
-    chatName: row.chatName,
-    messageText: row.message.messageText,
-    senderId: row.message.senderId,
-    senderName: row.message.senderName,
-    sentAt: DateTime.fromMillisecondsSinceEpoch(row.message.sentAt),
-  );
 
   @override
-  void cancelSearch() {
-    _isCancelled = true;
-  }
+  void cancelSearch() {}
 
   @override
   void dispose() {

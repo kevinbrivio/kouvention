@@ -7,12 +7,22 @@ class ReplyToModel {
   final String senderName;
   final DateTime sentAt;
 
+  // Media
+  final String? mediaUrl;
+  final String? mediaType;
+
+  bool get isStoryReference => mediaType?.startsWith('story:') ?? false;
+
+  String? get storyType => isStoryReference ? mediaType!.substring(6) : null;
+
   ReplyToModel({
     required this.messageId,
     required this.text,
     required this.senderId,
     required this.senderName,
     required this.sentAt,
+    this.mediaUrl,
+    this.mediaType,
   });
 
   factory ReplyToModel.fromMap(Map<String, dynamic> map) => ReplyToModel(
@@ -21,6 +31,8 @@ class ReplyToModel {
     senderId: map['senderId'] ?? '',
     senderName: map['senderName'] ?? '',
     sentAt: (map['sentAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+    mediaUrl: map['mediaUrl'],
+    mediaType: map['mediaType'],
   );
 
   Map<String, dynamic> toMap() => {
@@ -29,5 +41,7 @@ class ReplyToModel {
     'senderId': senderId,
     'senderName': senderName,
     'sentAt': sentAt,
+    'mediaUrl': mediaUrl,
+    'mediaType': mediaType,
   };
 }

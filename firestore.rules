@@ -83,5 +83,39 @@ service cloud.firestore {
         allow delete: if false;
       }
     }
+   
+    // ── Stories ───────────────────────────────────────
+    match /stories/{storyId} {
+        allow create: if isAuthenticated()
+            && request.resource.data.authorUid == request.auth.uid
+            && request.resource.data.visibleTo is list
+            && request.auth.uid in request.resource.data.visibleTo;
+            
+        allow read: if isAuthenticated()
+            && (
+                resource.data.authorUid == request.auth.uid ||
+                request.auth.uid in resource.data.visibleTo
+            );
+
+        allow update: if isAuthenticated()
+            && resource.data.authorUid == request.auth.uid
+            && request.resource.data.authorUid == resource.data.authorUid;
+
+        allow delete: if isAuthenticated()
+            && resource.data.authorUid == request.auth.uid;
+
+        match /views/{viewerUid} {
+            allow create, update: if isAuthenticated()
+                && viewerUid == request.auth.uid;
+
+            allow read: if isAuthenticated()
+                && (
+                    viewerUid == request.auth.uid ||
+                    get(/databases/$(database)/documents/stories/$(storyId)).data.authorUid == request.auth.uid
+                );
+
+            allow delete: if false;
+        }
+    }
   }
 }

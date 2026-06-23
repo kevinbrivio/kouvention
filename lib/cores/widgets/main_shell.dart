@@ -1,40 +1,47 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
-import 'package:kouvention/cores/constants/colors.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
+import 'package:kouvention/features/search/viewmodel/search_viewmodel.dart';
 
-class MainShell extends StatefulWidget {
+class MainShell extends ConsumerStatefulWidget {
   final StatefulNavigationShell navigationShell;
 
   const MainShell({super.key, required this.navigationShell});
 
   @override
-  State<MainShell> createState() => _MainShellState();
+  ConsumerState<MainShell> createState() => _MainShellState();
 }
 
-class _MainShellState extends State<MainShell> {
-
+class _MainShellState extends ConsumerState<MainShell> {
   @override
-  Widget build(BuildContext context) => Scaffold(
-    extendBody: true,
-    body:  widget.navigationShell,
-    bottomNavigationBar: _buildFloatingNav(context),
-  );
+  Widget build(BuildContext context) {
+    final searchVM = ref.read(searchVMProvider);
+
+    return Scaffold(
+      extendBody: true,
+      backgroundColor: Colors.transparent,
+      body: widget.navigationShell,
+      bottomNavigationBar: searchVM.isActive
+          ? null
+          : _buildFloatingNav(context),
+    );
+  }
 
   Widget _buildFloatingNav(BuildContext context) {
     final currentIndex = widget.navigationShell.currentIndex;
 
     return Padding(
       padding: EdgeInsets.only(
-        left: 60.w,
-        right: 60.w,
-        bottom: MediaQuery.of(context).padding.bottom + 16.h,
+        left: AppSpacing.screenH.w,
+        right: AppSpacing.screenH.w,
+        bottom: MediaQuery.of(context).padding.bottom + AppSpacing.xxs.h,
       ),
       child: Container(
-        // height: 56.h,
         decoration: BoxDecoration(
-          color: Colors.white,
           borderRadius: BorderRadius.circular(48.r),
           boxShadow: [
             BoxShadow(
@@ -47,63 +54,94 @@ class _MainShellState extends State<MainShell> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            _buildNavItem(
+            _CustomNavItem(
               icon: Icons.chat_bubble_rounded,
               label: 'Chats',
               isSelected: currentIndex == 0,
               onTap: () => widget.navigationShell.goBranch(0),
             ),
-            _buildNavItem(
-              icon: Icons.person_rounded,
-              label: 'Profile',
+            _CustomNavItem(
+              icon: Icons.auto_stories_outlined,
+              label: 'Updates',
               isSelected: currentIndex == 1,
               onTap: () => widget.navigationShell.goBranch(1),
+            ),
+            _CustomNavItem(
+              icon: Icons.person_rounded,
+              label: 'Profile',
+              isSelected: currentIndex == 2,
+              onTap: () => widget.navigationShell.goBranch(2),
             ),
           ],
         ),
       ),
     );
   }
+}
 
-  Widget _buildNavItem({
-    required IconData icon,
-    required String label,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) => Padding(
-    padding: EdgeInsets.all(4.w),
-    child: GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? AppColors.primary.withValues(alpha: 0.1)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(48.r),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 18.sp,
-              color: isSelected ? AppColors.primary : AppColors.grey,
-            ),
-            Gap(6.w),
-            Text(
-              label,
-              style: TextStyle(
-                color: isSelected ? AppColors.primary : AppColors.grey,
-                fontSize: 8.sp,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
+class _CustomNavItem extends StatefulWidget {
+  final IconData icon;
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _CustomNavItem({
+    required this.icon,
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  State<_CustomNavItem> createState() => _CustomNavItemState();
+}
+
+class _CustomNavItemState extends State<_CustomNavItem> {
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTapUp: (_) => widget.onTap(),
+    behavior: HitTestBehavior.opaque,
+    child: Container(
+      padding: EdgeInsets.all(AppSpacing.xxs.w),
+      child:
+          Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    widget.icon,
+                    size: AppSizing.iconMd.r,
+                    color: widget.isSelected
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.5),
+                  ),
+                  Gap(4.h),
+                  Text(
+                    widget.label,
+                    style: context.text.labelSmall.copyWith(
+                      color: widget.isSelected
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.5),
+                      fontWeight: widget.isSelected
+                          ? FontWeight.w400
+                          : FontWeight.w300,
+                    ),
+                  ),
+                ],
+              )
+              .animate(target: widget.isSelected ? 1 : 0)
+              .scale(
+                begin: const Offset(0.9, 0.9),
+                end: const Offset(1, 1),
+                duration: 300.ms,
+                curve: Curves.easeOutBack,
+              )
+              .shimmer(angle: 1.57, size: 2, duration: 400.ms)
+              .flipV(curve: Curves.easeInOutCubic, duration: 400.ms, end: 0.1)
+              .scaleXY(end: 1, alignment: const Alignment(0, 0.1)),
     ),
   );
 }

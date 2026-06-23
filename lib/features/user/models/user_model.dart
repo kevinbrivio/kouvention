@@ -143,20 +143,60 @@ class UserModel {
 class PrivacySettings {
   final bool showOnlineStatus;
   final bool showLastSeen;
+  final bool showProfilePhoto;
 
   const PrivacySettings({
     this.showOnlineStatus = true,
     this.showLastSeen = true,
+    this.showProfilePhoto = true,
   });
 
   factory PrivacySettings.fromMap(Map<String, dynamic> data) {
     return PrivacySettings(
       showOnlineStatus: data['showOnlineStatus'] as bool? ?? true,
       showLastSeen: data['showLastSeen'] as bool? ?? true,
+      showProfilePhoto: data['showProfilePhoto'] as bool? ?? true,
     );
   }
 
   Map<String, dynamic> toMap() {
-    return {'showOnlineStatus': showOnlineStatus, 'showLastSeen': showLastSeen};
+    return {
+      'showOnlineStatus': showOnlineStatus,
+      'showLastSeen': showLastSeen,
+      'showProfilePhoto': showProfilePhoto,
+    };
   }
+
+  PrivacySettings copyWith({
+    bool? showOnlineStatus,
+    bool? showLastSeen,
+    bool? showProfilePhoto,
+  }) {
+    return PrivacySettings(
+      showOnlineStatus: showOnlineStatus ?? this.showOnlineStatus,
+      showLastSeen: showLastSeen ?? this.showLastSeen,
+      showProfilePhoto: showProfilePhoto ?? this.showProfilePhoto,
+    );
+  }
+}
+
+class UserSearchModel {
+  final String uid;
+  final String displayName;
+  final String email;
+  final String? photoUrl;
+
+  const UserSearchModel({
+    required this.uid,
+    required this.displayName,
+    required this.email,
+    this.photoUrl,
+  });
+
+  factory UserSearchModel.fromMap(Map<String, dynamic> data) => UserSearchModel(
+    uid: data['uid'] as String,
+    displayName: data['displayName'] as String,
+    email: data['email'] as String,
+    photoUrl: data['photoUrl'] as String?,
+  );
 }

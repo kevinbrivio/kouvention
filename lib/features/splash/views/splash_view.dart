@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:kouvention/cores/constants/colors.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/cores/widgets/floating_widget.dart';
 import 'package:kouvention/features/splash/viewmodel/splash_viewmodel.dart';
 import 'package:kouvention/features/splash/widgets/splash_logo.dart';
@@ -45,7 +45,7 @@ class _SplashViewState extends ConsumerState<SplashView> {
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [AppColors.primary2, AppColors.primary],
+            colors: [AppColorTokens.primary, AppColorTokens.primaryDark],
             stops: [0.5, 0.9],
             begin: Alignment.topRight,
             end: Alignment.bottomLeft,

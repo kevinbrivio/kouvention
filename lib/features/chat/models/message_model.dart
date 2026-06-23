@@ -1,38 +1,78 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/models/reply_to_model.dart';
+import 'package:kouvention/features/chat/services/databases/message_database.dart';
 
 class MessageModel {
   final String id;
   final String senderId;
   final String senderName;
   final String text;
-  final String type; // "text" for now, "image" | "file" | "video" later
+  final MessageType type;
   final DateTime sentAt;
   final ReplyToModel? replyTo;
   final bool isDeleted;
   final List<String> deletedFor;
+  final DateTime updatedAt;
 
-  // FUTURE CASES
-  final String? mediaUrl;
+  final String? mimeType;
+  final int? mediaDuration;
+
+  final SyncStatus syncStatus;
+
+  // MEDIA
+  final List<String>? mediaUrls;
+  final List<String>? mediaCaptions;
   final String? fileName;
   final int? fileSizeBytes;
+  final String? mediaGroupId;
 
-  const MessageModel({
+  bool get hasMedia => mediaUrls != null;
+  bool get isImage => type == MessageType.image;
+  bool get isVideo => type == MessageType.video;
+  bool get isAudio => type == MessageType.audio;
+  bool get isFile => type == MessageType.file;
+  bool get isSticker => type == MessageType.sticker;
+
+  List<String> get allMediaUrls {
+    if (mediaUrls != null && mediaUrls!.isNotEmpty) return mediaUrls!;
+    return [];
+  }
+
+  List<String>? get thumbnailUrls {
+    if (mediaUrls == null) return null;
+    return mediaUrls!.map((url) {
+      final lower = url.toLowerCase();
+      if (lower.endsWith('.pdf') || lower.endsWith('.mp4') ||
+          lower.endsWith('.mov') || lower.endsWith('.avi') ||
+          lower.endsWith('.mkv') || lower.endsWith('.webm')) {
+        final dot = url.lastIndexOf('.');
+        return '${url.substring(0, dot)}.jpg';
+      }
+      return url;
+    }).toList();
+  }
+
+  MessageModel({
     required this.id,
     required this.senderId,
     required this.senderName,
     required this.text,
-    this.type = 'text',
+    this.type = MessageType.text,
     required this.sentAt,
     this.replyTo,
-    this.mediaUrl,
+    required this.syncStatus,
+    this.mimeType,
+    this.mediaDuration,
+    this.mediaUrls = const [],
+    this.mediaCaptions,
     this.fileName,
     this.fileSizeBytes,
     this.isDeleted = false,
     this.deletedFor = const [],
+    required this.updatedAt,
+    this.mediaGroupId,
   });
-
-  bool get hasMedia => mediaUrl != null;
 
   factory MessageModel.fromMap(String docId, Map<String, dynamic> data) =>
       MessageModel(
@@ -40,31 +80,59 @@ class MessageModel {
         senderId: data['senderId'] as String,
         senderName: data['senderName'] as String,
         text: data['text'] as String? ?? '',
-        type: data['type'] as String? ?? 'text',
+        type: MessageType.fromString(data['type'] as String? ?? 'text'),
         sentAt: (data['sentAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+        updatedAt: data['updatedAt'] != null
+            ? (data['updatedAt'] as Timestamp).toDate()
+            : (data['sentAt'] as Timestamp).toDate(),
         replyTo: (data['replyTo'] != null)
             ? ReplyToModel.fromMap(data['replyTo'])
             : null,
-        mediaUrl: data['mediaUrl'] as String?,
+        syncStatus: data['sync_status'] != null
+            ? SyncStatus.values.firstWhere(
+                (e) => e.name == data['sync_status'],
+                orElse: () => SyncStatus.sent,
+              )
+            : SyncStatus.sent,
+        mediaUrls: (data['mediaUrls'] as List<dynamic>?)?.cast<String>(),
+        mediaCaptions: (data['mediaCaptions'] as List<dynamic>?)?.cast<String>(),
         fileName: data['fileName'] as String?,
+        mimeType: data['mimeType'] as String?,
+        mediaDuration: (data['mediaDuration'] as num?)?.toInt(),
         fileSizeBytes: (data['fileSizeBytes'] as num?)?.toInt(),
         isDeleted: data['isDeleted'] ?? false,
-        deletedFor: List<String>.from(data['deletedFor'] ?? [])
+        deletedFor: List<String>.from(data['deletedFor'] ?? []),
       );
 
   static Map<String, dynamic> toNewMessageMap({
     required String senderId,
     required String senderName,
     required String text,
+    required DateTime sentAt,
+    MessageType type = MessageType.text,
     ReplyToModel? replyTo,
+    List<String>? mediaUrls,
+    List<String>? mediaCaptions,
+    String? fileName,
+    int? fileSizeBytes,
+    String? mimeType,
+    int? mediaDuration,
   }) {
+    final sentAtTs = Timestamp.fromDate(sentAt);
     return {
       'senderId': senderId,
       'senderName': senderName,
       'text': text,
-      'type': 'text',
+      'type': type.name,
       if (replyTo != null) 'replyTo': replyTo.toMap(),
-      'sentAt': FieldValue.serverTimestamp(),
+      if (mediaUrls != null) 'mediaUrls': mediaUrls,
+      if (mediaCaptions != null) 'mediaCaptions': mediaCaptions,
+      if (fileName != null) 'fileName': fileName,
+      if (fileSizeBytes != null) 'fileSizeBytes': fileSizeBytes,
+      if (mimeType != null) 'mimeType': mimeType,
+      if (mediaDuration != null) 'mediaDuration': mediaDuration,
+      'sentAt': sentAtTs,
+      'updatedAt': sentAtTs,
     };
   }
 
@@ -72,6 +140,8 @@ class MessageModel {
     required String senderId,
     required String senderName,
     required String text,
+    required DateTime sentAt,
+    MessageType type = MessageType.text,
     ReplyToModel? replyTo,
   }) {
     return {
@@ -80,8 +150,8 @@ class MessageModel {
         'sentBy': senderId,
         'senderName': senderName,
         if (replyTo != null) 'replyTo': replyTo.toMap(),
-        'sentAt': FieldValue.serverTimestamp(),
-        'type': 'text',
+        'sentAt': Timestamp.fromDate(sentAt),
+        'type': type.name,
       },
     };
   }
