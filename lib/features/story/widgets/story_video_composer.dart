@@ -359,7 +359,7 @@ class _StoryVideoComposerState extends ConsumerState<StoryVideoComposer>
     if (controller != null && controller.value.isInitialized) {
       return Center(
         child: AspectRatio(
-          aspectRatio: controller.value.aspectRatio,
+          aspectRatio: 9 / 16,
           child: CameraPreview(controller),
         ),
       );
