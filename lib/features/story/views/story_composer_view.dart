@@ -376,9 +376,11 @@ class _TextStoryComposer extends StatelessWidget {
       color: backgroundColor,
       child: Center(
         child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: AppSpacing.screenH.w,
-            vertical: AppSpacing.betweenCards.h,
+          padding: EdgeInsets.only(
+            left: AppSpacing.screenH.w,
+            right: AppSpacing.screenH.w,
+            top: AppSpacing.betweenCards.h,
+            bottom: MediaQuery.of(context).viewInsets.bottom,
           ),
           child: TextField(
             controller: controller,
