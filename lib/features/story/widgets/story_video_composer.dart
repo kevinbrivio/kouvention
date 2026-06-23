@@ -4,12 +4,13 @@ import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/features/chat/services/media/media_picker_service.dart';
 import 'package:kouvention/features/chat/widgets/preview/video_preview.dart';
+import 'package:kouvention/features/story/services/story_video_preparation_service.dart';
 import 'package:kouvention/features/story/widgets/story_caption_field.dart';
 import 'package:oktoast/oktoast.dart';
-
-const storyVideoMaxDuration = Duration(seconds: 30);
 
 class StoryVideoComposer extends ConsumerStatefulWidget {
   const StoryVideoComposer({
@@ -42,8 +43,10 @@ class _StoryVideoComposerState extends ConsumerState<StoryVideoComposer>
   int _initializationToken = 0;
   Duration _recordingDuration = Duration.zero;
   bool _isInitializing = false;
+  bool _isPreparingVideo = false;
   bool _isRecording = false;
   bool _isStoppingRecording = false;
+  bool _wasVideoTrimmed = false;
   String? _cameraError;
 
   @override
@@ -231,6 +234,7 @@ class _StoryVideoComposerState extends ConsumerState<StoryVideoComposer>
     try {
       final captured = await controller.stopVideoRecording();
       if (!mounted) return;
+      _wasVideoTrimmed = false;
       widget.onVideoSelected(File(captured.path));
     } on CameraException {
       showToast('Could not save the video. Please try again.');
@@ -243,15 +247,25 @@ class _StoryVideoComposerState extends ConsumerState<StoryVideoComposer>
 
   Future<void> _pickFromGallery() async {
     try {
-      final picked = await ref
-          .read(mediaPickerServiceProvider)
-          .pickVideo(maxDuration: storyVideoMaxDuration);
+      final picked = await ref.read(mediaPickerServiceProvider).pickVideo();
       if (picked == null) return;
 
       if (!mounted) return;
-      widget.onVideoSelected(File(picked.path));
+      setState(() => _isPreparingVideo = true);
+
+      final result = await ref
+          .read(storyVideoPreparationServiceProvider)
+          .prepare(File(picked.path));
+      if (!mounted) return;
+
+      setState(() {
+        _isPreparingVideo = false;
+        _wasVideoTrimmed = result.wasTrimmed;
+      });
+      widget.onVideoSelected(result.file);
     } catch (_) {
-      showToast('Could not open the video gallery.');
+      if (mounted) setState(() => _isPreparingVideo = false);
+      showToast('Could not prepare this video. Please try another video.');
     }
   }
 
@@ -264,7 +278,15 @@ class _StoryVideoComposerState extends ConsumerState<StoryVideoComposer>
   @override
   Widget build(BuildContext context) {
     final video = widget.video;
-    if (video != null) return _buildVideoPreview(video);
+    if (video != null) {
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          _buildVideoPreview(video),
+          if (_isPreparingVideo) _buildPreparingOverlay(),
+        ],
+      );
+    }
 
     return ColoredBox(
       color: Colors.black,
@@ -272,6 +294,7 @@ class _StoryVideoComposerState extends ConsumerState<StoryVideoComposer>
         fit: StackFit.expand,
         children: [
           _buildCameraPreview(),
+          if (_isPreparingVideo) _buildPreparingOverlay(),
           if (_isRecording)
             Positioned(
               top: MediaQuery.of(context).padding.top + 64,
@@ -403,7 +426,7 @@ class _StoryVideoComposerState extends ConsumerState<StoryVideoComposer>
     child: Stack(
       fit: StackFit.expand,
       children: [
-        VideoPreview(file: video),
+        VideoPreview(file: video, repeat: true),
         Positioned(
           left: 24,
           right: 24,
@@ -418,6 +441,10 @@ class _StoryVideoComposerState extends ConsumerState<StoryVideoComposer>
                 controller: widget.captionController,
                 enabled: !widget.isPublishing,
               ),
+              if (_wasVideoTrimmed) ...[
+                const SizedBox(height: 10),
+                const _TrimmedVideoNotice(),
+              ],
               const SizedBox(height: 14),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -432,7 +459,10 @@ class _StoryVideoComposerState extends ConsumerState<StoryVideoComposer>
                     icon: Icons.videocam_outlined,
                     onPressed: widget.isPublishing
                         ? null
-                        : () => widget.onVideoSelected(null),
+                        : () {
+                            setState(() => _wasVideoTrimmed = false);
+                            widget.onVideoSelected(null);
+                          },
                   ),
                   _VideoAction(
                     tooltip: 'Publish story',
@@ -446,6 +476,34 @@ class _StoryVideoComposerState extends ConsumerState<StoryVideoComposer>
           ),
         ),
       ],
+    ),
+  );
+
+  Widget _buildPreparingOverlay() => const AbsorbPointer(
+    child: ColoredBox(
+      color: Colors.black87,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(color: Colors.white),
+            SizedBox(height: 16),
+            Text(
+              'Preparing video…',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            SizedBox(height: 6),
+            Text(
+              'Long videos will be trimmed to 30 seconds.',
+              style: TextStyle(color: Colors.white70),
+            ),
+          ],
+        ),
+      ),
     ),
   );
 
@@ -465,6 +523,40 @@ class _StoryVideoComposerState extends ConsumerState<StoryVideoComposer>
           'You can still choose a video from Gallery.',
     _ => 'Camera is unavailable. You can still choose a video from Gallery.',
   };
+}
+
+class _TrimmedVideoNotice extends StatelessWidget {
+  const _TrimmedVideoNotice();
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: BoxDecoration(
+      color: Colors.black54,
+      borderRadius: BorderRadius.circular(18),
+    ),
+    child: Padding(
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.content_cut,
+            color: context.text.tertiaryText,
+            size: AppSizing.iconXs.r,
+          ),
+          SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              'Video was trimmed to the first 30 seconds.',
+              style: context.text.labelSmall.copyWith(
+                color: context.text.tertiaryText,
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _VideoAction extends StatelessWidget {

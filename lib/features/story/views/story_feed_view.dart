@@ -13,6 +13,7 @@ import 'package:kouvention/features/story/models/story_composer_args.dart';
 import 'package:kouvention/features/story/models/story_feed_item.dart';
 import 'package:kouvention/features/story/models/story_model.dart';
 import 'package:kouvention/features/story/models/story_viewer_args.dart';
+import 'package:kouvention/features/story/services/debug/debug_story_seeder.dart';
 import 'package:kouvention/features/story/viewmodel/story_feed_viewmodel.dart';
 import 'package:kouvention/features/story/widgets/story_author_avatar.dart';
 
@@ -64,6 +65,12 @@ class _StoryFeedViewState extends ConsumerState<StoryFeedView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                IconButton(
+                  onPressed: () => ref
+                      .read(debugStorySeederProvider)
+                      .seedViewedStory(currentUid: currentUser.uid),
+                  icon: Icon(Icons.bug_report),
+                ),
                 Padding(
                   padding: EdgeInsets.symmetric(
                     horizontal: AppSpacing.md.w,
@@ -498,9 +505,7 @@ class _CurrentUserStatusHeader extends StatelessWidget {
     final isPending =
         syncStatus == StorySyncStatus.pending ||
         syncStatus == StorySyncStatus.uploading;
-    final ringColor = syncStatus == StorySyncStatus.failed
-        ? scheme.error
-        : ownStory?.hasUnseen == true || isPending
+    final ringColor = ownStory?.hasUnseen == true || isPending
         ? scheme.primary
         : scheme.outline.withValues(alpha: 0.35);
 

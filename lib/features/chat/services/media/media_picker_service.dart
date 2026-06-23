@@ -28,13 +28,11 @@ class MediaPickerService {
     return picked.whereType<XFile>().toList();
   }
 
-  Future<XFile?> pickVideo({
-    bool fromGallery = true,
-    Duration maxDuration = const Duration(seconds: 30),
-  }) => _imagePicker.pickVideo(
-    source: fromGallery ? ImageSource.gallery : ImageSource.camera,
-    maxDuration: maxDuration,
-  );
+  Future<XFile?> pickVideo({bool fromGallery = true, Duration? maxDuration}) =>
+      _imagePicker.pickVideo(
+        source: fromGallery ? ImageSource.gallery : ImageSource.camera,
+        maxDuration: maxDuration,
+      );
 
   Future<List<XFile>> pickMultipleVideos({int limit = 5}) async {
     final picked = await _imagePicker.pickMultiVideo(limit: limit);

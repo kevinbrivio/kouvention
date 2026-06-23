@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -11,6 +12,7 @@ import 'package:kouvention/features/story/models/story_feed_item.dart';
 import 'package:kouvention/features/story/models/story_model.dart';
 import 'package:kouvention/features/story/services/story_upload_progress.dart';
 import 'package:kouvention/features/story/viewmodel/story_feed_viewmodel.dart';
+import 'package:video_thumbnail/video_thumbnail.dart';
 
 class StoriesRow extends ConsumerWidget {
   const StoriesRow({super.key, required this.onStoryTap});
@@ -63,12 +65,8 @@ class _StoryAvatar extends ConsumerWidget {
         item.isOwnStory &&
         (syncStatus == StorySyncStatus.pending ||
             syncStatus == StorySyncStatus.uploading);
-    final isFailedOwnStory =
-        item.isOwnStory && syncStatus == StorySyncStatus.failed;
     final uploadProgress = ref.watch(storyUploadProgressProvider(story.id));
-    final borderColor = isFailedOwnStory
-        ? scheme.error
-        : item.hasUnseen || isPendingOwnStory
+    final borderColor = item.hasUnseen || isPendingOwnStory
         ? scheme.primary
         : scheme.outline.withValues(alpha: 0.35);
 
@@ -93,14 +91,6 @@ class _StoryAvatar extends ConsumerWidget {
                   ClipOval(child: _StoryCover(item: item)),
                   if (isPendingOwnStory)
                     _StoryUploadRing(progress: uploadProgress),
-                  if (isFailedOwnStory)
-                    Align(
-                      alignment: Alignment.bottomRight,
-                      child: _StoryUploadBadge(
-                        color: scheme.error,
-                        icon: Icons.priority_high_rounded,
-                      ),
-                    ),
                 ],
               ),
             ),
@@ -140,6 +130,12 @@ class _StoryCover extends StatelessWidget {
       );
     }
 
+    if (story.type == StoryType.video &&
+        localPath != null &&
+        localPath.isNotEmpty) {
+      return _LocalVideoCover(path: localPath);
+    }
+
     if (coverUrl != null && coverUrl.isNotEmpty) {
       return CachedNetworkImage(
         imageUrl: coverUrl,
@@ -177,6 +173,57 @@ class _StoryCover extends StatelessWidget {
   }
 }
 
+class _LocalVideoCover extends StatefulWidget {
+  const _LocalVideoCover({required this.path});
+
+  final String path;
+
+  @override
+  State<_LocalVideoCover> createState() => _LocalVideoCoverState();
+}
+
+class _LocalVideoCoverState extends State<_LocalVideoCover> {
+  late Future<Uint8List?> _thumbnail;
+
+  @override
+  void initState() {
+    super.initState();
+    _thumbnail = _loadThumbnail();
+  }
+
+  @override
+  void didUpdateWidget(covariant _LocalVideoCover oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.path != widget.path) {
+      _thumbnail = _loadThumbnail();
+    }
+  }
+
+  Future<Uint8List?> _loadThumbnail() => VideoThumbnail.thumbnailData(
+    video: widget.path,
+    imageFormat: ImageFormat.JPEG,
+    maxWidth: 320,
+    quality: 75,
+  );
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<Uint8List?>(
+    future: _thumbnail,
+    builder: (context, snapshot) {
+      final bytes = snapshot.data;
+      if (bytes != null) {
+        return Image.memory(bytes, fit: BoxFit.cover);
+      }
+
+      final scheme = Theme.of(context).colorScheme;
+      return ColoredBox(
+        color: scheme.surfaceContainerHighest,
+        child: Icon(Icons.videocam_rounded, color: scheme.onSurfaceVariant),
+      );
+    },
+  );
+}
+
 class _StoryUploadRing extends StatelessWidget {
   const _StoryUploadRing({required this.progress});
 
@@ -193,26 +240,6 @@ class _StoryUploadRing extends StatelessWidget {
         backgroundColor: Colors.white.withValues(alpha: 0.28),
         valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
       ),
-    ),
-  );
-}
-
-class _StoryUploadBadge extends StatelessWidget {
-  const _StoryUploadBadge({required this.color, required this.icon});
-
-  final Color color;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) => DecoratedBox(
-    decoration: BoxDecoration(
-      color: color,
-      shape: BoxShape.circle,
-      border: Border.all(color: Colors.white, width: 1.5.r),
-    ),
-    child: SizedBox.square(
-      dimension: 18.r,
-      child: Icon(icon, size: 12.r, color: Colors.white),
     ),
   );
 }

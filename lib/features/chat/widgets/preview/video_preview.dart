@@ -5,8 +5,10 @@ import 'package:kouvention/cores/widgets/loading_indicator.dart';
 import 'package:video_player/video_player.dart';
 
 class VideoPreview extends StatefulWidget {
+  const VideoPreview({super.key, required this.file, this.repeat = true});
+
   final File file;
-  const VideoPreview({super.key, required this.file});
+  final bool repeat;
 
   @override
   State<VideoPreview> createState() => _VideoPreviewState();
@@ -19,13 +21,39 @@ class _VideoPreviewState extends State<VideoPreview> {
   @override
   void initState() {
     super.initState();
-    _controller = VideoPlayerController.file(widget.file)..setLooping(true)
-      ..initialize().then((_) {
-        setState(() => _initialized = true);
-        _controller.play();
-        _controller.setLooping(true);
-      }
-    );
+    _initializeController();
+  }
+
+  @override
+  void didUpdateWidget(covariant VideoPreview oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.file.path != widget.file.path) {
+      _replaceController();
+    } else if (oldWidget.repeat != widget.repeat) {
+      _controller.setLooping(widget.repeat);
+    }
+  }
+
+  Future<void> _initializeController() async {
+    final controller = VideoPlayerController.file(widget.file);
+    _controller = controller;
+    await controller.initialize();
+    await controller.setLooping(widget.repeat);
+
+    if (!mounted || controller != _controller) {
+      await controller.dispose();
+      return;
+    }
+
+    setState(() => _initialized = true);
+    await controller.play();
+  }
+
+  Future<void> _replaceController() async {
+    final previous = _controller;
+    setState(() => _initialized = false);
+    await _initializeController();
+    await previous.dispose();
   }
 
   @override

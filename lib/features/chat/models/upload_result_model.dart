@@ -43,7 +43,7 @@ class UploadResultModel {
       messageType: messageType,
       fileSizeBytes: json['bytes'],
       mediaDuration: json['duration'] != null
-          ? (json['duration'] as double).round()
+          ? (json['duration'] as num).round()
           : null,
       caption: json['text'],
       localPath: json['local_path'],
@@ -95,21 +95,38 @@ class UploadResultModel {
     if (ext == null) return MessageType.file;
 
     // Image extensions
-    if (ext == 'jpg' || ext == 'jpeg' || ext == 'png' || ext == 'gif' ||
-        ext == 'webp' || ext == 'bmp' || ext == 'svg' || ext == 'heic') {
+    if (ext == 'jpg' ||
+        ext == 'jpeg' ||
+        ext == 'png' ||
+        ext == 'gif' ||
+        ext == 'webp' ||
+        ext == 'bmp' ||
+        ext == 'svg' ||
+        ext == 'heic') {
       return MessageType.image;
     }
 
     // Video extensions
-    if (ext == 'mp4' || ext == 'mov' || ext == 'avi' || ext == 'mkv' ||
-        ext == 'webm' || ext == 'flv' || ext == 'wmv') {
+    if (ext == 'mp4' ||
+        ext == 'mov' ||
+        ext == 'avi' ||
+        ext == 'mkv' ||
+        ext == 'webm' ||
+        ext == 'flv' ||
+        ext == 'wmv') {
       return MessageType.video;
     }
 
     // Audio extensions
-    if (ext == 'mp3' || ext == 'wav' || ext == 'ogg' || ext == 'm4a' ||
-        ext == 'aac' || ext == 'flac' || ext == 'wma' ||
-        ext == 'opus' || ext == 'caf') {
+    if (ext == 'mp3' ||
+        ext == 'wav' ||
+        ext == 'ogg' ||
+        ext == 'm4a' ||
+        ext == 'aac' ||
+        ext == 'flac' ||
+        ext == 'wma' ||
+        ext == 'opus' ||
+        ext == 'caf') {
       return MessageType.audio;
     }
 
