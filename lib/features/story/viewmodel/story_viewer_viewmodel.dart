@@ -369,11 +369,30 @@ class StoryViewerVM extends ChangeNotifier {
     messageId: story.id,
     senderId: story.authorUid,
     senderName: story.authorName,
-    text: _storyPreviewText(story),
+    text: story.type == StoryType.text
+        ? story.text?.trim() ?? 'Story'
+        : _storyPreviewText(story),
     sentAt: story.createdAt,
-    mediaUrl: story.thumbnailUrl ?? story.mediaUrl,
+    mediaUrl: _storyReplyThumbnailUrl(story),
     mediaType: 'story:${story.type.name}',
   );
+
+  String? _storyReplyThumbnailUrl(StoryModel story) {
+    if (story.type != StoryType.image && story.type != StoryType.video) {
+      return null;
+    }
+
+    final thumbnailUrl = story.thumbnailUrl?.trim();
+    if (thumbnailUrl != null && thumbnailUrl.isNotEmpty) return thumbnailUrl;
+
+    final mediaUrl = story.mediaUrl?.trim();
+    if (mediaUrl == null || mediaUrl.isEmpty) return null;
+    if (story.type == StoryType.image) return mediaUrl;
+
+    return mediaUrl
+        .replaceFirst('/video/upload/', '/video/upload/so_0,f_jpg/')
+        .replaceFirst(RegExp(r'\.[^.]+$'), '.jpg');
+  }
 
   String _storyPreviewText(StoryModel story) {
     final caption = story.caption?.trim();
