@@ -6,6 +6,8 @@ import 'package:just_audio/just_audio.dart';
 import 'package:oktoast/oktoast.dart';
 import 'package:record/record.dart';
 
+const storyAudioMaxDuration = Duration(seconds: 30);
+
 class StoryAudioComposer extends StatefulWidget {
   const StoryAudioComposer({
     super.key,
@@ -124,10 +126,14 @@ class _StoryAudioComposerState extends State<StoryAudioComposer>
       _recordingDuration = Duration.zero;
       _recordingTimer?.cancel();
       _recordingTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-        if (mounted) {
-          setState(() {
-            _recordingDuration += const Duration(seconds: 1);
-          });
+        if (!mounted) return;
+
+        final next = _recordingDuration + const Duration(seconds: 1);
+        if (next >= storyAudioMaxDuration) {
+          setState(() => _recordingDuration = storyAudioMaxDuration);
+          unawaited(_stopRecording());
+        } else {
+          setState(() => _recordingDuration = next);
         }
       });
       await _amplitudeSubscription?.cancel();
