@@ -1023,7 +1023,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     if (row == null ||
         row.deletedAt != null ||
         row.expiresAt <= now.millisecondsSinceEpoch) {
-      showToast('This story has expired.');
+      showToast('This story has expired.', position: ToastPosition.bottom);
       return;
     }
 
@@ -1033,7 +1033,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
         .fetchStoriesByAuthor(authorUid: story.authorUid, now: now, limit: 20);
     final index = stories.indexWhere((item) => item.id == story.id);
     if (index < 0) {
-      showToast('This story has expired.');
+      showToast('This story has expired.', position: ToastPosition.bottom);
       return;
     }
 
