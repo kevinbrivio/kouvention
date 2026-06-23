@@ -5,8 +5,7 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "members", "arrayConfig": "CONTAINS" },
-        { "fieldPath": "lastMessage.sentAt", "mode": "DESCENDING" },
-        { "fieldPath": "__name__", "mode": "DESCENDING" }
+        { "fieldPath": "lastMessage.sentAt", "mode": "DESCENDING" }
       ]
     },
     {
@@ -14,8 +13,7 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "members", "arrayConfig": "CONTAINS" },
-        { "fieldPath": "updatedAt", "mode": "DESCENDING" },
-        { "fieldPath": "__name__", "mode": "DESCENDING" }
+        { "fieldPath": "updatedAt", "mode": "DESCENDING" }
       ]
     },
     {
