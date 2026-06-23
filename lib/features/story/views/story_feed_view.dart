@@ -64,17 +64,14 @@ class _StoryFeedViewState extends ConsumerState<StoryFeedView> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    AppSpacing.md.w,
-                    AppSpacing.md.h,
-                    AppSpacing.md.w,
-                    AppSpacing.sm.h,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md.w,
+                    vertical: AppSpacing.sm.h,
                   ),
                   child: Text(
                     'Updates',
                     style: context.text.titleLarge.copyWith(
                       color: scheme.primary,
-                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
@@ -454,7 +451,10 @@ class _StorySearchField extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppRadius.full.r),
           borderSide: BorderSide(color: scheme.primary),
         ),
-        contentPadding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w),
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: AppSpacing.md.w,
+          vertical: AppSpacing.sm.h,
+        ),
       ),
       showCursor: true,
       cursorColor: scheme.primary,
