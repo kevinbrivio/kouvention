@@ -16,18 +16,14 @@ final _visibleStoryIndicatorConfig = StoryViewIndicatorConfig(
   activeColor: Colors.white,
   backgroundCompletedColor: Colors.white,
   backgroundDisabledColor: Colors.white38,
-  margin: EdgeInsets.fromLTRB(
-    12.w, 8.h, 12.w, 0
-  ),
+  margin: EdgeInsets.fromLTRB(12.w, 8.h, 12.w, 0),
 );
 
 final _hiddenStoryIndicatorConfig = StoryViewIndicatorConfig(
   activeColor: Colors.transparent,
   backgroundCompletedColor: Colors.transparent,
   backgroundDisabledColor: Colors.transparent,
-  margin: EdgeInsets.fromLTRB(
-    12.w, 8.h, 12.w, 0
-  ),
+  margin: EdgeInsets.fromLTRB(12.w, 8.h, 12.w, 0),
 );
 
 class StoryViewerView extends ConsumerWidget {
@@ -279,7 +275,9 @@ class _StoryReplyBar extends StatelessWidget {
             left: AppSpacing.screenH.w,
             right: AppSpacing.screenH.w,
             top: AppSpacing.md.h,
-            bottom: MediaQuery.of(context).viewInsets.bottom,
+            bottom:
+                MediaQuery.of(context).viewInsets.bottom +
+                MediaQuery.of(context).padding.bottom,
           ),
           child: Row(
             children: [
