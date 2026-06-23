@@ -42,7 +42,6 @@ class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
   final _textController = TextEditingController();
   final _photoCaptionController = TextEditingController();
   final _videoCaptionController = TextEditingController();
-  final _audioCaptionController = TextEditingController();
   final _textFocusNode = FocusNode();
   late final CarouselSliderController _carouselController;
   late int _currentIndex;
@@ -75,7 +74,6 @@ class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
       ..dispose();
     _photoCaptionController.dispose();
     _videoCaptionController.dispose();
-    _audioCaptionController.dispose();
     _textFocusNode.dispose();
     super.dispose();
   }
@@ -167,7 +165,6 @@ class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
     await _queueMediaStory(
       file: audio,
       type: StoryType.audio,
-      captionController: _audioCaptionController,
       backgroundColorArgb: _audioBackgroundColor.toARGB32(),
       failureMessage: 'Could not save the recording story. Please try again.',
     );
@@ -176,8 +173,8 @@ class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
   Future<void> _queueMediaStory({
     required File file,
     required StoryType type,
-    required TextEditingController captionController,
     required String failureMessage,
+    TextEditingController? captionController,
     int? backgroundColorArgb,
   }) async {
     final currentUser = ref.read(authServiceProvider).currentUser;
@@ -195,7 +192,7 @@ class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
           .read(storyCurrentUserProfileProvider(currentUser.uid))
           .valueOrNull;
       final createdAt = DateTime.now();
-      final caption = captionController.text.trim();
+      final caption = captionController?.text.trim();
       final story = StoryModel(
         id: const Uuid().v4(),
         authorUid: currentUser.uid,
@@ -203,7 +200,7 @@ class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
             profile?.displayName ?? currentUser.displayName ?? 'Unknown',
         authorPhotoUrl: profile?.photoUrl ?? currentUser.photoURL,
         type: type,
-        caption: caption.isEmpty ? null : caption,
+        caption: caption?.isEmpty == false ? caption : null,
         localPath: file.path,
         backgroundColorArgb: backgroundColorArgb,
         visibleTo: visibleTo.toList(growable: false),
@@ -268,7 +265,6 @@ class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
                 StoryAudioComposer(
                   isActive: _currentMode == StoryCreationMode.voice,
                   audio: _audioFile,
-                  captionController: _audioCaptionController,
                   backgroundColor: _audioBackgroundColor,
                   backgroundColors: storyBackgroundColors,
                   isPublishing: _isPublishing,

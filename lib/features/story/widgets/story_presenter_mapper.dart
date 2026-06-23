@@ -157,9 +157,7 @@ class _AudioStoryContent extends StatelessWidget {
             Icon(Icons.graphic_eq_rounded, size: 88, color: foregroundColor),
             const SizedBox(height: AppSpacing.lg),
             Text(
-              story.caption?.trim().isNotEmpty == true
-                  ? story.caption!
-                  : 'Audio story',
+              'Audio story',
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
