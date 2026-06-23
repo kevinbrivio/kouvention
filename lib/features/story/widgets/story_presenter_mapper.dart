@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_story_presenter/flutter_story_presenter.dart';
 import 'package:just_audio/just_audio.dart';
@@ -26,7 +27,11 @@ class StoryPresenterMapper {
       storyItemType: StoryItemType.image,
       storyItemSource: source.source,
       duration: const Duration(seconds: 5),
-      imageConfig: const StoryViewImageConfig(fit: BoxFit.contain),
+      imageConfig: StoryViewImageConfig(
+        fit: BoxFit.cover,
+        progressIndicatorBuilder: (_, _, loadProgress) =>
+            const Center(child: CupertinoActivityIndicator()),
+      ),
     );
   }
 
@@ -39,7 +44,7 @@ class StoryPresenterMapper {
       storyItemType: StoryItemType.video,
       storyItemSource: source.source,
       videoConfig: const StoryViewVideoConfig(
-        fit: BoxFit.contain,
+        fit: BoxFit.cover,
         cacheVideo: true,
       ),
     );
@@ -63,10 +68,7 @@ class StoryPresenterMapper {
           child: Text(
             text == null || text.isEmpty ? ' ' : text,
             textAlign: TextAlign.center,
-            style: context.text.headlineMedium.copyWith(
-              color: foregroundColor,
-              fontWeight: FontWeight.w600,
-            ),
+            style: context.text.headlineMedium.copyWith(color: foregroundColor),
           ),
         ),
       ),

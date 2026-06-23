@@ -46,43 +46,52 @@ final storyRemoteFeedSyncProvider = StreamProvider.autoDispose
       );
     });
 
-/// Trigger local query to remove expired stories
-/// without restarting Firestore listener
-final storyExpiryClockProvider = StreamProvider.autoDispose<DateTime>((
-  ref,
-) async* {
-  yield DateTime.now();
-
-  yield* Stream<DateTime>.periodic(
-    const Duration(seconds: 5),
-    (_) => DateTime.now(),
-  );
-});
-
 final activeStoriesProvider = StreamProvider.autoDispose
     .family<List<StoryModel>, String>((ref, currentUid) {
       ref.watch(storyRemoteFeedSyncProvider(currentUid));
 
-      final now =
-          ref.watch(storyExpiryClockProvider).valueOrNull ?? DateTime.now();
       final repository = ref.watch(storyRepositoryProvider);
 
-      return repository.watchActiveStories(
-        currentUid: currentUid,
-        now: now,
-        limit: storyFeedLimit,
-      );
+      Timer? expiryTimer;
+      ref.onDispose(() => expiryTimer?.cancel());
+
+      return repository
+          .watchActiveStories(
+            currentUid: currentUid,
+            now: DateTime.now(),
+            limit: storyFeedLimit,
+          )
+          .map((stories) {
+            expiryTimer?.cancel();
+
+            if (stories.isNotEmpty) {
+              final nearestExpiry = stories
+                  .map((story) => story.expiresAt)
+                  .reduce((a, b) => a.isBefore(b) ? a : b);
+
+              final delay = nearestExpiry.difference(DateTime.now());
+
+              expiryTimer = Timer(
+                delay <= Duration.zero
+                    ? const Duration(milliseconds: 1)
+                    : delay + const Duration(milliseconds: 1),
+                ref.invalidateSelf,
+              );
+            }
+
+            return stories;
+          });
     });
 
 final viewedStoryIdsProvider = StreamProvider.autoDispose
-    .family<Set<String>, String>((ref, currentUid) {
-      final now =
-          ref.watch(storyExpiryClockProvider).valueOrNull ?? DateTime.now();
-
-      return ref
+    .family<Set<String>, String>(
+      (ref, currentUid) => ref
           .watch(storyRepositoryProvider)
-          .watchActiveViewedStoryIds(viewerUid: currentUid, now: now);
-    });
+          .watchActiveViewedStoryIds(
+            viewerUid: currentUid,
+            now: DateTime.now(),
+          ),
+    );
 
 final storyFeedItemsProvider = Provider.autoDispose
     .family<AsyncValue<List<StoryFeedItem>>, String>((ref, currentUid) {

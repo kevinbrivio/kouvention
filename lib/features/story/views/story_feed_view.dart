@@ -138,6 +138,13 @@ class _StoryFeedViewState extends ConsumerState<StoryFeedView> {
                                     )
                                   : () => _openIsolatedStory(context, ownStory),
                             ),
+
+                          Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: AppSpacing.screenH.w,
+                            ),
+                            child: CustomDivider(),
+                          ),
                           if (unseenUpdates.isEmpty && viewedUpdates.isEmpty)
                             Padding(
                               padding: EdgeInsets.only(top: AppSpacing.xl.h),
@@ -163,12 +170,6 @@ class _StoryFeedViewState extends ConsumerState<StoryFeedView> {
                               ),
                             ),
                           if (viewedUpdates.isNotEmpty) ...[
-                            Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: AppSpacing.screenH.w,
-                              ),
-                              child: CustomDivider(),
-                            ),
                             _StoryUpdateSection(
                               title: 'Viewed updates',
                               items: viewedUpdates,
@@ -537,11 +538,11 @@ class _CurrentUserStatusHeader extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Add status', style: context.text.titleMedium),
+                  Text('Add status', style: context.text.labelMedium),
                   Gap(AppSpacing.xxs.h),
                   Text(
                     'Disappear after 24 hours',
-                    style: context.text.bodySmall.copyWith(
+                    style: context.text.labelSmall.copyWith(
                       color: context.text.tertiaryText,
                     ),
                   ),
@@ -643,14 +644,12 @@ class _StoryFeedTile extends StatelessWidget {
                     item.authorName,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: context.text.titleMedium.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: context.text.labelMedium,
                   ),
                   SizedBox(height: AppSpacing.xxs.h),
                   Text(
                     _subtitle(item),
-                    style: context.text.bodySmall.copyWith(
+                    style: context.text.labelSmall.copyWith(
                       color: context.text.tertiaryText,
                     ),
                   ),
