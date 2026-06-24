@@ -168,6 +168,7 @@ class StoryViewerVM extends ChangeNotifier {
     _viewTimer?.cancel();
     if (_currentIndex != index) {
       _currentIndex = index;
+      controller.pause();
       _notify();
     }
 
