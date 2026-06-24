@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -346,6 +348,7 @@ class MessageBubble extends ConsumerWidget {
                                 Gap(AppSpacing.xxs.h),
                                 Row(
                                   mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
                                     Text(
                                       time,
@@ -502,27 +505,26 @@ class MessageBubble extends ConsumerWidget {
     return SizedBox(
       width: 120.w,
       height: 84.h,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6.r),
-            child: Image.network(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadius.sm.r),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.network(
               thumbnailUrl,
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) =>
-                  _storyIconBox(context, replyTo.storyType),
+                _storyIconBox(context, replyTo.storyType),
             ),
-          ),
-          if (replyTo.storyType == 'video')
-            Center(
-              child: Icon(
-                Icons.play_circle_fill,
-                size: 32.sp,
-                color: Colors.white.withValues(alpha: 0.9),
+            if (replyTo.storyType == 'video')
+            BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
+              child: Container(
+                color: Colors.black.withValues(alpha: 0.2),
               ),
             ),
-        ],
+          ],
+        ),
       ),
     );
   }
