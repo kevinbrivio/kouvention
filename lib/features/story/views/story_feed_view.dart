@@ -65,6 +65,10 @@ class _StoryFeedViewState extends ConsumerState<StoryFeedView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                IconButton(
+                  onPressed: () => ref.read(debugStorySeederProvider).seedViewedStory(currentUid: currentUser.uid),
+                  icon: Icon(Icons.bug_report),
+                ),
                 Padding(
                   padding: EdgeInsets.symmetric(
                     horizontal: AppSpacing.md.w,
@@ -124,7 +128,7 @@ class _StoryFeedViewState extends ConsumerState<StoryFeedView> {
                               AppSpacing.xl.h,
                         ),
                         children: [
-                          if (!isSearching)
+                          if (!isSearching) ...[
                             _CurrentUserStatusHeader(
                               currentUid: currentUser.uid,
                               currentName:
@@ -144,13 +148,14 @@ class _StoryFeedViewState extends ConsumerState<StoryFeedView> {
                                       viewedStoryIds,
                                     ),
                             ),
-
-                          Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: AppSpacing.screenH.w,
+  
+                            Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: AppSpacing.screenH.w,
+                              ),
+                              child: CustomDivider(),
                             ),
-                            child: CustomDivider(),
-                          ),
+                          ],
                           if (unseenUpdates.isEmpty && viewedUpdates.isEmpty)
                             Padding(
                               padding: EdgeInsets.only(top: AppSpacing.xl.h),
@@ -431,7 +436,7 @@ class _StorySearchField extends StatelessWidget {
       textInputAction: TextInputAction.search,
       textAlignVertical: TextAlignVertical.center,
       decoration: InputDecoration(
-        hintText: 'Search stories',
+        hintText: 'Search name',
         hintStyle: context.text.bodySmall.copyWith(
           color: context.text.tertiaryText,
         ),
@@ -546,7 +551,7 @@ class _CurrentUserStatusHeader extends StatelessWidget {
                       ),
                       child: Icon(
                         Icons.add_rounded,
-                        size: 15.r,
+                        size: AppSizing.iconSm.r,
                         color: scheme.onPrimary,
                       ),
                     ),
@@ -558,11 +563,16 @@ class _CurrentUserStatusHeader extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Add status', style: context.text.labelMedium),
+                  Text(
+                    ownStory == null 
+                      ? 'Add status'
+                      : 'My status', 
+                    style: context.text.labelMedium,
+                  ),
                   Gap(AppSpacing.xxs.h),
                   Text(
                     'Disappear after 24 hours',
-                    style: context.text.labelSmall.copyWith(
+                    style: context.text.bodySmall.copyWith(
                       color: context.text.tertiaryText,
                     ),
                   ),
@@ -669,7 +679,7 @@ class _StoryFeedTile extends StatelessWidget {
                   SizedBox(height: AppSpacing.xxs.h),
                   Text(
                     _subtitle(item),
-                    style: context.text.labelSmall.copyWith(
+                    style: context.text.bodySmall.copyWith(
                       color: context.text.tertiaryText,
                     ),
                   ),
