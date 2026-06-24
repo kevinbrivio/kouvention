@@ -104,6 +104,7 @@ class StoryViewerView extends ConsumerWidget {
                             context.pop();
                           }
                         },
+                        onLeftTap: () async => vm.currentIndex > 0,
                         onSlideStart: (_) => vm.onSlideStart(),
                         onSlideDown: (details) {
                           vm.onSlideUpdate(
