@@ -39,10 +39,16 @@ class StoryViewerView extends ConsumerWidget {
     final currentProfile = currentUid == story.authorUid
         ? ref.watch(storyCurrentUserProfileProvider(currentUid!)).valueOrNull
         : null;
-    final presenterItems = vm.stories
-        .map((item) => StoryPresenterMapper.map(context, item))
-        .toList(growable: false);
     final viewportWidth = MediaQuery.sizeOf(context).width;
+    final presenterItems = vm.stories
+        .map(
+          (item) => StoryPresenterMapper.map(
+            context,
+            item,
+            mediaBottomPadding: 0,
+          ),
+        )
+        .toList(growable: false);
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
@@ -152,15 +158,6 @@ class StoryViewerView extends ConsumerWidget {
                 ),
               ),
             ),
-            _StoryCaptionOverlay(
-              key: ValueKey('${vm.currentFeedItem.authorUid}:${story.id}'),
-              caption:
-                  story.type == StoryType.audio || story.type == StoryType.text
-                  ? null
-                  : story.caption,
-              bottomOffset: vm.canReply ? 70.h : 0,
-              onTogglePlayback: vm.togglePlayback,
-            ),
             if (vm.isReplyOverlayVisible && vm.canReply)
               Positioned.fill(
                 child: _StoryReplyOverlay(
@@ -173,72 +170,6 @@ class StoryViewerView extends ConsumerWidget {
                 ),
               ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _StoryCaptionOverlay extends StatefulWidget {
-  const _StoryCaptionOverlay({
-    required this.caption,
-    required this.bottomOffset,
-    required this.onTogglePlayback,
-    super.key,
-  });
-
-  final String? caption;
-  final double bottomOffset;
-  final VoidCallback onTogglePlayback;
-
-  @override
-  State<_StoryCaptionOverlay> createState() => _StoryCaptionOverlayState();
-}
-
-class _StoryCaptionOverlayState extends State<_StoryCaptionOverlay> {
-  bool _isExpanded = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final text = widget.caption?.trim();
-    if (text == null || text.isEmpty) return const SizedBox.shrink();
-
-    return Positioned(
-      left: 0,
-      right: 0,
-      bottom: MediaQuery.of(context).viewInsets.bottom + widget.bottomOffset,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () {
-          setState(() => _isExpanded = !_isExpanded);
-          widget.onTogglePlayback();
-        },
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Colors.black.withValues(alpha: 0.0),
-                Colors.black.withValues(alpha: 0.85),
-              ],
-            ),
-          ),
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(
-              AppSpacing.screenH.w,
-              AppSpacing.xl.h,
-              AppSpacing.screenH.w,
-              AppSpacing.md.h + MediaQuery.of(context).padding.bottom,
-            ),
-            child: Text(
-              text,
-              maxLines: _isExpanded ? null : 3,
-              overflow: _isExpanded ? null : TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: context.text.bodyMedium.copyWith(color: Colors.white),
-            ),
-          ),
         ),
       ),
     );
@@ -280,66 +211,68 @@ class _StoryReplyBar extends StatelessWidget {
                 MediaQuery.of(context).viewInsets.bottom +
                 MediaQuery.of(context).padding.bottom,
           ),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: controller,
-                  enabled: !isSending,
-                  readOnly: true,
-                  minLines: 1,
-                  maxLines: 3,
-                  onTap: onOpenReplyOverlay,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    hintText: 'Reply',
-                    hintStyle: context.text.bodySmall.copyWith(
-                      color: Colors.white,
-                    ),
-                    filled: true,
-                    counterStyle: TextStyle(color: scheme.primary),
-                    fillColor: scheme.surface.withValues(
-                      alpha: isDark ? 0.8 : 0.2,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.full.r),
-                      borderSide: BorderSide(
-                        color: scheme.outline.withValues(alpha: 0.2),
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: controller,
+                    enabled: !isSending,
+                    readOnly: true,
+                    minLines: 1,
+                    maxLines: 3,
+                    onTap: onOpenReplyOverlay,
+                    style: const TextStyle(color: Colors.white),
+                    textAlignVertical: TextAlignVertical.center,
+                    decoration: InputDecoration(
+                      hintText: 'Reply',
+                      hintStyle: context.text.bodySmall.copyWith(
+                        color: Colors.white,
                       ),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.full.r),
-                      borderSide: BorderSide(
-                        color: scheme.outline.withValues(alpha: 0.2),
+                      filled: true,
+                      counterStyle: TextStyle(color: scheme.primary),
+                      fillColor: scheme.surface.withValues(
+                        alpha: isDark ? 0.8 : 0.2,
                       ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.full.r),
-                      borderSide: BorderSide(color: scheme.primary),
-                    ),
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: AppSpacing.md.w,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.full.r),
+                        borderSide: BorderSide(
+                          color: scheme.outline.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.full.r),
+                        borderSide: BorderSide(
+                          color: scheme.outline.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.full.r),
+                        borderSide: BorderSide(color: scheme.primary),
+                      ),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md.w,
+                        vertical: AppSpacing.xs.h,
+                      ),
                     ),
                   ),
-                  showCursor: false,
-                  cursorColor: scheme.primary,
                 ),
-              ),
-              Gap(AppSpacing.md.h),
-              IconButton.filled(
-                tooltip: 'Send reply',
-                onPressed: isSending ? null : onSend,
-                style: IconButton.styleFrom(
-                  backgroundColor: AppColorTokens.primary,
+                Gap(AppSpacing.sm.w),
+                AspectRatio(
+                  aspectRatio: 1.0,
+                  child: GestureDetector(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(AppRadius.full.r),
+                        color: AppColorTokens.primary,
+                      ),
+                      child: Icon(Icons.send_rounded, size: AppSizing.iconSm.r),
+                    ),
+                  ),
                 ),
-                icon: isSending
-                    ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Icon(Icons.send_rounded, color: scheme.onSurface),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

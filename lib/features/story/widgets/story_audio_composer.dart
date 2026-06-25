@@ -28,7 +28,7 @@ class StoryAudioComposer extends StatefulWidget {
   final bool isPublishing;
   final ValueChanged<File?> onAudioSelected;
   final ValueChanged<Color> onBackgroundColorSelected;
-  final VoidCallback onPublish;
+  final ValueChanged<int> onPublish;
 
   @override
   State<StoryAudioComposer> createState() => _StoryAudioComposerState();
@@ -330,7 +330,9 @@ class _StoryAudioComposerState extends State<StoryAudioComposer>
           tooltip: 'Publish story',
           icon: Icons.send_rounded,
           isLoading: widget.isPublishing,
-          onPressed: widget.isPublishing ? null : widget.onPublish,
+          onPressed: widget.isPublishing
+              ? null
+              : () => widget.onPublish(_recordingDuration.inSeconds),
         ),
       ],
     );
