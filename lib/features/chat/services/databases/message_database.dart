@@ -290,6 +290,10 @@ class MessageDatabase extends _$MessageDatabase {
       if (from >= 6 && from < 7) {
         await m.addColumn(stories, stories.backgroundColorArgb);
       }
+      
+      if (from < 8) {
+        await m.addColumn(stories, stories.mediaDuration);
+      }
     },
 
     beforeOpen: (details) async {
