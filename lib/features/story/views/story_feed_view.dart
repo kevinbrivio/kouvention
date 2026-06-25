@@ -65,10 +65,6 @@ class _StoryFeedViewState extends ConsumerState<StoryFeedView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                IconButton(
-                  onPressed: () => ref.read(debugStorySeederProvider).seedViewedStory(currentUid: currentUser.uid),
-                  icon: Icon(Icons.bug_report),
-                ),
                 Padding(
                   padding: EdgeInsets.symmetric(
                     horizontal: AppSpacing.md.w,
