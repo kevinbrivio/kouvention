@@ -462,6 +462,8 @@ class StoryViewerVM extends ChangeNotifier {
     _chromeHideTimer?.cancel();
     _chromeHideTimer = Timer(kLongPressTimeout, () {
       if (_isDisposed) return;
+      controller.pause();
+      _isStoryPaused = true;
       _isChromeHiddenByLongPress = true;
       _notify();
     });
@@ -473,6 +475,7 @@ class StoryViewerVM extends ChangeNotifier {
     var shouldNotify = false;
     if (_isChromeHiddenByLongPress) {
       _isChromeHiddenByLongPress = false;
+      _playControllerUnlessReplyTextFocused();
       shouldNotify = true;
     }
 

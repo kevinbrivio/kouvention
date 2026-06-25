@@ -170,11 +170,8 @@ class _SquareMediaStoryContent extends StatelessWidget {
               0.0,
               constraints.maxHeight - captionReserve,
             );
-            final side = math.min(
-              constraints.maxWidth,
-              videoAreaHeight,
-            );
-        
+            final side = math.min(constraints.maxWidth, videoAreaHeight);
+
             return Column(
               children: [
                 Expanded(
@@ -263,10 +260,12 @@ class _SquareVideoStory extends StatefulWidget {
 class _SquareVideoStoryState extends State<_SquareVideoStory> {
   VideoPlayerController? _controller;
   bool _hasAdvanced = false;
+  bool _pausedForBuffering = false;
 
   @override
   void initState() {
     super.initState();
+    widget.storyController?.pause();
     widget.storyController?.addListener(_onStoryControllerChanged);
     _initialize();
   }
@@ -296,6 +295,7 @@ class _SquareVideoStoryState extends State<_SquareVideoStory> {
       await controller.initialize();
       await controller.setLooping(false);
       await controller.play();
+      if (mounted) widget.storyController?.play();
     } catch (_) {
       if (!mounted || controller != _controller) return;
     }
@@ -311,21 +311,32 @@ class _SquareVideoStoryState extends State<_SquareVideoStory> {
     final previous = _controller;
     previous?.removeListener(_onVideoChanged);
     _hasAdvanced = false;
+    widget.storyController?.pause();
     setState(() => _controller = null);
     await _initialize();
     await previous?.dispose();
   }
 
   void _onVideoChanged() {
-    final controller = _controller;
-    if (controller == null || !controller.value.isInitialized || _hasAdvanced) {
+    final video = _controller;
+    if (video == null || !video.value.isInitialized || _hasAdvanced) {
       return;
     }
 
-    final duration = controller.value.duration;
+    if (video.value.isBuffering && !_pausedForBuffering) {
+      _pausedForBuffering = true;
+      widget.storyController?.pause();
+    } else if (!video.value.isBuffering &&
+        _pausedForBuffering &&
+        video.value.isPlaying) {
+      _pausedForBuffering = false;
+      widget.storyController?.play();
+    }
+
+    final duration = video.value.duration;
     if (duration == Duration.zero) return;
 
-    if (controller.value.position >= duration) {
+    if (video.value.position >= duration) {
       _hasAdvanced = true;
       widget.storyController?.next();
     }

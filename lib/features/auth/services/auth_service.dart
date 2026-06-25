@@ -1,14 +1,11 @@
-import 'dart:async';
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:oktoast/oktoast.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
-
-  Completer<UserCredential>? _signInCompleter;
 
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
@@ -23,38 +20,7 @@ class AuthService {
       serverClientId: serverClientId,
     );
 
-    _googleSignIn.authenticationEvents.listen(_handleAuthEvent).onError((
-      error,
-    ) {
-      _signInCompleter?.completeError(AuthException('google-sign-in failed'));
-    });
-
     // await _googleSignIn.attemptLightweightAuthentication();
-  }
-
-  Future<void> _handleAuthEvent(GoogleSignInAuthenticationEvent event) async {
-    switch (event) {
-      case GoogleSignInAuthenticationEventSignIn():
-        try {
-          final googleUser = event.user;
-          final googleAuth = googleUser.authentication;
-          final credential = GoogleAuthProvider.credential(
-            idToken: googleAuth.idToken,
-          );
-
-          final userCredential = await _auth.signInWithCredential(credential);
-          _signInCompleter?.complete(userCredential);
-        } catch (e) {
-          _signInCompleter?.completeError(e);
-        }
-        break;
-
-      case GoogleSignInAuthenticationEventSignOut():
-        break;
-
-      // Future-proofing: Google may add new event types.
-      // Without this, a new event would silently do nothing.
-    }
   }
 
   Future<UserCredential> signUpWithEmail({
@@ -70,19 +36,18 @@ class AuthService {
       await _auth.signInWithEmailAndPassword(email: email, password: password);
 
   Future<UserCredential> signInWithGoogle() async {
-    _signInCompleter = Completer<UserCredential>();
-
+    final googleUser = await _googleSignIn.authenticate();
+    final googleAuth = googleUser.authentication;
+    final credential = GoogleAuthProvider.credential(
+      idToken: googleAuth.idToken,
+    );
     try {
-      await _googleSignIn.authenticate();
-    } catch (e) {
-      if (!_signInCompleter!.isCompleted) {
-        _signInCompleter!.completeError(
-          AuthException('Google sign-in was cancelled'),
-        );
-      }
+      return _auth.signInWithCredential(credential);
+    } catch (_) {
+      showToast('Sign in failed. Please try again later.');
     }
 
-    return _signInCompleter!.future;
+    return _auth.signInWithCredential(credential);
   }
 
   Future<void> signOut() async {
@@ -106,11 +71,3 @@ final currentUidProvider = Provider<String?>((ref) {
   final authState = ref.watch(authStateProvider);
   return authState.valueOrNull?.uid;
 });
-
-class AuthException implements Exception {
-  final String message;
-  AuthException(this.message);
-
-  @override
-  String toString() => message;
-}

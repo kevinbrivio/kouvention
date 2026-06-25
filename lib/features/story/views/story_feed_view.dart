@@ -103,9 +103,9 @@ class _StoryFeedViewState extends ConsumerState<StoryFeedView> {
                   child: feed.when(
                     loading: () =>
                         const Center(child: CircularProgressIndicator()),
-                    error: (_, _) => const _StoryFeedMessage(
+                    error: (e, s) => _StoryFeedMessage(
                       icon: Icons.cloud_off_outlined,
-                      message: 'Stories are unavailable',
+                      message: "${e} - $s",
                     ),
                     data: (items) {
                       final ownStory = _ownStory(items);

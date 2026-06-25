@@ -49,7 +49,6 @@ class StoryRepository {
     final rows = await _db.fetchStoriesByAuthor(
       authorUid: authorUid,
       nowMs: now.millisecondsSinceEpoch,
-      limit: limit,
       beforeCreatedAt: beforeCreatedAt?.millisecondsSinceEpoch,
     );
 
@@ -288,6 +287,7 @@ class StoryRepository {
       await _db.updateStoryUploadResult(
         storyId: localRow.id,
         mediaUrl: upload.url,
+        mediaDuration: upload.mediaDuration,
         thumbnailUrl: _storyThumbnailUrl(upload.url, localRow.type),
       );
 

@@ -1035,6 +1035,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
       ...stories,
       if (!stories.any((item) => item.id == story.id)) story,
     ]..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+
     final index = orderedStories.indexWhere((item) => item.id == story.id);
 
     if (!mounted) return;
