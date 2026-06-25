@@ -13,6 +13,19 @@ import 'package:kouvention/features/story/repositories/story_repository.dart';
 import 'package:kouvention/features/story/services/story_firestore_service.dart';
 
 void main() {
+  test('Cloudinary video response accepts integer duration', () {
+    final result = UploadResultModel.fromJson({
+      'secure_url': 'https://cdn.example.com/story.mp4',
+      'original_filename': 'story',
+      'format': 'mp4',
+      'bytes': 42,
+      'duration': 30,
+    });
+
+    expect(result.messageType, MessageType.video);
+    expect(result.mediaDuration, 30);
+  });
+
   group('pending story media upload', () {
     late MessageDatabase db;
     late _FakeStoryRemote remote;
