@@ -79,9 +79,8 @@ class ChatProfileVM extends BaseNotifier {
           context.go('/chats/$chatId');
         }
       }
-    } catch (e, s) {
+    } catch (e) {
       debugPrint('Navigating in profile detail error: $e');
-      print(s);
     } finally {
       isLoading = false;
     }

@@ -166,6 +166,7 @@ class Stories extends Table {
 
   TextColumn get type => textEnum<StoryType>()();
   TextColumn get mediaUrl => text().nullable()();
+  IntColumn get mediaDuration => integer().nullable()();
   TextColumn get thumbnailUrl => text().nullable()();
   TextColumn get textContent => text().nullable()();
   TextColumn get caption => text().nullable()();
@@ -288,6 +289,10 @@ class MessageDatabase extends _$MessageDatabase {
 
       if (from >= 6 && from < 7) {
         await m.addColumn(stories, stories.backgroundColorArgb);
+      }
+      
+      if (from < 8) {
+        await m.addColumn(stories, stories.mediaDuration);
       }
     },
 
@@ -906,15 +911,14 @@ class MessageDatabase extends _$MessageDatabase {
   Future<List<Story>> fetchStoriesByAuthor({
     required String authorUid,
     required int nowMs,
-    int limit = 20,
+    // int limit = 20,
     int? beforeCreatedAt,
   }) {
     final query = select(stories)
       ..where((s) => s.authorUid.equals(authorUid))
       ..where((s) => s.expiresAt.isBiggerThanValue(nowMs))
       ..where((s) => s.deletedAt.isNull())
-      ..orderBy([(s) => OrderingTerm.desc(s.createdAt)])
-      ..limit(limit);
+      ..orderBy([(s) => OrderingTerm.desc(s.createdAt)]);
 
     if (beforeCreatedAt != null) {
       query.where((s) => s.createdAt.isSmallerThanValue(beforeCreatedAt));
@@ -1013,11 +1017,13 @@ class MessageDatabase extends _$MessageDatabase {
   Future<void> updateStoryUploadResult({
     required String storyId,
     required String mediaUrl,
+    required int? mediaDuration,
     String? cloudinaryPublicId,
     String? thumbnailUrl,
   }) => (update(stories)..where((s) => s.id.equals(storyId))).write(
     StoriesCompanion(
       mediaUrl: Value(mediaUrl),
+      mediaDuration: mediaDuration != null ? Value(mediaDuration) : Value(0),
       cloudinaryPublicId: Value(cloudinaryPublicId),
       thumbnailUrl: Value(thumbnailUrl),
       syncStatus: const Value(StorySyncStatus.pending),

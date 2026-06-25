@@ -64,9 +64,8 @@ class EditNameVM extends BaseFormNotifier<EditNameForm>
       if (context.mounted) {
         context.pop();
       }
-    } catch (e, s) {
+    } catch (e) {
       debugPrint('error on editting name: $e');
-      print(s);
     } finally {
       isLoading = false;
     }

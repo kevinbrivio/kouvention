@@ -15,17 +15,23 @@ class StoryVideoPreparationResult {
   const StoryVideoPreparationResult({
     required this.file,
     required this.wasTrimmed,
+    required this.durationMs,
   });
 
   final File file;
   final bool wasTrimmed;
+  final int durationMs;
 }
 
 class StoryVideoPreparationService {
   Future<StoryVideoPreparationResult> prepare(File source) async {
     final duration = await _readDuration(source);
     if (!shouldTrimStoryVideo(duration)) {
-      return StoryVideoPreparationResult(file: source, wasTrimmed: false);
+      return StoryVideoPreparationResult(
+        file: source,
+        wasTrimmed: false,
+        durationMs: duration.inMilliseconds,
+      );
     }
 
     final trimmer = VideoTrimmer();
@@ -41,6 +47,7 @@ class StoryVideoPreparationService {
     return StoryVideoPreparationResult(
       file: File(outputPath),
       wasTrimmed: true,
+      durationMs: storyVideoMaxDuration.inMilliseconds,
     );
   }
 

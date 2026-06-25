@@ -73,7 +73,7 @@ class _VideoPreviewState extends State<VideoPreview> {
           : _controller.play(),
       child: Center(
         child: AspectRatio(
-          aspectRatio: _controller.value.aspectRatio,
+          aspectRatio: 9 / 16,
           child: VideoPlayer(_controller),
         ),
       ),

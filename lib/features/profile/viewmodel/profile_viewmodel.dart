@@ -112,10 +112,9 @@ class ProfileVM extends BaseNotifier {
       if (ctx.mounted) {
         ctx.go(RouterRoutes.login.path);
       }
-    } catch (e, s) {
-      print('error when signin out: $e');
+    } catch (e) {
+
       showToast('Failed to sign out. Please try again');
-      print(s);
     } finally {
       isLoading = false;
       _isButtonLoading = false;
