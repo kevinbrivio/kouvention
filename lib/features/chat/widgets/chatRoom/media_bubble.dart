@@ -13,6 +13,7 @@ import 'package:kouvention/cores/router/router.dart';
 import 'package:kouvention/cores/widgets/loading_indicator.dart';
 import 'package:kouvention/features/chat/models/bubble_color_scheme.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
+import 'package:kouvention/features/chat/models/message_status.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/viewmodel/audio_manager.dart';
 import 'package:open_file/open_file.dart';
@@ -22,14 +23,18 @@ import 'package:video_thumbnail/video_thumbnail.dart';
 
 class MediaBubble extends StatelessWidget {
   final MessageModel message;
+  final MessageStatus status;
   final bool isMe;
   final BubbleColorScheme scheme;
+  final String time;
 
   const MediaBubble({
     super.key,
     required this.message,
+    required this.status,
     required this.isMe,
     required this.scheme,
+    required this.time,
   });
 
   @override
@@ -42,7 +47,7 @@ class MediaBubble extends StatelessWidget {
       return Text(
         label,
         style: context.text.bodySmall.copyWith(
-          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
           fontStyle: FontStyle.italic,
         ),
       );
@@ -50,8 +55,6 @@ class MediaBubble extends StatelessWidget {
 
     final rawUrls = message.mediaUrls ?? [];
     if (rawUrls.isEmpty) return const SizedBox.shrink();
-
-    final urls = rawUrls.whereType<String>().toList();
 
     final type = message.type;
     final mimeType = message.mimeType ?? '';
@@ -72,28 +75,29 @@ class MediaBubble extends StatelessWidget {
         mimeType == 'audio/mp3' ||
         mimeType.startsWith('audio/');
 
-    final bytesSizes = message.fileSizeBytes;
-
-    if (isSticker) return _StickerMedia(urls: urls, isMe: isMe);
-    if (isPdf) return _FileMedia(message: message, isMe: isMe);
-    if (isImage)
-      return _ImageMedia(
-        caption: message.text,
-        captions: message.mediaCaptions,
-        urls: urls,
+    if (isSticker) {
+      return _StickerMedia(
+        message: message,
+        status: status,
         isMe: isMe,
+        time: time,
       );
-    if (isAudio)
+    } else if (isPdf) {
+      return _FileMedia(message: message, status: status, isMe: isMe);
+    } else if (isImage) {
+      return _ImageMedia(message: message, status: status, isMe: isMe);
+    } else if (isAudio) {
       return _AudioMedia(
-        messageId: message.id,
-        urls: urls,
+        message: message,
+        status: status,
         isMe: isMe,
-        byteSizes: bytesSizes,
-        mediaDuration: message.mediaDuration,
         scheme: scheme,
       );
-    if (isVideo) return _VideoMedia(urls: urls, isMe: isMe);
-    return _FileMedia(message: message, isMe: isMe);
+    } else if (isVideo) {
+      return _VideoMedia(message: message, status: status, isMe: isMe);
+    }
+
+    return _FileMedia(message: message, status: status, isMe: isMe);
   }
 }
 
@@ -101,19 +105,20 @@ class MediaBubble extends StatelessWidget {
 // Image Media (Single or Multiple, scrollable)
 // ------------------------------------------------------------
 class _ImageMedia extends StatelessWidget {
-  final String caption;
-  final List<String>? captions;
-  final List<String> urls;
+  final MessageModel message;
+  final MessageStatus status;
   final bool isMe;
   const _ImageMedia({
-    required this.urls,
-    required this.caption,
-    this.captions,
+    required this.message,
+    required this.status,
     required this.isMe,
   });
 
   @override
   Widget build(BuildContext context) {
+    final urls = message.mediaUrls ?? [];
+    final caption = message.text;
+    final captions = message.mediaCaptions;
     final count = urls.length;
     if (count == 1) {
       final c = captions?.isNotEmpty == true ? captions![0] : caption;
@@ -124,24 +129,50 @@ class _ImageMedia extends StatelessWidget {
       final effectiveCaption = nonEmptyCaptions.isNotEmpty
           ? nonEmptyCaptions.first
           : caption;
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(AppRadius.sm.r),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildCollage(context, urls),
-            if (effectiveCaption.isNotEmpty)
-              Container(
-                padding: EdgeInsets.symmetric(vertical: AppSpacing.xs.h),
-                child: Text(
-                  effectiveCaption,
-                  style: context.text.bodySmall.copyWith(
-                    color: context.text.secondaryText,
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.sm.r),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildCollage(context, urls),
+                if (effectiveCaption.isNotEmpty)
+                  Container(
+                    padding: EdgeInsets.symmetric(vertical: AppSpacing.xs.h),
+                    child: Text(
+                      effectiveCaption,
+                      style: context.text.bodySmall.copyWith(
+                        color: context.text.secondaryText,
+                      ),
+                    ),
                   ),
+              ],
+            ),
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _formatTime(message.sentAt),
+                style: context.text.labelSmall.copyWith(
+                  color: isMe
+                      ? message.isDeleted
+                            ? Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withValues(alpha: 0.3)
+                            : context.text.secondaryText
+                      : context.text.secondaryText,
                 ),
               ),
-          ],
-        ),
+              if (isMe) ...[
+                Gap(AppSpacing.xxs.w),
+                _buildMessageStatus(status, context.text.secondaryText),
+              ],
+            ],
+          ),
+        ],
       );
     }
   }
@@ -153,44 +184,73 @@ class _ImageMedia extends StatelessWidget {
     String caption = '',
   }) => GestureDetector(
     onTap: () => _openFullscreen(context, index),
-    child: ClipRRect(
+    child: ConstrainedBox(
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.sizeOf(context).width * 0.4
+      ),
+      child: ClipRRect(
       borderRadius: BorderRadius.circular(AppRadius.sm.r),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ConstrainedBox(
-            constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.8,
-              maxHeight: 200.h,
+          CachedNetworkImage(
+            imageUrl: url,
+            fit: BoxFit.scaleDown,
+            placeholder: (_, __) => SizedBox(
+              height: 120.h,
+              child: const Center(child: LoadingIndicator()),
             ),
-            child: CachedNetworkImage(
-              imageUrl: url,
-              fit: BoxFit.scaleDown,
-              placeholder: (_, __) => SizedBox(
-                height: 120.h,
-                child: const Center(child: LoadingIndicator()),
-              ),
-              errorWidget: (_, __, ___) => Container(
-                height: 120.h,
-                color: Theme.of(
-                  context,
-                ).colorScheme.onSurface.withValues(alpha: 0.5),
-                child: const Icon(Icons.broken_image),
-              ),
+            errorWidget: (_, __, ___) => Container(
+              height: 120.h,
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.3),
+              child: Icon(Icons.broken_image, size: AppSizing.iconLg.r),
             ),
           ),
-          if (caption.isNotEmpty)
-            Container(
-              padding: EdgeInsets.symmetric(vertical: AppSpacing.xs.h),
-              child: Text(
-                caption,
-                style: context.text.bodySmall.copyWith(
-                  color: context.text.secondaryText,
-                ),
+          Gap(AppSpacing.xxs.h),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              if (caption.isNotEmpty)
+                Flexible(
+                  child: Text(
+                    caption,
+                    style: context.text.bodySmall.copyWith(
+                      color: context.text.secondaryText,
+                    ),
+                  ),
+                )
+              else
+                SizedBox.shrink(),
+
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _formatTime(message.sentAt),
+                    style: context.text.labelSmall.copyWith(
+                      color: isMe
+                          ? message.isDeleted
+                                ? Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface.withValues(alpha: 0.3)
+                                : context.text.secondaryText
+                          : context.text.secondaryText,
+                    ),
+                  ),
+                  if (isMe) ...[
+                    Gap(AppSpacing.xxs.w),
+                    _buildMessageStatus(status, context.text.secondaryText),
+                  ],
+                ],
               ),
-            ),
+            ],
+          ),
         ],
       ),
+    ),
     ),
   );
 
@@ -326,7 +386,7 @@ class _ImageMedia extends StatelessWidget {
                   style: context.text.headlineSmall.copyWith(
                     color: Theme.of(
                       context,
-                    ).colorScheme.onSurface.withValues(alpha: 0.5),
+                    ).colorScheme.onSurface.withValues(alpha: 0.3),
                   ),
                 ),
               ),
@@ -337,6 +397,8 @@ class _ImageMedia extends StatelessWidget {
   );
 
   void _openFullscreen(BuildContext context, int initialIndex) {
+    final urls = message.mediaUrls ?? [];
+    final captions = message.mediaCaptions ?? [message.text];
     Navigator.push(
       context,
       PageRouteBuilder(
@@ -344,7 +406,7 @@ class _ImageMedia extends StatelessWidget {
         pageBuilder: (_, __, ___) => FullScreenViewer(
           urls: urls,
           initialIndex: initialIndex,
-          captions: captions ?? [caption],
+          captions: captions,
         ),
       ),
     );
@@ -493,38 +555,46 @@ class _FullScreenViewerState extends State<FullScreenViewer> {
 // Placeholder for Video, Audio, File
 // ------------------------------------------------------------
 class _VideoMedia extends StatelessWidget {
-  final List<String> urls;
+  final MessageModel message;
+  final MessageStatus status;
   final bool isMe;
-  const _VideoMedia({required this.urls, required this.isMe});
+  const _VideoMedia({
+    required this.message,
+    required this.status,
+    required this.isMe,
+  });
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      if (urls.length > 1) ...[
-        Text(
-          '${urls.length} videos',
-          style: context.text.titleMedium.copyWith(
-            color: context.text.secondaryText,
+  Widget build(BuildContext context) {
+    final urls = message.mediaUrls ?? [];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (urls.length > 1) ...[
+          Text(
+            '${urls.length} videos',
+            style: context.text.titleMedium.copyWith(
+              color: context.text.secondaryText,
+            ),
           ),
-        ),
-        Gap(AppSpacing.xs.h),
+          Gap(AppSpacing.xs.h),
+        ],
+        if (urls.length == 1)
+          _VideoTile(url: urls[0], isMe: isMe)
+        else
+          SizedBox(
+            height: 120.h,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: urls.length,
+              separatorBuilder: (_, __) => Gap(AppSpacing.xs.h),
+              itemBuilder: (context, index) =>
+                  _VideoTile(url: urls[index], isMe: isMe),
+            ),
+          ),
       ],
-      if (urls.length == 1)
-        _VideoTile(url: urls[0], isMe: isMe)
-      else
-        SizedBox(
-          height: 120.h,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: urls.length,
-            separatorBuilder: (_, __) => Gap(AppSpacing.xs.h),
-            itemBuilder: (context, index) =>
-                _VideoTile(url: urls[index], isMe: isMe),
-          ),
-        ),
-    ],
-  );
+    );
+  }
 }
 
 class _VideoTile extends StatefulWidget {
@@ -762,60 +832,94 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 }
 
 class _StickerMedia extends StatelessWidget {
-  final List<String> urls;
+  final MessageModel message;
+  final MessageStatus status;
   final bool isMe;
-  const _StickerMedia({required this.urls, required this.isMe});
+  final String time;
+  const _StickerMedia({
+    required this.message,
+    required this.status,
+    required this.isMe,
+    required this.time,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final url = urls.first;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(AppRadius.sm.r),
-      child: SizedBox(
-        width: 0.3.sw,
-        height: 0.3.sw,
-        child: CachedNetworkImage(
-          imageUrl: url,
-          fit: BoxFit.cover,
-          placeholder: (_, __) => Container(color: Colors.grey.shade100),
-          errorWidget: (_, __, ___) => Container(
-            color: Colors.grey.shade100,
-            child: Icon(
-              Icons.sticky_note_2_outlined,
-              color: Colors.grey.shade400,
+    final url = message.mediaUrls!.first;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(AppRadius.sm.r),
+          child: SizedBox(
+            width: 0.3.sw,
+            height: 0.3.sw,
+            child: CachedNetworkImage(
+              imageUrl: url,
+              fit: BoxFit.cover,
+              placeholder: (_, __) => Container(color: Colors.grey.shade100),
+              errorWidget: (_, __, ___) => Container(
+                color: Colors.grey.shade100,
+                child: Icon(
+                  Icons.sticky_note_2_outlined,
+                  color: Colors.grey.shade400,
+                ),
+              ),
             ),
           ),
         ),
-      ),
+        Gap(AppSpacing.sm.w),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Text(
+              time,
+              style: context.text.labelSmall.copyWith(
+                color: isMe
+                    ? message.isDeleted
+                          ? Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.3)
+                          : context.text.secondaryText
+                    : context.text.secondaryText,
+              ),
+            ),
+            if (isMe) ...[
+              Gap(AppSpacing.xxs.w),
+              _buildMessageStatus(status, context.text.secondaryText),
+            ],
+          ],
+        ),
+      ],
     );
   }
 }
 
 class _AudioMedia extends StatelessWidget {
-  final String messageId;
-  final List<String> urls;
+  final MessageModel message;
+  final MessageStatus status;
   final bool isMe;
-  final int? byteSizes;
-  final int? mediaDuration;
   final BubbleColorScheme scheme;
   const _AudioMedia({
-    required this.messageId,
-    required this.urls,
+    required this.message,
+    required this.status,
     required this.isMe,
-    this.byteSizes = 0,
-    this.mediaDuration,
     required this.scheme,
   });
   @override
   Widget build(BuildContext context) => Column(
-    children: urls
+    children: (message.mediaUrls ?? [])
         .map(
           (url) => _AudioTile(
-            messageId: messageId,
+            messageId: message.id,
             url: url,
             isMe: isMe,
-            byteSizes: byteSizes,
-            mediaDuration: mediaDuration,
+            byteSizes: message.fileSizeBytes,
+            mediaDuration: message.mediaDuration,
+            isDeleted: message.isDeleted,
+            status: status,
+            time: _formatTime(message.sentAt),
             scheme: scheme,
           ),
         )
@@ -829,6 +933,9 @@ class _AudioTile extends StatefulWidget {
   final bool isMe;
   final int? byteSizes;
   final int? mediaDuration;
+  final bool isDeleted;
+  final MessageStatus status;
+  final String time;
   final BubbleColorScheme scheme;
   const _AudioTile({
     required this.messageId,
@@ -836,6 +943,9 @@ class _AudioTile extends StatefulWidget {
     required this.isMe,
     this.byteSizes,
     this.mediaDuration,
+    required this.isDeleted,
+    required this.status,
+    required this.time,
     required this.scheme,
   });
 
@@ -939,7 +1049,7 @@ class _AudioTileState extends State<_AudioTile> with RouteAware {
       maxWidth: MediaQuery.sizeOf(context).width * 0.8,
     ),
     child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         Container(
           decoration: BoxDecoration(
@@ -993,15 +1103,47 @@ class _AudioTileState extends State<_AudioTile> with RouteAware {
             ],
           ),
         ),
-        if (widget.byteSizes != null && widget.byteSizes != 0) ...[
-          Gap(AppSpacing.xs.h),
-          Text(
-            formatBytes(widget.byteSizes!),
-            style: context.text.labelSmall.copyWith(
-              color: context.text.secondaryText,
+        Gap(AppSpacing.xs.h),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            if (widget.byteSizes != null && widget.byteSizes != 0)
+              Text(
+                formatBytes(widget.byteSizes!),
+                style: context.text.labelSmall.copyWith(
+                  color: context.text.secondaryText,
+                ),
+              )
+            else
+              SizedBox.shrink(),
+
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  widget.time,
+                  style: context.text.labelSmall.copyWith(
+                    color: widget.isMe
+                        ? widget.isDeleted
+                              ? Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.3)
+                              : context.text.secondaryText
+                        : context.text.secondaryText,
+                  ),
+                ),
+                if (widget.isMe) ...[
+                  Gap(AppSpacing.xxs.w),
+                  _buildMessageStatus(
+                    widget.status,
+                    context.text.secondaryText,
+                  ),
+                ],
+              ],
             ),
-          ),
-        ],
+          ],
+        ),
       ],
     ),
   );
@@ -1015,9 +1157,14 @@ String formatBytes(int bytes) {
 
 class _FileMedia extends StatelessWidget {
   final MessageModel message;
+  final MessageStatus status;
   final bool isMe;
 
-  const _FileMedia({required this.message, required this.isMe});
+  const _FileMedia({
+    required this.message,
+    required this.status,
+    required this.isMe,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1025,6 +1172,8 @@ class _FileMedia extends StatelessWidget {
     final thumbnails = message.thumbnailUrls;
     final fileName = message.fileName;
     final totalSize = message.fileSizeBytes;
+    final time = _formatTime(message.sentAt);
+    final isDeleted = message.isDeleted;
 
     if (urls.isEmpty) return const SizedBox.shrink();
 
@@ -1033,21 +1182,17 @@ class _FileMedia extends StatelessWidget {
         url: urls.first,
         thumbnailUrl: thumbnails?.firstOrNull,
         name: fileName ?? 'File',
+        time: _formatTime(message.sentAt),
+        status: status,
+        isDeleted: message.isDeleted,
         size: totalSize,
         isMe: isMe,
       );
     }
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        Text(
-          '${urls.length} files',
-          style: context.text.labelSmall.copyWith(
-            color: context.text.secondaryText,
-          ),
-        ),
-        Gap(AppSpacing.xs.h),
         InkWell(
           onTap: () => _showMultipleFilesDialog(context, urls),
           child: Container(
@@ -1073,28 +1218,42 @@ class _FileMedia extends StatelessWidget {
                     ),
                   ),
                   if (totalSize != null)
-                    Text(
-                      formatBytes(totalSize),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withValues(alpha: 0.5),
-                      ),
-                    ),
+                    Text(formatBytes(totalSize), style: context.text.bodySmall),
 
                   Icon(
                     Icons.chevron_right,
-                    size: 20.sp,
+                    size: AppSizing.iconSm.r,
                     color: Theme.of(
                       context,
-                    ).colorScheme.onSurface.withValues(alpha: 0.5),
+                    ).colorScheme.onSurface.withValues(alpha: 0.3),
                   ),
                 ],
               ),
             ),
           ),
         ),
+        Gap(AppSpacing.xxs.h),
+        Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          time,
+          style: context.text.labelSmall.copyWith(
+            color: isMe
+                ? isDeleted
+                      ? Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.3)
+                      : context.text.secondaryText
+                : context.text.secondaryText,
+          ),
+        ),
+        if (isMe) ...[
+          Gap(AppSpacing.xxs.w),
+          _buildMessageStatus(status, context.text.secondaryText),
+        ],
+      ],
+    ),
       ],
     );
   }
@@ -1131,6 +1290,9 @@ class _FileMedia extends StatelessWidget {
                     url: urls[index].toString(),
                     thumbnailUrl: thumbnails?[index],
                     name: originalName,
+                    time: _formatTime(message.sentAt),
+                    status: status,
+                    isDeleted: message.isDeleted,
                     isMe: false,
                   );
                 },
@@ -1152,7 +1314,7 @@ class _FileMedia extends StatelessWidget {
 
       return decodedName.split('/').last;
     } catch (e) {
-      // Kalau gagal dibongkar, pakai nama darurat
+      // Callback
       return 'Unknown_File';
     }
   }
@@ -1161,6 +1323,9 @@ class _FileMedia extends StatelessWidget {
 class _FileTile extends StatefulWidget {
   final String url;
   final String name;
+  final String time;
+  final bool isDeleted;
+  final MessageStatus status;
   final int? size;
   final bool isMe;
   final String? thumbnailUrl;
@@ -1168,6 +1333,9 @@ class _FileTile extends StatefulWidget {
   const _FileTile({
     required this.url,
     required this.name,
+    required this.time,
+    required this.isDeleted,
+    required this.status,
     this.size,
     required this.isMe,
     this.thumbnailUrl,
@@ -1385,46 +1553,75 @@ class _FileTileState extends State<_FileTile> {
       Gap(AppSpacing.xs.h),
       GestureDetector(
         onTap: _downloadAndOpen,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxWidth: MediaQuery.sizeOf(context).width * 0.6,
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.name,
-                      style: context.text.bodyMedium.copyWith(
-                        fontSize: 13.sp,
-                        color: widget.isMe ? Colors.white : Colors.black,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Gap(2.h),
-                    if (widget.size != null && !_isDownloading)
-                      Text(
-                        formatBytes(widget.size ?? 0),
-                        style: context.text.labelSmall.copyWith(
-                          color: context.text.secondaryText,
-                        ),
-                      ),
-                  ],
+        child: Row(
+          children: [
+            Flexible(
+              child: Text(
+                widget.name,
+                style: context.text.bodySmall.copyWith(
+                  color: widget.isMe
+                      ? widget.isDeleted
+                            ? Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withValues(alpha: 0.3)
+                            : context.text.secondaryText
+                      : context.text.secondaryText,
+                  fontStyle: widget.isDeleted
+                      ? FontStyle.italic
+                      : FontStyle.normal,
                 ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
-              Icon(
-                _isDownloading ? Icons.hourglass_empty : Icons.download,
-                color: context.text.secondaryText,
-              ),
-            ],
-          ),
+            ),
+            Icon(
+              _isDownloading ? Icons.hourglass_empty : Icons.download,
+              color: context.text.secondaryText,
+              size: AppSizing.iconSm.r,
+            ),
+          ],
         ),
       ),
+      Gap(AppSpacing.xxs.h),
+      if (widget.size != null && !_isDownloading)
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              formatBytes(widget.size ?? 0),
+              style: context.text.labelSmall.copyWith(
+                color: context.text.secondaryText,
+              ),
+            ),
+
+            Gap(AppSpacing.sm.w),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  widget.time,
+                  style: context.text.labelSmall.copyWith(
+                    color: widget.isMe
+                        ? widget.isDeleted
+                              ? Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.3)
+                              : context.text.secondaryText
+                        : context.text.secondaryText,
+                  ),
+                ),
+                if (widget.isMe) ...[
+                  Gap(AppSpacing.xxs.w),
+                  _buildMessageStatus(
+                    widget.status,
+                    context.text.secondaryText,
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
     ],
   );
 
@@ -1439,73 +1636,85 @@ class _FileTileState extends State<_FileTile> {
         color: widget.isMe ? Colors.white24 : Colors.black12,
         borderRadius: BorderRadius.circular(AppRadius.sm.r),
       ),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(context).width * 0.6,
-        ),
-        child: Row(
-          children: [
-            Icon(
-              _getFileIcon(widget.name),
-              size: 32,
-              color: widget.isMe
-                  ? Colors.white70
-                  : Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withValues(alpha: 0.5),
-            ),
-            Gap(AppSpacing.sm.w),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+      child: Row(
+        children: [
+          Icon(
+            _getFileIcon(widget.name),
+            size: 32,
+            color: widget.isMe
+                ? Colors.white70
+                : Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.3),
+          ),
+          Gap(AppSpacing.sm.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.name,
+                  style: context.text.labelSmall.copyWith(
+                    color: context.text.secondaryText,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (widget.size != null && !_isDownloading)
                   Text(
-                    widget.name,
+                    formatBytes(widget.size!),
                     style: context.text.labelSmall.copyWith(
                       color: widget.isMe
                           ? Colors.white
                           : Theme.of(
                               context,
-                            ).colorScheme.onSurface.withValues(alpha: 0.5),
+                            ).colorScheme.onSurface.withValues(alpha: 0.3),
                       fontWeight: FontWeight.w500,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
-                  if (widget.size != null && !_isDownloading)
-                    Text(
-                      formatBytes(widget.size!),
-                      style: context.text.labelSmall.copyWith(
-                        color: widget.isMe
-                            ? Colors.white
-                            : Theme.of(
-                                context,
-                              ).colorScheme.onSurface.withValues(alpha: 0.5),
-                        fontWeight: FontWeight.w500,
-                      ),
+                if (_isDownloading)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: LinearProgressIndicator(
+                      value: _downloadProgress,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
-                  if (_isDownloading)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: LinearProgressIndicator(
-                        value: _downloadProgress,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                ],
-              ),
+                  ),
+              ],
             ),
-            Icon(
-              _isDownloading ? Icons.hourglass_empty : Icons.download,
-              color: widget.isMe
-                  ? Colors.white70
-                  : Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withValues(alpha: 0.5),
-            ),
-          ],
-        ),
+          ),
+          Icon(
+            _isDownloading ? Icons.hourglass_empty : Icons.download,
+            color: widget.isMe
+                ? Colors.white70
+                : Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.3),
+          ),
+        ],
       ),
     ),
   );
+}
+
+// ------------------------------------------------------------
+// Library-level helpers
+// ------------------------------------------------------------
+Widget _buildMessageStatus(MessageStatus status, Color color) {
+  switch (status) {
+    case MessageStatus.sending:
+      return Icon(Icons.access_time, size: AppSizing.iconXxs.r, color: color);
+    case MessageStatus.sent:
+      return Icon(Icons.done_all, size: AppSizing.iconXxs.r, color: color);
+    case MessageStatus.read:
+      return Icon(Icons.done_all, size: AppSizing.iconXxs.r, color: color);
+  }
+}
+
+String _formatTime(DateTime dateTime) {
+  final hour = dateTime.hour;
+  final minute = dateTime.minute.toString().padLeft(2, '0');
+  final period = hour >= 12 ? 'PM' : 'AM';
+  final displayHour = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
+  return '$displayHour:$minute $period';
 }
