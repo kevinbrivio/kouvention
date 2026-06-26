@@ -81,7 +81,7 @@ class SignUpVM extends BaseFormNotifier<SignUpForm> with FormValidatorMixin {
     isLoading = true;
     try {
       await _authService.signUpWithEmail(
-        email: form.email.text,
+        email: form.email.text.toLowerCase(),
         password: form.password.text,
       );
       if (ctx.mounted) {
@@ -91,6 +91,7 @@ class SignUpVM extends BaseFormNotifier<SignUpForm> with FormValidatorMixin {
       if (e.code == 'email-already-in-use') {
         showToast('Account already exists. Redirecting to sign in...');
         ctx.go(RouterRoutes.emailSignIn.path);
+        return;
       }
       final message = switch (e.code) {
         'invalid-email' => 'Invalid email address',

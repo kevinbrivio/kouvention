@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:kouvention/cores/bases/base_view.dart';
@@ -45,18 +46,16 @@ class SignUpView extends StatelessWidget {
           Text(
             'Create account',
             style: context.text.headlineSmall.copyWith(
-              color: AppColorTokens.info
+              color: AppColorTokens.info,
             ),
           ),
           Gap(AppSpacing.xs.h),
           Text(
             'Sign up to start messaging.',
-            style: context.text.bodySmall.copyWith(
-              color: AppColorTokens.info
-            ),
+            style: context.text.bodySmall.copyWith(color: AppColorTokens.info),
             textAlign: TextAlign.center,
           ),
-          
+
           Gap(AppSpacing.xxl.h),
 
           _buildEmailField(context, vm),
@@ -67,11 +66,8 @@ class SignUpView extends StatelessWidget {
             controller: vm.form.password.controller,
             validator: (val) => vm.form.password.validator?.call(val ?? ''),
           ),
-          
-          if (vm.isOffline) ...[
-            Gap(AppSpacing.md.h),
-            _buildOfflineWarning(),
-          ],
+
+          if (vm.isOffline) ...[Gap(AppSpacing.md.h), _buildOfflineWarning()],
 
           Gap(AppSpacing.xxl.h),
 
@@ -85,6 +81,16 @@ class SignUpView extends StatelessWidget {
 
   Widget _buildEmailField(BuildContext context, SignUpVM vm) => TextFormField(
     keyboardType: TextInputType.emailAddress,
+    textCapitalization: TextCapitalization.none,
+    inputFormatters: [
+      TextInputFormatter.withFunction(
+        (oldValue, newValue) => newValue.copyWith(
+          text: newValue.text.toLowerCase(),
+          selection: newValue.selection,
+          composing: TextRange.empty,
+        ),
+      ),
+    ],
     controller: vm.form.email.controller,
     style: context.text.bodyMedium.copyWith(color: Colors.white),
     validator: (val) => vm.form.email.validator?.call(val ?? ''),
@@ -109,16 +115,13 @@ class SignUpView extends StatelessWidget {
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md.r),
         borderSide: BorderSide(
-          color: Colors.white.withValues(alpha: 0.3), 
+          color: Colors.white.withValues(alpha: 0.3),
           width: 1.0,
         ),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppRadius.md.r),
-        borderSide: const BorderSide(
-          color: Colors.white, 
-          width: 1.5,
-        ),
+        borderSide: const BorderSide(color: Colors.white, width: 1.5),
       ),
       errorStyle: context.text.labelMedium.copyWith(color: Colors.orangeAccent),
     ),
@@ -152,7 +155,9 @@ class SignUpView extends StatelessWidget {
       onPressed: vm.isLoading ? null : () => vm.signUp(),
       isWhiteBackground: true,
       text: 'Sign Up',
-      textStyle: context.text.labelLarge.copyWith(color: AppColorTokens.primary),
+      textStyle: context.text.labelLarge.copyWith(
+        color: AppColorTokens.primary,
+      ),
     ),
   );
 

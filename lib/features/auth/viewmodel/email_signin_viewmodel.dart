@@ -82,7 +82,7 @@ class EmailSignInVM extends BaseFormNotifier<EmailSignInForm>
     isLoading = true;
     try {
       final credential = await _authService.signInWithEmail(
-        email: form.email.text,
+        email: form.email.text.toLowerCase(),
         password: form.password.untrimmedText,
       );
 
@@ -92,7 +92,7 @@ class EmailSignInVM extends BaseFormNotifier<EmailSignInForm>
         // Set user token to FCM
         final fcmService = ref.read(fcmServiceProvider);
         await fcmService.initialize();
-        
+
         if (hasProfile) {
           ctx.go(RouterRoutes.chatList.path);
         } else {
