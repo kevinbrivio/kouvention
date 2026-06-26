@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/viewmodel/media/media_picker_helper.dart';
 import 'package:kouvention/features/chat/viewmodel/media/media_preview_viewmodel.dart';
@@ -14,7 +15,7 @@ import 'package:kouvention/features/chat/widgets/preview/video_preview.dart';
 class MediaPreviewView extends ConsumerStatefulWidget {
   final String chatId;
   final MediaPreviewArgs args;
-  MediaPreviewView({super.key, required this.chatId, required this.args});
+  const MediaPreviewView({super.key, required this.chatId, required this.args});
 
   @override
   ConsumerState<MediaPreviewView> createState() => _MediaPreviewViewState();
@@ -76,59 +77,77 @@ class _MediaPreviewViewState extends ConsumerState<MediaPreviewView> {
         ],
       );
 
-  Widget _buildCaptionBar(BuildContext context, MediaPreviewVM vm) => Container(
-    color: Colors.black,
-    padding: EdgeInsets.fromLTRB(12.w, 8.h, 8.w, 24.h),
-    child: Row(
-      children: [
-        // Caption field
-        Expanded(
-          child: TextField(
-            controller: _captionController,
-            onChanged: (value) {
-              final currentFile = vm.files[vm.currentIndex];
-              vm.onCaptionChanged(currentFile.path, value);
-            },
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              hintText: 'Add a caption...',
-              hintStyle: TextStyle(color: Colors.white54),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(24.r),
-                borderSide: BorderSide.none,
-              ),
-              filled: true,
-              fillColor: Colors.white12,
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: 16.w,
-                vertical: 10.h,
+  Widget _buildCaptionBar(BuildContext context, MediaPreviewVM vm) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
+
+    return Container(
+      color: Colors.black,
+      padding: EdgeInsets.fromLTRB(12.w, 8.h, 8.w, 24.h),
+      child: Row(
+        children: [
+          // Caption field
+          Expanded(
+            child: TextField(
+              controller: _captionController,
+              onChanged: (value) {
+                final currentFile = vm.files[vm.currentIndex];
+                vm.onCaptionChanged(currentFile.path, value);
+              },
+              style: context.text.bodyMedium,
+              decoration: InputDecoration(
+                hintText: 'Add caption...',
+                hintStyle: context.text.bodySmall.copyWith(color: Colors.white),
+                filled: true,
+                counterStyle: TextStyle(color: scheme.primary),
+                fillColor: scheme.surface.withValues(alpha: isDark ? 0.8 : 0.2),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.full.r),
+                  borderSide: BorderSide(
+                    color: scheme.outline.withValues(alpha: 0.2),
+                  ),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.full.r),
+                  borderSide: BorderSide(
+                    color: scheme.outline.withValues(alpha: 0.2),
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.full.r),
+                  borderSide: BorderSide(color: scheme.primary),
+                ),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md.w,
+                  vertical: AppSpacing.xs.h,
+                ),
               ),
             ),
           ),
-        ),
-        SizedBox(width: 8.w),
+          SizedBox(width: 8.w),
 
-        // Send button
-        GestureDetector(
-          onTap: vm.isSending ? null : () => vm.send(context),
-          child: CircleAvatar(
-            radius: 24.r,
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            child: vm.isSending
-                ? SizedBox(
-                    width: 20.sp,
-                    height: 20.sp,
-                    child: const CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : Icon(Icons.send, color: Colors.white, size: 20.sp),
+          // Send button
+          GestureDetector(
+            onTap: vm.isSending ? null : () => vm.send(context),
+            child: CircleAvatar(
+              radius: 24.r,
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              child: vm.isSending
+                  ? SizedBox(
+                      width: 20.sp,
+                      height: 20.sp,
+                      child: const CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Icon(Icons.send, color: Colors.white, size: 20.sp),
+            ),
           ),
-        ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
+  }
 
   // ─── Carousel ────────────────────────────────────────────
   Widget _buildCarousel(MediaPreviewVM vm) => PageView.builder(
@@ -136,6 +155,7 @@ class _MediaPreviewViewState extends ConsumerState<MediaPreviewView> {
     itemCount: vm.files.length,
     // Saat user swipe → update index di VM
     onPageChanged: (index) {
+      vm.goToIndex(index);
       final currFile = vm.files[index];
       _captionController.text = vm.captionFor(currFile.path);
 
@@ -156,7 +176,15 @@ class _MediaPreviewViewState extends ConsumerState<MediaPreviewView> {
   Widget _buildPreviewItem(File file) {
     final ext = file.path.split('.').last.toLowerCase();
     final isVideo = ['mp4', 'mov', 'avi', 'mkv'].contains(ext);
-    final isAudio = ['mp3', 'm4a', 'opus', 'wav', 'aac', 'ogg', 'flac'].contains(ext);
+    final isAudio = [
+      'mp3',
+      'm4a',
+      'opus',
+      'wav',
+      'aac',
+      'ogg',
+      'flac',
+    ].contains(ext);
     final isDocument = ['pdf', 'xlxs', 'docx', 'doc'].contains(ext);
 
     if (isAudio) return AudioPreview(file: file);
