@@ -62,7 +62,9 @@ class AddNameView extends StatelessWidget {
           Gap(AppSpacing.xs.h),
           Text(
             'What should others call you?',
-            style: context.text.bodyMedium.copyWith(fontSize: 13.sp, color: context.text.secondaryText),
+            style: context.text.bodyMedium.copyWith(
+              color: context.text.secondaryText,
+            ),
             textAlign: TextAlign.center,
           ),
           Gap(AppSpacing.xl.h),
@@ -77,7 +79,9 @@ class AddNameView extends StatelessWidget {
   Widget _buildNameField(BuildContext context, AddNameVM vm) => TextFormField(
     controller: vm.form.displayName.controller,
     textCapitalization: TextCapitalization.words,
-    style: context.text.bodyMedium.copyWith(fontSize: 13.sp, color: context.text.secondaryText),
+    style: context.text.bodyMedium.copyWith(
+      color: context.text.secondaryText,
+    ),
     validator: (val) => vm.form.displayName.validator?.call(val ?? ''),
     decoration: InputDecoration(
       hintText: 'Display name',
@@ -106,7 +110,7 @@ class AddNameView extends StatelessWidget {
     child: Button(
       onPressed: vm.isLoading ? null : () => vm.submit(),
       text: 'Continue',
-      isWhiteBackground: true,
+      // isWhiteBackground: true,
     ),
   );
 }
