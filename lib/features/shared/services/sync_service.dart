@@ -8,7 +8,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:drift/drift.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
@@ -63,15 +62,15 @@ class SyncService {
   final ChatService _chatService;
   final CloudMediaService _mediaService; // Upload to Cloudinary
   final NotificationService _notificationService; // Send FCM
-  final String? _currentUid;
 
   SyncService(
     this._db,
     this._chatService,
     this._mediaService,
     this._notificationService,
-    this._currentUid,
   );
+
+  String? get _currentUid => FirebaseAuth.instance.currentUser?.uid;
 
   // ============================
   // Sync Chat Rooms after Login
@@ -423,11 +422,13 @@ class SyncService {
     // Generate Temp ID
     final tempId = IdGenerator.generateId();
     final now = DateTime.now();
+    final currentUid = _currentUid;
+    if (currentUid == null) return;
 
     // Wrap in MessageModel
     final localMessage = MessageModel(
       id: tempId,
-      senderId: _currentUid!,
+      senderId: currentUid,
       senderName: senderName,
       text: textContent,
       sentAt: now,
@@ -466,11 +467,13 @@ class SyncService {
   }) async {
     final tempId = IdGenerator.generateId();
     final now = DateTime.now();
+    final currentUid = _currentUid;
+    if (currentUid == null) return;
 
     final localMsg = MessagesCompanion(
       id: Value(tempId),
       chatRoomId: Value(chatRoomId),
-      senderId: Value(_currentUid!),
+      senderId: Value(currentUid),
       senderName: Value(senderName),
       textContent: Value(caption ?? ''),
       type: Value(type.name),
@@ -515,6 +518,8 @@ class SyncService {
   }) async {
     final tempId = IdGenerator.generateId();
     final now = DateTime.now();
+    final currentUid = _currentUid;
+    if (currentUid == null) return;
 
     final allUrls = uploadResults.map((r) => r.url).toList();
     final allCaptions =
@@ -524,7 +529,7 @@ class SyncService {
     final localMsg = MessagesCompanion(
       id: Value(tempId),
       chatRoomId: Value(chatRoomId),
-      senderId: Value(_currentUid!),
+      senderId: Value(currentUid),
       senderName: Value(senderName),
       textContent: Value(caption),
       type: Value(type.name),
@@ -551,7 +556,7 @@ class SyncService {
       messageId: tempId,
       text: caption,
       type: type,
-      senderId: _currentUid,
+      senderId: currentUid,
       senderName: senderName,
       mediaUrls: allUrls,
       mediaCaptions: allCaptions,
@@ -576,7 +581,7 @@ class SyncService {
       chatRoomId,
       LastMessage(
         text: lastMessageLabel(caption, type, first.fileName),
-        sentBy: _currentUid,
+        sentBy: currentUid,
         sentAt: now,
         type: type.name,
       ),
@@ -585,7 +590,7 @@ class SyncService {
     await _sendFcmToRecipients(
       otherUserFcmTokens: otherUserFcmTokens,
       chatRoomId: chatRoomId,
-      senderId: _currentUid,
+      senderId: currentUid,
       senderName: senderName,
       messageText: fcmLabel(caption, type, mediaCount: uploadResults.length),
       isGroup: memberUids.length > 2,
@@ -605,6 +610,9 @@ class SyncService {
     required ReplyToModel? replyTo,
   }) async {
     try {
+      final currentUid = _currentUid;
+      if (currentUid == null) return;
+
       final results = await Future.wait(
         files.map(
           (file) => _mediaService.uploadFile(file: file, mediaType: type),
@@ -621,7 +629,7 @@ class SyncService {
         messageId: tempId,
         text: caption,
         type: type,
-        senderId: _currentUid!,
+        senderId: currentUid,
         senderName: senderName,
         mediaUrls: allUrls,
         mediaDuration: uploaded.first.mediaDuration,
@@ -646,7 +654,7 @@ class SyncService {
         chatRoomId,
         LastMessage(
           text: lastMessageLabel(caption, type, fileName),
-          sentBy: _currentUid,
+          sentBy: currentUid,
           sentAt: sentAt,
           type: type.name,
         ),
@@ -655,7 +663,7 @@ class SyncService {
       await _sendFcmToRecipients(
         otherUserFcmTokens: otherUserFcmTokens,
         chatRoomId: chatRoomId,
-        senderId: _currentUid,
+        senderId: currentUid,
         senderName: senderName,
         messageText: fcmLabel(caption, type, mediaCount: files.length),
         isGroup: memberUids.length > 2,
@@ -721,11 +729,13 @@ class SyncService {
   }) async {
     final tempId = IdGenerator.generateId();
     final now = DateTime.now();
+    final currentUid = _currentUid;
+    if (currentUid == null) return;
 
     final localMsg = MessagesCompanion(
       id: Value(tempId),
       chatRoomId: Value(chatRoomId),
-      senderId: Value(_currentUid!),
+      senderId: Value(currentUid),
       senderName: Value(senderName),
       textContent: Value(''),
       type: Value(MessageType.sticker.name),
@@ -753,7 +763,7 @@ class SyncService {
         messageId: tempId,
         text: 'Sticker',
         type: MessageType.sticker,
-        senderId: _currentUid,
+        senderId: currentUid,
         senderName: senderName,
         mediaUrls: [stickerUrl],
         mimeType: 'image/gif',
@@ -768,7 +778,7 @@ class SyncService {
         chatRoomId,
         LastMessage(
           text: 'Sticker',
-          sentBy: _currentUid,
+          sentBy: currentUid,
           sentAt: now,
           type: MessageType.sticker.name,
         ),
@@ -777,7 +787,7 @@ class SyncService {
       await _sendFcmToRecipients(
         chatRoomId: chatRoomId,
         messageText: 'Sticker',
-        senderId: _currentUid,
+        senderId: currentUid,
         senderName: senderName,
         isGroup: memberUids.length > 2,
         otherUserFcmTokens: otherUserFcmTokens,
@@ -973,13 +983,14 @@ class SyncService {
     required String chatId,
     required List<String> messageIds,
   }) async {
-    if (_currentUid == null) return;
+    final currentUid = _currentUid;
+    if (currentUid == null) return;
     // Hard delete
     await _db.hardDeleteMessages(messageIds: messageIds);
 
     try {
       await _chatService.deleteMessageForMe(
-        uid: _currentUid,
+        uid: currentUid,
         chatId: chatId,
         messageIds: messageIds,
       );
@@ -992,15 +1003,14 @@ class SyncService {
     required String chatId,
     required List<String> messageIds,
   }) async {
-    if (_currentUid == null) return;
+    final currentUid = _currentUid;
+    if (currentUid == null) return;
     // Soft delete on local
     await _db.softDeleteMessages(messageIds: messageIds);
 
     // update the deletion state in remote
     try {
-      await _chatService.deleteMessageForEveryone(
-        chatId, messageIds
-      );
+      await _chatService.deleteMessageForEveryone(chatId, messageIds);
     } catch (e) {
       if (kDebugMode) debugPrint('Failed to delete-for-everyone on Cloud: $e');
     }
@@ -1024,6 +1034,5 @@ final syncServiceProvider = Provider<SyncService>(
     ref.watch(chatServiceProvider),
     ref.watch(cloudMediaServiceProvider),
     ref.watch(notificationServiceProvider),
-    ref.watch(authServiceProvider).currentUser?.uid,
   ),
 );

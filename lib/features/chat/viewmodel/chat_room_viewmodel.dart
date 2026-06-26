@@ -163,7 +163,7 @@ class ChatRoomVM extends BaseNotifier {
     final trimmed = text.trim();
     if (trimmed.isEmpty || _currentUid == null) return;
 
-    final chat = ref.read(chatMetadataStreamProvider(chatId)).value;
+    final chat = await _resolveChatForSend();
     if (chat == null) {
       _error = 'Getting chat room ready';
       notifyListeners();
@@ -298,7 +298,7 @@ class ChatRoomVM extends BaseNotifier {
   Future<void> sendSticker(StickerModel sticker) async {
     if (_currentUid == null) return;
 
-    final chat = ref.read(chatMetadataStreamProvider(chatId)).value;
+    final chat = await _resolveChatForSend();
     if (chat == null) return;
 
     try {
@@ -470,7 +470,7 @@ class ChatRoomVM extends BaseNotifier {
     if (files.isEmpty) return;
     if (files.any((f) => f.localPath == null)) return;
 
-    final chat = ref.read(chatMetadataStreamProvider(chatId)).value;
+    final chat = await _resolveChatForSend();
     if (chat == null) {
       _error = 'Getting chat room ready';
       notifyListeners();
@@ -554,7 +554,7 @@ class ChatRoomVM extends BaseNotifier {
     final ext = supported ? 'opus' : 'm4a';
     final tempPath =
         '${tempDir.path}${DateTime.now().millisecondsSinceEpoch}.$ext';
-    _recordingPath = tempPath;  
+    _recordingPath = tempPath;
 
     try {
       await _audioRecorder.start(
@@ -708,7 +708,7 @@ class ChatRoomVM extends BaseNotifier {
       if (uploadResult == null) throw Exception('Audio upload failed');
 
       // Get chat metadata
-      final chat = ref.read(chatMetadataStreamProvider(chatId)).value;
+      final chat = await _resolveChatForSend();
       if (chat == null) throw Exception('Chat not ready');
 
       // Enrich with local path for traceability
@@ -759,6 +759,18 @@ class ChatRoomVM extends BaseNotifier {
     } finally {
       _isSending = false;
       notifyListeners();
+    }
+  }
+
+  Future<ChatModel?> _resolveChatForSend() async {
+    final cached = ref.read(chatMetadataStreamProvider(chatId)).value;
+    if (cached != null) return cached;
+
+    try {
+      return await _chatRepository.getChat(chatId);
+    } catch (e) {
+      debugPrint('resolveChatForSend failed for $chatId: $e');
+      return null;
     }
   }
 
@@ -850,7 +862,8 @@ final chatMessagesStreamProvider = StreamProvider.autoDispose
       final localStream = db.watchAllCachedMessages(chatId, uid!);
 
       return localStream.map((localMsgs) {
-        if (kDebugMode) debugPrint('Drift messages in chat room: ${localMsgs.length}');
+        if (kDebugMode)
+          debugPrint('Drift messages in chat room: ${localMsgs.length}');
         return localMsgs
             .map(
               (m) => MessageModel(

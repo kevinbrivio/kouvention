@@ -38,7 +38,7 @@ class PersonalInfoSection extends StatelessWidget {
               children: [
                 Text(
                   'Display Name',
-                  style: context.text.labelMedium.copyWith(
+                  style: context.text.labelSmall.copyWith(
                     color: context.text.tertiaryText,
                   ),
                 ),
