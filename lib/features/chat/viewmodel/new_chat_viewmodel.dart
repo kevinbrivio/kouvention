@@ -11,9 +11,7 @@ import 'package:kouvention/features/user/models/user_model.dart';
 import 'package:kouvention/features/user/services/user_service.dart';
 import 'package:kouvention/cores/utils/log.dart';
 
-final newChatVM = AutoDisposeChangeNotifierProvider<NewChatVM>(
-  (ref) => NewChatVM(ref),
-);
+final newChatVM = AutoDisposeChangeNotifierProvider<NewChatVM>(NewChatVM.new);
 
 class NewChatVM extends BaseNotifier {
   final UserService _userService;
@@ -99,15 +97,15 @@ class NewChatVM extends BaseNotifier {
 
   Future<void> _performSearch(String query) async {
     final q = query.trim().toLowerCase();
-  
+
     // 🔍 Cek 1: Apakah _allUsers sudah terisi?
     dLog('=== TOTAL allUsers: ${_allUsers.length}');
-  
+
     // 🔍 Cek 2: Lihat isi _allUsers
     for (final u in _allUsers) {
       dLog('=== USER: ${u.displayName} | ${u.email}');
     }
-  
+
     _searchResults = _allUsers
         .where((u) => u.uid != _currentUid)
         .where(
@@ -116,7 +114,7 @@ class NewChatVM extends BaseNotifier {
               u.email.toLowerCase().contains(q),
         )
         .toList();
-  
+
     dLog('=== QUERY: $q');
     dLog('=== Hasil: $_searchResults');
     _isSearching = false;
@@ -142,9 +140,8 @@ class NewChatVM extends BaseNotifier {
     notifyListeners();
   }
 
-  bool isUserSelected(UserModel user) {
-    return _selectedUsers.any((u) => u.uid == user.uid);
-  }
+  bool isUserSelected(UserModel user) =>
+      _selectedUsers.any((u) => u.uid == user.uid);
 
   // ── Create Chat ─────────────────────────────────────
   /// Creates a direct chat with the tapped user.

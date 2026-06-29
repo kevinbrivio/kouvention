@@ -34,7 +34,8 @@ class _TypingDotsState extends State<TypingDots>
   @override
   Widget build(BuildContext context) {
     final dotSize = widget.size ?? AppRadius.sm.r;
-    final color = widget.color ?? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5);
+    final color = widget.color 
+      ?? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5);
 
     return Row(
       mainAxisSize: MainAxisSize.min,

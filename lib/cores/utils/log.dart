@@ -15,10 +15,10 @@ String _caller() {
 void _log(String label, String message) {
   if (!kDebugMode) return;
   final source = _caller();
-  final header = '========================  $label  ========================';
+  final header = '\n========================  $label  ========================';
   final footer = '=' * header.length;
   final prefix = source.isEmpty ? '' : '[$source] ';
-  debugPrint('$header\n$prefix$message\n$footer');
+  debugPrint('$header\n$prefix$message\n$footer\n');
 }
 
 void dLog(String message) => _log('DEBUG', message);

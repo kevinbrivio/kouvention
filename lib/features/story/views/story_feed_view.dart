@@ -100,7 +100,7 @@ class _StoryFeedViewState extends ConsumerState<StoryFeedView> {
                         const Center(child: CircularProgressIndicator()),
                     error: (e, s) => _StoryFeedMessage(
                       icon: Icons.cloud_off_outlined,
-                      message: "${e} - $s",
+                      message: '$e - $s',
                     ),
                     data: (items) {
                       final ownStory = _ownStory(items);
@@ -206,7 +206,7 @@ class _StoryFeedViewState extends ConsumerState<StoryFeedView> {
               child: Icon(
                 Icons.add_rounded,
                 color: scheme.surface,
-                size: AppSizing.iconSm.sp,
+                size: AppSizing.iconSm.r,
               ),
             ),
           ),

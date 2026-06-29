@@ -22,7 +22,8 @@ class DocumentPreview extends StatelessWidget {
           Gap(6.h),
           Text(
             fileName,
-            style: context.text.titleMedium.copyWith(color: Theme.of(context).colorScheme.surface,
+            style: context.text.titleMedium.copyWith(
+              color: Theme.of(context).colorScheme.surface,
             ),
           ),
         ],

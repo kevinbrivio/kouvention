@@ -9,9 +9,9 @@ import 'package:kouvention/features/shared/services/prefs_service.dart';
 const _assetPrefix = 'asset:';
 const _filePrefix = 'file:';
 
-final wallpaperServiceProvider = Provider<WallpaperService>((ref) {
-  return WallpaperService();
-});
+final wallpaperServiceProvider = Provider<WallpaperService>(
+  (ref) => WallpaperService(),
+);
 
 /// Represents the current wallpaper. `image == null` means "no wallpaper
 /// (chat room shows plain background)". A non-null image is shown behind
@@ -46,10 +46,7 @@ class WallpaperState {
   final WallpaperConfig global;
   final Map<String, WallpaperConfig> chatOverrides;
 
-  const WallpaperState({
-    required this.global,
-    this.chatOverrides = const {},
-  });
+  const WallpaperState({required this.global, this.chatOverrides = const {}});
 
   /// Effective wallpaper for [chatId]: override if present, else global.
   WallpaperConfig resolveForChat(String chatId) =>
@@ -61,33 +58,28 @@ class WallpaperState {
   WallpaperState copyWith({
     WallpaperConfig? global,
     Map<String, WallpaperConfig>? chatOverrides,
-  }) =>
-      WallpaperState(
-        global: global ?? this.global,
-        chatOverrides: chatOverrides ?? this.chatOverrides,
-      );
+  }) => WallpaperState(
+    global: global ?? this.global,
+    chatOverrides: chatOverrides ?? this.chatOverrides,
+  );
 }
 
 final wallpaperProvider =
-    StateNotifierProvider<WallpaperNotifier, WallpaperState>((ref) {
-  return WallpaperNotifier(ref);
-});
+    StateNotifierProvider<WallpaperNotifier, WallpaperState>(
+      WallpaperNotifier.new,
+    );
 
 /// Effective wallpaper for [chatId] (override or global). Reactive —
 /// rebuilds on any global or per-chat wallpaper change.
-final chatWallpaperProvider = Provider.family<WallpaperConfig, String>((
-  ref,
-  chatId,
-) {
-  return ref.watch(wallpaperProvider).resolveForChat(chatId);
-});
+final chatWallpaperProvider = Provider.family<WallpaperConfig, String>(
+  (ref, chatId) => ref.watch(wallpaperProvider).resolveForChat(chatId),
+);
 
 /// Per-chat override for [chatId], or null if the chat follows global.
 /// Reactive — rebuilds on any per-chat wallpaper change.
-final chatWallpaperOverrideProvider =
-    Provider.family<WallpaperConfig?, String>((ref, chatId) {
-  return ref.watch(wallpaperProvider).overrideFor(chatId);
-});
+final chatWallpaperOverrideProvider = Provider.family<WallpaperConfig?, String>(
+  (ref, chatId) => ref.watch(wallpaperProvider).overrideFor(chatId),
+);
 
 class WallpaperNotifier extends StateNotifier<WallpaperState> {
   final Ref _ref;
@@ -97,8 +89,8 @@ class WallpaperNotifier extends StateNotifier<WallpaperState> {
   }
 
   static WallpaperState _initialState() => WallpaperState(
-        global: WallpaperConfig(image: AssetImage(images.chatWallpaper)),
-      );
+    global: WallpaperConfig(image: AssetImage(images.chatWallpaper)),
+  );
 
   static WallpaperConfig _defaultConfig() =>
       WallpaperConfig(image: AssetImage(images.chatWallpaper));
@@ -146,7 +138,9 @@ class WallpaperNotifier extends StateNotifier<WallpaperState> {
     final file = await _service.pickAndCrop();
     if (file == null) return;
     final newConfig = WallpaperConfig(image: FileImage(file));
-    final previousPath = _extractFilePath(state.chatOverrides[chatId]?.storedValue);
+    final previousPath = _extractFilePath(
+      state.chatOverrides[chatId]?.storedValue,
+    );
     await _prefs.setChatWallpaperPath(chatId, newConfig.storedValue);
     state = state.copyWith(
       chatOverrides: {...state.chatOverrides, chatId: newConfig},
@@ -155,7 +149,9 @@ class WallpaperNotifier extends StateNotifier<WallpaperState> {
   }
 
   Future<void> resetForChat(String chatId) async {
-    final previousPath = _extractFilePath(state.chatOverrides[chatId]?.storedValue);
+    final previousPath = _extractFilePath(
+      state.chatOverrides[chatId]?.storedValue,
+    );
     if (previousPath == null && !state.chatOverrides.containsKey(chatId)) {
       return;
     }

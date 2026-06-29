@@ -107,8 +107,9 @@ class UserProfileRepository {
       final memberDisplayName = memberInfo[uid]?.displayName;
       if (memberDisplayName == null) continue;
       final cachedProfile = cachedByUid[uid];
-      if (cachedProfile == null)
+      if (cachedProfile == null) {
         continue; // missing → handled by refreshStaleAndMissing
+      }
       if (memberDisplayName != cachedProfile.displayName) {
         mismatched.add(uid);
       }
@@ -116,7 +117,7 @@ class UserProfileRepository {
 
     if (mismatched.isNotEmpty) {
       wLog(
-        '[UserProfileRepository] memberInfo mismatch for ${mismatched.length} uid(s): $mismatched',
+        'memberInfo mismatch for ${mismatched.length} uid(s): $mismatched',
       );
       await fetchProfileByIds(mismatched);
     }

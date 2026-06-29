@@ -12,7 +12,7 @@ import 'package:kouvention/features/user/models/user_model.dart';
 import 'package:kouvention/features/user/services/user_service.dart';
 
 final newGroupChatVM = AutoDisposeChangeNotifierProvider<NewGroupChatVM>(
-  (ref) => NewGroupChatVM(ref),
+  NewGroupChatVM.new,
 );
 
 class NewGroupChatVM extends BaseNotifier {
@@ -24,7 +24,6 @@ class NewGroupChatVM extends BaseNotifier {
   List<UserModel> _searchResults = [];
   Timer? _debounceTimer;
   bool _isSearching = false;
-
 
   // Group chat selection
   final List<UserModel> _selectedUsers = [];
@@ -111,9 +110,8 @@ class NewGroupChatVM extends BaseNotifier {
     notifyListeners();
   }
 
-  bool isUserSelected(UserModel user) {
-    return _selectedUsers.any((u) => u.uid == user.uid);
-  }
+  bool isUserSelected(UserModel user) =>
+      _selectedUsers.any((u) => u.uid == user.uid);
 
   /// Creates a group chat with all selected users.
   /// Returns the chat ID to navigate to.
