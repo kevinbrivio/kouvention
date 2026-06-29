@@ -90,7 +90,7 @@ class ChatRoomAppBar extends ConsumerWidget implements PreferredSizeWidget {
           elevation: 0.5,
           scrolledUnderElevation: 0,
           leading: TapDetector(
-            onTap: () => context.go(RouterRoutes.chatList.path),
+            onTap: () => context.pop(),
             borderRadius: AppRadius.full.r,
             child: Padding(
               padding: EdgeInsets.all(AppSpacing.sm.r),
