@@ -174,7 +174,7 @@ class ChatService {
   Future<List<MessageModel>> fetchMessageAround(
     String chatId, {
     required DateTime aroundTimestamp,
-    int limit = 50,
+    int limit = 100,
   }) async {
     final timestamp = Timestamp.fromDate(aroundTimestamp);
     final halfLimit = limit ~/ 2;

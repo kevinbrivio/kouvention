@@ -241,7 +241,7 @@ class ChatRoomVM extends BaseNotifier {
       // 3. Fetch data from Firestore
       final result = await _messageRepository.fetchOlderMessages(
         chatId,
-        limit: 50,
+        limit: 100,
         maxPages: 1,
       );
       final refreshed = await db.getChatById(chatId);
@@ -390,7 +390,7 @@ class ChatRoomVM extends BaseNotifier {
     ref.read(highlightMessageProvider(chatId).notifier).state = messageId;
 
     // reset
-    Future.delayed(const Duration(seconds: 2), () {
+    Future.delayed(const Duration(seconds: 3), () {
       ref.read(highlightMessageProvider(chatId).notifier).state = null;
     });
   }

@@ -167,7 +167,6 @@ class SyncService {
     final messages = await _chatService.fetchMessageAround(
       chatId,
       aroundTimestamp: aroundTimestamp,
-      limit: 50,
     );
     if (messages.isEmpty) return;
 
