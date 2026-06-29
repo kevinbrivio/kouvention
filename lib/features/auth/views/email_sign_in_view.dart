@@ -70,8 +70,6 @@ class EmailSignInView extends StatelessWidget {
             controller: vm.form.password.controller,
             validator: (val) => vm.form.password.validator?.call(val ?? ''),
           ),
-          Gap(AppSpacing.xs.h),
-          if (vm.isOffline) _buildOfflineWarning(),
           Gap(AppSpacing.lg.h),
           _buildSignInButton(context, vm),
           Gap(AppSpacing.lg.h),
@@ -119,32 +117,14 @@ class EmailSignInView extends StatelessWidget {
     ),
   );
 
-  Widget _buildOfflineWarning() => Container(
-    padding: EdgeInsets.symmetric(vertical: 10.h, horizontal: AppSpacing.sm.w),
-    decoration: BoxDecoration(
-      color: Colors.orange.shade800.withValues(alpha: 0.3),
-      borderRadius: BorderRadius.circular(AppRadius.sm.r),
-    ),
-    child: Row(
-      children: [
-        Icon(Icons.wifi_off, color: Colors.orangeAccent, size: 18.sp),
-        SizedBox(width: AppSpacing.xs.w),
-        const Expanded(
-          child: Text(
-            'No internet connection. Please check your network and try again.',
-            style: TextStyle(color: Colors.orangeAccent, fontSize: 12),
-          ),
-        ),
-      ],
-    ),
-  );
-
   Widget _buildSignInButton(BuildContext context, EmailSignInVM vm) => SizedBox(
     height: AppSizing.buttonHeight.h,
     child: Button(
       onPressed: vm.isLoading ? null : () => vm.signIn(),
       text: 'Sign In',
-      textStyle: context.text.labelLarge.copyWith(color: AppColorTokens.primary),
+      textStyle: context.text.labelLarge.copyWith(
+        color: AppColorTokens.primary
+      ),
       isWhiteBackground: true,
     ),
   );

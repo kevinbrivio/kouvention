@@ -1,10 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/models/reply_to_model.dart';
+import 'package:kouvention/cores/utils/log.dart';
 import 'package:kouvention/features/chat/utils/message_label.dart';
 
 /// Compound cursor for chat list pagination.
@@ -174,7 +174,7 @@ class ChatService {
   Future<List<MessageModel>> fetchMessageAround(
     String chatId, {
     required DateTime aroundTimestamp,
-    int limit = 50,
+    int limit = 100,
   }) async {
     final timestamp = Timestamp.fromDate(aroundTimestamp);
     final halfLimit = limit ~/ 2;
@@ -426,8 +426,8 @@ class ChatService {
 
   // ------ PIN CHAT ----------
   Future<void> pinChat(String uid, chatId) async {
-    debugPrint('Pinning chat: $chatId for user: $uid');
-    debugPrint('Path: ${_chatsRef.doc(chatId).path}');
+    dLog('Pinning chat: $chatId for user: $uid');
+    dLog('Path: ${_chatsRef.doc(chatId).path}');
     await _chatsRef.doc(chatId).update({
       'pinnedBy': FieldValue.arrayUnion([uid]),
     });

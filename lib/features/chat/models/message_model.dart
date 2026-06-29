@@ -43,9 +43,12 @@ class MessageModel {
     if (mediaUrls == null) return null;
     return mediaUrls!.map((url) {
       final lower = url.toLowerCase();
-      if (lower.endsWith('.pdf') || lower.endsWith('.mp4') ||
-          lower.endsWith('.mov') || lower.endsWith('.avi') ||
-          lower.endsWith('.mkv') || lower.endsWith('.webm')) {
+      if (lower.endsWith('.pdf') ||
+          lower.endsWith('.mp4') ||
+          lower.endsWith('.mov') ||
+          lower.endsWith('.avi') ||
+          lower.endsWith('.mkv') ||
+          lower.endsWith('.webm')) {
         final dot = url.lastIndexOf('.');
         return '${url.substring(0, dot)}.jpg';
       }
@@ -95,7 +98,8 @@ class MessageModel {
               )
             : SyncStatus.sent,
         mediaUrls: (data['mediaUrls'] as List<dynamic>?)?.cast<String>(),
-        mediaCaptions: (data['mediaCaptions'] as List<dynamic>?)?.cast<String>(),
+        mediaCaptions: (data['mediaCaptions'] as List<dynamic>?)
+            ?.cast<String>(),
         fileName: data['fileName'] as String?,
         mimeType: data['mimeType'] as String?,
         mediaDuration: (data['mediaDuration'] as num?)?.toInt(),
@@ -143,16 +147,14 @@ class MessageModel {
     required DateTime sentAt,
     MessageType type = MessageType.text,
     ReplyToModel? replyTo,
-  }) {
-    return {
-      'lastMessage': {
-        'text': text,
-        'sentBy': senderId,
-        'senderName': senderName,
-        if (replyTo != null) 'replyTo': replyTo.toMap(),
-        'sentAt': Timestamp.fromDate(sentAt),
-        'type': type.name,
-      },
-    };
-  }
+  }) => {
+    'lastMessage': {
+      'text': text,
+      'sentBy': senderId,
+      'senderName': senderName,
+      if (replyTo != null) 'replyTo': replyTo.toMap(),
+      'sentAt': Timestamp.fromDate(sentAt),
+      'type': type.name,
+    },
+  };
 }

@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:kouvention/cores/utils/log.dart';
 
 class AudioManager {
   static final AudioManager instance = AudioManager._();
@@ -54,7 +54,7 @@ class AudioManager {
       try {
         await _player.stop();
       } catch (_) {}
-      debugPrint('AudioManager.play error: $e');
+      eLog('AudioManager.play error: $e');
     }
   }
 

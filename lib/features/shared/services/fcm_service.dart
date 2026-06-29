@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/features/shared/services/prefs_service.dart';
 import 'package:uuid/uuid.dart';
+import 'package:kouvention/cores/utils/log.dart';
 
 final fcmServiceProvider = Provider<FcmService>((ref) {
   final prefsService = ref.read(prefsServiceProvider);
@@ -36,14 +37,12 @@ class FcmService {
       await _prefs.setDeviceId(deviceId);
     }
     _deviceId = deviceId;
-    debugPrint('[FcmService] initialize() called, deviceId=$deviceId');
+    iLog('[FcmService] initialize() called, deviceId=$deviceId');
 
     final granted = await requestPermission();
-    debugPrint('[FcmService] requestPermission() returned granted=$granted');
+    dLog('[FcmService] requestPermission() returned granted=$granted');
     if (!granted) {
-      debugPrint(
-        '[FcmService] Permission denied — skipping token registration',
-      );
+      wLog('[FcmService] Permission denied — skipping token registration');
       return;
     }
 
@@ -73,25 +72,21 @@ class FcmService {
   Future<void> saveToken() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) {
-      debugPrint('[FcmService] saveToken() skipped — no user signed in');
+      wLog('[FcmService] saveToken() skipped — no user signed in');
       return;
     }
 
     try {
       final newToken = await _messaging.getToken();
       if (newToken == null) {
-        debugPrint('[FcmService] getToken() returned null');
+        wLog('[FcmService] getToken() returned null');
         return;
       }
-      debugPrint(
-        '[FcmService] FCM token obtained: ${newToken.substring(0, 20)}...',
-      );
+      iLog('[FcmService] FCM token obtained: ${newToken.substring(0, 20)}...');
 
       final oldToken = _prefs.getFcmToken();
       if (oldToken != null && oldToken != newToken) {
-        debugPrint(
-          '[FcmService] Token changed — removing old token from Firestore',
-        );
+        iLog('[FcmService] Token changed — removing old token from Firestore');
         await _firestore.doc('users/$uid').update({
           'fcmTokens.$oldToken': FieldValue.delete(),
         });
@@ -99,11 +94,11 @@ class FcmService {
 
       await _saveTokenToFirestore(uid, newToken);
       await _prefs.setFcmToken(newToken);
-      debugPrint('[FcmService] Token saved to Firestore and SharedPreferences');
+      iLog('[FcmService] Token saved to Firestore and SharedPreferences');
 
       await _cleanupOldTokensForDevice(uid, newToken);
     } catch (e) {
-      debugPrint('[FcmService] saveToken() failed: $e');
+      eLog('[FcmService] saveToken() failed: $e');
     }
   }
 
@@ -150,9 +145,9 @@ class FcmService {
       }
 
       await _firestore.doc('users/$uid').update(updates);
-      debugPrint('Cleaned up ${tokensToDelete.length} stale token(s)');
+      iLog('Cleaned up ${tokensToDelete.length} stale token(s)');
     } catch (e) {
-      debugPrint('Token cleanup failed: $e');
+      eLog('Token cleanup failed: $e');
     }
   }
 
@@ -230,7 +225,7 @@ class FcmService {
       }
 
       if (tokensToDelete.isEmpty) {
-        debugPrint('[FcmService] Stale cleanup: no tokens to remove');
+        dLog('[FcmService] Stale cleanup: no tokens to remove');
         return;
       }
 
@@ -240,11 +235,9 @@ class FcmService {
       }
 
       await _firestore.doc('users/$uid').update(updates);
-      debugPrint(
-        '[FcmService] Stale cleanup: removed ${tokensToDelete.length} token(s)',
-      );
+      iLog('[FcmService] Stale cleanup: removed ${tokensToDelete.length} token(s)');
     } catch (e) {
-      debugPrint('[FcmService] Stale cleanup failed: $e');
+      eLog('[FcmService] Stale cleanup failed: $e');
     }
   }
 
@@ -255,18 +248,16 @@ class FcmService {
     // FCM aren't permanent, user could clear app data or reinstall app.
     // Hence we listen to new token from Firebase instead of using stale token.
     _tokenRefreshSub = _messaging.onTokenRefresh.listen((newToken) async {
-      debugPrint(
-        '[FcmService] Token refresh event: ${newToken.substring(0, 20)}...',
-      );
+      iLog('[FcmService] Token refresh event: ${newToken.substring(0, 20)}...');
       final uid = FirebaseAuth.instance.currentUser?.uid;
       if (uid == null) {
-        debugPrint('[FcmService] Token refresh skipped — no user');
+        wLog('[FcmService] Token refresh skipped — no user');
         return;
       }
 
       final oldToken = _prefs.getFcmToken();
       if (oldToken != null && oldToken != newToken) {
-        debugPrint('[FcmService] Refresh: removing old token from Firestore');
+        dLog('[FcmService] Refresh: removing old token from Firestore');
         await _firestore.doc('users/$uid').update({
           'fcmTokens.$oldToken': FieldValue.delete(),
         });
@@ -274,14 +265,14 @@ class FcmService {
 
       await _saveTokenToFirestore(uid, newToken);
       await _prefs.setFcmToken(newToken);
-      debugPrint('[FcmService] Refresh: new token saved');
+      iLog('[FcmService] Refresh: new token saved');
     });
   }
 
   Future<void> removeToken() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) {
-      debugPrint('[FcmService] removeToken() skipped — no user');
+      wLog('[FcmService] removeToken() skipped — no user');
       return;
     }
 
@@ -289,7 +280,7 @@ class FcmService {
     try {
       token = await _messaging.getToken();
     } catch (e) {
-      debugPrint('Error on getting token: $e');
+      eLog('Error on getting token: $e');
 
       _tokenRefreshSub?.cancel();
       _tokenRefreshSub = null;
@@ -298,29 +289,29 @@ class FcmService {
     }
 
     if (token == null) {
-      debugPrint('[FcmService] removeToken() skipped — no token');
+      wLog('[FcmService] removeToken() skipped — no token');
       return;
     }
 
-    debugPrint('[FcmService] Removing token for uid=$uid');
+    dLog('[FcmService] Removing token for uid=$uid');
 
     // Invalidate SDK-level token so a new user on this device
     // doesn't inherit the previous user's notification stream.
     try {
       await _messaging.deleteToken();
-      debugPrint('[FcmService] SDK token deleted');
+      iLog('[FcmService] SDK token deleted');
     } catch (e) {
-      debugPrint('[FcmService] deleteToken() failed: $e');
+      eLog('[FcmService] deleteToken() failed: $e');
     }
 
     await _firestore.doc('users/$uid').update({
       'fcmTokens.$token': FieldValue.delete(), // Remove device-uid only token.
       // Since fcmTokens are map, we delete specific token.
     });
-    debugPrint('[FcmService] Token removed from Firestore');
+    iLog('[FcmService] Token removed from Firestore');
 
     await _prefs.removeFcmToken();
-    debugPrint('[FcmService] Token removed from SharedPreferences');
+    iLog('[FcmService] Token removed from SharedPreferences');
 
     _tokenRefreshSub?.cancel();
     _tokenRefreshSub = null;

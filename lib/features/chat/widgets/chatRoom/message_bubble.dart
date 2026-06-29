@@ -465,7 +465,7 @@ class MessageBubble extends ConsumerWidget {
           ),
           if (replyTo.isStoryReference)
             _buildStoryReplyPreview(context, replyTo)
-          else ...[
+          else if (hasValidMediaUrl)...[
             _buildReplyMediaPreview(context, replyTo),
           ],
         ],

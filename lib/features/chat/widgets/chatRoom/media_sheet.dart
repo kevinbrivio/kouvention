@@ -15,6 +15,7 @@ import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
 import 'package:kouvention/features/chat/viewmodel/media/media_picker_helper.dart';
 import 'package:kouvention/features/chat/viewmodel/media/media_preview_viewmodel.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:kouvention/cores/utils/log.dart';
 
 class _MediaOption {
   final IconData icon;
@@ -95,7 +96,7 @@ class _MediaSheetState extends ConsumerState<MediaSheet> {
       );
     } catch (e) {
       widget.vm.closeMediaPanel();
-      debugPrint('Failed to download recent media: $e');
+      eLog('Failed to download recent media: $e');
     }
   }
 

@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
+import 'package:kouvention/cores/utils/log.dart';
 import 'package:kouvention/cores/utils/id_generator.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -78,7 +78,7 @@ class SyncService {
   Future<void> syncInitialChatRooms(String currentUid) async {
     final sw = Stopwatch()..start();
 
-    debugPrint(
+    iLog(
       ' ================== [Start Sync Chats] ========================',
     );
 
@@ -86,7 +86,7 @@ class SyncService {
       currentUid,
     );
 
-    debugPrint(
+    iLog(
       ' ========= [Fetching from Firestore done!] Took: ${sw.elapsedMilliseconds} ms =========',
     );
 
@@ -103,7 +103,7 @@ class SyncService {
     List<ChatsCompanion> companions;
 
     if (chatRooms.length < 100) {
-      print('Chat list length: ${chatRooms.length}');
+      iLog('Chat list length: ${chatRooms.length}');
       companions = chatRooms.map((chat) {
         return chatToCompanion(
           chat,
@@ -116,7 +116,7 @@ class SyncService {
 
     await _db.upsertChatRooms(companions);
 
-    debugPrint(
+    iLog(
       ' ========= [Everything is done] Total testing time: ${sw.elapsedMilliseconds} ms =======',
     );
 
@@ -167,7 +167,6 @@ class SyncService {
     final messages = await _chatService.fetchMessageAround(
       chatId,
       aroundTimestamp: aroundTimestamp,
-      limit: 50,
     );
     if (messages.isEmpty) return;
 
@@ -271,7 +270,7 @@ class SyncService {
   }) async {
     final chatRoom = await _db.getChatById(chatId);
     if (chatRoom == null) {
-      debugPrint('fetchOlderMessages: chat $chatId missing locally — skip');
+      wLog('fetchOlderMessages: chat $chatId missing locally — skip');
       return (pages: 0, messages: 0);
     }
     if (!chatRoom.hasMoreOlderRemote) {
@@ -398,7 +397,7 @@ class SyncService {
 
         break;
       } catch (e) {
-        debugPrint(
+        wLog(
           '⚠️ streamFirestoreMessages error for $chatId: $e, '
           'retrying in ${retryDelay}s',
         );
@@ -669,7 +668,7 @@ class SyncService {
         isGroup: memberUids.length > 2,
       );
     } catch (e) {
-      debugPrint('🚨 Failed media upload for $tempId: $e');
+      eLog('🚨 Failed media upload for $tempId: $e');
       await _db.updateMessageStatus(tempId, SyncStatus.failed);
     }
   }
@@ -715,7 +714,7 @@ class SyncService {
       );
     } catch (e) {
       await _db.updateMessageStatus(localMessage.id, SyncStatus.failed);
-      debugPrint('Failed sending message: $e');
+      eLog('Failed sending message: $e');
     }
   }
 
@@ -807,14 +806,14 @@ class SyncService {
     bool isGroup = false,
   }) async {
     if (otherUserFcmTokens == null || otherUserFcmTokens.isEmpty) {
-      debugPrint('[SyncService] _sendFcmToRecipients: no tokens to send to');
+      dLog('[SyncService] _sendFcmToRecipients: no tokens to send to');
       return;
     }
 
-    debugPrint(
+    dLog(
       '[SyncService] Sending FCM to ${otherUserFcmTokens.length} token(s)',
     );
-    debugPrint('[SyncService] Sending FCM with Message: $messageText');
+    dLog('[SyncService] Sending FCM with Message: $messageText');
 
     final senderPhotoUrl = FirebaseAuth.instance.currentUser?.photoURL;
 
@@ -830,11 +829,11 @@ class SyncService {
           senderImageUrl: senderPhotoUrl,
           isGroup: isGroup,
         );
-        debugPrint(
+        dLog(
           '[SyncService] FCM sent to token: ${token.substring(0, 20)}...',
         );
       } catch (e) {
-        debugPrint('[SyncService] FCM send failed for token: $e');
+        eLog('[SyncService] FCM send failed for token: $e');
       }
     }
   }
@@ -854,7 +853,7 @@ class SyncService {
     final stuckMessages = await _db.getStuckPendingMessages();
     if (stuckMessages.isEmpty) return;
 
-    debugPrint('🔁 Retrying ${stuckMessages.length} stuck message(s)');
+    iLog('🔁 Retrying ${stuckMessages.length} stuck message(s)');
 
     for (final msg in stuckMessages) {
       await flushPendingMessage(msg);
@@ -889,7 +888,7 @@ class SyncService {
     try {
       final chat = await _db.getChatById(msg.chatRoomId);
       if (chat == null) {
-        debugPrint(
+        wLog(
           'flushPendingMessage: chat ${msg.chatRoomId} missing locally — '
           'skipping ${msg.id}',
         );
@@ -952,7 +951,7 @@ class SyncService {
       // Leave the row at its current status (pending or failed). The
       // 5-min gate in getStuckPendingMessages prevents an infinite
       // retry-storm on a persistent failure.
-      debugPrint('flushPendingMessage failed for ${msg.id}: $e');
+      eLog('flushPendingMessage failed for ${msg.id}: $e');
     }
   }
 
@@ -995,7 +994,7 @@ class SyncService {
         messageIds: messageIds,
       );
     } catch (e) {
-      debugPrint('Failed to delete on Cloud: $e');
+      eLog('Failed to delete on Cloud: $e');
     }
   }
 
@@ -1012,7 +1011,7 @@ class SyncService {
     try {
       await _chatService.deleteMessageForEveryone(chatId, messageIds);
     } catch (e) {
-      if (kDebugMode) debugPrint('Failed to delete-for-everyone on Cloud: $e');
+      eLog('Failed to delete-for-everyone on Cloud: $e');
     }
   }
 

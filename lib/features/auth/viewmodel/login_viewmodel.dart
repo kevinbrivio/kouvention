@@ -11,6 +11,7 @@ import 'package:kouvention/features/shared/services/fcm_service.dart';
 import 'package:kouvention/features/shared/viewmodel/connectivity_viewmodel.dart';
 import 'package:kouvention/features/user/services/user_service.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:kouvention/cores/utils/log.dart';
 import 'package:oktoast/oktoast.dart';
 
 final loginProvider = ChangeNotifierProvider.autoDispose<LoginVM>(
@@ -63,11 +64,11 @@ class LoginVM extends BaseNotifier {
       }
     } on GoogleSignInException catch (e) {
       if (e.code == GoogleSignInExceptionCode.canceled) {
-        debugPrint('Google sign in cancelled');
+        wLog('Google sign in cancelled');
         return;
       }
 
-      debugPrint('Google sign in failed: $e');
+      eLog('Google sign in failed: $e');
       showToast('Sign in failed. Please try again.');
     } catch (e) {
       showToast('Sign in failed. Please try again.');

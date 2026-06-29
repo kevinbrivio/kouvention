@@ -5,7 +5,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/constants/tokens.dart';
-import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/cores/widgets/tap_detector.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/utils/display_name_resolver.dart';
@@ -90,7 +89,7 @@ class ChatRoomAppBar extends ConsumerWidget implements PreferredSizeWidget {
           elevation: 0.5,
           scrolledUnderElevation: 0,
           leading: TapDetector(
-            onTap: () => context.go(RouterRoutes.chatList.path),
+            onTap: () => context.pop(),
             borderRadius: AppRadius.full.r,
             child: Padding(
               padding: EdgeInsets.all(AppSpacing.sm.r),

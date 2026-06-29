@@ -29,6 +29,7 @@ import 'package:kouvention/features/shared/views/device_blocked_view.dart';
 import 'package:kouvention/features/user/viewmodel/presence_notifier.dart';
 import 'package:oktoast/oktoast.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:kouvention/cores/utils/log.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -71,11 +72,9 @@ void main() async {
       // Background handler for notification
       try {
         FirebaseMessaging.onBackgroundMessage(firebaseBackgroundHandler);
-        debugPrint('[main] firebaseBackgroundHandler registered');
+        iLog('[main] firebaseBackgroundHandler registered');
       } catch (e, s) {
-        debugPrint(
-          '[main] firebaseBackgroundHandler registration FAILED: $e\n$s',
-        );
+        eLog('[main] firebaseBackgroundHandler registration FAILED: $e\n$s');
       }
 
       // Pass all uncuaught errors from Flutter to Crashlytics
@@ -107,7 +106,7 @@ void main() async {
         prefsGuard: prefsGuard,
       );
 
-      await setupRouter(
+      setupRouter(
         initialRouter: '/',
         authService: authService,
         routerGuard: routerGuard,
@@ -128,8 +127,8 @@ void main() async {
       );
     },
     (error, stack) {
-      print(error);
-      print(stack);
+      eLog('$error');
+      eLog('$stack');
     },
   );
 }
@@ -156,15 +155,14 @@ class _KouventionAppState extends ConsumerState<KouventionApp>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    debugPrint('[App] initState — reading providers...');
     ref.read(
       presenceNotifierProvider,
     ); // listen to presence notifier to check user presence throughout the use
     try {
       ref.read(notificationHandlerProvider);
-      debugPrint('[App] notificationHandlerProvider read OK');
+      iLog('[App] notificationHandlerProvider read OK');
     } catch (e, s) {
-      debugPrint('[App] notificationHandlerProvider read FAILED: $e\n$s');
+      eLog('[App] notificationHandlerProvider read FAILED: $e\n$s');
     }
   }
 

@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:drift/drift.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/services/databases/message_database.dart';
@@ -11,6 +10,7 @@ import 'package:kouvention/features/story/models/story_page.dart';
 import 'package:kouvention/features/story/models/story_view_model.dart';
 import 'package:kouvention/features/story/services/story_firestore_service.dart';
 import 'package:kouvention/features/story/services/story_upload_progress.dart';
+import 'package:kouvention/cores/utils/log.dart';
 
 class StoryRepository {
   StoryRepository({
@@ -245,7 +245,7 @@ class StoryRepository {
         );
         _setUploadProgress(row.id, null);
       } catch (error, stackTrace) {
-        debugPrint('Story sync failed for ${row.id}: $error\n$stackTrace');
+        eLog('Story sync failed for ${row.id}: $error\n$stackTrace');
         await _db.updateStorySyncStatus(
           storyId: row.id,
           status: StorySyncStatus.failed,

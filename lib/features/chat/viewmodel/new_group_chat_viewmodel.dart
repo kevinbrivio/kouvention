@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
+import 'package:kouvention/cores/utils/log.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/services/chat_service.dart';
@@ -84,7 +84,7 @@ class NewGroupChatVM extends BaseNotifier {
       _error = null;
     } catch (e) {
       _error = 'Search failed';
-      debugPrint('Search error: $e');
+      eLog('Search error: $e');
     }
 
     _isSearching = false;
@@ -168,7 +168,7 @@ class NewGroupChatVM extends BaseNotifier {
       return chatId;
     } catch (e) {
       _error = 'Failed to create group';
-      debugPrint('Create group error: $e');
+      eLog('Create group error: $e');
       notifyListeners();
       return null;
     }

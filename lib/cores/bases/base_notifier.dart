@@ -24,6 +24,7 @@ abstract class BaseNotifier extends ChangeNotifier {
     isLoading = false;
   }
 
+  @override
   void dispose() {
     _isDisposed = true;
     super.dispose();

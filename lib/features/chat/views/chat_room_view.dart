@@ -40,6 +40,7 @@ import 'package:kouvention/features/story/models/story_model.dart';
 import 'package:kouvention/features/story/models/story_viewer_args.dart';
 import 'package:kouvention/features/story/repositories/story_repository.dart';
 import 'package:oktoast/oktoast.dart';
+import 'package:kouvention/cores/utils/log.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:kouvention/features/chat/widgets/chatRoom/chat_room_appbar.dart';
 import 'package:kouvention/features/chat/widgets/chatRoom/chat_room_appbar_skeleton.dart';
@@ -71,7 +72,6 @@ class _ChatRoomViewState extends ConsumerState<ChatRoomView> with RouteAware {
   @override
   void dispose() {
     routeObserver.unsubscribe(this);
-    ref.read(activeChatIdProvider.notifier).state = null;
     super.dispose();
   }
 
@@ -89,10 +89,11 @@ class _ChatRoomViewState extends ConsumerState<ChatRoomView> with RouteAware {
         if (selectionVM.isSelecting) {
           selectionVM.clearSelection();
         }
-        ref.read(activeChatIdProvider.notifier).state = null;
         if (!didPop) {
           // Navigate to chat list
-          context.go(RouterRoutes.chatList.path);
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            context.pop();
+          });
         }
       },
       child: BaseView<ChatRoomVM>(
@@ -123,7 +124,7 @@ class _ChatRoomViewState extends ConsumerState<ChatRoomView> with RouteAware {
                 image: wallpaperImage,
                 fit: BoxFit.cover,
                 onError: (error, stackTrace) {
-                  debugPrint('Background image error: $error');
+                  eLog('Background image error: $error');
                 },
               ),
       ),
@@ -213,7 +214,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
 
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         vm.highlightMessage(widget.scrollToMessageId!);
-        await Future.delayed(const Duration(milliseconds: 800));
+        await Future.delayed(const Duration(milliseconds: 1500));
         vm.clearHighlight();
       });
     }

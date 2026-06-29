@@ -7,7 +7,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:kouvention/cores/router/router.dart';
@@ -18,10 +17,11 @@ import 'package:kouvention/features/notification/services/notification_sound.dar
 import 'package:kouvention/features/notification/viewmodel/active_chat_id_provider.dart';
 import 'package:kouvention/features/shared/services/prefs_service.dart';
 import 'package:kouvention/firebase_options.dart';
+import 'package:kouvention/cores/utils/log.dart';
 
 @pragma('vm:entry-point')
 void onBackgroundNotificationResponse(NotificationResponse response) async {
-  debugPrint(
+  dLog(
     '[BackgroundReply] Notification response: action=${response.actionId}, payload=${response.payload}',
   );
 
@@ -30,10 +30,10 @@ void onBackgroundNotificationResponse(NotificationResponse response) async {
   final senderName = response.data['senderName'];
 
   if (replyText == null || chatId == null) {
-    debugPrint('[BackgroundReply] Missing replyText or chatId');
+    wLog('[BackgroundReply] Missing replyText or chatId');
     return;
   }
-  debugPrint(
+  dLog(
     '[BackgroundReply] Direct reply text: "$replyText" for chat: $chatId',
   );
 
@@ -41,7 +41,7 @@ void onBackgroundNotificationResponse(NotificationResponse response) async {
 
   final currentUser = FirebaseAuth.instance.currentUser;
   if (currentUser == null) {
-    debugPrint('[BackgroundReply] No user signed in');
+    wLog('[BackgroundReply] No user signed in');
     return;
   }
 
@@ -50,7 +50,7 @@ void onBackgroundNotificationResponse(NotificationResponse response) async {
   final chatService = ChatService();
   final chat = await chatService.getChat(chatId);
   if (chat == null) {
-    debugPrint('[BackgroundReply] Chat not found: $chatId');
+    wLog('[BackgroundReply] Chat not found: $chatId');
     return;
   }
 
@@ -70,19 +70,19 @@ void onBackgroundNotificationResponse(NotificationResponse response) async {
     sentAt: DateTime.now(),
     memberUids: chat.members,
   );
-  debugPrint('[BackgroundReply] Reply sent successfully, messageId=$docId');
+  iLog('[BackgroundReply] Reply sent successfully, messageId=$docId');
 }
 
 @pragma('vm:entry-point')
 Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
-  debugPrint(
+  dLog(
     '[BackgroundHandler] ENTERED — Received FCM data: ${message.data}',
   );
   try {
     await Firebase.initializeApp();
-    debugPrint('[BackgroundHandler] Firebase.initializeApp() OK');
+    iLog('[BackgroundHandler] Firebase.initializeApp() OK');
   } catch (e, s) {
-    debugPrint('[BackgroundHandler] Firebase.initializeApp() FAILED: $e\n$s');
+    eLog('[BackgroundHandler] Firebase.initializeApp() FAILED: $e\n$s');
     return;
   }
 
@@ -95,14 +95,14 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
           .get();
       final enabled = doc.data()?['notificationsEnabled'] as bool? ?? true;
       if (!enabled) {
-        debugPrint('[BackgroundHandler] Notifications disabled for user');
+        wLog('[BackgroundHandler] Notifications disabled for user');
         return;
       }
     } catch (e) {
-      debugPrint('[BackgroundHandler] Firestore check failed: $e');
+      eLog('[BackgroundHandler] Firestore check failed: $e');
     }
   } else {
-    debugPrint('[BackgroundHandler] No user signed in — skipping notification');
+    wLog('[BackgroundHandler] No user signed in — skipping notification');
     return;
   }
 
@@ -117,7 +117,7 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
     for (final channel in NotificationConfig.all) {
       await androidImpl.createNotificationChannel(channel.toAndroidChannel());
     }
-    debugPrint('[BackgroundHandler] All notification channels created');
+    iLog('[BackgroundHandler] All notification channels created');
   }
 
   await plugin.initialize(
@@ -129,7 +129,7 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
   final data = message.data;
   final sentBy = data['sentBy'] ?? 'unknown';
   final isGroup = data['chatType'] == 'group';
-  debugPrint(
+  dLog(
     '[BackgroundHandler] Notification sent by: $sentBy, isGroup=$isGroup',
   );
 
@@ -146,7 +146,7 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
       channelId = prefs.getString('pref_dm_channel') ?? 'dm_default';
     }
   } catch (e) {
-    debugPrint('[BackgroundHandler] SharedPreferences error: $e');
+    eLog('[BackgroundHandler] SharedPreferences error: $e');
     channelId = isGroup ? 'group_default' : 'dm_default';
   }
 
@@ -171,7 +171,7 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
     iosSoundFilename: iosSoundFilename,
     enableVibration: backgroundVibration,
   );
-  debugPrint('[BackgroundHandler] Local notification shown successfully');
+  iLog('[BackgroundHandler] Local notification shown successfully');
 }
 
 Future<void> _showChatNotification({
@@ -251,7 +251,7 @@ Future<ByteArrayAndroidIcon?> _downloadIcon(String? imageUrl) async {
       return ByteArrayAndroidIcon(response.bodyBytes);
     }
   } catch (e) {
-    debugPrint('Failed to download icon: $e');
+    eLog('Failed to download icon: $e');
   }
   return null;
 }
@@ -271,7 +271,7 @@ class NotificationHandler {
   }
 
   Future<void> initialize() async {
-    debugPrint('[NotificationHandler] Initializing...');
+    iLog('[NotificationHandler] Initializing...');
 
     // 1. Create all notification channels
     final androidImpl = _localNotifications
@@ -283,7 +283,7 @@ class NotificationHandler {
       for (final channel in NotificationConfig.all) {
         await androidImpl.createNotificationChannel(channel.toAndroidChannel());
       }
-      debugPrint('[NotificationHandler] All notification channels created');
+      iLog('[NotificationHandler] All notification channels created');
     }
 
     // 2. setup the local notification plugin
@@ -300,54 +300,54 @@ class NotificationHandler {
       onDidReceiveBackgroundNotificationResponse:
           onBackgroundNotificationResponse,
     );
-    debugPrint('[NotificationHandler] Local notifications plugin initialized');
+    iLog('[NotificationHandler] Local notifications plugin initialized');
 
     // 3. Listen for foreground message
     _onMessageSub = FirebaseMessaging.onMessage.listen(
       _handleForegroundMessage,
     );
-    debugPrint('[NotificationHandler] Foreground message listener registered');
+    iLog('[NotificationHandler] Foreground message listener registered');
 
     // 4. Listen for background tap
     FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTapped);
-    debugPrint('[NotificationHandler] Background tap listener registered');
+    iLog('[NotificationHandler] Background tap listener registered');
 
     // 5. Check if the app is opened via notification (from killed state)
     final initialMsg = await FirebaseMessaging.instance.getInitialMessage();
     if (initialMsg != null) {
-      debugPrint(
+      iLog(
         '[NotificationHandler] App opened from killed state via notification',
       );
       _handleNotificationTapped(initialMsg);
     } else {
-      debugPrint('[NotificationHandler] No initial notification message');
+      dLog('[NotificationHandler] No initial notification message');
     }
   }
 
   Future<void> _handleForegroundMessage(RemoteMessage message) async {
-    debugPrint('[ForegroundHandler] Received FCM data: ${message.data}');
+    dLog('[ForegroundHandler] Received FCM data: ${message.data}');
     final sentBy = message.data['sentBy'] ?? 'unknown';
-    debugPrint('[ForegroundHandler] Notification sent by: $sentBy');
+    dLog('[ForegroundHandler] Notification sent by: $sentBy');
 
     final incomingChatId = message.data['chatId'];
     final activeChatId = _ref.read(activeChatIdProvider);
 
     if (incomingChatId != null && incomingChatId == activeChatId) {
-      debugPrint('[ForegroundHandler] Suppressed — chat is currently active');
+      wLog('[ForegroundHandler] Suppressed — chat is currently active');
       return;
     }
 
     final enabled = await _areNotificationsEnabled();
     if (!enabled) {
-      debugPrint('[ForegroundHandler] Notifications disabled');
+      wLog('[ForegroundHandler] Notifications disabled');
       return;
     }
 
     try {
       await _showLocalNotification(message);
-      debugPrint('[ForegroundHandler] Local notification displayed');
+      iLog('[ForegroundHandler] Local notification displayed');
     } catch (e) {
-      debugPrint('[ForegroundHandler] Failed to show notification: $e');
+      eLog('[ForegroundHandler] Failed to show notification: $e');
     }
 
     if (incomingChatId != null && incomingChatId.isNotEmpty) {
@@ -358,9 +358,9 @@ class NotificationHandler {
         _ref
             .read(chatSyncCoordinatorProvider)
             .onNotificationReceived(incomingChatId);
-        debugPrint('[ForegroundHandler] Synced messages for $incomingChatId');
+        iLog('[ForegroundHandler] Synced messages for $incomingChatId');
       } catch (e) {
-        debugPrint('[ForegroundHandler] Sync failed for $incomingChatId: $e');
+        eLog('[ForegroundHandler] Sync failed for $incomingChatId: $e');
       }
     }
   }
@@ -429,7 +429,7 @@ class NotificationHandler {
   // Tap in a local notification (foreground)
   void _onNotificationTapped(NotificationResponse response) {
     final chatId = response.payload;
-    debugPrint(
+    iLog(
       '[NotificationHandler] Foreground notification tapped, chatId=$chatId',
     );
     if (chatId == null || chatId.isEmpty) return;
@@ -440,7 +440,7 @@ class NotificationHandler {
   void _handleNotificationTapped(RemoteMessage message) {
     final chatId = message.data['chatId'];
     final sentBy = message.data['sentBy'] ?? 'unknown';
-    debugPrint(
+    iLog(
       '[NotificationHandler] Background notification tapped, chatId=$chatId, sentBy=$sentBy',
     );
     if (chatId != null) {
@@ -454,22 +454,22 @@ class NotificationHandler {
 }
 
 final notificationHandlerProvider = Provider<NotificationHandler>((ref) {
-  debugPrint('[Provider] notificationHandlerProvider creating...');
+  dLog('[Provider] notificationHandlerProvider creating...');
   try {
     final fcmService = ref.read(fcmServiceProvider);
     fcmService.initialize();
-    debugPrint('[Provider] fcmService.initialize() called');
+    dLog('[Provider] fcmService.initialize() called');
   } catch (e, s) {
-    debugPrint('[Provider] fcmService.initialize() FAILED: $e\n$s');
+    eLog('[Provider] fcmService.initialize() FAILED: $e\n$s');
   }
   try {
     final handler = NotificationHandler(ref);
     handler.initialize();
-    debugPrint('[Provider] NotificationHandler.initialize() called');
+    dLog('[Provider] NotificationHandler.initialize() called');
     ref.onDispose(handler.dispose);
     return handler;
   } catch (e, s) {
-    debugPrint('[Provider] NotificationHandler creation FAILED: $e\n$s');
+    eLog('[Provider] NotificationHandler creation FAILED: $e\n$s');
     rethrow;
   }
 });

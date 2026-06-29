@@ -9,6 +9,7 @@ import 'package:kouvention/features/chat/utils/display_name_resolver.dart';
 import 'package:kouvention/features/search/models/search_result_group.dart';
 import 'package:kouvention/features/search/models/search_result_model.dart';
 import 'package:kouvention/features/search/services/local_search_service.dart';
+import 'package:kouvention/cores/utils/log.dart';
 
 enum SearchState { idle, searching, results, empty, error }
 
@@ -85,7 +86,7 @@ class SearchVM extends ChangeNotifier {
     notifyListeners();
 
     try {
-      debugPrint('------ SQLite Local SEARCHING WORKING -------');
+      dLog('------ SQLite Local SEARCHING WORKING -------');
       final sw = Stopwatch()..start();
 
       // Pass 1 — Contact filter via the fresh UserProfileResolver
@@ -101,7 +102,7 @@ class SearchVM extends ChangeNotifier {
           .toList();
 
       final t1 = sw.elapsedMilliseconds;
-      debugPrint('🥷 Chat filtering (resolver): ${t1}ms');
+      dLog('🥷 Chat filtering (resolver): ${t1}ms');
 
       final contactResults = <SearchResultModel>[];
       for (final chat in _matchingContacts) {
@@ -132,7 +133,7 @@ class SearchVM extends ChangeNotifier {
         }
       }
       final t1b = sw.elapsedMilliseconds;
-      debugPrint('🥷 Contact messages: ${t1b - t1}ms');
+      dLog('🥷 Contact messages: ${t1b - t1}ms');
 
       // Pass 2 — FTS5 text search (unchanged)
       final ftsResults = await _searchService.searchMessages(
@@ -142,7 +143,7 @@ class SearchVM extends ChangeNotifier {
       );
 
       final t2 = sw.elapsedMilliseconds;
-      debugPrint('🥷 FTS5 + mapping: ${t2 - t1b}ms');
+      dLog('🥷 FTS5 + mapping: ${t2 - t1b}ms');
 
       if (_query != query) return;
 
@@ -164,7 +165,7 @@ class SearchVM extends ChangeNotifier {
         }
       }
 
-      debugPrint('🥷 Total: ${t2}ms | FTS5: ${ftsResults.length} | '
+      dLog('🥷 Total: ${t2}ms | FTS5: ${ftsResults.length} | '
           'Contact: ${contactResults.length} | Merged: ${merged.length} | Capped: ${capped.length}');
 
       if (capped.isEmpty && _matchingContacts.isEmpty) {

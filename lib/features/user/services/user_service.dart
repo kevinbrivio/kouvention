@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
+import 'package:kouvention/cores/utils/log.dart';
 
 class UserService {
   final FirebaseFirestore _firestore;
@@ -34,7 +35,7 @@ class UserService {
       try {
         return UserSearchModel.fromMap(doc.data());
       } catch (e) {
-        print('ERROR parsing user: $e');
+        eLog('ERROR parsing user: $e');
         rethrow;
       }
     }).toList(),

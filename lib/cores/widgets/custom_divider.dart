@@ -5,7 +5,7 @@ import 'package:kouvention/cores/constants/tokens.dart';
 class CustomDivider extends StatelessWidget {
   final String? text;
   final Color? color;
-  CustomDivider({super.key, this.text, this.color});
+  const CustomDivider({super.key, this.text, this.color});
 
   @override
   Widget build(BuildContext context) => Row(
