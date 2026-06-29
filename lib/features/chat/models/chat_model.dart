@@ -105,11 +105,8 @@ class ChatModel {
   }
 
   /// Returns the other user's UID in a direct chat.
-  String otherMemberUid(String currentUid) =>  members.firstWhere(
-    (uid) => uid != currentUid,
-    orElse: () => '',
-  );
-
+  String otherMemberUid(String currentUid) =>
+      members.firstWhere((uid) => uid != currentUid, orElse: () => '');
 
   /// Returns the display name for this chat.
   String displayName(String currentUid) {
@@ -171,11 +168,13 @@ class ChatModel {
       memberHash: data['memberHash'] as String?,
       groupName: data['groupName'] as String?,
       groupPhotoUrl: data['groupPhotoUrl'] as String?,
-      createdBy: data['createdBy'] != null 
-          ? Map<String, String>.from(data['createdBy']) 
+      createdBy: data['createdBy'] != null
+          ? Map<String, String>.from(data['createdBy'])
           : null,
       lastMessage: data['lastMessage'] != null
-          ? LastMessage.fromFirestore(data['lastMessage'] as Map<String, dynamic>)
+          ? LastMessage.fromFirestore(
+              data['lastMessage'] as Map<String, dynamic>,
+            )
           : null,
       unreadCount: parsedUnread,
       typingUsers: List<String>.from(data['typingUsers'] ?? []),
@@ -224,26 +223,24 @@ class ChatModel {
     required Map<String, MemberInfo> memberInfo,
     required String groupName,
     String? groupPhotoUrl,
-  }) {
-    return {
-      'type': 'group',
-      'members': members,
-      'memberInfo': memberInfo.map((uid, info) => MapEntry(uid, info.toMap())),
-      'memberHash': null,
-      'groupName': groupName,
-      'groupPhotoUrl': groupPhotoUrl,
-      'createdBy': {'uid': createdByUid, 'name': createdByName},
-      'lastMessage': {
-        'text': '',
-        'sentAt': FieldValue.serverTimestamp(),
-        'senderId': createdByUid,
-      },
-      'unreadCount': {for (final uid in members) uid: 0},
-      'typingUsers': [],
-      'createdAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
-    };
-  }
+  }) => {
+    'type': 'group',
+    'members': members,
+    'memberInfo': memberInfo.map((uid, info) => MapEntry(uid, info.toMap())),
+    'memberHash': null,
+    'groupName': groupName,
+    'groupPhotoUrl': groupPhotoUrl,
+    'createdBy': {'uid': createdByUid, 'name': createdByName},
+    'lastMessage': {
+      'text': '',
+      'sentAt': FieldValue.serverTimestamp(),
+      'senderId': createdByUid,
+    },
+    'unreadCount': {for (final uid in members) uid: 0},
+    'typingUsers': [],
+    'createdAt': FieldValue.serverTimestamp(),
+    'updatedAt': FieldValue.serverTimestamp(),
+  };
 }
 
 class MemberInfo {
@@ -252,16 +249,15 @@ class MemberInfo {
 
   const MemberInfo({required this.displayName, this.photoUrl});
 
-  factory MemberInfo.fromMap(Map<String, dynamic> data) {
-    return MemberInfo(
-      displayName: data['displayName'] as String? ?? 'Unknown',
-      photoUrl: data['photoUrl'] as String?,
-    );
-  }
+  factory MemberInfo.fromMap(Map<String, dynamic> data) => MemberInfo(
+    displayName: data['displayName'] as String? ?? 'Unknown',
+    photoUrl: data['photoUrl'] as String?,
+  );
 
-  Map<String, dynamic> toMap() {
-    return {'displayName': displayName, 'photoUrl': photoUrl};
-  }
+  Map<String, dynamic> toMap() => {
+    'displayName': displayName,
+    'photoUrl': photoUrl,
+  };
 }
 
 class LastMessage {
@@ -276,24 +272,22 @@ class LastMessage {
     required this.sentAt,
     this.type = 'text',
   });
-  
+
   factory LastMessage.fromJson(Map<String, dynamic> data) => LastMessage(
     text: data['text'] as String? ?? '',
     sentBy: data['sentBy'] as String? ?? '',
-    sentAt: data['sentAt'] != null 
+    sentAt: data['sentAt'] != null
         ? DateTime.fromMillisecondsSinceEpoch(data['sentAt'] as int)
         : DateTime.now(),
     type: data['type'] as String? ?? 'text',
   );
 
-  Map<String, dynamic> toJson() {
-    return {
-      'text': text,
-      'sentBy': sentBy,
-      'sentAt': sentAt.millisecondsSinceEpoch, 
-      'type': type,
-    };
-  }
+  Map<String, dynamic> toJson() => {
+    'text': text,
+    'sentBy': sentBy,
+    'sentAt': sentAt.millisecondsSinceEpoch,
+    'type': type,
+  };
 
   factory LastMessage.fromFirestore(Map<String, dynamic> data) => LastMessage(
     text: data['text'] as String? ?? '',
@@ -302,13 +296,10 @@ class LastMessage {
     type: data['type'] as String? ?? 'text',
   );
 
-
-  Map<String, dynamic> toFirestore() {
-    return {
-      'text': text,
-      'sentBy': sentBy,
-      'sentAt': Timestamp.fromDate(sentAt),
-      'type': type,
-    };
-  }
+  Map<String, dynamic> toFirestore() => {
+    'text': text,
+    'sentBy': sentBy,
+    'sentAt': Timestamp.fromDate(sentAt),
+    'type': type,
+  };
 }

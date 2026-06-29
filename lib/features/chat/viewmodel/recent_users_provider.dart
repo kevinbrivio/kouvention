@@ -73,11 +73,9 @@ ChatModel chatModelFromDriftRow(Chat row) => ChatModel(
 Stream<List<ChatModel>> watchRecentChatsFromDrift(
   MessageDatabase db, {
   required String currentUid,
-}) {
-  return db
-      .watchPagedChats(currentUid: currentUid)
-      .map((rows) => rows.map(chatModelFromDriftRow).toList());
-}
+}) => db
+    .watchPagedChats(currentUid: currentUid)
+    .map((rows) => rows.map(chatModelFromDriftRow).toList());
 
 Future<List<UserModel>> fetchProfilesInOrder({
   required UserService userService,
@@ -125,6 +123,5 @@ final recentUsersProvider = StreamProvider.autoDispose<List<UserModel>>((
     }
   } catch (e, st) {
     eLog('[recentUsersProvider] failed: $e\n$st');
-    throw e; // Preserve error for AsyncValue.error state
   }
 });

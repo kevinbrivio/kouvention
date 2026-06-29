@@ -49,14 +49,13 @@ class ChatService {
 
   /// Stream a single chat room
   /// Used in a chat room screen for typing and metadata
-  Stream<ChatModel?> streamChat(String chatId) {
-    return _chatsRef.doc(chatId).snapshots().map((snapshot) {
-      if (!snapshot.exists || snapshot.data() == null) {
-        return null;
-      }
-      return ChatModel.fromMap(snapshot.id, snapshot.data()!);
-    });
-  }
+  Stream<ChatModel?> streamChat(String chatId) =>
+      _chatsRef.doc(chatId).snapshots().map((snapshot) {
+        if (!snapshot.exists || snapshot.data() == null) {
+          return null;
+        }
+        return ChatModel.fromMap(snapshot.id, snapshot.data()!);
+      });
 
   // --- MESSAGES --------------------------------
   ///  Streams the most recent messages in a chat

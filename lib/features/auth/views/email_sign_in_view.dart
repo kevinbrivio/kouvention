@@ -24,8 +24,8 @@ class EmailSignInView extends StatelessWidget {
   Widget _buildScreen(BuildContext context, EmailSignInVM vm) => SafeArea(
     child: SingleChildScrollView(
       padding: EdgeInsets.only(
-        left: AppSpacing.md.w, 
-        right: AppSpacing.md.w, 
+        left: AppSpacing.md.w,
+        right: AppSpacing.md.w,
         bottom: MediaQuery.of(context).viewInsets.bottom,
       ),
       child: SizedBox(
@@ -78,44 +78,47 @@ class EmailSignInView extends StatelessWidget {
       ),
     ),
   );
-  
-  Widget _buildEmailField(BuildContext context, EmailSignInVM vm) => TextFormField(
-    keyboardType: TextInputType.emailAddress,
-    controller: vm.form.email.controller,
-    style: context.text.bodyMedium.copyWith(color: Colors.white),
-    validator: (val) => vm.form.email.validator?.call(val ?? ''),
-    decoration: InputDecoration(
-      hintText: 'Email',
-      hintStyle: context.text.bodyMedium.copyWith(color: Colors.white54),
-      prefixIcon: Icon(
-        Icons.email_outlined,
-        color: Colors.white70,
-        size: AppSizing.iconSm.sp,
-      ),
-      filled: true,
-      fillColor: AppColorTokens.primary.withValues(alpha: 0.5),
-      contentPadding: EdgeInsets.symmetric(
-        horizontal: AppSpacing.md.w,
-        vertical: AppSpacing.md.h,
-      ),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(AppRadius.md.r),
-        borderSide: BorderSide.none,
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(AppRadius.md.r),
-        borderSide: BorderSide(
-          color: Colors.white.withValues(alpha: 0.3),
-          width: 1.0,
+
+  Widget _buildEmailField(BuildContext context, EmailSignInVM vm) =>
+      TextFormField(
+        keyboardType: TextInputType.emailAddress,
+        controller: vm.form.email.controller,
+        style: context.text.bodyMedium.copyWith(color: Colors.white),
+        validator: (val) => vm.form.email.validator?.call(val ?? ''),
+        decoration: InputDecoration(
+          hintText: 'Email',
+          hintStyle: context.text.bodyMedium.copyWith(color: Colors.white54),
+          prefixIcon: Icon(
+            Icons.email_outlined,
+            color: Colors.white70,
+            size: AppSizing.iconSm.sp,
+          ),
+          filled: true,
+          fillColor: AppColorTokens.primary.withValues(alpha: 0.5),
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: AppSpacing.md.w,
+            vertical: AppSpacing.md.h,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md.r),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md.r),
+            borderSide: BorderSide(
+              color: Colors.white.withValues(alpha: 0.3),
+              width: 1.0,
+            ),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md.r),
+            borderSide: const BorderSide(color: Colors.white, width: 1.5),
+          ),
+          errorStyle: context.text.labelMedium.copyWith(
+            color: Colors.orangeAccent,
+          ),
         ),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(AppRadius.md.r),
-        borderSide: const BorderSide(color: Colors.white, width: 1.5),
-      ),
-      errorStyle: context.text.labelMedium.copyWith(color: Colors.orangeAccent),
-    ),
-  );
+      );
 
   Widget _buildSignInButton(BuildContext context, EmailSignInVM vm) => SizedBox(
     height: AppSizing.buttonHeight.h,
@@ -123,7 +126,7 @@ class EmailSignInView extends StatelessWidget {
       onPressed: vm.isLoading ? null : () => vm.signIn(),
       text: 'Sign In',
       textStyle: context.text.labelLarge.copyWith(
-        color: AppColorTokens.primary
+        color: AppColorTokens.primary,
       ),
       isWhiteBackground: true,
     ),

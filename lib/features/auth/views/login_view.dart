@@ -13,7 +13,7 @@ import 'package:kouvention/features/auth/viewmodel/login_viewmodel.dart';
 import 'package:kouvention/features/auth/widgets/connectivity_banner.dart';
 
 class LoginView extends ConsumerWidget {
-  LoginView({super.key});
+  const LoginView({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) =>
@@ -180,7 +180,8 @@ class LoginView extends ConsumerWidget {
   Widget _buildTermsText(BuildContext context) => Text.rich(
     TextSpan(
       text:
-          'By continuing, you acknowledge that you\nhave read and agree to our ',
+          'By continuing, you acknowledge that you\n'
+          'have read and agree to our ',
       style: const TextStyle(color: Colors.white54, fontSize: 12),
       children: [
         const TextSpan(
