@@ -55,5 +55,4 @@ class DefaultFirebaseOptions {
     storageBucket: 'kouvention.firebasestorage.app',
     iosBundleId: 'com.example.kouvention',
   );
-
 }
