@@ -1,12 +1,12 @@
 import 'dart:io';
 
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/cores/configs/env.dart';
 import 'package:kouvention/cores/configs/flavor_config.dart';
 import 'package:kouvention/cores/services/dio_handler.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
+import 'package:kouvention/cores/utils/log.dart';
 import 'package:kouvention/features/chat/models/upload_result_model.dart';
 
 final cloudMediaServiceProvider = Provider<CloudMediaService>(
@@ -56,7 +56,7 @@ class CloudMediaService {
       }
       return null;
     } on DioException catch (e) {
-      debugPrint('Upload error: ${e.response?.data}');
+      eLog('Upload error: ${e.response?.data}');
     }
 
     return null;

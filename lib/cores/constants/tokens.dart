@@ -5,7 +5,7 @@
 //
 // Usage:
 //   Colors:    Theme.of(context).colorScheme.primary  (preferred)
-//              AppColorTokens.primary                  (only when no scheme equivalent)
+//              AppColorTokens.primar   (only when no scheme equivalent)
 //   Text:      context.text.bodyMedium
 //   Spacing:   AppSpacing.md.w
 //   Sizing:    AppSizing.buttonHeight.h
@@ -258,9 +258,8 @@ class _AppTextStyles {
   Color get tertiaryText => _scheme.onSurface.withValues(alpha: 0.5);
   Color get accentText => _scheme.primary;
 
-  static _AppTextStyles of(BuildContext context) {
-    return _AppTextStyles._(Theme.of(context).colorScheme);
-  }
+  static _AppTextStyles of(BuildContext context) =>
+      _AppTextStyles._(Theme.of(context).colorScheme);
 
   // ── Display ──
   TextStyle get displayLarge => TextStyle(
@@ -463,99 +462,95 @@ class AppTheme {
 
   // ── Shared sub-themes ──
 
-  static ElevatedButtonThemeData _elevatedButtonTheme(ColorScheme scheme) {
-    return ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: scheme.primary,
-        foregroundColor: scheme.onPrimary,
-        disabledBackgroundColor: AppColorTokens.disabled,
-        disabledForegroundColor: AppColorTokens.disabledText,
-        elevation: 0,
-        padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm.w),
-        minimumSize: Size(double.minPositive, AppSizing.buttonHeight.h),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.button.r),
+  static ElevatedButtonThemeData _elevatedButtonTheme(ColorScheme scheme) =>
+      ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: scheme.primary,
+          foregroundColor: scheme.onPrimary,
+          disabledBackgroundColor: AppColorTokens.disabled,
+          disabledForegroundColor: AppColorTokens.disabledText,
+          elevation: 0,
+          padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm.w),
+          minimumSize: Size(double.minPositive, AppSizing.buttonHeight.h),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.button.r),
+          ),
+          textStyle: TextStyle(
+            fontFamily: 'Nunito',
+            fontSize: 12.sp,
+            fontWeight: FontWeight.w500,
+          ),
         ),
-        textStyle: TextStyle(
-          fontFamily: 'Nunito',
-          fontSize: 12.sp,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
-  }
+      );
 
   static InputDecorationTheme _inputDecorationTheme(
     ColorScheme scheme, {
     required bool isDark,
-  }) {
-    return InputDecorationTheme(
-      filled: true,
-      fillColor: isDark
-          ? AppSurfaceDark.surfaceInput
-          : AppSurfaceLight.surfaceInput,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(AppRadius.input.r),
-        borderSide: BorderSide(color: scheme.outline),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(AppRadius.input.r),
-        borderSide: BorderSide(color: scheme.outline.withValues(alpha: 0.5)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(AppRadius.input.r),
-        borderSide: BorderSide(color: scheme.primary, width: 1.5),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(AppRadius.input.r),
-        borderSide: BorderSide(color: scheme.error),
-      ),
-      contentPadding: EdgeInsets.symmetric(
-        horizontal: AppSpacing.inputPadding.w,
-        vertical: AppSpacing.sm.h,
-      ),
-    );
-  }
+  }) => InputDecorationTheme(
+    filled: true,
+    fillColor: isDark
+        ? AppSurfaceDark.surfaceInput
+        : AppSurfaceLight.surfaceInput,
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(AppRadius.input.r),
+      borderSide: BorderSide(color: scheme.outline),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(AppRadius.input.r),
+      borderSide: BorderSide(color: scheme.outline.withValues(alpha: 0.5)),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(AppRadius.input.r),
+      borderSide: BorderSide(color: scheme.primary, width: 1.5),
+    ),
+    errorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(AppRadius.input.r),
+      borderSide: BorderSide(color: scheme.error),
+    ),
+    contentPadding: EdgeInsets.symmetric(
+      horizontal: AppSpacing.inputPadding.w,
+      vertical: AppSpacing.sm.h,
+    ),
+  );
 
   // --- Segmented Button Theme
-  static SegmentedButtonThemeData _segmentedButtonTheme(ColorScheme scheme) {
-    return SegmentedButtonThemeData(
-      style: ButtonStyle(
-        backgroundColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) {
-            return scheme.primary;
-          }
-          return scheme.surface;
-        }),
+  static SegmentedButtonThemeData _segmentedButtonTheme(ColorScheme scheme) =>
+      SegmentedButtonThemeData(
+        style: ButtonStyle(
+          backgroundColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return scheme.primary;
+            }
+            return scheme.surface;
+          }),
 
-        foregroundColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) {
-            return scheme.onPrimary;
-          }
-          return scheme.onSurface.withValues(alpha: 0.6);
-        }),
+          foregroundColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return scheme.onPrimary;
+            }
+            return scheme.onSurface.withValues(alpha: 0.6);
+          }),
 
-        side: WidgetStateProperty.resolveWith((states) {
-          return BorderSide(color: scheme.primary.withValues(alpha: 0.4));
-        }),
+          side: WidgetStateProperty.resolveWith(
+            (states) =>
+                BorderSide(color: scheme.primary.withValues(alpha: 0.4)),
+          ),
 
-        shape: WidgetStateProperty.all(
-          RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.button.r),
+          shape: WidgetStateProperty.all(
+            RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.button.r),
+            ),
           ),
         ),
-      ),
-    );
-  }
+      );
 
-  static SkeletonizerConfigData _skeletonConfig({required bool isDark}) {
-    return SkeletonizerConfigData(
-      effect: ShimmerEffect(
-        baseColor: isDark ? const Color(0xFF1E1E1E) : const Color(0xFFE6E9ED),
-        highlightColor: isDark
-            ? const Color(0xFF03DAC6)
-            : const Color(0xFF82B1FF),
-      ),
-    );
-  }
+  static SkeletonizerConfigData _skeletonConfig({required bool isDark}) =>
+      SkeletonizerConfigData(
+        effect: ShimmerEffect(
+          baseColor: isDark ? const Color(0xFF1E1E1E) : const Color(0xFFE6E9ED),
+          highlightColor: isDark
+              ? const Color(0xFF03DAC6)
+              : const Color(0xFF82B1FF),
+        ),
+      );
 }

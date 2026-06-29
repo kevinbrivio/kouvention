@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
@@ -14,6 +13,7 @@ import 'package:kouvention/features/shared/viewmodel/notification_viewmodel.dart
 import 'package:kouvention/features/user/models/user_model.dart';
 import 'package:kouvention/features/user/services/user_service.dart';
 import 'package:oktoast/oktoast.dart';
+import 'package:kouvention/cores/utils/log.dart';
 
 final notificationSettingsVM =
     ChangeNotifierProvider.autoDispose<NotificationSettingsVM>(
@@ -56,7 +56,7 @@ class NotificationSettingsVM extends BaseNotifier {
         _reconcileOSPermission();
       }
       notifyListeners();
-    }, onError: (e) => debugPrint('Notification settings stream error: $e'));
+    }, onError: (e) => eLog('Notification settings stream error: $e'));
   }
 
   @override
@@ -114,7 +114,7 @@ class NotificationSettingsVM extends BaseNotifier {
         await _userService.updateNotificationsEnabled(_user!.uid, false);
         _user = _user!.copyWith(notificationsEnabled: false);
       } catch (e) {
-        debugPrint('Failed to reconcile notification permission: $e');
+        eLog('Failed to reconcile notification permission: $e');
       }
     }
   }
@@ -178,7 +178,7 @@ class NotificationSettingsVM extends BaseNotifier {
         'channelId': channelId,
       });
     } catch (e) {
-      debugPrint('Failed to open channel settings: $e');
+      eLog('Failed to open channel settings: $e');
     }
   }
 

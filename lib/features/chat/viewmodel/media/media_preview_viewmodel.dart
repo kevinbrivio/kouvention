@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
+import 'package:kouvention/cores/utils/log.dart';
 import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/models/upload_result_model.dart';
@@ -100,7 +101,7 @@ class MediaPreviewVM extends BaseNotifier {
       await onSend(finalResults, _captions);
       if (context.mounted) Navigator.pop(context);
     } on DioException catch (e) {
-      print('Error send media message: $e');
+      eLog('Error send media message: $e');
       notifyListeners();
     } finally {
       _isSending = false;

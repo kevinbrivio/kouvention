@@ -1,8 +1,8 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/services/databases/message_database.dart';
+import 'package:kouvention/cores/utils/log.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
 import 'package:kouvention/features/user/services/user_service.dart';
 
@@ -124,7 +124,7 @@ final recentUsersProvider = StreamProvider.autoDispose<List<UserModel>>((
       yield await fetchProfilesInOrder(userService: userService, uids: uids);
     }
   } catch (e, st) {
-    debugPrint('[recentUsersProvider] failed: $e\n$st');
+    eLog('[recentUsersProvider] failed: $e\n$st');
     throw e; // Preserve error for AsyncValue.error state
   }
 });

@@ -1,8 +1,8 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/services/databases/message_database.dart';
 import 'package:kouvention/features/search/models/search_result_model.dart';
+import 'package:kouvention/cores/utils/log.dart';
 import 'package:kouvention/features/search/services/search_service.dart';
 
 final localSearchServiceProvider = Provider<LocalSearchService>((ref) {
@@ -25,11 +25,11 @@ class LocalSearchService implements SearchService {
     final s0 = DateTime.now();
     final messages = await _db.searchMessages(query, currentUid, limit: limit);
     final s1 = DateTime.now();
-    debugPrint('🥷 SQL query only: ${s1.difference(s0).inMilliseconds}ms');
+    dLog('🥷 SQL query only: ${s1.difference(s0).inMilliseconds}ms');
 
     final chatMap = {for (final c in chatRooms) c.id: c};
     final s2 = DateTime.now();
-    debugPrint('🥷 chatMap build: ${s2.difference(s1).inMilliseconds}ms');
+    dLog('🥷 chatMap build: ${s2.difference(s1).inMilliseconds}ms');
     final resultList = messages.map((msg) {
       final chat = chatMap[msg.chatRoomId];
       return SearchResultModel(
@@ -48,7 +48,7 @@ class LocalSearchService implements SearchService {
       );
     }).toList();
     final s3 = DateTime.now();
-    debugPrint('🥷 model mapping: ${s3.difference(s2).inMilliseconds}ms');
+    dLog('🥷 model mapping: ${s3.difference(s2).inMilliseconds}ms');
     return resultList;
   }
 

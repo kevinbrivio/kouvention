@@ -14,7 +14,7 @@ import 'package:kouvention/features/shared/viewmodel/connectivity_viewmodel.dart
 import 'package:oktoast/oktoast.dart';
 
 final signUpProvider = ChangeNotifierProvider.autoDispose<SignUpVM>(
-  (ref) => SignUpVM(ref),
+  SignUpVM.new,
 );
 
 class SignUpVM extends BaseFormNotifier<SignUpForm> with FormValidatorMixin {
@@ -90,7 +90,7 @@ class SignUpVM extends BaseFormNotifier<SignUpForm> with FormValidatorMixin {
     } on FirebaseAuthException catch (e) {
       if (e.code == 'email-already-in-use') {
         showToast('Account already exists. Redirecting to sign in...');
-        ctx.go(RouterRoutes.emailSignIn.path);
+        if (ctx.mounted) ctx.go(RouterRoutes.emailSignIn.path);
       }
       final message = switch (e.code) {
         'invalid-email' => 'Invalid email address',

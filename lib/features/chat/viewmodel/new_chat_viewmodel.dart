@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
@@ -10,6 +9,7 @@ import 'package:kouvention/features/chat/services/databases/message_database.dar
 import 'package:kouvention/features/chat/viewmodel/recent_users_provider.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
 import 'package:kouvention/features/user/services/user_service.dart';
+import 'package:kouvention/cores/utils/log.dart';
 
 final newChatVM = AutoDisposeChangeNotifierProvider<NewChatVM>(
   (ref) => NewChatVM(ref),
@@ -64,7 +64,7 @@ class NewChatVM extends BaseNotifier {
       onError: (e) {
         _allUsers = [];
         _isLoadingUsers = false;
-        debugPrint('streamAllUser error: $e');
+        eLog('streamAllUser error: $e');
         notifyListeners();
       },
     );
@@ -101,11 +101,11 @@ class NewChatVM extends BaseNotifier {
     final q = query.trim().toLowerCase();
   
     // 🔍 Cek 1: Apakah _allUsers sudah terisi?
-    print('=== TOTAL allUsers: ${_allUsers.length}');
+    dLog('=== TOTAL allUsers: ${_allUsers.length}');
   
     // 🔍 Cek 2: Lihat isi _allUsers
     for (final u in _allUsers) {
-      print('=== USER: ${u.displayName} | ${u.email}');
+      dLog('=== USER: ${u.displayName} | ${u.email}');
     }
   
     _searchResults = _allUsers
@@ -117,8 +117,8 @@ class NewChatVM extends BaseNotifier {
         )
         .toList();
   
-    print('=== QUERY: $q');
-    print('=== Hasil: $_searchResults');
+    dLog('=== QUERY: $q');
+    dLog('=== Hasil: $_searchResults');
     _isSearching = false;
     notifyListeners();
   }
@@ -196,7 +196,7 @@ class NewChatVM extends BaseNotifier {
       return chatId;
     } catch (e) {
       _error = 'Failed to create chat';
-      debugPrint('Create chat error: $e');
+      eLog('Create chat error: $e');
       notifyListeners();
       return null;
     }
@@ -255,7 +255,7 @@ class NewChatVM extends BaseNotifier {
       return chatId;
     } catch (e) {
       _error = 'Failed to create group';
-      debugPrint('Create group error: $e');
+      eLog('Create group error: $e');
       notifyListeners();
       return null;
     }

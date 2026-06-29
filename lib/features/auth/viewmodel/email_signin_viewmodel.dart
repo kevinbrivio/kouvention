@@ -34,9 +34,6 @@ class EmailSignInVM extends BaseFormNotifier<EmailSignInForm>
   bool _obscurePassword = true;
   bool get obscurePassword => _obscurePassword;
 
-  bool _isOffline = false;
-  bool get isOffline => _isOffline;
-
   @override
   late EmailSignInForm form;
 
@@ -92,11 +89,11 @@ class EmailSignInVM extends BaseFormNotifier<EmailSignInForm>
         // Set user token to FCM
         final fcmService = ref.read(fcmServiceProvider);
         await fcmService.initialize();
-        
+
         if (hasProfile) {
-          ctx.go(RouterRoutes.chatList.path);
+          if (ctx.mounted) ctx.go(RouterRoutes.chatList.path);
         } else {
-          ctx.go(RouterRoutes.addName.path);
+          if (ctx.mounted) ctx.go(RouterRoutes.addName.path);
         }
       }
     } on FirebaseAuthException catch (e) {

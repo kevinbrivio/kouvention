@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/bases/base_form_notifier.dart';
 import 'package:kouvention/cores/mixins/form_validator_mixin.dart';
+import 'package:kouvention/cores/utils/log.dart';
 import 'package:kouvention/cores/models/text_input_model.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/profile/views/edit_status_view..dart';
@@ -69,7 +70,7 @@ class EditStatusVM extends BaseFormNotifier<EditStatusForm>
         context.pop();
       }
     } catch (e) {
-      debugPrint('error on editting name: $e');
+      eLog('error on editting name: $e');
     } finally {
       isLoading = false;
     }

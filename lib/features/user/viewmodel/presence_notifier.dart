@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/user/services/user_service.dart';
+import 'package:kouvention/cores/utils/log.dart';
 
 final presenceNotifierProvider = ChangeNotifierProvider(
   (ref) => PresenceNotifier(ref, ref.read(userServiceProvider)),
@@ -36,21 +37,21 @@ class PresenceNotifier extends ChangeNotifier {
         try {
           await _userService.setOnline(userId);
         } catch (e) {
-          debugPrint('setOnline failed (likely mid-auth): $e');
+          eLog('setOnline failed (likely mid-auth): $e');
         }
       },
       onHide: () async {
         try {
           await _userService.setOffline(userId);
         } catch (e) {
-          debugPrint('setOffline failed: $e');
+          eLog('setOffline failed: $e');
         }
       },
       onPause: () async {
         try {
           await _userService.setOffline(userId);
         } catch (e) {
-          debugPrint('setOffline failed: $e');
+          eLog('setOffline failed: $e');
         }
       },
     );

@@ -6,7 +6,7 @@ class IconHolder extends StatelessWidget {
   final Widget icon;
   final BorderRadius? radius;
   
-  IconHolder({super.key, required this.icon, this.radius});
+  const IconHolder({super.key, required this.icon, this.radius});
 
   @override
   Widget build(BuildContext context) => Container(

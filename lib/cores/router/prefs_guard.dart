@@ -1,4 +1,5 @@
-// Load only once to hold onboarding + privacy policy values from SharedPreferences
+// Load only once to hold onboarding + privacy policy 
+// values from SharedPreferences
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

@@ -2,10 +2,10 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
+import 'package:kouvention/cores/utils/log.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/models/upload_result_model.dart';
 import 'package:kouvention/features/chat/services/media/cloud_media_service.dart';
@@ -63,7 +63,7 @@ class MediaPickerHelper extends BaseNotifier {
       if (xfile == null) return null;
       return await _toTempFile(xfile);
     } catch (e) {
-      debugPrint('VM pick single image error: $e');
+      eLog('VM pick single image error: $e');
       return null;
     }
   }
@@ -75,7 +75,7 @@ class MediaPickerHelper extends BaseNotifier {
       final files = await Future.wait(xfiles.map(_toTempFile));
       return files.whereType<File>().toList();
     } catch (e) {
-      debugPrint('VM pickMultipleImages error: $e');
+      eLog('VM pickMultipleImages error: $e');
       return [];
     }
   }
@@ -87,7 +87,7 @@ class MediaPickerHelper extends BaseNotifier {
       final files = await Future.wait(xfiles.map(_toTempFile));
       return files.whereType<File>().toList();
     } catch (e) {
-      debugPrint('VM pickMultipleVideos error: $e');
+      eLog('VM pickMultipleVideos error: $e');
       return [];
     }
   }

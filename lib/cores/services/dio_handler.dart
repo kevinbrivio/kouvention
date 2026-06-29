@@ -34,6 +34,6 @@ class DioHandler {
   }
 
   static void setup() {
-    getIt.registerLazySingleton(() => DioHandler._internal());
+    getIt.registerLazySingleton(DioHandler._internal);
   }
 }

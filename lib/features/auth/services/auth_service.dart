@@ -19,8 +19,6 @@ class AuthService {
       clientId: clientId,
       serverClientId: serverClientId,
     );
-
-    // await _googleSignIn.attemptLightweightAuthentication();
   }
 
   Future<UserCredential> signUpWithEmail({
