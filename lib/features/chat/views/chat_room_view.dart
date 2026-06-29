@@ -214,7 +214,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
 
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         vm.highlightMessage(widget.scrollToMessageId!);
-        await Future.delayed(const Duration(milliseconds: 800));
+        await Future.delayed(const Duration(milliseconds: 1500));
         vm.clearHighlight();
       });
     }
