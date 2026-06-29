@@ -1,9 +1,9 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:kouvention/features/shared/services/prefs_service.dart';
+import 'package:kouvention/cores/utils/log.dart';
 
 enum NotificationPermissionState { granted, denied, notDetermined }
 
@@ -57,7 +57,7 @@ class NotificationPermissionVM extends StateNotifier<NotificationPermissionState
         'displayName': result['displayName'] as String,
       };
     } catch (e) {
-      debugPrint('Ringtone picker failed: $e');
+      eLog('Ringtone picker failed: $e');
       return null;
     }
   }

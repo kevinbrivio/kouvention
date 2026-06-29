@@ -18,6 +18,7 @@ import 'package:kouvention/features/shared/services/connectivity_service.dart';
 
 import 'package:kouvention/features/shared/services/sync_service.dart';
 import 'package:kouvention/features/shared/viewmodel/connectivity_viewmodel.dart';
+import 'package:kouvention/cores/utils/log.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
 import 'package:kouvention/features/user/services/user_service.dart';
 import 'package:kouvention/features/user/viewmodel/presence_notifier.dart';
@@ -85,7 +86,7 @@ class ProfileVM extends BaseNotifier {
             notifyListeners();
           },
           onError: (e) {
-            debugPrint("Profile stream error: $e");
+            eLog("Profile stream error: $e");
           },
         );
   }
@@ -112,10 +113,9 @@ class ProfileVM extends BaseNotifier {
       if (ctx.mounted) {
         ctx.go(RouterRoutes.login.path);
       }
-    } catch (e, s) {
-      print('error when signin out: $e');
+    } catch (e) {
+
       showToast('Failed to sign out. Please try again');
-      print(s);
     } finally {
       isLoading = false;
       _isButtonLoading = false;
@@ -218,7 +218,7 @@ class ProfileVM extends BaseNotifier {
 
       await _userService.updateProfile(uid: uid, photoURL: results.first.url);
     } catch (e) {
-      debugPrint('Profile photo upload failed: $e');
+      eLog('Profile photo upload failed: $e');
       showToast('Failed to update photo. Please try again.');
     } finally {
       isLoading = false;

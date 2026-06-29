@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/repositories/chat_repository.dart';
@@ -9,6 +8,7 @@ import 'package:kouvention/features/chat/repositories/message_repository.dart';
 import 'package:kouvention/features/chat/repositories/user_profile_repository.dart';
 import 'package:kouvention/features/chat/services/sync/chat_sync_queue.dart';
 import 'package:kouvention/features/shared/viewmodel/connectivity_viewmodel.dart';
+import 'package:kouvention/cores/utils/log.dart';
 import 'package:kouvention/features/shared/services/sync_service.dart';
 
 /// Single owner of "what needs to sync when" for the chat feature.
@@ -33,7 +33,7 @@ class ChatSyncCoordinator {
        _queue = queue ?? ChatSyncQueue() {
     _queue.inFlightLabels.listen((labels) {
       if (labels.isEmpty) return;
-      debugPrint('📡 [ChatSyncCoordinator] in-flight: $labels');
+      dLog('📡 [ChatSyncCoordinator] in-flight: $labels');
     });
   }
 
@@ -113,7 +113,7 @@ class ChatSyncCoordinator {
   /// The actual retry sweep is owned by SyncService; the coordinator
   /// exists to throttle, dedupe, and add observability around the call.
   Future<void> _flushPending() async {
-    debugPrint('📡 [ChatSyncCoordinator] flush-pending requested');
+    dLog('📡 [ChatSyncCoordinator] flush-pending requested');
     await _syncService.retryStuckMessages();
   }
 }
@@ -161,7 +161,7 @@ final networkResumeAutoSyncProvider = Provider<void>((ref) {
     final isOnline = next.valueOrNull ?? false;
     final wasOnline = prev?.valueOrNull ?? false;
     if (isOnline && !wasOnline) {
-      debugPrint('🌍 [ChatSyncCoordinator] network resumed');
+      iLog('🌍 [ChatSyncCoordinator] network resumed');
       coord.onNetworkResumed();
     }
   });

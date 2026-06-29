@@ -19,7 +19,10 @@ class TextInputModel {
 }
 
 extension TextInputModelFactory on TextInputModel {
-  static TextInputModel fromText(String text, {String? Function(String)? validator}) {
+  static TextInputModel fromText(
+    String text, 
+    {String? Function(String)? validator}
+  ) {
     final model = TextInputModel(validator: validator);
     model.text = text;
     return model;

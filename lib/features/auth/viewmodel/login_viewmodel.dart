@@ -10,6 +10,8 @@ import 'package:kouvention/features/shared/services/connectivity_service.dart';
 import 'package:kouvention/features/shared/services/fcm_service.dart';
 import 'package:kouvention/features/shared/viewmodel/connectivity_viewmodel.dart';
 import 'package:kouvention/features/user/services/user_service.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:kouvention/cores/utils/log.dart';
 import 'package:oktoast/oktoast.dart';
 
 final loginProvider = ChangeNotifierProvider.autoDispose<LoginVM>(
@@ -52,16 +54,22 @@ class LoginVM extends BaseNotifier {
           );
         }
       }
-      
+
       if (ctx.mounted) {
         // Set user token to FCM
         final fcmService = ref.read(fcmServiceProvider);
         await fcmService.initialize();
-        
+
         ctx.go(RouterRoutes.chatList.path);
       }
-    } on AuthException catch (e) {
-      debugPrint('Google sign in cancelled: $e');
+    } on GoogleSignInException catch (e) {
+      if (e.code == GoogleSignInExceptionCode.canceled) {
+        wLog('Google sign in cancelled');
+        return;
+      }
+
+      eLog('Google sign in failed: $e');
+      showToast('Sign in failed. Please try again.');
     } catch (e) {
       showToast('Sign in failed. Please try again.');
     } finally {

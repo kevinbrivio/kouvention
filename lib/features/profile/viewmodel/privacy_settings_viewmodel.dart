@@ -1,11 +1,11 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
 import 'package:kouvention/features/user/services/user_service.dart';
+import 'package:kouvention/cores/utils/log.dart';
 
 final privacySettingsVM = ChangeNotifierProvider.autoDispose<PrivacySettingsVM>(
   (ref) => PrivacySettingsVM(ref),
@@ -31,7 +31,7 @@ class PrivacySettingsVM extends BaseNotifier {
         _user = user;
         notifyListeners();
       },
-      onError: (e) => debugPrint('Privacy settings stream error: $e'),
+      onError: (e) => eLog('Privacy settings stream error: $e'),
     );
   }
 

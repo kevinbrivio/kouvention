@@ -13,7 +13,7 @@ class BaseView<T extends BaseNotifier> extends ConsumerWidget {
   final bool useGradient;
   final DecorationImage? backgroundImage;
 
-  BaseView({
+  const BaseView({
     super.key,
     required this.provider,
     required this.builder,

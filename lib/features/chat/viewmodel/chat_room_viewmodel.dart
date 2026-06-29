@@ -26,6 +26,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
 import 'package:snackify/enums/snack_enums.dart';
 import 'package:snackify/snackify.dart';
+import 'package:kouvention/cores/utils/log.dart';
 
 /// Voice recording state machine (§3.1 of recap).
 ///
@@ -128,7 +129,7 @@ class ChatRoomVM extends BaseNotifier {
       try {
         await _chatRepository.getChat(chatId);
       } catch (e) {
-        debugPrint('Chat metadata sync skipped ($e)');
+        wLog('Chat metadata sync skipped ($e)');
       }
 
       // 3. Attach the realtime listener so incoming messages land in
@@ -136,7 +137,7 @@ class ChatRoomVM extends BaseNotifier {
       _firestoreSubscription = _messageRepository
           .watchActiveChatRealtime(chatId)
           .listen((_) {
-            debugPrint('New messages arrived in Drift local database');
+            dLog('New messages arrived in Drift local database');
           });
 
       // 4. Non-critical: reset unread + advance lastReadAt.
@@ -146,7 +147,7 @@ class ChatRoomVM extends BaseNotifier {
         // Implicit retry: opening the chat again writes a fresh
         // lastReadAt + reset unreadCount. networkAutoSyncProvider
         // covers pending messages, not read receipts.
-        debugPrint('Offline: unread/read update skipped ($e)');
+        wLog('Offline: unread/read update skipped ($e)');
       }
 
       // 5. Update lastOpenedAt so the LRU eviction ranks this chat as
@@ -154,7 +155,7 @@ class ChatRoomVM extends BaseNotifier {
       try {
         await ref.read(messageDatabaseProvider).updateLastOpenedAt(chatId);
       } catch (e) {
-        debugPrint('lastOpenedAt update skipped ($e)');
+        wLog('lastOpenedAt update skipped ($e)');
       }
     });
   }
@@ -163,7 +164,7 @@ class ChatRoomVM extends BaseNotifier {
     final trimmed = text.trim();
     if (trimmed.isEmpty || _currentUid == null) return;
 
-    final chat = ref.read(chatMetadataStreamProvider(chatId)).value;
+    final chat = await _resolveChatForSend();
     if (chat == null) {
       _error = 'Getting chat room ready';
       notifyListeners();
@@ -240,7 +241,7 @@ class ChatRoomVM extends BaseNotifier {
       // 3. Fetch data from Firestore
       final result = await _messageRepository.fetchOlderMessages(
         chatId,
-        limit: 50,
+        limit: 100,
         maxPages: 1,
       );
       final refreshed = await db.getChatById(chatId);
@@ -249,7 +250,7 @@ class ChatRoomVM extends BaseNotifier {
       }
     } catch (e) {
       _hasMoreMessages = true;
-      debugPrint('===== loadOlderMessages failed: $e\n');
+      eLog('===== loadOlderMessages failed: $e\n');
     } finally {
       _isLoadingOlder = false;
       notifyListeners();
@@ -298,7 +299,7 @@ class ChatRoomVM extends BaseNotifier {
   Future<void> sendSticker(StickerModel sticker) async {
     if (_currentUid == null) return;
 
-    final chat = ref.read(chatMetadataStreamProvider(chatId)).value;
+    final chat = await _resolveChatForSend();
     if (chat == null) return;
 
     try {
@@ -336,7 +337,7 @@ class ChatRoomVM extends BaseNotifier {
         replyTo: replyTo,
       );
     } catch (e, s) {
-      print('Error sending sticker: $e $s');
+      eLog('Error sending sticker: $e $s');
     } finally {
       _isSending = false;
       notifyListeners();
@@ -389,7 +390,7 @@ class ChatRoomVM extends BaseNotifier {
     ref.read(highlightMessageProvider(chatId).notifier).state = messageId;
 
     // reset
-    Future.delayed(const Duration(seconds: 2), () {
+    Future.delayed(const Duration(seconds: 3), () {
       ref.read(highlightMessageProvider(chatId).notifier).state = null;
     });
   }
@@ -470,7 +471,7 @@ class ChatRoomVM extends BaseNotifier {
     if (files.isEmpty) return;
     if (files.any((f) => f.localPath == null)) return;
 
-    final chat = ref.read(chatMetadataStreamProvider(chatId)).value;
+    final chat = await _resolveChatForSend();
     if (chat == null) {
       _error = 'Getting chat room ready';
       notifyListeners();
@@ -554,7 +555,7 @@ class ChatRoomVM extends BaseNotifier {
     final ext = supported ? 'opus' : 'm4a';
     final tempPath =
         '${tempDir.path}${DateTime.now().millisecondsSinceEpoch}.$ext';
-    _recordingPath = tempPath;  
+    _recordingPath = tempPath;
 
     try {
       await _audioRecorder.start(
@@ -601,7 +602,7 @@ class ChatRoomVM extends BaseNotifier {
             notifyListeners();
           });
     } catch (e) {
-      debugPrint('Error starting recording: $e');
+      eLog('Error starting recording: $e');
       _resetRecording();
     }
   }
@@ -645,7 +646,7 @@ class ChatRoomVM extends BaseNotifier {
       _recordingState = RecordingState.reviewing;
       notifyListeners();
     } catch (e) {
-      debugPrint('Error stopping recording: $e');
+      eLog('Error stopping recording: $e');
       _resetRecording();
     }
   }
@@ -666,7 +667,7 @@ class ChatRoomVM extends BaseNotifier {
       _recordingState = RecordingState.reviewing;
       notifyListeners();
     } catch (e) {
-      debugPrint('Error pausing recording: $e');
+      eLog('Error pausing recording: $e');
       _resetRecording();
     }
   }
@@ -708,7 +709,7 @@ class ChatRoomVM extends BaseNotifier {
       if (uploadResult == null) throw Exception('Audio upload failed');
 
       // Get chat metadata
-      final chat = ref.read(chatMetadataStreamProvider(chatId)).value;
+      final chat = await _resolveChatForSend();
       if (chat == null) throw Exception('Chat not ready');
 
       // Enrich with local path for traceability
@@ -753,12 +754,24 @@ class ChatRoomVM extends BaseNotifier {
       await file.delete();
       _resetRecording();
     } catch (e) {
-      debugPrint('Error sending recorded audio: $e');
+      eLog('Error sending recorded audio: $e');
       _error = 'Failed to send audio. Tap to retry.';
       _recordingState = RecordingState.reviewing;
     } finally {
       _isSending = false;
       notifyListeners();
+    }
+  }
+
+  Future<ChatModel?> _resolveChatForSend() async {
+    final cached = ref.read(chatMetadataStreamProvider(chatId)).value;
+    if (cached != null) return cached;
+
+    try {
+      return await _chatRepository.getChat(chatId);
+    } catch (e) {
+      eLog('resolveChatForSend failed for $chatId: $e');
+      return null;
     }
   }
 
@@ -850,7 +863,7 @@ final chatMessagesStreamProvider = StreamProvider.autoDispose
       final localStream = db.watchAllCachedMessages(chatId, uid!);
 
       return localStream.map((localMsgs) {
-        if (kDebugMode) debugPrint('Drift messages in chat room: ${localMsgs.length}');
+        dLog('Drift messages in chat room: ${localMsgs.length}');
         return localMsgs
             .map(
               (m) => MessageModel(

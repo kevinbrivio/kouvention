@@ -60,7 +60,9 @@ class SelectionAppBar extends ConsumerWidget implements PreferredSizeWidget {
                   borderRadius: BorderRadius.circular(AppRadius.lg.r),
                 ),
                 title: Text(
-                  'Delete ${vm.selectedCount} message${vm.selectedCount > 1 ? 's' : ''}?',
+                  'Delete ${vm.selectedCount} message${vm.selectedCount > 1 
+                      ? 's' 
+                      : ''}?',
                   style: context.text.bodyLarge,
                 ),
                 content: Column(

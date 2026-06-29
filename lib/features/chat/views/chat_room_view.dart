@@ -8,6 +8,7 @@ import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/bases/base_view.dart';
 import 'package:kouvention/cores/constants/tokens.dart';
+import 'package:kouvention/cores/router/router.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/cores/widgets/loading_indicator.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
@@ -24,6 +25,7 @@ import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_selection_viewmodel.dart';
 import 'package:kouvention/features/chat/viewmodel/bubble_scheme_provider.dart';
 import 'package:kouvention/features/chat/viewmodel/wallpaper_provider.dart';
+import 'package:kouvention/features/notification/viewmodel/active_chat_id_provider.dart';
 import 'package:kouvention/features/chat/widgets/chatRoom/chat_room_skeleton.dart';
 import 'package:kouvention/features/chat/widgets/chatRoom/media_sheet.dart';
 import 'package:kouvention/features/chat/widgets/chatRoom/message_bubble.dart';
@@ -38,17 +40,44 @@ import 'package:kouvention/features/story/models/story_model.dart';
 import 'package:kouvention/features/story/models/story_viewer_args.dart';
 import 'package:kouvention/features/story/repositories/story_repository.dart';
 import 'package:oktoast/oktoast.dart';
+import 'package:kouvention/cores/utils/log.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:kouvention/features/chat/widgets/chatRoom/chat_room_appbar.dart';
 import 'package:kouvention/features/chat/widgets/chatRoom/chat_room_appbar_skeleton.dart';
 
-class ChatRoomView extends ConsumerWidget {
+class ChatRoomView extends ConsumerStatefulWidget {
   final String chatId;
 
   const ChatRoomView({super.key, required this.chatId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ChatRoomView> createState() => _ChatRoomViewState();
+}
+
+class _ChatRoomViewState extends ConsumerState<ChatRoomView> with RouteAware {
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route != null) {
+      routeObserver.subscribe(this, route);
+    }
+  }
+
+  @override
+  void didPushNext() {
+    ref.read(activeChatIdProvider.notifier).state = null;
+  }
+
+  @override
+  void dispose() {
+    routeObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final chatId = widget.chatId;
     final selectionVM = ref.watch(chatSelectionVM(chatId));
     final currentUid = ref.read(currentUidProvider);
     final wallpaper = ref.watch(chatWallpaperProvider(chatId));
@@ -62,7 +91,9 @@ class ChatRoomView extends ConsumerWidget {
         }
         if (!didPop) {
           // Navigate to chat list
-          context.go(RouterRoutes.chatList.path);
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            context.pop();
+          });
         }
       },
       child: BaseView<ChatRoomVM>(
@@ -93,7 +124,7 @@ class ChatRoomView extends ConsumerWidget {
                 image: wallpaperImage,
                 fit: BoxFit.cover,
                 onError: (error, stackTrace) {
-                  debugPrint('Background image error: $error');
+                  eLog('Background image error: $error');
                 },
               ),
       ),
@@ -183,7 +214,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
 
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         vm.highlightMessage(widget.scrollToMessageId!);
-        await Future.delayed(const Duration(milliseconds: 800));
+        await Future.delayed(const Duration(milliseconds: 1500));
         vm.clearHighlight();
       });
     }
@@ -1031,15 +1062,16 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
     final stories = await ref
         .read(storyRepositoryProvider)
         .fetchStoriesByAuthor(authorUid: story.authorUid, now: now, limit: 20);
-    final index = stories.indexWhere((item) => item.id == story.id);
-    if (index < 0) {
-      showToast('This story has expired.', position: ToastPosition.bottom);
-      return;
-    }
+    final orderedStories = [
+      ...stories,
+      if (!stories.any((item) => item.id == story.id)) story,
+    ]..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+
+    final index = orderedStories.indexWhere((item) => item.id == story.id);
 
     if (!mounted) return;
     final currentUid = ref.read(currentUidProvider);
-    final latest = stories.first;
+    final latest = orderedStories.last;
     context.push(
       RouterRoutes.storyViewer.path,
       extra: StoryViewerArgs(
@@ -1047,7 +1079,7 @@ class _ChatRoomBodyState extends ConsumerState<_ChatRoomBody> {
           authorUid: latest.authorUid,
           authorName: latest.authorName,
           authorPhotoUrl: latest.authorPhotoUrl,
-          stories: List.unmodifiable(stories),
+          stories: List.unmodifiable(orderedStories),
           unseenCount: 0,
           isOwnStory: latest.authorUid == currentUid,
         ),

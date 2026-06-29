@@ -6,11 +6,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
+import 'package:kouvention/cores/utils/log.dart';
 import 'package:kouvention/cores/constants/tokens.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
 import 'package:kouvention/features/chat/models/upload_result_model.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_room_viewmodel.dart';
 import 'package:kouvention/features/chat/viewmodel/media/media_picker_helper.dart';
+import 'package:oktoast/oktoast.dart';
 
 class MediaPreviewVM extends BaseNotifier {
   final String chatId;
@@ -99,7 +101,7 @@ class MediaPreviewVM extends BaseNotifier {
       await onSend(finalResults, _captions);
       if (context.mounted) Navigator.pop(context);
     } on DioException catch (e) {
-      print('Error send media message: $e');
+      eLog('Error send media message: $e');
       notifyListeners();
     } finally {
       _isSending = false;
@@ -108,6 +110,11 @@ class MediaPreviewVM extends BaseNotifier {
 
   Future<void> cropImage(int index) async {
     final file = files[index];
+    if (!await file.exists()) {
+      showToast('Photo is no longer available. Please pick it again.');
+      return;
+    }
+
     final cropped = await ImageCropper().cropImage(
       sourcePath: file.path,
       aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),

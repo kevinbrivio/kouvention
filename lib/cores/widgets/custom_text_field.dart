@@ -173,7 +173,9 @@ class _CustomTextFieldState extends State<CustomTextField>
           },
           child: SizedBox(
             height:
-                widget.isLarge ? AppSizing.inputLargeHeight.h : AppSizing.inputHeight.h,
+                widget.isLarge 
+                  ? AppSizing.inputLargeHeight.h 
+                  : AppSizing.inputHeight.h,
             child: TextFormField(
               expands: widget.isLarge,
               maxLines: widget.isLarge ? null : 1,
@@ -208,7 +210,9 @@ class _CustomTextFieldState extends State<CustomTextField>
                 ),
                 filled: true,
                 fillColor:
-                    widget.enabled ? AppSurfaceLight.surface : AppSurfaceLight.surfaceInput,
+                    widget.enabled 
+                      ? AppSurfaceLight.surface 
+                      : AppSurfaceLight.surfaceInput,
                 focusedBorder: getBorder(
                   AppColorTokens.primaryLighter,
                   scheme,

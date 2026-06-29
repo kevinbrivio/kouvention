@@ -31,6 +31,7 @@ import 'package:kouvention/features/story/views/story_composer_view.dart';
 import 'package:kouvention/features/story/views/story_feed_view.dart';
 import 'package:kouvention/features/story/views/story_viewer_view.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
+import 'package:kouvention/cores/utils/log.dart';
 
 GoRouter? _router;
 GoRouter get router => _router!;
@@ -48,7 +49,7 @@ final GlobalKey<NavigatorState> _storyBranchKey = GlobalKey<NavigatorState>(
   debugLabel: 'storyBranch',
 );
 
-setupRouter({
+void setupRouter({
   required String initialRouter,
   required AuthService authService,
   required RouterGuard routerGuard,
@@ -62,7 +63,7 @@ setupRouter({
     observers: [routeObserver],
     redirect: (context, state) {
       final currentPath = state.matchedLocation;
-      debugPrint('GUARD: path = $currentPath');
+      dLog('GUARD: path = $currentPath');
 
       // Splash always return true.
       if (currentPath == RouterRoutes.splash.path) return null;
@@ -70,7 +71,7 @@ setupRouter({
       if (!routerGuard.onboardingSeen) {
         // navigate if the user is not in onboarding
         if (currentPath != RouterRoutes.onboarding.path) {
-          debugPrint('GUARD: has not seen onboarding → /onboarding');
+          iLog('GUARD: has not seen onboarding → /onboarding');
           return RouterRoutes.onboarding.path;
         }
         // already in onboarding, just stay still
@@ -80,7 +81,7 @@ setupRouter({
       if (!routerGuard.privacyPolicySeen) {
         // navigate if user on page other than privacy policy
         if (currentPath != RouterRoutes.privacyPolicy.path) {
-          debugPrint('GUARD: has not seen privacy policy → /privacyPolicy');
+          iLog('GUARD: has not seen privacy policy → /privacyPolicy');
           return RouterRoutes.privacyPolicy.path;
         }
 
@@ -94,7 +95,7 @@ setupRouter({
           RouterRoutes.emailSignIn.path,
         ];
         if (!authPages.contains(currentPath)) {
-          debugPrint('GUARD: not logged in → /login');
+          iLog('GUARD: not logged in → /login');
           return RouterRoutes.login.path;
         }
 
@@ -109,19 +110,19 @@ setupRouter({
       ];
 
       if (authPages.contains(currentPath)) {
-        debugPrint('GUARD: Logged in but on auth page -> /chats');
+        iLog('GUARD: Logged in but on auth page -> /chats');
         return RouterRoutes.chatList.path;
       }
 
       // What if user hasn't set a name?
       if (!routerGuard.hasDisplayName) {
         if (currentPath != RouterRoutes.addName.path) {
-          debugPrint('GUARD: no display name → /add-name');
+          iLog('GUARD: no display name → /add-name');
           return RouterRoutes.addName.path;
         }
       }
 
-      debugPrint('GUARD: all checks passed ✅');
+      iLog('GUARD: all checks passed ✅');
       return null;
     },
     routes: [
@@ -164,7 +165,7 @@ setupRouter({
 
       // ── Shell (navbar visible) ────────────────────
       StatefulShellRoute.indexedStack(
-        builder: (_, __, navigationShell) =>
+        builder: (_, _, navigationShell) =>
             MainShell(navigationShell: navigationShell),
         branches: [
           // Tab 0: Chats

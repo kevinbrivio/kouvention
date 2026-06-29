@@ -1,10 +1,10 @@
 import 'package:drift/drift.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/services/databases/message_database.dart';
 import 'package:kouvention/features/chat/utils/profile_staleness.dart';
 import 'package:kouvention/features/user/models/user_model.dart';
+import 'package:kouvention/cores/utils/log.dart';
 import 'package:kouvention/features/user/services/user_service.dart';
 
 class UserProfileRepository {
@@ -33,7 +33,7 @@ class UserProfileRepository {
         final batch = await _userService.fetchUserByUids(chunk);
         fetched.addAll(batch);
       } catch (e) {
-        debugPrint('[UserProfileRepository] fetchProfileByIds error: $e');
+        eLog('[UserProfileRepository] fetchProfileByIds error: $e');
       }
     }
 
@@ -107,16 +107,17 @@ class UserProfileRepository {
       final memberDisplayName = memberInfo[uid]?.displayName;
       if (memberDisplayName == null) continue;
       final cachedProfile = cachedByUid[uid];
-      if (cachedProfile == null)
+      if (cachedProfile == null) {
         continue; // missing → handled by refreshStaleAndMissing
+      }
       if (memberDisplayName != cachedProfile.displayName) {
         mismatched.add(uid);
       }
     }
 
     if (mismatched.isNotEmpty) {
-      debugPrint(
-        '[UserProfileRepository] memberInfo mismatch for ${mismatched.length} uid(s): $mismatched',
+      wLog(
+        'memberInfo mismatch for ${mismatched.length} uid(s): $mismatched',
       );
       await fetchProfileByIds(mismatched);
     }

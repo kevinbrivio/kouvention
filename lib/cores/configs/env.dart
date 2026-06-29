@@ -11,7 +11,8 @@ abstract class EnvStaging {
   @EnviedField(varName: 'CLOUDINARY_CLOUD_NAME')
   static const String cloudinaryCloudName = _EnvStaging.cloudinaryCloudName;
   @EnviedField(varName: 'CLOUDINARY_UPLOAD_PRESET')
-  static const String cloudinaryUploadPreset = _EnvStaging.cloudinaryUploadPreset;
+  static const String cloudinaryUploadPreset =
+      _EnvStaging.cloudinaryUploadPreset;
   @EnviedField(varName: 'sha256')
   static const String sha256 = _EnvStaging.sha256;
 }

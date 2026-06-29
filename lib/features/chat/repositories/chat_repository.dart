@@ -1,12 +1,12 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/services/chat_service.dart';
 import 'package:kouvention/features/chat/services/databases/message_database.dart';
 import 'package:kouvention/features/chat/viewmodel/chat_list_viewmodel.dart'
     show kChatListPageSize;
+import 'package:kouvention/cores/utils/log.dart';
 import 'package:kouvention/features/shared/services/sync_service.dart';
 
 /// Single owner of chat-list + chat-room remote reads/writes that view
@@ -95,7 +95,7 @@ class ChatRepository {
         await onInitial?.call(initial);
       }
     } catch (e) {
-      debugPrint('firstPageStream: initial fetch failed: $e');
+      eLog('firstPageStream: initial fetch failed: $e');
     }
 
     // 2. Attach live Firestore listener for the top [limit] chats.
@@ -107,7 +107,7 @@ class ChatRepository {
         return chats;
       });
     } catch (e) {
-      debugPrint('firstPageStream: live stream failed: $e');
+      eLog('firstPageStream: live stream failed: $e');
     }
   }
 
@@ -125,7 +125,7 @@ class ChatRepository {
     int limit = 20,
     ChatCursor? cursor,
   }) async {
-    debugPrint(
+    dLog(
       '🌐 Firestore: fetching chats (cursor: ${cursor?.chatId ?? "none"})',
     );
     final fetched = await _chatService.fetchChatRoomsPage(
@@ -133,16 +133,16 @@ class ChatRepository {
       currentUid: uid,
       cursor: cursor,
     );
-    debugPrint('🌐 Firestore: got ${fetched.length} chats from remote');
+    dLog('🌐 Firestore: got ${fetched.length} chats from remote');
 
     if (fetched.isEmpty) {
-      debugPrint('🌐 Firestore: empty page, no more chats');
+      dLog('🌐 Firestore: empty page, no more chats');
       return fetched;
     }
 
     await _persistChats(fetched);
     final total = await _db.getChatCount();
-    debugPrint(
+    dLog(
       '💾 Drift: persisted ${fetched.length} chats, total in Drift: $total',
     );
     return fetched;

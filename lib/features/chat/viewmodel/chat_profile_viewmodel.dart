@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
+import 'package:kouvention/cores/utils/log.dart';
 import 'package:kouvention/cores/router/router_constants.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
@@ -79,9 +80,8 @@ class ChatProfileVM extends BaseNotifier {
           context.go('/chats/$chatId');
         }
       }
-    } catch (e, s) {
-      debugPrint('Navigating in profile detail error: $e');
-      print(s);
+    } catch (e) {
+      eLog('Navigating in profile detail error: $e');
     } finally {
       isLoading = false;
     }

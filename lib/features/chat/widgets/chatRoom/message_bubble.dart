@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -132,91 +134,83 @@ class MessageBubble extends ConsumerWidget {
     final sentBubbleColor = scheme.sentBubble;
     final receivedBubbleColor = scheme.receivedBubble;
 
-    return Column(
-      crossAxisAlignment: isMe
-          ? CrossAxisAlignment.end
-          : CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: EdgeInsets.symmetric(
-            vertical: AppSpacing.xs.h,
-            horizontal: AppSpacing.sm.w,
-          ),
-          child: Row(
-            mainAxisAlignment: isMe
-                ? MainAxisAlignment.end
-                : MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (!isMe) ...[
-                if (isGroup && isFirstSequence)
-                  CircleAvatar(
-                    radius: AppSizing.avatarSm.r,
-                    backgroundColor: showSenderPhoto
-                        ? AppColorTokens.senderNameColor(
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        vertical: AppSpacing.xs.h,
+        horizontal: AppSpacing.sm.w,
+      ),
+      child: Row(
+        mainAxisAlignment: isMe
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (!isMe) ...[
+            if (isGroup && isFirstSequence)
+              CircleAvatar(
+                radius: AppSizing.iconXxs.r,
+                backgroundColor: showSenderPhoto
+                    ? AppColorTokens.senderNameColor(
+                        message.senderId,
+                      ).withValues(alpha: 0.25)
+                    : null,
+                backgroundImage: showSenderPhoto
+                    ? NetworkImage(senderPhotoUrl!)
+                    : null,
+                onBackgroundImageError: showSenderPhoto
+                    ? (exception, stackTrace) {}
+                    : null,
+                child: !showSenderPhoto
+                    ? Text(
+                        senderName.isNotEmpty
+                            ? senderName[0].toUpperCase()
+                            : '?',
+                        style: context.text.labelSmall.copyWith(
+                          color: AppColorTokens.senderNameColor(
                             message.senderId,
-                          ).withValues(alpha: 0.25)
-                        : null,
-                    backgroundImage: showSenderPhoto
-                        ? NetworkImage(senderPhotoUrl!)
-                        : null,
-                    onBackgroundImageError: showSenderPhoto
-                        ? (exception, stackTrace) {}
-                        : null,
-                    child: !showSenderPhoto
-                        ? Text(
-                            senderName.isNotEmpty
-                                ? senderName[0].toUpperCase()
-                                : '?',
-                            style: context.text.senderName.copyWith(
-                              color: AppColorTokens.senderNameColor(
-                                message.senderId,
-                              ).withValues(alpha: 0.7),
-                            ),
-                          )
-                        : null,
-                  ),
-                Gap(AppSpacing.xs.w),
-              ],
-              Flexible(
-                fit: FlexFit.loose,
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Container(
-                      constraints: isMe
-                          ? null
-                          : BoxConstraints(
-                              maxWidth: MediaQuery.sizeOf(context).width * 0.8,
-                            ),
-                      padding: EdgeInsets.symmetric(
-                        horizontal: AppSpacing.xs.w,
-                        vertical: AppSpacing.xs.w,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isMe ? sentBubbleColor : receivedBubbleColor,
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(
-                            isMe ? AppRadius.sm.r : AppRadius.xs.r,
-                          ),
-                          topRight: Radius.circular(
-                            isMe ? AppRadius.xs.r : AppRadius.sm.r,
-                          ),
-                          bottomRight: Radius.circular(AppRadius.sm.r),
-                          bottomLeft: Radius.circular(AppRadius.sm.r),
+                          ).withValues(alpha: 0.7),
                         ),
+                      )
+                    : null,
+              ),
+            Gap(AppSpacing.xs.w),
+          ],
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: MediaQuery.sizeOf(context).width * 0.8,
+                ),
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: AppSpacing.xs.w,
+                    vertical: AppSpacing.xs.w,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isMe ? sentBubbleColor : receivedBubbleColor,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(
+                        isMe ? AppRadius.sm.r : AppRadius.xs.r,
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (replyMsg != null) ...[
-                            ConstrainedBox(
-                              constraints: BoxConstraints(
-                                maxWidth:
-                                    MediaQuery.of(context).size.width * 0.8,
-                              ),
-                              child: InkWell(
+                      topRight: Radius.circular(
+                        isMe ? AppRadius.xs.r : AppRadius.sm.r,
+                      ),
+                      bottomRight: Radius.circular(AppRadius.sm.r),
+                      bottomLeft: Radius.circular(AppRadius.sm.r),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (replyMsg != null) ...[
+                        IntrinsicWidth(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch, 
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              InkWell(
                                 onTap: onTapReply != null
                                     ? () {
                                         HapticFeedback.selectionClick();
@@ -228,168 +222,156 @@ class MessageBubble extends ConsumerWidget {
                                   replyMsg,
                                   currentUid,
                                   repliedSenderName ?? '',
+                                  scheme.sentBubble,
+                                ),
+                              ),
+                              Gap(AppSpacing.xxs.h),
+
+                              Text(
+                                (message.text == '' && message.isDeleted)
+                                    ? isMe
+                                          ? 'You deleted this message'
+                                          : 'This message was deleted'
+                                    : message.text,
+                                style: context.text.bodySmall.copyWith(
+                                  color: isMe
+                                      ? message.isDeleted
+                                            ? Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurface
+                                                  .withValues(alpha: 0.5)
+                                            : context.text.secondaryText
+                                      : context.text.secondaryText,
+                                  fontStyle: message.isDeleted
+                                      ? FontStyle.italic
+                                      : FontStyle.normal,
+                                ),
+                                textAlign: TextAlign.start,
+                              ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    time,
+                                    style: context.text.labelSmall.copyWith(
+                                      color: isMe
+                                          ? message.isDeleted
+                                                ? Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurface
+                                                      .withValues(alpha: 0.5)
+                                                : context.text.secondaryText
+                                          : context.text.secondaryText,
+                                    ),
+                                  ),
+                                  if (isMe) ...[
+                                    Gap(AppSpacing.xxs.w),
+                                    _buildMessageStatus(
+                                      status,
+                                      context.text.secondaryText,
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ] else if (message.type == MessageType.text)
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                (message.text == '' && message.isDeleted)
+                                    ? isMe
+                                          ? 'You deleted this message'
+                                          : 'This message was deleted'
+                                    : message.text,
+                                style: context.text.bodySmall.copyWith(
+                                  color: isMe
+                                      ? message.isDeleted
+                                            ? Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurface
+                                                  .withValues(alpha: 0.5)
+                                            : context.text.secondaryText
+                                      : context.text.secondaryText,
+                                  fontStyle: message.isDeleted
+                                      ? FontStyle.italic
+                                      : FontStyle.normal,
                                 ),
                               ),
                             ),
-                            Gap(AppSpacing.xxs.h),
-                          ],
-                          if (!isMe && isGroup && isFirstSequence) ...[
-                            ConstrainedBox(
-                              constraints: BoxConstraints(
-                                maxWidth:
-                                    MediaQuery.of(context).size.width * 0.8,
-                              ),
-                              child: Text(
-                                senderName,
-                                style: context.text.senderName.copyWith(
-                                  color: AppColorTokens.senderNameColor(
-                                    message.senderId,
+                            Gap(AppSpacing.sm.w),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  time,
+                                  style: context.text.labelSmall.copyWith(
+                                    color: isMe
+                                        ? message.isDeleted
+                                              ? Theme.of(context)
+                                                    .colorScheme
+                                                    .onSurface
+                                                    .withValues(alpha: 0.5)
+                                              : context.text.secondaryText
+                                        : context.text.secondaryText,
                                   ),
                                 ),
-                              ),
-                            ),
-                            Gap(4.h),
-                          ],
-                          if (message.type == MessageType.text) ...[
-                            ConstrainedBox(
-                              constraints: BoxConstraints(
-                                minWidth: 120.w,
-                                maxWidth:
-                                    MediaQuery.sizeOf(context).width * 0.8,
-                              ),
-                              child: Builder(
-                                builder: (_) {
-                                  final content = Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    Text(
-                                      (message.text == '' && message.isDeleted)
-                                          ? isMe
-                                                ? 'You deleted this message'
-                                                : 'This message was deleted'
-                                          : message.text,
-                                      style: context.text.bodySmall.copyWith(
-                                        color: isMe
-                                            ? message.isDeleted
-                                                  ? Theme.of(context)
-                                                        .colorScheme
-                                                        .onSurface
-                                                        .withValues(alpha: 0.5)
-                                                  : context.text.secondaryText
-                                            : context.text.secondaryText,
-                                        fontStyle: message.isDeleted
-                                            ? FontStyle.italic
-                                            : FontStyle.normal,
-                                      ),
-                                    ),
-                                    Gap(AppSpacing.xxs.h),
-                                    Align(
-                                      alignment: Alignment.centerRight,
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text(
-                                            time,
-                                            style: context.text.labelSmall
-                                                .copyWith(
-                                                  color: isMe
-                                                      ? message.isDeleted
-                                                            ? Theme.of(context)
-                                                                  .colorScheme
-                                                                  .onSurface
-                                                                  .withValues(
-                                                                    alpha: 0.5,
-                                                                  )
-                                                            : context
-                                                                  .text
-                                                                  .secondaryText
-                                                      : context
-                                                            .text
-                                                            .secondaryText,
-                                                ),
-                                          ),
-                                          if (isMe) ...[
-                                            Gap(4.w),
-                                            _buildMessageStatus(
-                                              status,
-                                              context.text.secondaryText,
-                                            ),
-                                          ],
-                                        ],
-                                      ),
-                                    ),
-                                    ],
-                                  );
-
-                                  return replyMsg == null
-                                      ? IntrinsicWidth(child: content)
-                                      : SizedBox(
-                                          width: double.infinity,
-                                          child: content,
-                                        );
-                                },
-                              ),
-                            ),
-                          ] else if (message.mediaUrls != null &&
-                              message.mediaUrls!.isNotEmpty) ...[
-                            Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                MediaBubble(
-                                  message: message,
-                                  isMe: isMe,
-                                  scheme: scheme,
-                                ),
-                                Gap(AppSpacing.xxs.h),
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      time,
-                                      style: context.text.labelSmall.copyWith(
-                                        color: context.text.secondaryText,
-                                      ),
-                                    ),
-                                    if (isMe) ...[
-                                      Gap(4.w),
-                                      _buildMessageStatus(
-                                        status,
-                                        context.text.secondaryText.withValues(
-                                          alpha: 0.7,
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
+                                if (isMe) ...[
+                                  Gap(AppSpacing.xxs.w),
+                                  _buildMessageStatus(
+                                    status,
+                                    context.text.secondaryText,
+                                  ),
+                                ],
                               ],
                             ),
                           ],
-                        ],
-                      ),
-                    ),
-                    if (isFirstSequence)
-                      Positioned(
-                        top: 0,
-                        left: isMe ? null : -4.w,
-                        right: isMe ? -4.w : null,
-                        child: CustomPaint(
-                          size: Size(AppSpacing.xs.w, AppSpacing.sm.h),
-                          painter: BubbleTailPainter(
-                            color: isMe ? sentBubbleColor : receivedBubbleColor,
-                            isMe: isMe,
-                          ),
+                        )
+                      else if (message.mediaUrls != null &&
+                          message.mediaUrls!.isNotEmpty) ...[
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Flexible(
+                              child: MediaBubble(
+                                message: message,
+                                status: status,
+                                isMe: isMe,
+                                scheme: scheme,
+                                time: time,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                  ],
+                      ],
+                    ],
+                  ),
                 ),
               ),
+              if (isFirstSequence)
+                Positioned(
+                  top: 0,
+                  left: isMe ? null : -4.w,
+                  right: isMe ? -4.w : null,
+                  child: CustomPaint(
+                    size: Size(AppSpacing.xs.w, AppSpacing.sm.h),
+                    painter: BubbleTailPainter(
+                      color: isMe ? sentBubbleColor : receivedBubbleColor,
+                      isMe: isMe,
+                    ),
+                  ),
+                ),
             ],
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -409,6 +391,7 @@ class MessageBubble extends ConsumerWidget {
     ReplyToModel replyTo,
     String currentUid,
     String resolvedReplyName,
+    Color senderBubbleColor,
   ) {
     // When senderId is empty (Drift mapping limitation), skip "You" check.
     final isRepliedMessageMine =
@@ -419,7 +402,7 @@ class MessageBubble extends ConsumerWidget {
         replyTo.mediaUrl != '[]';
 
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+      padding: EdgeInsets.only(left: AppSpacing.xs.w),
       decoration: BoxDecoration(
         color: isMe
             ? Colors.white.withValues(alpha: 0.2)
@@ -427,37 +410,62 @@ class MessageBubble extends ConsumerWidget {
         borderRadius: BorderRadius.circular(AppRadius.sm.r),
         border: Border(
           left: BorderSide(
-            color: isMe
-                ? Colors.white
-                : AppColorTokens.senderNameColor(replyTo.senderId),
+            color: isMe ? Colors.white : senderBubbleColor,
             width: 3.w,
           ),
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: (replyTo.text.isNotEmpty)
+            ? CrossAxisAlignment.start
+            : CrossAxisAlignment.center,
         children: [
-          Text(
-              isRepliedMessageMine ? 'You' : resolvedReplyName,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: context.text.bodySmall.copyWith(
-                color: context.text.secondaryText,
-              ),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: EdgeInsets.only(
+                    top: AppSpacing.xs.h,
+                    bottom: AppSpacing.xs.h,
+                    right: AppSpacing.sm.w,
+                  ),
+                  child: Text(
+                    isRepliedMessageMine
+                        ? replyTo.isStoryReference
+                              ? 'You  •  status'
+                              : 'You'
+                        : replyTo.isStoryReference
+                        ? '$resolvedReplyName  •  status'
+                        : resolvedReplyName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.text.bodySmall.copyWith(
+                      color: context.text.secondaryText,
+                    ),
+                  ),
+                ),
+                if (replyTo.mediaType == 'text' ||
+                    hasValidMediaUrl ||
+                    replyTo.isStoryReference) ...[
+                  Gap(AppSpacing.xxs.h),
+                  Text(
+                    replyTo.text,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.text.labelSmall.copyWith(
+                      color: context.text.tertiaryText,
+                    ),
+                  ),
+                  Gap(AppSpacing.xxs.w),
+                ],
+              ],
             ),
-          Gap(2.h),
+          ),
           if (replyTo.isStoryReference)
             _buildStoryReplyPreview(context, replyTo)
-          else if (replyTo.mediaType == 'text' || !hasValidMediaUrl)
-            Text(
-              replyTo.text,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: context.text.labelSmall.copyWith(
-                color: context.text.secondaryText,
-              ),
-            )
-          else ...[
+          else if (hasValidMediaUrl)...[
             _buildReplyMediaPreview(context, replyTo),
           ],
         ],
@@ -469,14 +477,6 @@ class MessageBubble extends ConsumerWidget {
       Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Story',
-            style: context.text.labelSmall.copyWith(
-              color: context.text.secondaryText,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          Gap(4.h),
           switch (replyTo.storyType) {
             'image' || 'video' => _buildStoryThumbnail(context, replyTo),
             'text' => Text(
@@ -500,29 +500,29 @@ class MessageBubble extends ConsumerWidget {
     }
 
     return SizedBox(
-      width: 120.w,
-      height: 84.h,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6.r),
-            child: Image.network(
+      width: 64.w,
+      height: 80.w,
+      child: ClipRRect(
+        borderRadius: BorderRadius.only(
+          topRight: Radius.circular(AppRadius.sm.r),
+          bottomRight: Radius.circular(AppRadius.sm.r),
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.network(
               thumbnailUrl,
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) =>
                   _storyIconBox(context, replyTo.storyType),
             ),
-          ),
-          if (replyTo.storyType == 'video')
-            Center(
-              child: Icon(
-                Icons.play_circle_fill,
-                size: 32.sp,
-                color: Colors.white.withValues(alpha: 0.9),
+            if (replyTo.storyType == 'video')
+              BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 2.0, sigmaY: 2.0),
+                child: Container(color: Colors.black.withValues(alpha: 0.2)),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -563,7 +563,7 @@ class MessageBubble extends ConsumerWidget {
     );
   }
 
-    Widget _storyIconBox(BuildContext context, String? storyType) => Container(
+  Widget _storyIconBox(BuildContext context, String? storyType) => Container(
     width: 44.w,
     height: 44.w,
     decoration: BoxDecoration(
@@ -617,13 +617,16 @@ class MessageBubble extends ConsumerWidget {
       .replaceAll('.avi', '.jpg');
 
   Widget _thumbnailBox({String? imageUrl, IconData? icon}) => SizedBox(
-    width: 80.w,
+    width: 64.w,
     height: 80.w,
     child: Stack(
       fit: StackFit.expand,
       children: [
         ClipRRect(
-          borderRadius: BorderRadius.circular(AppRadius.sm.r),
+          borderRadius: BorderRadius.only(
+            topRight: Radius.circular(AppRadius.sm.r),
+            bottomRight: Radius.circular(AppRadius.sm.r),
+          ),
           child: Image.network(
             imageUrl!,
             fit: BoxFit.cover,
@@ -633,7 +636,7 @@ class MessageBubble extends ConsumerWidget {
         ),
         if (icon != null)
           Center(
-            child: Icon(icon, color: Colors.white, size: 20.sp),
+            child: Icon(icon, color: Colors.white, size: AppSizing.iconSm.r),
           ),
       ],
     ),
@@ -649,12 +652,15 @@ class MessageBubble extends ConsumerWidget {
       width: 80.w,
       height: 80.w,
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(4.r),
-        child: Image.network(
-          thumbUrl,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) =>
-              _iconBox(context, Icons.picture_as_pdf, filename),
+        borderRadius: BorderRadius.circular(AppRadius.xs.r),
+        child: Padding(
+          padding: EdgeInsets.only(left: AppSpacing.xs.w),
+          child: Image.network(
+            thumbUrl,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) =>
+                _iconBox(context, Icons.picture_as_pdf, filename),
+          ),
         ),
       ),
     );
@@ -667,7 +673,7 @@ class MessageBubble extends ConsumerWidget {
       children: [
         Icon(
           icon,
-          size: 20.sp,
+          size: AppSizing.iconMd.r,
           color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
         ),
         Gap(4.w),

@@ -1,7 +1,9 @@
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_story_presenter/flutter_story_presenter.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:kouvention/cores/constants/tokens.dart';
@@ -11,53 +13,48 @@ import 'package:video_player/video_player.dart';
 class StoryPresenterMapper {
   const StoryPresenterMapper._();
 
-  static StoryItem map(BuildContext context, StoryModel story) =>
-      switch (story.type) {
-        StoryType.image => _image(story),
-        StoryType.video => _video(story),
-        StoryType.text => _text(context, story),
-        StoryType.audio => _audio(context, story),
-      };
+  static StoryItem map(
+    BuildContext context,
+    StoryModel story, {
+    double mediaBottomPadding = 0,
+  }) => switch (story.type) {
+    StoryType.image => _image(story, mediaBottomPadding),
+    StoryType.video => _video(story, mediaBottomPadding),
+    StoryType.text => _text(context, story),
+    StoryType.audio => _audio(context, story),
+  };
 
-  static StoryItem _image(StoryModel story) {
+  static StoryItem _image(StoryModel story, double bottomPadding) {
     final source = _mediaSource(story);
     if (source == null) return _unavailableStory();
 
     return StoryItem(
       url: source.path,
-      storyItemType: StoryItemType.image,
+      storyItemType: StoryItemType.custom,
       storyItemSource: source.source,
       duration: const Duration(seconds: 5),
-      imageConfig: StoryViewImageConfig(
-        fit: BoxFit.cover,
-        progressIndicatorBuilder: (_, _, loadProgress) =>
-            const Center(child: CupertinoActivityIndicator()),
+      customWidget: (_, _) => _SquareMediaStoryContent(
+        story: story,
+        source: source,
+        bottomPadding: bottomPadding,
       ),
     );
   }
 
-  static StoryItem _video(StoryModel story) {
+  static StoryItem _video(StoryModel story, double bottomPadding) {
     final source = _mediaSource(story);
     if (source == null) return _unavailableStory();
 
-    if (source.source == StoryItemSource.file) {
-      return StoryItem(
-        storyItemType: StoryItemType.custom,
-        duration: const Duration(seconds: 30),
-        customWidget: (storyController, _) => _LocalVideoStoryContent(
-          path: source.path,
-          storyController: storyController,
-        ),
-      );
-    }
-
     return StoryItem(
       url: source.path,
-      storyItemType: StoryItemType.video,
+      storyItemType: StoryItemType.custom,
       storyItemSource: source.source,
-      videoConfig: const StoryViewVideoConfig(
-        fit: BoxFit.cover,
-        cacheVideo: true,
+      duration: Duration(seconds: story.mediaDuration ?? 5),
+      customWidget: (controller, _) => _SquareMediaStoryContent(
+        story: story,
+        source: source,
+        bottomPadding: bottomPadding,
+        storyController: controller,
       ),
     );
   }
@@ -144,119 +141,244 @@ class StoryPresenterMapper {
   }
 }
 
-class _LocalVideoStoryContent extends StatefulWidget {
-  const _LocalVideoStoryContent({
-    required this.path,
-    required this.storyController,
+class _SquareMediaStoryContent extends StatelessWidget {
+  const _SquareMediaStoryContent({
+    required this.story,
+    required this.source,
+    required this.bottomPadding,
+    this.storyController,
   });
 
-  final String path;
+  final StoryModel story;
+  final ({String path, StoryItemSource source}) source;
+  final double bottomPadding;
   final FlutterStoryController? storyController;
 
   @override
-  State<_LocalVideoStoryContent> createState() =>
-      _LocalVideoStoryContentState();
+  Widget build(BuildContext context) {
+    final caption = story.caption?.trim();
+    final hasCaption = caption != null && caption.isNotEmpty;
+
+    return ColoredBox(
+      color: Colors.black,
+      child: Padding(
+        padding: EdgeInsets.only(bottom: bottomPadding),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final captionReserve = hasCaption ? 96.h : 0.0;
+            final videoAreaHeight = math.max(
+              0.0,
+              constraints.maxHeight - captionReserve,
+            );
+            final side = math.min(constraints.maxWidth, videoAreaHeight);
+
+            return Column(
+              children: [
+                Expanded(
+                  child: Center(
+                    child: SizedBox.square(
+                      dimension: side,
+                      child: story.type == StoryType.video
+                          ? _SquareVideoStory(
+                              source: source,
+                              storyController: storyController,
+                            )
+                          : _SquareImageStory(source: source),
+                    ),
+                  ),
+                ),
+                if (hasCaption)
+                  SizedBox(
+                    height: captionReserve,
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        AppSpacing.screenH,
+                        AppSpacing.sm.h,
+                        AppSpacing.screenH,
+                        AppSpacing.sm.h,
+                      ),
+                      child: Text(
+                        caption,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: context.text.bodyMedium.copyWith(
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
 }
 
-class _LocalVideoStoryContentState extends State<_LocalVideoStoryContent> {
-  VideoPlayerController? _videoController;
-  bool _hasError = false;
+class _SquareImageStory extends StatelessWidget {
+  const _SquareImageStory({required this.source});
+
+  final ({String path, StoryItemSource source}) source;
+
+  @override
+  Widget build(BuildContext context) {
+    if (source.source.isFile) {
+      return Image.file(
+        File(source.path),
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => const _UnavailableStoryContent(),
+      );
+    }
+
+    return Image.network(
+      source.path,
+      fit: BoxFit.cover,
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return const Center(child: CupertinoActivityIndicator());
+      },
+      errorBuilder: (_, _, _) => const _UnavailableStoryContent(),
+    );
+  }
+}
+
+class _SquareVideoStory extends StatefulWidget {
+  const _SquareVideoStory({
+    required this.source,
+    required this.storyController,
+  });
+
+  final ({String path, StoryItemSource source}) source;
+  final FlutterStoryController? storyController;
+
+  @override
+  State<_SquareVideoStory> createState() => _SquareVideoStoryState();
+}
+
+class _SquareVideoStoryState extends State<_SquareVideoStory> {
+  VideoPlayerController? _controller;
+  bool _hasAdvanced = false;
+  bool _pausedForBuffering = false;
 
   @override
   void initState() {
     super.initState();
-    widget.storyController?.addListener(_syncPlayback);
+    widget.storyController?.pause();
+    widget.storyController?.addListener(_onStoryControllerChanged);
     _initialize();
   }
 
   @override
-  void didUpdateWidget(covariant _LocalVideoStoryContent oldWidget) {
+  void didUpdateWidget(covariant _SquareVideoStory oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.storyController != widget.storyController) {
-      oldWidget.storyController?.removeListener(_syncPlayback);
-      widget.storyController?.addListener(_syncPlayback);
+      oldWidget.storyController?.removeListener(_onStoryControllerChanged);
+      widget.storyController?.addListener(_onStoryControllerChanged);
+    }
+
+    if (oldWidget.source != widget.source) {
+      _replaceController();
     }
   }
 
   Future<void> _initialize() async {
-    final controller = VideoPlayerController.file(File(widget.path));
-    _videoController = controller;
+    final controller = widget.source.source.isFile
+        ? VideoPlayerController.file(File(widget.source.path))
+        : VideoPlayerController.networkUrl(Uri.parse(widget.source.path));
+
+    _controller = controller;
+    controller.addListener(_onVideoChanged);
 
     try {
       await controller.initialize();
-      await controller.setLooping(true);
+      await controller.setLooping(false);
       await controller.play();
+      if (mounted) widget.storyController?.play();
     } catch (_) {
-      if (mounted && controller == _videoController) {
-        setState(() => _hasError = true);
-      }
-      return;
+      if (!mounted || controller != _controller) return;
     }
 
-    if (!mounted || controller != _videoController) {
+    if (mounted && controller == _controller) {
+      setState(() {});
+    } else {
       await controller.dispose();
-      return;
     }
-
-    setState(() {});
-    _syncPlayback();
   }
 
-  void _syncPlayback() {
-    final controller = _videoController;
-    final action = widget.storyController?.storyStatus;
-    if (controller == null || !controller.value.isInitialized) return;
+  Future<void> _replaceController() async {
+    final previous = _controller;
+    previous?.removeListener(_onVideoChanged);
+    _hasAdvanced = false;
+    widget.storyController?.pause();
+    setState(() => _controller = null);
+    await _initialize();
+    await previous?.dispose();
+  }
 
-    switch (action) {
-      case StoryAction.pause:
-        controller.pause();
-        return;
-      case StoryAction.play:
-      case StoryAction.playCustomWidget:
-        controller.play();
-        return;
-      case StoryAction.mute:
-        controller.setVolume(0);
-        return;
-      case StoryAction.unMute:
-        controller.setVolume(1);
-        return;
-      case StoryAction.next:
-      case StoryAction.previous:
-      case null:
-        return;
+  void _onVideoChanged() {
+    final video = _controller;
+    if (video == null || !video.value.isInitialized || _hasAdvanced) {
+      return;
+    }
+
+    if (video.value.isBuffering && !_pausedForBuffering) {
+      _pausedForBuffering = true;
+      widget.storyController?.pause();
+    } else if (!video.value.isBuffering &&
+        _pausedForBuffering &&
+        video.value.isPlaying) {
+      _pausedForBuffering = false;
+      widget.storyController?.play();
+    }
+
+    final duration = video.value.duration;
+    if (duration == Duration.zero) return;
+
+    if (video.value.position >= duration) {
+      _hasAdvanced = true;
+      widget.storyController?.next();
+    }
+  }
+
+  void _onStoryControllerChanged() {
+    final controller = _controller;
+    final action = widget.storyController?.storyStatus;
+    if (controller == null || action == null) return;
+
+    if (action.isPause) {
+      controller.pause();
+    } else if (action.isPlay || action.isPlayCustomWidget) {
+      controller.play();
+    } else if (action.isMute) {
+      controller.setVolume(0);
+    } else if (action.isUnMute) {
+      controller.setVolume(1);
     }
   }
 
   @override
   void dispose() {
-    widget.storyController?.removeListener(_syncPlayback);
-    _videoController?.dispose();
+    widget.storyController?.removeListener(_onStoryControllerChanged);
+    _controller?.removeListener(_onVideoChanged);
+    _controller?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final controller = _videoController;
-    if (_hasError) return const _UnavailableStoryContent();
+    final controller = _controller;
     if (controller == null || !controller.value.isInitialized) {
-      return const ColoredBox(
-        color: Colors.black,
-        child: Center(child: CupertinoActivityIndicator(color: Colors.white)),
-      );
+      return const Center(child: CupertinoActivityIndicator());
     }
 
-    return ColoredBox(
-      color: Colors.black,
-      child: Center(
-        child: FittedBox(
-          fit: BoxFit.cover,
-          child: SizedBox(
-            width: controller.value.size.width,
-            height: controller.value.size.height,
-            child: VideoPlayer(controller),
-          ),
-        ),
+    return FittedBox(
+      fit: BoxFit.cover,
+      child: SizedBox(
+        width: controller.value.size.width,
+        height: controller.value.size.height,
+        child: VideoPlayer(controller),
       ),
     );
   }

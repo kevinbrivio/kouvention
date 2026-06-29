@@ -28,7 +28,7 @@ class StoryVideoComposer extends ConsumerStatefulWidget {
   final TextEditingController captionController;
   final bool isPublishing;
   final ValueChanged<File?> onVideoSelected;
-  final VoidCallback onPublish;
+  final ValueChanged<int> onPublish;
 
   @override
   ConsumerState<StoryVideoComposer> createState() => _StoryVideoComposerState();
@@ -47,6 +47,7 @@ class _StoryVideoComposerState extends ConsumerState<StoryVideoComposer>
   bool _isRecording = false;
   bool _isStoppingRecording = false;
   bool _wasVideoTrimmed = false;
+  int? _videoDurationSeconds;
   String? _cameraError;
 
   @override
@@ -235,6 +236,7 @@ class _StoryVideoComposerState extends ConsumerState<StoryVideoComposer>
       final captured = await controller.stopVideoRecording();
       if (!mounted) return;
       _wasVideoTrimmed = false;
+      _videoDurationSeconds = _recordingDuration.inSeconds;
       widget.onVideoSelected(File(captured.path));
     } on CameraException {
       showToast('Could not save the video. Please try again.');
@@ -262,6 +264,7 @@ class _StoryVideoComposerState extends ConsumerState<StoryVideoComposer>
         _isPreparingVideo = false;
         _wasVideoTrimmed = result.wasTrimmed;
       });
+      _videoDurationSeconds = result.durationMs ~/ 1000;
       widget.onVideoSelected(result.file);
     } catch (_) {
       if (mounted) setState(() => _isPreparingVideo = false);
@@ -297,7 +300,7 @@ class _StoryVideoComposerState extends ConsumerState<StoryVideoComposer>
           if (_isPreparingVideo) _buildPreparingOverlay(),
           if (_isRecording)
             Positioned(
-              top: MediaQuery.of(context).padding.top + 64,
+              top: MediaQuery.of(context).padding.top + 64.h,
               left: 0,
               right: 0,
               child: Center(
@@ -323,8 +326,8 @@ class _StoryVideoComposerState extends ConsumerState<StoryVideoComposer>
               ),
             ),
           Positioned(
-            left: 24,
-            right: 24,
+            left: 24.w,
+            right: 24.w,
             bottom: MediaQuery.of(context).padding.bottom + 24,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -426,7 +429,7 @@ class _StoryVideoComposerState extends ConsumerState<StoryVideoComposer>
     child: Stack(
       fit: StackFit.expand,
       children: [
-        VideoPreview(file: video, repeat: true),
+        VideoPreview(file: video, repeat: false),
         Positioned(
           left: 24,
           right: 24,
@@ -460,7 +463,10 @@ class _StoryVideoComposerState extends ConsumerState<StoryVideoComposer>
                     onPressed: widget.isPublishing
                         ? null
                         : () {
-                            setState(() => _wasVideoTrimmed = false);
+                            setState(() {
+                              _wasVideoTrimmed = false;
+                              _videoDurationSeconds = null;
+                            });
                             widget.onVideoSelected(null);
                           },
                   ),
@@ -468,7 +474,9 @@ class _StoryVideoComposerState extends ConsumerState<StoryVideoComposer>
                     tooltip: 'Publish story',
                     icon: Icons.send_rounded,
                     isLoading: widget.isPublishing,
-                    onPressed: widget.isPublishing ? null : widget.onPublish,
+                    onPressed: widget.isPublishing
+                        ? null
+                        : () => widget.onPublish(_videoDurationSeconds ?? 5),
                   ),
                 ],
               ),

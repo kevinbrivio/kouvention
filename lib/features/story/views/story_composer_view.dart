@@ -21,7 +21,6 @@ import 'package:kouvention/features/story/widgets/story_photo_composer.dart';
 import 'package:kouvention/features/story/widgets/story_video_composer.dart';
 
 const storyBackgroundColors = [
-  Color(0xFF168C4B),
   Color(0xFF2864B7),
   Color(0xFF7047A3),
   Color(0xFFD66A1F),
@@ -147,7 +146,7 @@ class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
     );
   }
 
-  Future<void> _publishVideoStory() async {
+  Future<void> _publishVideoStory(int mediaDuration) async {
     final video = _videoFile;
     if (video == null || _isPublishing) return;
     await _queueMediaStory(
@@ -155,10 +154,11 @@ class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
       type: StoryType.video,
       captionController: _videoCaptionController,
       failureMessage: 'Could not save the video story. Please try again.',
+      mediaDuration: mediaDuration,
     );
   }
 
-  Future<void> _publishAudioStory() async {
+  Future<void> _publishAudioStory(int mediaDuration) async {
     final audio = _audioFile;
     if (audio == null || _isPublishing) return;
 
@@ -167,6 +167,7 @@ class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
       type: StoryType.audio,
       backgroundColorArgb: _audioBackgroundColor.toARGB32(),
       failureMessage: 'Could not save the recording story. Please try again.',
+      mediaDuration: mediaDuration,
     );
   }
 
@@ -176,6 +177,7 @@ class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
     required String failureMessage,
     TextEditingController? captionController,
     int? backgroundColorArgb,
+    int? mediaDuration,
   }) async {
     final currentUser = ref.read(authServiceProvider).currentUser;
     if (currentUser == null) {
@@ -206,6 +208,7 @@ class _StoryComposerViewState extends ConsumerState<StoryComposerView> {
         visibleTo: visibleTo.toList(growable: false),
         createdAt: createdAt,
         expiresAt: storyExpiryFrom(createdAt),
+        mediaDuration: mediaDuration,
         syncStatus: StorySyncStatus.pending,
       );
 

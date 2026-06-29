@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:gap/gap.dart';
@@ -54,7 +53,6 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
     final vm = ref.watch(chatListVM);
     final searchVm = ref.watch(searchVMProvider);
     final scheme = Theme.of(context).colorScheme;
-    bool _fabRotated = false;
 
     return PopScope(
       canPop: !vm.isSelectionMode && !searchVm.isActive,
@@ -101,24 +99,12 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
                   foregroundColor: scheme.onPrimary.withValues(alpha: 0.1),
                   splashColor: scheme.onPrimary.withValues(alpha: 0.3),
                   onPressed: () {
-                    setState(() => _fabRotated = !_fabRotated);
                     context.push(RouterRoutes.newChat.path);
                   },
-                  child: Animate(
-                    target: _fabRotated ? 1 : 0,
-                    effects: [
-                      RotateEffect(
-                        begin: 0,
-                        end: 0.5,
-                        duration: 250.ms,
-                        curve: Curves.easeOut,
-                      ),
-                    ],
-                    child: Icon(
-                      Icons.edit,
-                      color: scheme.surface,
-                      size: AppSizing.iconSm.sp,
-                    ),
+                  child: Icon(
+                    Icons.edit,
+                    color: scheme.surface,
+                    size: AppSizing.iconSm.r,
                   ),
                 ),
               ),
@@ -356,7 +342,8 @@ class _ChatListViewState extends ConsumerState<ChatListView> {
       builder: (context) => AlertDialog(
         title: Text('Delete this chat?', style: context.text.headlineSmall),
         content: Text(
-          'This chat will be removed from your list. It will reappear if someone sends a new message.',
+          'This chat will be removed from your list. '
+          'It will reappear if someone sends a new message.',
           style: context.text.labelSmall.copyWith(
             color: context.text.tertiaryText,
           ),

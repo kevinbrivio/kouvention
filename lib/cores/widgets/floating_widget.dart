@@ -23,15 +23,16 @@ class _FloatingWidgetState extends State<FloatingWidget>
       duration: const Duration(seconds: 3),
     )..repeat(reverse: true); // goes up then down, forever
 
-    _animation = Tween<double>(
-      begin: -10, // floats 10px up
-      end: 10,    // floats 10px down
-    ).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: Curves.easeInOut, // smooth, natural feel
-      ),
-    );
+    _animation =
+        Tween<double>(
+          begin: -10, // floats 10px up
+          end: 10, // floats 10px down
+        ).animate(
+          CurvedAnimation(
+            parent: _controller,
+            curve: Curves.easeInOut, // smooth, natural feel
+          ),
+        );
   }
 
   @override
@@ -41,19 +42,15 @@ class _FloatingWidgetState extends State<FloatingWidget>
   }
 
   @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _animation,
-      builder: (context, child) {
-        return Transform.translate(
-          offset: Offset(0, _animation.value), // only moves vertically
-          child: child,
-        );
-      },
-      child: Padding(
-        padding: EdgeInsetsGeometry.all(AppSpacing.md.w),
-        child: widget.child
-      ),
-    );
-  }
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _animation,
+    builder: (context, child) => Transform.translate(
+      offset: Offset(0, _animation.value), // only moves vertically
+      child: child,
+    ),
+    child: Padding(
+      padding: EdgeInsetsGeometry.all(AppSpacing.md.w),
+      child: widget.child,
+    ),
+  );
 }

@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
@@ -10,6 +9,7 @@ import 'package:kouvention/features/chat/repositories/chat_repository.dart';
 import 'package:kouvention/features/chat/services/chat_service.dart';
 import 'package:kouvention/features/chat/services/databases/message_database.dart';
 import 'package:oktoast/oktoast.dart';
+import 'package:kouvention/cores/utils/log.dart';
 
 enum ChatFilter { all, direct, group }
 
@@ -159,7 +159,7 @@ class ChatListVM extends BaseNotifier {
       // Read A-explicit state from any row.
       final state = await db.getChatListPaginationState();
       if (!state.hasMore) {
-        debugPrint('⏸️ fetchOlderChats skipped: no more chats (DB)');
+        dLog('⏸️ fetchOlderChats skipped: no more chats (DB)');
         return;
       }
 
@@ -181,7 +181,7 @@ class ChatListVM extends BaseNotifier {
 
       if (fetched.isEmpty) {
         await db.updateChatListPaginationState(hasMore: false);
-        debugPrint('🏁 Reached end of Firestore (empty page)');
+        iLog('🏁 Reached end of Firestore (empty page)');
       } else if (fetched.length < kChatListPageSize) {
         final lastChat = fetched.last;
         await db.updateChatListPaginationState(
@@ -190,7 +190,7 @@ class ChatListVM extends BaseNotifier {
               .millisecondsSinceEpoch,
           cursorChatId: lastChat.id,
         );
-        debugPrint(
+        iLog(
           '🏁 Reached end of Firestore (got ${fetched.length} < $kChatListPageSize)',
         );
       } else {
@@ -203,7 +203,7 @@ class ChatListVM extends BaseNotifier {
         );
       }
     } catch (e) {
-      debugPrint('fetchOlderChats failed: $e');
+      eLog('fetchOlderChats failed: $e');
     } finally {
       _isLoadingMore = false;
       notifyListeners();

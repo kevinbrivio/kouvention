@@ -13,6 +13,7 @@ class StoryModel {
   final String? authorPhotoUrl;
   final StoryType type;
   final String? mediaUrl;
+  final int? mediaDuration;
   final String? thumbnailUrl;
   final String? text;
   final String? caption;
@@ -33,6 +34,7 @@ class StoryModel {
     this.authorPhotoUrl,
     required this.type,
     this.mediaUrl,
+    this.mediaDuration,
     this.thumbnailUrl,
     this.text,
     this.caption,
@@ -55,6 +57,7 @@ class StoryModel {
         authorPhotoUrl: data['authorPhotoUrl'] as String?,
         type: StoryType.values.byName(data['type'] as String),
         mediaUrl: data['mediaUrl'] as String?,
+        mediaDuration: data['mediaDuration'] as int?,
         thumbnailUrl: data['thumbnailUrl'] as String?,
         text: data['text'] as String?,
         caption: data['caption'] as String?,
@@ -75,6 +78,7 @@ class StoryModel {
     authorPhotoUrl: row.authorPhotoUrl,
     type: row.type,
     mediaUrl: row.mediaUrl,
+    mediaDuration: row.mediaDuration,
     thumbnailUrl: row.thumbnailUrl,
     text: row.textContent,
     caption: row.caption,
@@ -98,6 +102,7 @@ class StoryModel {
     if (authorPhotoUrl != null) 'authorPhotoUrl': authorPhotoUrl,
     'type': type.name,
     if (mediaUrl != null) 'mediaUrl': mediaUrl,
+    if (mediaDuration != null) 'mediaDuration': mediaDuration,
     if (thumbnailUrl != null) 'thumbnailUrl': thumbnailUrl,
     if (text != null) 'text': text,
     if (caption != null) 'caption': caption,
@@ -116,6 +121,7 @@ class StoryModel {
     authorPhotoUrl: Value(authorPhotoUrl),
     type: Value(type),
     mediaUrl: Value(mediaUrl),
+    mediaDuration: Value(mediaDuration),
     thumbnailUrl: Value(thumbnailUrl),
     textContent: Value(text),
     caption: Value(caption),

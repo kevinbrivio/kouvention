@@ -13,7 +13,6 @@ import 'package:kouvention/features/story/models/story_composer_args.dart';
 import 'package:kouvention/features/story/models/story_feed_item.dart';
 import 'package:kouvention/features/story/models/story_model.dart';
 import 'package:kouvention/features/story/models/story_viewer_args.dart';
-import 'package:kouvention/features/story/services/debug/debug_story_seeder.dart';
 import 'package:kouvention/features/story/viewmodel/story_feed_viewmodel.dart';
 import 'package:kouvention/features/story/widgets/story_author_avatar.dart';
 
@@ -99,9 +98,9 @@ class _StoryFeedViewState extends ConsumerState<StoryFeedView> {
                   child: feed.when(
                     loading: () =>
                         const Center(child: CircularProgressIndicator()),
-                    error: (_, _) => const _StoryFeedMessage(
+                    error: (e, s) => _StoryFeedMessage(
                       icon: Icons.cloud_off_outlined,
-                      message: 'Stories are unavailable',
+                      message: '$e - $s',
                     ),
                     data: (items) {
                       final ownStory = _ownStory(items);
@@ -124,7 +123,7 @@ class _StoryFeedViewState extends ConsumerState<StoryFeedView> {
                               AppSpacing.xl.h,
                         ),
                         children: [
-                          if (!isSearching)
+                          if (!isSearching) ...[
                             _CurrentUserStatusHeader(
                               currentUid: currentUser.uid,
                               currentName:
@@ -144,13 +143,14 @@ class _StoryFeedViewState extends ConsumerState<StoryFeedView> {
                                       viewedStoryIds,
                                     ),
                             ),
-
-                          Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: AppSpacing.screenH.w,
+  
+                            Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: AppSpacing.screenH.w,
+                              ),
+                              child: CustomDivider(),
                             ),
-                            child: CustomDivider(),
-                          ),
+                          ],
                           if (unseenUpdates.isEmpty && viewedUpdates.isEmpty)
                             Padding(
                               padding: EdgeInsets.only(top: AppSpacing.xl.h),
@@ -206,7 +206,7 @@ class _StoryFeedViewState extends ConsumerState<StoryFeedView> {
               child: Icon(
                 Icons.add_rounded,
                 color: scheme.surface,
-                size: AppSizing.iconSm.sp,
+                size: AppSizing.iconSm.r,
               ),
             ),
           ),
@@ -431,7 +431,7 @@ class _StorySearchField extends StatelessWidget {
       textInputAction: TextInputAction.search,
       textAlignVertical: TextAlignVertical.center,
       decoration: InputDecoration(
-        hintText: 'Search stories',
+        hintText: 'Search name',
         hintStyle: context.text.bodySmall.copyWith(
           color: context.text.tertiaryText,
         ),
@@ -546,7 +546,7 @@ class _CurrentUserStatusHeader extends StatelessWidget {
                       ),
                       child: Icon(
                         Icons.add_rounded,
-                        size: 15.r,
+                        size: AppSizing.iconSm.r,
                         color: scheme.onPrimary,
                       ),
                     ),
@@ -558,11 +558,16 @@ class _CurrentUserStatusHeader extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Add status', style: context.text.labelMedium),
+                  Text(
+                    ownStory == null 
+                      ? 'Add status'
+                      : 'My status', 
+                    style: context.text.labelMedium,
+                  ),
                   Gap(AppSpacing.xxs.h),
                   Text(
                     'Disappear after 24 hours',
-                    style: context.text.labelSmall.copyWith(
+                    style: context.text.bodySmall.copyWith(
                       color: context.text.tertiaryText,
                     ),
                   ),
@@ -669,7 +674,7 @@ class _StoryFeedTile extends StatelessWidget {
                   SizedBox(height: AppSpacing.xxs.h),
                   Text(
                     _subtitle(item),
-                    style: context.text.labelSmall.copyWith(
+                    style: context.text.bodySmall.copyWith(
                       color: context.text.tertiaryText,
                     ),
                   ),

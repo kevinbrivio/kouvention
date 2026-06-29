@@ -24,8 +24,8 @@ class EmailSignInView extends StatelessWidget {
   Widget _buildScreen(BuildContext context, EmailSignInVM vm) => SafeArea(
     child: SingleChildScrollView(
       padding: EdgeInsets.only(
-        left: AppSpacing.md.w, 
-        right: AppSpacing.md.w, 
+        left: AppSpacing.md.w,
+        right: AppSpacing.md.w,
         bottom: MediaQuery.of(context).viewInsets.bottom,
       ),
       child: SizedBox(
@@ -70,8 +70,6 @@ class EmailSignInView extends StatelessWidget {
             controller: vm.form.password.controller,
             validator: (val) => vm.form.password.validator?.call(val ?? ''),
           ),
-          Gap(AppSpacing.xs.h),
-          if (vm.isOffline) _buildOfflineWarning(),
           Gap(AppSpacing.lg.h),
           _buildSignInButton(context, vm),
           Gap(AppSpacing.lg.h),
@@ -80,71 +78,56 @@ class EmailSignInView extends StatelessWidget {
       ),
     ),
   );
-  
-  Widget _buildEmailField(BuildContext context, EmailSignInVM vm) => TextFormField(
-    keyboardType: TextInputType.emailAddress,
-    controller: vm.form.email.controller,
-    style: context.text.bodyMedium.copyWith(color: Colors.white),
-    validator: (val) => vm.form.email.validator?.call(val ?? ''),
-    decoration: InputDecoration(
-      hintText: 'Email',
-      hintStyle: context.text.bodyMedium.copyWith(color: Colors.white54),
-      prefixIcon: Icon(
-        Icons.email_outlined,
-        color: Colors.white70,
-        size: AppSizing.iconSm.sp,
-      ),
-      filled: true,
-      fillColor: AppColorTokens.primary.withValues(alpha: 0.5),
-      contentPadding: EdgeInsets.symmetric(
-        horizontal: AppSpacing.md.w,
-        vertical: AppSpacing.md.h,
-      ),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(AppRadius.md.r),
-        borderSide: BorderSide.none,
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(AppRadius.md.r),
-        borderSide: BorderSide(
-          color: Colors.white.withValues(alpha: 0.3),
-          width: 1.0,
-        ),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(AppRadius.md.r),
-        borderSide: const BorderSide(color: Colors.white, width: 1.5),
-      ),
-      errorStyle: context.text.labelMedium.copyWith(color: Colors.orangeAccent),
-    ),
-  );
 
-  Widget _buildOfflineWarning() => Container(
-    padding: EdgeInsets.symmetric(vertical: 10.h, horizontal: AppSpacing.sm.w),
-    decoration: BoxDecoration(
-      color: Colors.orange.shade800.withValues(alpha: 0.3),
-      borderRadius: BorderRadius.circular(AppRadius.sm.r),
-    ),
-    child: Row(
-      children: [
-        Icon(Icons.wifi_off, color: Colors.orangeAccent, size: 18.sp),
-        SizedBox(width: AppSpacing.xs.w),
-        const Expanded(
-          child: Text(
-            'No internet connection. Please check your network and try again.',
-            style: TextStyle(color: Colors.orangeAccent, fontSize: 12),
+  Widget _buildEmailField(BuildContext context, EmailSignInVM vm) =>
+      TextFormField(
+        keyboardType: TextInputType.emailAddress,
+        controller: vm.form.email.controller,
+        style: context.text.bodyMedium.copyWith(color: Colors.white),
+        validator: (val) => vm.form.email.validator?.call(val ?? ''),
+        decoration: InputDecoration(
+          hintText: 'Email',
+          hintStyle: context.text.bodyMedium.copyWith(color: Colors.white54),
+          prefixIcon: Icon(
+            Icons.email_outlined,
+            color: Colors.white70,
+            size: AppSizing.iconSm.sp,
+          ),
+          filled: true,
+          fillColor: AppColorTokens.primary.withValues(alpha: 0.5),
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: AppSpacing.md.w,
+            vertical: AppSpacing.md.h,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md.r),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md.r),
+            borderSide: BorderSide(
+              color: Colors.white.withValues(alpha: 0.3),
+              width: 1.0,
+            ),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md.r),
+            borderSide: const BorderSide(color: Colors.white, width: 1.5),
+          ),
+          errorStyle: context.text.labelMedium.copyWith(
+            color: Colors.orangeAccent,
           ),
         ),
-      ],
-    ),
-  );
+      );
 
   Widget _buildSignInButton(BuildContext context, EmailSignInVM vm) => SizedBox(
     height: AppSizing.buttonHeight.h,
     child: Button(
       onPressed: vm.isLoading ? null : () => vm.signIn(),
       text: 'Sign In',
-      textStyle: context.text.labelLarge.copyWith(color: AppColorTokens.primary),
+      textStyle: context.text.labelLarge.copyWith(
+        color: AppColorTokens.primary,
+      ),
       isWhiteBackground: true,
     ),
   );

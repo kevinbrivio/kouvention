@@ -175,10 +175,10 @@ class MessageRepository {
   }) => _sync.deleteMessageForEveryone(chatId: chatId, messageIds: messageIds);
 }
 
-final messageRepositoryProvider = Provider<MessageRepository>((ref) {
-  return MessageRepository(
+final messageRepositoryProvider = Provider<MessageRepository>(
+  (ref) => MessageRepository(
     sync: ref.watch(syncServiceProvider),
     chatService: ref.watch(chatServiceProvider),
     db: ref.watch(messageDatabaseProvider),
-  );
-});
+  ),
+);

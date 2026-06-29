@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kouvention/cores/bases/base_notifier.dart';
+import 'package:kouvention/cores/utils/log.dart';
 import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/services/chat_service.dart';
@@ -12,7 +12,7 @@ import 'package:kouvention/features/user/models/user_model.dart';
 import 'package:kouvention/features/user/services/user_service.dart';
 
 final newGroupChatVM = AutoDisposeChangeNotifierProvider<NewGroupChatVM>(
-  (ref) => NewGroupChatVM(ref),
+  NewGroupChatVM.new,
 );
 
 class NewGroupChatVM extends BaseNotifier {
@@ -24,7 +24,6 @@ class NewGroupChatVM extends BaseNotifier {
   List<UserModel> _searchResults = [];
   Timer? _debounceTimer;
   bool _isSearching = false;
-
 
   // Group chat selection
   final List<UserModel> _selectedUsers = [];
@@ -84,7 +83,7 @@ class NewGroupChatVM extends BaseNotifier {
       _error = null;
     } catch (e) {
       _error = 'Search failed';
-      debugPrint('Search error: $e');
+      eLog('Search error: $e');
     }
 
     _isSearching = false;
@@ -111,9 +110,8 @@ class NewGroupChatVM extends BaseNotifier {
     notifyListeners();
   }
 
-  bool isUserSelected(UserModel user) {
-    return _selectedUsers.any((u) => u.uid == user.uid);
-  }
+  bool isUserSelected(UserModel user) =>
+      _selectedUsers.any((u) => u.uid == user.uid);
 
   /// Creates a group chat with all selected users.
   /// Returns the chat ID to navigate to.
@@ -168,7 +166,7 @@ class NewGroupChatVM extends BaseNotifier {
       return chatId;
     } catch (e) {
       _error = 'Failed to create group';
-      debugPrint('Create group error: $e');
+      eLog('Create group error: $e');
       notifyListeners();
       return null;
     }

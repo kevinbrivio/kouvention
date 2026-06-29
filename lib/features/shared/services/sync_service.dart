@@ -1,14 +1,13 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
+import 'package:kouvention/cores/utils/log.dart';
 import 'package:kouvention/cores/utils/id_generator.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:drift/drift.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:kouvention/features/auth/services/auth_service.dart';
 import 'package:kouvention/features/chat/models/chat_model.dart';
 import 'package:kouvention/features/chat/models/message_model.dart';
 import 'package:kouvention/features/chat/models/message_type.dart';
@@ -63,15 +62,15 @@ class SyncService {
   final ChatService _chatService;
   final CloudMediaService _mediaService; // Upload to Cloudinary
   final NotificationService _notificationService; // Send FCM
-  final String? _currentUid;
 
   SyncService(
     this._db,
     this._chatService,
     this._mediaService,
     this._notificationService,
-    this._currentUid,
   );
+
+  String? get _currentUid => FirebaseAuth.instance.currentUser?.uid;
 
   // ============================
   // Sync Chat Rooms after Login
@@ -79,7 +78,7 @@ class SyncService {
   Future<void> syncInitialChatRooms(String currentUid) async {
     final sw = Stopwatch()..start();
 
-    debugPrint(
+    iLog(
       ' ================== [Start Sync Chats] ========================',
     );
 
@@ -87,7 +86,7 @@ class SyncService {
       currentUid,
     );
 
-    debugPrint(
+    iLog(
       ' ========= [Fetching from Firestore done!] Took: ${sw.elapsedMilliseconds} ms =========',
     );
 
@@ -104,7 +103,7 @@ class SyncService {
     List<ChatsCompanion> companions;
 
     if (chatRooms.length < 100) {
-      print('Chat list length: ${chatRooms.length}');
+      iLog('Chat list length: ${chatRooms.length}');
       companions = chatRooms.map((chat) {
         return chatToCompanion(
           chat,
@@ -117,7 +116,7 @@ class SyncService {
 
     await _db.upsertChatRooms(companions);
 
-    debugPrint(
+    iLog(
       ' ========= [Everything is done] Total testing time: ${sw.elapsedMilliseconds} ms =======',
     );
 
@@ -168,7 +167,6 @@ class SyncService {
     final messages = await _chatService.fetchMessageAround(
       chatId,
       aroundTimestamp: aroundTimestamp,
-      limit: 50,
     );
     if (messages.isEmpty) return;
 
@@ -272,7 +270,7 @@ class SyncService {
   }) async {
     final chatRoom = await _db.getChatById(chatId);
     if (chatRoom == null) {
-      debugPrint('fetchOlderMessages: chat $chatId missing locally — skip');
+      wLog('fetchOlderMessages: chat $chatId missing locally — skip');
       return (pages: 0, messages: 0);
     }
     if (!chatRoom.hasMoreOlderRemote) {
@@ -399,7 +397,7 @@ class SyncService {
 
         break;
       } catch (e) {
-        debugPrint(
+        wLog(
           '⚠️ streamFirestoreMessages error for $chatId: $e, '
           'retrying in ${retryDelay}s',
         );
@@ -423,11 +421,13 @@ class SyncService {
     // Generate Temp ID
     final tempId = IdGenerator.generateId();
     final now = DateTime.now();
+    final currentUid = _currentUid;
+    if (currentUid == null) return;
 
     // Wrap in MessageModel
     final localMessage = MessageModel(
       id: tempId,
-      senderId: _currentUid!,
+      senderId: currentUid,
       senderName: senderName,
       text: textContent,
       sentAt: now,
@@ -466,11 +466,13 @@ class SyncService {
   }) async {
     final tempId = IdGenerator.generateId();
     final now = DateTime.now();
+    final currentUid = _currentUid;
+    if (currentUid == null) return;
 
     final localMsg = MessagesCompanion(
       id: Value(tempId),
       chatRoomId: Value(chatRoomId),
-      senderId: Value(_currentUid!),
+      senderId: Value(currentUid),
       senderName: Value(senderName),
       textContent: Value(caption ?? ''),
       type: Value(type.name),
@@ -515,6 +517,8 @@ class SyncService {
   }) async {
     final tempId = IdGenerator.generateId();
     final now = DateTime.now();
+    final currentUid = _currentUid;
+    if (currentUid == null) return;
 
     final allUrls = uploadResults.map((r) => r.url).toList();
     final allCaptions =
@@ -524,7 +528,7 @@ class SyncService {
     final localMsg = MessagesCompanion(
       id: Value(tempId),
       chatRoomId: Value(chatRoomId),
-      senderId: Value(_currentUid!),
+      senderId: Value(currentUid),
       senderName: Value(senderName),
       textContent: Value(caption),
       type: Value(type.name),
@@ -551,7 +555,7 @@ class SyncService {
       messageId: tempId,
       text: caption,
       type: type,
-      senderId: _currentUid,
+      senderId: currentUid,
       senderName: senderName,
       mediaUrls: allUrls,
       mediaCaptions: allCaptions,
@@ -576,7 +580,7 @@ class SyncService {
       chatRoomId,
       LastMessage(
         text: lastMessageLabel(caption, type, first.fileName),
-        sentBy: _currentUid,
+        sentBy: currentUid,
         sentAt: now,
         type: type.name,
       ),
@@ -585,7 +589,7 @@ class SyncService {
     await _sendFcmToRecipients(
       otherUserFcmTokens: otherUserFcmTokens,
       chatRoomId: chatRoomId,
-      senderId: _currentUid,
+      senderId: currentUid,
       senderName: senderName,
       messageText: fcmLabel(caption, type, mediaCount: uploadResults.length),
       isGroup: memberUids.length > 2,
@@ -605,6 +609,9 @@ class SyncService {
     required ReplyToModel? replyTo,
   }) async {
     try {
+      final currentUid = _currentUid;
+      if (currentUid == null) return;
+
       final results = await Future.wait(
         files.map(
           (file) => _mediaService.uploadFile(file: file, mediaType: type),
@@ -621,7 +628,7 @@ class SyncService {
         messageId: tempId,
         text: caption,
         type: type,
-        senderId: _currentUid!,
+        senderId: currentUid,
         senderName: senderName,
         mediaUrls: allUrls,
         mediaDuration: uploaded.first.mediaDuration,
@@ -646,7 +653,7 @@ class SyncService {
         chatRoomId,
         LastMessage(
           text: lastMessageLabel(caption, type, fileName),
-          sentBy: _currentUid,
+          sentBy: currentUid,
           sentAt: sentAt,
           type: type.name,
         ),
@@ -655,13 +662,13 @@ class SyncService {
       await _sendFcmToRecipients(
         otherUserFcmTokens: otherUserFcmTokens,
         chatRoomId: chatRoomId,
-        senderId: _currentUid,
+        senderId: currentUid,
         senderName: senderName,
         messageText: fcmLabel(caption, type, mediaCount: files.length),
         isGroup: memberUids.length > 2,
       );
     } catch (e) {
-      debugPrint('🚨 Failed media upload for $tempId: $e');
+      eLog('🚨 Failed media upload for $tempId: $e');
       await _db.updateMessageStatus(tempId, SyncStatus.failed);
     }
   }
@@ -707,7 +714,7 @@ class SyncService {
       );
     } catch (e) {
       await _db.updateMessageStatus(localMessage.id, SyncStatus.failed);
-      debugPrint('Failed sending message: $e');
+      eLog('Failed sending message: $e');
     }
   }
 
@@ -721,11 +728,13 @@ class SyncService {
   }) async {
     final tempId = IdGenerator.generateId();
     final now = DateTime.now();
+    final currentUid = _currentUid;
+    if (currentUid == null) return;
 
     final localMsg = MessagesCompanion(
       id: Value(tempId),
       chatRoomId: Value(chatRoomId),
-      senderId: Value(_currentUid!),
+      senderId: Value(currentUid),
       senderName: Value(senderName),
       textContent: Value(''),
       type: Value(MessageType.sticker.name),
@@ -753,7 +762,7 @@ class SyncService {
         messageId: tempId,
         text: 'Sticker',
         type: MessageType.sticker,
-        senderId: _currentUid,
+        senderId: currentUid,
         senderName: senderName,
         mediaUrls: [stickerUrl],
         mimeType: 'image/gif',
@@ -768,7 +777,7 @@ class SyncService {
         chatRoomId,
         LastMessage(
           text: 'Sticker',
-          sentBy: _currentUid,
+          sentBy: currentUid,
           sentAt: now,
           type: MessageType.sticker.name,
         ),
@@ -777,7 +786,7 @@ class SyncService {
       await _sendFcmToRecipients(
         chatRoomId: chatRoomId,
         messageText: 'Sticker',
-        senderId: _currentUid,
+        senderId: currentUid,
         senderName: senderName,
         isGroup: memberUids.length > 2,
         otherUserFcmTokens: otherUserFcmTokens,
@@ -797,14 +806,14 @@ class SyncService {
     bool isGroup = false,
   }) async {
     if (otherUserFcmTokens == null || otherUserFcmTokens.isEmpty) {
-      debugPrint('[SyncService] _sendFcmToRecipients: no tokens to send to');
+      dLog('[SyncService] _sendFcmToRecipients: no tokens to send to');
       return;
     }
 
-    debugPrint(
+    dLog(
       '[SyncService] Sending FCM to ${otherUserFcmTokens.length} token(s)',
     );
-    debugPrint('[SyncService] Sending FCM with Message: $messageText');
+    dLog('[SyncService] Sending FCM with Message: $messageText');
 
     final senderPhotoUrl = FirebaseAuth.instance.currentUser?.photoURL;
 
@@ -820,11 +829,11 @@ class SyncService {
           senderImageUrl: senderPhotoUrl,
           isGroup: isGroup,
         );
-        debugPrint(
+        dLog(
           '[SyncService] FCM sent to token: ${token.substring(0, 20)}...',
         );
       } catch (e) {
-        debugPrint('[SyncService] FCM send failed for token: $e');
+        eLog('[SyncService] FCM send failed for token: $e');
       }
     }
   }
@@ -844,7 +853,7 @@ class SyncService {
     final stuckMessages = await _db.getStuckPendingMessages();
     if (stuckMessages.isEmpty) return;
 
-    debugPrint('🔁 Retrying ${stuckMessages.length} stuck message(s)');
+    iLog('🔁 Retrying ${stuckMessages.length} stuck message(s)');
 
     for (final msg in stuckMessages) {
       await flushPendingMessage(msg);
@@ -879,7 +888,7 @@ class SyncService {
     try {
       final chat = await _db.getChatById(msg.chatRoomId);
       if (chat == null) {
-        debugPrint(
+        wLog(
           'flushPendingMessage: chat ${msg.chatRoomId} missing locally — '
           'skipping ${msg.id}',
         );
@@ -942,7 +951,7 @@ class SyncService {
       // Leave the row at its current status (pending or failed). The
       // 5-min gate in getStuckPendingMessages prevents an infinite
       // retry-storm on a persistent failure.
-      debugPrint('flushPendingMessage failed for ${msg.id}: $e');
+      eLog('flushPendingMessage failed for ${msg.id}: $e');
     }
   }
 
@@ -973,18 +982,19 @@ class SyncService {
     required String chatId,
     required List<String> messageIds,
   }) async {
-    if (_currentUid == null) return;
+    final currentUid = _currentUid;
+    if (currentUid == null) return;
     // Hard delete
     await _db.hardDeleteMessages(messageIds: messageIds);
 
     try {
       await _chatService.deleteMessageForMe(
-        uid: _currentUid,
+        uid: currentUid,
         chatId: chatId,
         messageIds: messageIds,
       );
     } catch (e) {
-      debugPrint('Failed to delete on Cloud: $e');
+      eLog('Failed to delete on Cloud: $e');
     }
   }
 
@@ -992,17 +1002,16 @@ class SyncService {
     required String chatId,
     required List<String> messageIds,
   }) async {
-    if (_currentUid == null) return;
+    final currentUid = _currentUid;
+    if (currentUid == null) return;
     // Soft delete on local
     await _db.softDeleteMessages(messageIds: messageIds);
 
     // update the deletion state in remote
     try {
-      await _chatService.deleteMessageForEveryone(
-        chatId, messageIds
-      );
+      await _chatService.deleteMessageForEveryone(chatId, messageIds);
     } catch (e) {
-      if (kDebugMode) debugPrint('Failed to delete-for-everyone on Cloud: $e');
+      eLog('Failed to delete-for-everyone on Cloud: $e');
     }
   }
 
@@ -1024,6 +1033,5 @@ final syncServiceProvider = Provider<SyncService>(
     ref.watch(chatServiceProvider),
     ref.watch(cloudMediaServiceProvider),
     ref.watch(notificationServiceProvider),
-    ref.watch(authServiceProvider).currentUser?.uid,
   ),
 );
